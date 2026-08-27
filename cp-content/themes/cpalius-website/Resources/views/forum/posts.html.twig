@@ -1,0 +1,220 @@
+{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+
+{% block title %}{{ topic.title }} — {{ section.title }} — {{ 'forum.breadcrumb.home_title'|trans }}{% endblock %}
+{% block meta_description %}{{ topic.preview|default(topic.title) }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-crumb fade-in" aria-label="{{ 'forum.nav_aria'|trans }}">
+        <ol class="forum-crumb__list">
+            <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+            <li><a href="{{ path('forum_index') }}">{{ 'forum.breadcrumb.home_title'|trans }}</a></li>
+            <li><a href="{{ path('forum_section', {sectionSlug: section.slug}) }}">{{ section.title }}</a></li>
+            <li class="is-active">{{ topic.title|length > 50 ? topic.title|slice(0, 50) ~ '...' : topic.title }}</li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {% if canReply %}{{ importmap(['forum-editor-init']) }}{% endif %}
+{% endblock %}
+
+{% block forum_content %}
+{% if topic.isPrivate %}
+    <div class="forum-thread-notice forum-thread-notice--private fade-in"><i class="bi bi-eye-slash"></i> {{ 'forum.notice.private_topic'|trans }}</div>
+{% endif %}
+
+<div class="forum-header fade-in">
+    <div class="forum-header__top">
+        <div>
+            <h1 class="section-title" style="font-size: var(--fs-2xl);">
+                {% if topic.prefix %}<span class="forum-badge" style="background: color-mix(in srgb, {{ topic.prefix.color }} 15%, white); color: {{ topic.prefix.color }};">{{ topic.prefix.label }}</span>{% endif %}
+                {{ topic.title }}
+                {% if topic.sticky %}<i class="bi bi-pin-angle-fill" title="{{ 'forum.sticky_title'|trans }}" style="font-size: 0.55em; color: var(--slw-text-faint);"></i>{% endif %}
+                {% if topic.isLocked %}<i class="bi bi-lock-fill" title="{{ 'forum.locked_title'|trans }}" style="font-size: 0.55em; color: var(--slw-text-faint);"></i>{% endif %}
+            </h1>
+            <div class="forum-header__meta">
+                <span><i class="bi bi-person"></i> {{ topic.firstPosterName }}</span>
+                <span><i class="bi bi-clock"></i> {{ topic.createdAt|date('d.m.Y H:i') }}</span>
+                <span><i class="bi bi-chat-dots"></i> {{ 'forum.reply_count'|trans({'count': topic.postCount - 1}) }}</span>
+                <span><i class="bi bi-eye"></i> {{ 'forum.view_count'|trans({'count': topic.viewCount}) }}</span>
+            </div>
+        </div>
+        <div class="forum-header__actions" data-share data-share-title="{{ topic.title }}">
+            {% if canReply %}<a href="#reply" class="btn btn-primary btn-sm"><i class="bi bi-reply"></i> {{ 'forum.action.reply'|trans }}</a>{% endif %}
+            <button type="button" data-share-btn class="btn btn-sm btn-outline"><i class="bi bi-share"></i></button>
+        </div>
+    </div>
+</div>
+
+{% if canModerate %}
+    <div class="forum-mod-bar fade-in">
+        <span class="forum-mod-bar__label">{{ 'forum.mod.label'|trans }}</span>
+        <form method="post" action="{{ path('forum_moderate_topic', {topicId: topic.id}) }}" class="forum-mod-bar__actions">
+            <input type="hidden" name="_token" value="{{ csrf_token('forum_moderate') }}">
+            <button type="submit" name="action" value="{{ topic.isLocked ? 'unlock' : 'lock' }}" class="forum-mod-btn">{{ topic.isLocked ? 'forum.mod.unlock'|trans : 'forum.mod.lock'|trans }}</button>
+            <button type="submit" name="action" value="{{ topic.sticky ? 'unsticky' : 'sticky' }}" class="forum-mod-btn">{{ topic.sticky ? 'forum.mod.unsticky'|trans : 'forum.mod.sticky'|trans }}</button>
+            <button type="submit" name="action" value="announce" class="forum-mod-btn">{{ 'forum.mod.announce'|trans }}</button>
+            <button type="submit" name="action" value="clear" class="forum-mod-btn">{{ 'forum.mod.clear'|trans }}</button>
+            <button type="submit" name="action" value="delete" class="forum-mod-btn forum-mod-btn--danger" data-confirm="{{ 'forum.mod.delete_topic_confirm'|trans }}">{{ 'forum.mod.delete'|trans }}</button>
+        </form>
+
+        {% if moveTargets is defined and moveTargets is not empty %}
+            <form method="post" action="{{ path('forum_moderate_topic', {topicId: topic.id}) }}" class="forum-mod-bar__actions">
+                <input type="hidden" name="_token" value="{{ csrf_token('forum_moderate') }}">
+                <input type="hidden" name="action" value="move">
+                <select name="target_section_id" style="font-size: var(--fs-xs); padding: 5px 8px; border-radius: 4px; border: none;">
+                    {% for target in moveTargets %}
+                        <option value="{{ target.id }}">{{ target.title }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="forum-mod-btn">{{ 'forum.mod.move'|trans }}</button>
+            </form>
+        {% endif %}
+    </div>
+{% endif %}
+
+<div class="forum-posts fade-in">
+    {% for post in posts %}
+        {% set postNum = (posts.currentPage - 1) * posts.perPage + loop.index %}
+        <article class="forum-post {{ postNum == 1 ? 'forum-post--op' : '' }}" id="post{{ post.id }}">
+            {% set authorStats = post.author ? postbitStats[post.author.id]|default(null) : null %}
+
+            <aside class="forum-postbit">
+                <div class="forum-postbit__avatar">
+                    {% if post.author %}
+                        <a href="{{ path('forum_profile', {userId: post.author.id}) }}">
+                            {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: post.posterName, size: 'lg'} %}
+                        </a>
+                    {% else %}
+                        {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: post.posterName, size: 'lg'} %}
+                    {% endif %}
+                    {% if postNum == 1 %}<span class="forum-postbit__op-ring" title="{{ 'forum.op_ring_title'|trans }}"></span>{% endif %}
+                </div>
+
+                <div class="forum-postbit__name">
+                    {% if post.author %}
+                        <a href="{{ path('forum_profile', {userId: post.author.id}) }}">{{ post.posterName }}</a>
+                    {% else %}
+                        {{ post.posterName }}
+                    {% endif %}
+                </div>
+
+                {% if postNum == 1 %}
+                    <span class="forum-postbit__badge forum-postbit__badge--op">{{ 'forum.op_badge'|trans }}</span>
+                {% endif %}
+
+                {% if authorStats and authorStats.rank %}
+                    <span class="forum-postbit__badge" style="--badge-color: {{ authorStats.rank.color }};">
+                        {% if authorStats.rank.icon %}<i class="bi {{ authorStats.rank.icon }}"></i>{% endif %}
+                        {{ authorStats.rank.label }}
+                    </span>
+                {% endif %}
+
+                {% if authorStats %}
+                    <div class="forum-postbit__stats">
+                        <div class="forum-postbit__stat">
+                            <strong>{{ authorStats.postCount }}</strong>
+                            <span>{{ 'forum.stat.post'|trans }}</span>
+                        </div>
+                        <div class="forum-postbit__stat">
+                            <strong>{{ authorStats.topicCount }}</strong>
+                            <span>{{ 'forum.stat.topic'|trans }}</span>
+                        </div>
+                        <div class="forum-postbit__stat">
+                            <strong>{{ likeCounts[post.id]|default(0) }}</strong>
+                            <span>{{ 'forum.stat.like'|trans }}</span>
+                        </div>
+                    </div>
+                    <div class="forum-postbit__joined">
+                        <i class="bi bi-calendar3"></i> {{ post.author.createdAt|date('d.m.Y') }}
+                    </div>
+                {% endif %}
+            </aside>
+
+            <div class="forum-post__main">
+                <header class="forum-post__header">
+                    <div class="forum-post__date">
+                        <a href="#post{{ post.id }}" class="forum-post__num">#{{ postNum }}</a>
+                        <time datetime="{{ post.createdAt|date('c') }}">{{ post.createdAt|date('d.m.Y H:i') }}</time>
+                    </div>
+                    <div class="forum-post__toolbar">
+                        {% if is_granted('forum.post.like') %}
+                            {% set isLiked = likedPostIds[post.id] is defined %}
+                            {% set isDisliked = dislikedPostIds[post.id] is defined %}
+                            <form method="post" action="{{ path('forum_like_post', {postId: post.id, page: posts.currentPage}) }}" data-like-form>
+                                <input type="hidden" name="_token" value="{{ csrf_token('forum_like_post') }}">
+                                <button type="submit" class="forum-tool-btn forum-tool-btn--like forum-like-btn {{ isLiked ? 'is-liked' : '' }}" title="{{ 'forum.action.like'|trans }}">
+                                    <i class="bi {{ isLiked ? 'bi-heart-fill' : 'bi-heart' }}"></i>
+                                    <span data-like-count>{{ likeCounts[post.id]|default(0) }}</span>
+                                </button>
+                            </form>
+                            <form method="post" action="{{ path('forum_dislike_post', {postId: post.id, page: posts.currentPage}) }}" data-dislike-form>
+                                <input type="hidden" name="_token" value="{{ csrf_token('forum_dislike_post') }}">
+                                <button type="submit" class="forum-tool-btn forum-tool-btn--dislike forum-dislike-btn {{ isDisliked ? 'is-disliked' : '' }}" title="{{ 'forum.action.dislike'|trans }}">
+                                    <i class="bi {{ isDisliked ? 'bi-hand-thumbs-down-fill' : 'bi-hand-thumbs-down' }}"></i>
+                                    <span data-dislike-count>{{ dislikeCounts[post.id]|default(0) }}</span>
+                                </button>
+                            </form>
+                        {% endif %}
+                        {% if canReply %}
+                            <button type="button" class="forum-tool-btn" data-quote-btn data-quote-author="{{ post.posterName }}" data-quote-body="{{ post.body|striptags }}" title="{{ 'forum.action.quote'|trans }}">
+                                <i class="bi bi-chat-quote"></i>
+                            </button>
+                        {% endif %}
+                        {% set canEdit = is_granted('forum.post.edit.any') or (is_granted('forum.post.edit.own') and app.user and post.author and post.author.id == app.user.id) %}
+                        {% set canDelete = canModerate or (is_granted('forum.post.delete.own') and app.user and post.author and post.author.id == app.user.id) %}
+                        {% if canEdit %}
+                            <a href="{{ path('forum_edit_post', {postId: post.id}) }}" class="forum-tool-btn" title="{{ 'forum.action.edit'|trans }}"><i class="bi bi-pencil-square"></i></a>
+                        {% endif %}
+                        {% if canDelete %}
+                            <form method="post" action="{{ path('forum_delete_post', {postId: post.id}) }}" data-confirm="{{ 'forum.post.delete_confirm'|trans }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('forum_delete_post') }}">
+                                <button type="submit" class="forum-tool-btn forum-tool-btn--danger" title="{{ 'forum.mod.delete'|trans }}"><i class="bi bi-trash3"></i></button>
+                            </form>
+                        {% endif %}
+                        {% if is_granted('forum.post.report') and (not post.author or not app.user or post.author.id != app.user.id) %}
+                            <form method="post" action="{{ path('forum_report_post', {postId: post.id}) }}" data-report-form>
+                                <input type="hidden" name="_token" value="{{ csrf_token('forum_report_post') }}">
+                                <input type="hidden" name="reason">
+                                <button type="button" data-report-btn class="forum-tool-btn forum-tool-btn--danger" title="{{ 'forum.action.report'|trans }}"><i class="bi bi-flag"></i></button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </header>
+
+                <div class="forum-post__body">{{ post.body|raw }}</div>
+
+                {% if post.updatedAt %}
+                    <footer class="forum-post__footer">
+                        <span class="forum-post__edited"><i class="bi bi-pencil"></i> {{ 'forum.post.edited_by'|trans({'name': post.updatedByName}) }} — {{ post.updatedAt|date('d.m.Y H:i') }}</span>
+                    </footer>
+                {% endif %}
+            </div>
+        </article>
+    {% endfor %}
+</div>
+
+{% include '@CpaliusWebsiteTheme/forum/partials/pagination.html.twig' with {
+    result: posts,
+    route: 'forum_topic',
+    routeParams: {topicId: topic.id, slug: topic.slug}
+} %}
+
+{% if topic.isLocked %}
+    <div class="forum-thread-notice forum-thread-notice--locked fade-in"><i class="bi bi-lock-fill"></i> {{ 'forum.notice.locked_topic'|trans }}</div>
+{% elseif canReply %}
+    <div class="forum-form forum-reply-anchor fade-in" id="reply">
+        <div class="forum-form__title"><i class="bi bi-reply-fill"></i> {{ 'forum.action.reply'|trans }}</div>
+        <form action="{{ path('forum_reply', {topicId: topic.id}) }}" method="post" id="forum-reply-form">
+            <div class="forum-field forum-field--reply">
+                <textarea name="body" id="forum-reply-body" data-forum-editor required placeholder="{{ 'forum.reply.placeholder'|trans }}"></textarea>
+            </div>
+            <div class="forum-form__actions">
+                <input type="hidden" name="_token" value="{{ csrf_token('forum_reply') }}">
+                <button type="submit" class="btn btn-primary btn-sm">{{ 'forum.action.send'|trans }}</button>
+            </div>
+        </form>
+    </div>
+{% endif %}
+{% endblock %}

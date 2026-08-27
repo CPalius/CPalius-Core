@@ -1,0 +1,57 @@
+{% set items = data.items|default([]) %}
+{% if items is not empty %}
+{% set title = portalBlock.title|default('website.landing.portal.blog_title'|trans) %}
+{% set layout = portalBlock.layout|default('cards') %}
+{% embed '@CpaliusWebsiteTheme/partials/portal/_rail.html.twig' with {
+    blockId: 'latest_blog_posts',
+    title: title,
+    moreHref: path('blog_index'),
+    moreLabel: 'website.landing.portal.blog_more'|trans,
+    layout: layout,
+    moduleIcon: 'bi-newspaper',
+    items: items
+} %}
+    {% block list_items %}
+        <table class="portal-topic-table">
+            <thead>
+                <tr>
+                    <th class="portal-topic-table__col-icon"></th>
+                    <th>{{ 'website.landing.portal.col_post'|trans }}</th>
+                    <th class="portal-topic-table__col-meta">{{ 'website.landing.portal.col_updated'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in items %}
+                    <tr>
+                        <td class="portal-topic-table__col-icon">
+                            <span class="portal-topic-table__icon"><i class="bi bi-file-earmark-text"></i></span>
+                        </td>
+                        <td>
+                            <a class="portal-topic-table__title" href="{{ path('blog_show', {slug: post.slug}) }}">{{ post.title }}</a>
+                        </td>
+                        <td class="portal-topic-table__col-meta">{{ post.publishedAt|date('d.m.Y') }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endblock %}
+    {% block card_items %}
+        {% for post in items %}
+            <a class="portal-tile" href="{{ path('blog_show', {slug: post.slug}) }}">
+                <span class="portal-tile__badge"><i class="bi bi-newspaper"></i></span>
+                <span class="portal-tile__title">{{ post.title }}</span>
+                <span class="portal-tile__meta">{{ post.publishedAt|date('d.m.Y') }}</span>
+            </a>
+        {% endfor %}
+    {% endblock %}
+    {% block slider_items %}
+        {% for post in items %}
+            <a class="portal-tile portal-slider__item" href="{{ path('blog_show', {slug: post.slug}) }}">
+                <span class="portal-tile__badge"><i class="bi bi-newspaper"></i></span>
+                <span class="portal-tile__title">{{ post.title }}</span>
+                <span class="portal-tile__meta">{{ post.publishedAt|date('d.m.Y') }}</span>
+            </a>
+        {% endfor %}
+    {% endblock %}
+{% endembed %}
+{% endif %}

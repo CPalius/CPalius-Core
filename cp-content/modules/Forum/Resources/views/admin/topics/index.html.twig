@@ -1,0 +1,82 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.topics.index.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.topics.index.action.dashboard'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <form method="get" class="mb-4 flex gap-2">
+        <input type="text" name="q" value="{{ search }}" placeholder="{{ 'studio.forum.topics.index.search_placeholder'|trans }}" class="form-control" style="max-width: 320px;">
+        <button type="submit" class="btn btn-sm btn-neutral">{{ 'studio.forum.topics.index.action.search'|trans }}</button>
+    </form>
+
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'studio.forum.topics.index.column.topic'|trans,
+            'studio.forum.topics.index.column.section'|trans,
+            'studio.forum.topics.index.column.starter'|trans,
+            'studio.forum.topics.index.column.status'|trans,
+            'studio.forum.topics.index.column.prefix'|trans,
+            '',
+        ] }}" empty="{{ topics is empty }}" emptyText="{{ 'studio.forum.topics.index.empty'|trans }}">
+            <twig:block name="rows">
+                {% for topic in topics %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug, _locale: topic.section.locale}) }}" class="font-medium text-neutral-900 hover:text-primary-600" target="_blank">
+                                {{ topic.title }}
+                            </a>
+                            <div class="text-fs-xs text-neutral-500">{{ topic.postCount }} {{ 'studio.forum.topics.index.post_count_suffix'|trans }} · {{ topic.viewCount }} {{ 'studio.forum.topics.index.view_count_suffix'|trans }}</div>
+                        </td>
+                        <td>{{ topic.section.title }}</td>
+                        <td>{{ topic.firstPosterName }}</td>
+                        <td class="text-fs-xs">
+                            {% if topic.sticky %}<span class="text-fs-xs" style="color:#C8A86E;">{{ 'studio.forum.topics.index.status.sticky'|trans }}</span>{% endif %}
+                            {% if topic.isLocked %}<span class="text-fs-xs" style="color:#57606A;">{{ 'studio.forum.topics.index.status.locked'|trans }}</span>{% endif %}
+                            {% if topic.isPrivate %}<span class="text-fs-xs" style="color:#a371f7;">{{ 'studio.forum.topics.index.status.private'|trans }}</span>{% endif %}
+                        </td>
+                        <td>
+                            <form method="post" action="{{ path('forum_moderate_topic', {topicId: topic.id, _locale: topic.section.locale}) }}" class="flex items-center gap-1">
+                                <input type="hidden" name="_token" value="{{ csrf_token('forum_moderate') }}">
+                                <input type="hidden" name="action" value="prefix">
+                                <select name="prefix_id" class="form-select text-fs-xs" style="padding: 4px 6px;">
+                                    <option value="">{{ 'studio.forum.topics.index.prefix_none'|trans }}</option>
+                                    {% for prefix in prefixes %}
+                                        <option value="{{ prefix.id }}" {{ topic.prefix and topic.prefix.id == prefix.id ? 'selected' : '' }}>{{ prefix.label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-neutral">{{ 'studio.forum.topics.index.action.assign_prefix'|trans }}</button>
+                            </form>
+                        </td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <form method="post" action="{{ path('forum_moderate_topic', {topicId: topic.id, _locale: topic.section.locale}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('forum_moderate') }}">
+                                    <button type="submit" name="action" value="{{ topic.sticky ? 'unsticky' : 'sticky' }}" class="btn btn-sm btn-neutral">{{ topic.sticky ? 'studio.forum.topics.index.action.unsticky'|trans : 'studio.forum.topics.index.action.sticky'|trans }}</button>
+                                </form>
+                                <form method="post" action="{{ path('forum_moderate_topic', {topicId: topic.id, _locale: topic.section.locale}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('forum_moderate') }}">
+                                    <button type="submit" name="action" value="{{ topic.isLocked ? 'unlock' : 'lock' }}" class="btn btn-sm btn-neutral">{{ topic.isLocked ? 'studio.forum.topics.index.action.unlock'|trans : 'studio.forum.topics.index.action.lock'|trans }}</button>
+                                </form>
+                                <form method="post" action="{{ path('admin_forum_topics_delete', {id: topic.id}) }}" onsubmit="return confirm({{ 'studio.forum.topics.index.delete_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_topic') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+
+    {% if topics.totalPages > 1 %}
+        <nav class="flex items-center justify-center gap-4 mt-4">
+            {% if topics.hasPreviousPage %}<a href="{{ path('admin_forum_topics_index', {q: search, page: topics.currentPage - 1}) }}" class="btn btn-sm btn-neutral">‹ {{ 'studio.forum.topics.index.pagination.previous'|trans }}</a>{% endif %}
+            <span class="text-fs-xs text-neutral-500">{{ topics.currentPage }} / {{ topics.totalPages }}</span>
+            {% if topics.hasNextPage %}<a href="{{ path('admin_forum_topics_index', {q: search, page: topics.currentPage + 1}) }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.topics.index.pagination.next'|trans }} ›</a>{% endif %}
+        </nav>
+    {% endif %}
+{% endblock %}

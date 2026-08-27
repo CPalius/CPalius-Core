@@ -1,0 +1,102 @@
+{#
+    create.html.twig ve edit.html.twig tarafından paylaşılan form gövdesi.
+    Bekler: formAction, formValues, locales, nodes, categories.
+#}
+<form method="post" action="{{ formAction }}" class="space-y-sp-sm">
+    <input type="hidden" name="_token" value="{{ csrf_token('aacp_url_alias_form') }}">
+
+    <div>
+        <label for="alias_path" class="form-label !text-slate-400">{{ 'aacp.url_alias.form.path'|trans }}</label>
+        <div class="flex items-center gap-2">
+            <span class="text-fs-sm !text-slate-500">/</span>
+            <input type="text" id="alias_path" name="alias_path" value="{{ formValues.aliasPath }}" required
+                   placeholder="kampanya/yaz-indirimi"
+                   class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+        </div>
+        <p class="mt-1 text-fs-xs !text-slate-500">{{ 'aacp.url_alias.form.path_hint'|trans }}</p>
+    </div>
+
+    <div>
+        <label for="locale" class="form-label !text-slate-400">{{ 'aacp.url_alias.form.locale'|trans }}</label>
+        <select id="locale" name="locale" required class="form-select !border-white/10 !bg-dark-1 !text-slate-100">
+            <option value="">{{ 'aacp.url_alias.form.locale_placeholder'|trans }}</option>
+            {% for locale in locales %}
+                <option value="{{ locale.code }}" {{ formValues.locale == locale.code ? 'selected' : '' }}>{{ locale.name }} ({{ locale.code }})</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div data-target-type-root>
+        <label class="form-label !text-slate-400">{{ 'aacp.url_alias.form.target_type'|trans }}</label>
+        <div class="flex flex-wrap gap-4">
+            <label class="inline-flex items-center gap-2 text-fs-sm !text-slate-300">
+                <input type="radio" name="target_type" value="node" data-target-type-radio
+                       {{ formValues.targetType == 'node' ? 'checked' : '' }}
+                       class="form-check-input !border-white/10 !bg-dark-1 text-primary-500 focus:ring-primary-500/40">
+                {{ 'aacp.url_alias.target.node'|trans }}
+            </label>
+            <label class="inline-flex items-center gap-2 text-fs-sm !text-slate-300">
+                <input type="radio" name="target_type" value="category" data-target-type-radio
+                       {{ formValues.targetType == 'category' ? 'checked' : '' }}
+                       class="form-check-input !border-white/10 !bg-dark-1 text-primary-500 focus:ring-primary-500/40">
+                {{ 'aacp.url_alias.target.category'|trans }}
+            </label>
+            <label class="inline-flex items-center gap-2 text-fs-sm !text-slate-300">
+                <input type="radio" name="target_type" value="route" data-target-type-radio
+                       {{ formValues.targetType == 'route' ? 'checked' : '' }}
+                       class="form-check-input !border-white/10 !bg-dark-1 text-primary-500 focus:ring-primary-500/40">
+                {{ 'aacp.url_alias.target.route'|trans }}
+            </label>
+        </div>
+    </div>
+
+    <div data-target-panel="node" class="{{ formValues.targetType != 'node' ? 'hidden' : '' }}">
+        <label for="target_node_id" class="form-label !text-slate-400">{{ 'aacp.url_alias.target.node'|trans }}</label>
+        <select id="target_node_id" name="target_node_id" class="form-select !border-white/10 !bg-dark-1 !text-slate-100">
+            <option value="">{{ 'aacp.url_alias.form.target_placeholder'|trans }}</option>
+            {% for node in nodes %}
+                <option value="{{ node.id }}" {{ formValues.targetNodeId == node.id ? 'selected' : '' }}>{{ node.title }} ({{ node.locale }}/{{ node.slug }})</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div data-target-panel="category" class="{{ formValues.targetType != 'category' ? 'hidden' : '' }}">
+        <label for="target_category_id" class="form-label !text-slate-400">{{ 'aacp.url_alias.target.category'|trans }}</label>
+        <select id="target_category_id" name="target_category_id" class="form-select !border-white/10 !bg-dark-1 !text-slate-100">
+            <option value="">{{ 'aacp.url_alias.form.target_placeholder'|trans }}</option>
+            {% for category in categories %}
+                <option value="{{ category.id }}" {{ formValues.targetCategoryId == category.id ? 'selected' : '' }}>{{ category.name }} ({{ category.locale }}/{{ category.slug }})</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div data-target-panel="route" class="{{ formValues.targetType != 'route' ? 'hidden' : '' }}">
+        <label for="target_route_name" class="form-label !text-slate-400">{{ 'aacp.url_alias.form.route_name'|trans }}</label>
+        <input type="text" id="target_route_name" name="target_route_name" value="{{ formValues.targetRouteName }}"
+               placeholder="blog_index"
+               class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+    </div>
+
+    <div>
+        <label class="inline-flex items-center gap-2 text-fs-sm !text-slate-300">
+            <input type="checkbox" name="is_active" value="1" {{ formValues.isActive ? 'checked' : '' }}
+                   class="form-check-input h-4 w-4 !border-white/10 !bg-dark-1 text-primary-500 focus:ring-primary-500/40">
+            {{ 'aacp.url_alias.form.is_active'|trans }}
+        </label>
+    </div>
+
+    <div class="flex items-center gap-3 border-t border-white/10 pt-sp-sm">
+        <button type="submit" class="btn btn-primary">{{ 'aacp.url_alias.form.submit'|trans }}</button>
+        <a href="{{ path('aacp_url_alias_index') }}" class="text-fs-sm font-medium !text-slate-400 hover:!text-slate-200">{{ 'aacp.url_alias.form.cancel'|trans }}</a>
+    </div>
+</form>
+
+<script>
+    document.querySelectorAll('[data-target-type-radio]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            document.querySelectorAll('[data-target-panel]').forEach(function (panel) {
+                panel.classList.toggle('hidden', panel.dataset.targetPanel !== radio.value);
+            });
+        });
+    });
+</script>

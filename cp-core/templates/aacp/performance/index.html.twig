@@ -1,0 +1,60 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.performance.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        {{ include('aacp/performance/_backend_card.html.twig', {
+            backendId: 'redis',
+            title: 'aacp.performance.backend.redis'|trans,
+            fields: [
+                {key: 'host', label: 'aacp.performance.field.host'|trans},
+                {key: 'port', label: 'aacp.performance.field.port'|trans},
+                {key: 'password', label: 'aacp.performance.field.password'|trans},
+                {key: 'timeout', label: 'aacp.performance.field.timeout'|trans},
+            ],
+            config: sections.redis.config,
+            status: sections.redis.status,
+            csrf_token: csrf_token,
+        }) }}
+
+        {{ include('aacp/performance/_backend_card.html.twig', {
+            backendId: 'memcached',
+            title: 'aacp.performance.backend.memcached'|trans,
+            fields: [
+                {key: 'host', label: 'aacp.performance.field.host'|trans},
+                {key: 'port', label: 'aacp.performance.field.port'|trans},
+                {key: 'timeout', label: 'aacp.performance.field.timeout'|trans},
+            ],
+            config: sections.memcached.config,
+            status: sections.memcached.status,
+            csrf_token: csrf_token,
+        }) }}
+
+        {{ include('aacp/performance/_backend_card.html.twig', {
+            backendId: 'varnish',
+            title: 'aacp.performance.backend.varnish'|trans,
+            fields: [
+                {key: 'backend_url', label: 'aacp.performance.field.backend_url'|trans},
+                {key: 'timeout', label: 'aacp.performance.field.timeout'|trans},
+            ],
+            config: sections.varnish.config,
+            status: sections.varnish.status,
+            csrf_token: csrf_token,
+        }) }}
+
+        {{ include('aacp/performance/_backend_card.html.twig', {
+            backendId: 'pagespeed',
+            title: 'aacp.performance.backend.pagespeed'|trans,
+            fields: [
+                {key: 'check_url', label: 'aacp.performance.field.check_url'|trans},
+                {key: 'timeout', label: 'aacp.performance.field.timeout'|trans},
+            ],
+            config: sections.pagespeed.config,
+            status: sections.pagespeed.status,
+            csrf_token: csrf_token,
+        }) }}
+    </div>
+
+    {{ importmap('aacp-performance') }}
+{% endblock %}

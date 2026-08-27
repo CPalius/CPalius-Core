@@ -1,0 +1,31 @@
+{#
+    Modules\Blog\Plugin\BlogArchivePlugin::render()'ın çıktısı — mevcut
+    .blog-sidebar-widget CSS ailesini kullanır. Her satır
+    PostFrontController::archiveMonth() route'una (blog_archive_month)
+    bağlanır.
+
+    Beklenen değişkenler:
+      archiveGroups (list<array{year: int, month: int, count: int}>)
+      locale        (string)
+#}
+{% if archiveGroups is not empty %}
+    {% set monthKeys = {
+        1: 'blog.widget.month.january', 2: 'blog.widget.month.february', 3: 'blog.widget.month.march',
+        4: 'blog.widget.month.april', 5: 'blog.widget.month.may', 6: 'blog.widget.month.june',
+        7: 'blog.widget.month.july', 8: 'blog.widget.month.august', 9: 'blog.widget.month.september',
+        10: 'blog.widget.month.october', 11: 'blog.widget.month.november', 12: 'blog.widget.month.december',
+    } %}
+    <div class="blog-sidebar-widget">
+        <h5>{{ 'blog.widget.archive_title'|trans }}</h5>
+        <ul>
+            {% for group in archiveGroups %}
+                <li>
+                    <a href="{{ path('blog_archive_month', {_locale: locale, year: group.year, month: group.month}) }}">
+                        {{ monthKeys[group.month]|trans }} {{ group.year }}
+                    </a>
+                    <span class="text-fs-xs">({{ group.count }})</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}

@@ -1,0 +1,100 @@
+{#
+    Proje show — full-bleed toolbar + proje meta kenar çubuğu.
+    Beklenen: post, postBody, typeFields, relatedPosts.
+#}
+{% if (typeFields.repo_url is defined and typeFields.repo_url) or (typeFields.demo_url is defined and typeFields.demo_url) %}
+<section class="project-toolbar" aria-label="{{ 'blog.card.type.project'|trans }}">
+    <div class="container project-toolbar__inner">
+        <span class="project-toolbar__label"><i class="bi bi-kanban" aria-hidden="true"></i> {{ 'blog.card.type.project'|trans }}</span>
+        <div class="project-toolbar__actions">
+            {% if typeFields.repo_url is defined and typeFields.repo_url %}
+                <a href="{{ typeFields.repo_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+                    <i class="bi bi-github" aria-hidden="true"></i> {{ 'blog.show.link.repo'|trans }}
+                </a>
+            {% endif %}
+            {% if typeFields.demo_url is defined and typeFields.demo_url %}
+                <a href="{{ typeFields.demo_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline">
+                    <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> {{ 'blog.show.link.demo'|trans }}
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<section class="section post-show post-show--proje" id="post-detail">
+    <div class="container">
+        <div class="grid-golden grid-golden--blog">
+            <div class="grid-golden-major">
+                <div class="slw-detail-panel slw-detail-panel--proje slw-ctype--proje">
+                    <div class="post-body">
+                        {{ postBody|raw }}
+                    </div>
+
+                    {% if post.tags is not empty %}
+                        <div class="post-tags">
+                            {% for tag in post.tags %}
+                                <a href="{{ path('blog_tag', {_locale: post.locale, slug: tag.slug}) }}" class="slw-tag-pill">#{{ tag.name }}</a>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <aside class="grid-golden-minor">
+                <div class="blog-sidebar-widget project-meta-card">
+                    <h5>{{ 'blog.card.type.project'|trans }}</h5>
+                    <ul class="project-meta-card__list">
+                        {% if post.category %}
+                            <li>
+                                <span class="project-meta-card__key">{{ 'blog.label.category'|trans }}</span>
+                                <a href="{{ path('blog_category', {_locale: post.locale, slug: post.category.slug}) }}">{{ post.category.name }}</a>
+                            </li>
+                        {% endif %}
+                        {% if typeFields.repo_url is defined and typeFields.repo_url %}
+                            <li>
+                                <span class="project-meta-card__key">{{ 'blog.card.link.repo'|trans }}</span>
+                                <a href="{{ typeFields.repo_url }}" target="_blank" rel="noopener noreferrer">GitHub</a>
+                            </li>
+                        {% endif %}
+                        {% if typeFields.demo_url is defined and typeFields.demo_url %}
+                            <li>
+                                <span class="project-meta-card__key">{{ 'blog.card.link.demo'|trans }}</span>
+                                <a href="{{ typeFields.demo_url }}" target="_blank" rel="noopener noreferrer">{{ 'blog.show.link.demo'|trans }}</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                {% if post.author %}
+                    {% include '@CpaliusWebsiteTheme/blog/partials/author_card.html.twig' with { author: post.author } %}
+                {% endif %}
+
+                {% include '@CpaliusWebsiteTheme/blog/partials/search_widget.html.twig' %}
+                {% include '@CpaliusWebsiteTheme/blog/partials/widget_sidebar.html.twig' %}
+                {% include '@CpaliusWebsiteTheme/blog/partials/archive_sidebar.html.twig' %}
+
+                {% if relatedPosts is not empty %}
+                    <div class="blog-sidebar-widget">
+                        <h5>{{ 'blog.show.related_title'|trans }}</h5>
+                        <ul class="slw-related-list">
+                            {% for relatedPost in relatedPosts %}
+                                <li class="slw-related-list__item">
+                                    <a href="{{ path('blog_show', {_locale: relatedPost.locale, slug: relatedPost.slug}) }}">
+                                        <span class="slw-related-thumb"><i class="bi bi-kanban"></i></span>
+                                        <span>
+                                            <span class="slw-related-list__title">{{ relatedPost.title }}</span>
+                                            {% if relatedPost.publishedAt %}
+                                                <time datetime="{{ relatedPost.publishedAt|date('c') }}">{{ relatedPost.publishedAt|date('d.m.Y') }}</time>
+                                            {% endif %}
+                                        </span>
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+</section>

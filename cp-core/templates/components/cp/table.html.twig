@@ -1,0 +1,42 @@
+{#
+    <twig:cp:table headers="['Ad', 'Versiyon', 'Durum']">
+        <twig:block name="rows">
+            <tr>...</tr>
+        </twig:block>
+    </twig:cp:table>
+
+    Props:
+      headers  (array)  Başlık hücrelerinin metinleri (sırayla).
+      empty    (bool)   Satır yoksa true geçilir; "rows" bloğu yerine boş-durum mesajı gösterilir.
+      emptyText (string) Boş durumda gösterilecek metin.
+
+    Not: <tbody> içeriği çağıran taraf "rows" bloğunda kendi <tr>/<td>'lerini
+    yazar; bu component sadece tablo iskeletini (kenarlık, başlık stili,
+    zebra/divide çizgileri) standartlaştırır — hücre içeriğine karışmaz.
+#}
+{% props headers = [], empty = false, emptyText = null %}
+
+<div {{ attributes.defaults({class: 'table-responsive'}) }}>
+    <table class="table !border-white/10">
+        {% if headers is not empty %}
+            <thead>
+                <tr class="!bg-white/5 text-fs-xs uppercase tracking-wider !text-slate-400">
+                    {% for header in headers %}
+                        <th class="!border-white/10 font-medium">{{ header }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+        {% endif %}
+        <tbody>
+            {% if empty %}
+                <tr>
+                    <td colspan="{{ headers|length > 0 ? headers|length : 1 }}" class="!border-white/10 py-6 text-center text-fs-sm !text-slate-500">
+                        {{ emptyText ?? 'cp.table.empty_default'|trans }}
+                    </td>
+                </tr>
+            {% else %}
+                {% block rows %}{% endblock %}
+            {% endif %}
+        </tbody>
+    </table>
+</div>

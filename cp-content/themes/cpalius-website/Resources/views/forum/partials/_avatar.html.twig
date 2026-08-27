@@ -1,0 +1,12 @@
+{#
+    İsimden baş harf rozeti (initials avatar). Forum kullanıcılarının
+    profil görseli üretme akışı henüz yok (bkz. App\Entity\User::getAvatarAssetId
+    — sadece admin panelinde kullanılıyor); bu yüzden her yerde tutarlı,
+    deterministik bir renk paleti ile baş harf rozeti kullanılıyor.
+
+    Beklenen değişkenler: name (string), size ('sm'|'md'|'lg', varsayılan 'md')
+#}
+{% set palette = ['#4A7C9B', '#4AADE4', '#C8A86E', '#8B9DAF', '#3A6A87', '#a371f7', '#e8590c'] %}
+{% set initial = name|default('?')|trim|first|upper %}
+{% set colorIndex = name is not empty ? (name|length * 7 + (name|trim|length)) % (palette|length) : 0 %}
+<span class="forum-avatar {{ size is defined and size == 'lg' ? 'forum-avatar--lg' : '' }}" style="background: {{ palette[colorIndex] }};" aria-hidden="true">{{ initial }}</span>

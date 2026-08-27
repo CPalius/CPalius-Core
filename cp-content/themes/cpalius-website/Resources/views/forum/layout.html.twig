@@ -1,0 +1,25 @@
+{% extends '@CpaliusWebsiteTheme/layout.html.twig' %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="/themes/cpalius-website/dist/forum.css">
+{% endblock %}
+
+{% block content %}
+<section class="section forum-page forum" id="forum">
+    <div class="container">
+        {% block forum_breadcrumbs %}{% endblock %}
+
+        {% for type, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="forum-flash forum-flash--{{ type }}">{{ message }}</div>
+            {% endfor %}
+        {% endfor %}
+
+        {% block forum_content %}{% endblock %}
+    </div>
+</section>
+{% endblock %}
+
+{% block javascripts %}
+    <script src="/themes/cpalius-website/dist/forum.js" defer></script>
+{% endblock %}

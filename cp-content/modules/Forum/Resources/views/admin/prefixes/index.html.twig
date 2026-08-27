@@ -1,0 +1,40 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.prefixes.index.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.prefixes.index.action.dashboard'|trans }}</a>
+    <a href="{{ path('admin_forum_prefixes_create') }}" class="btn btn-sm btn-primary">{{ 'studio.forum.prefixes.index.action.new'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'studio.forum.prefixes.index.column.label'|trans,
+            'studio.forum.prefixes.index.column.color'|trans,
+            'studio.forum.prefixes.index.column.sort_order'|trans,
+            '',
+        ] }}" empty="{{ prefixes is empty }}" emptyText="{{ 'studio.forum.prefixes.index.empty'|trans }}">
+            <twig:block name="rows">
+                {% for prefix in prefixes %}
+                    <tr>
+                        <td>
+                            <span style="display:inline-block; padding:2px 8px; border-radius:3px; font-size:11px; font-weight:700; color:#fff; background:{{ prefix.color }};">{{ prefix.label }}</span>
+                        </td>
+                        <td><code>{{ prefix.color }}</code></td>
+                        <td>{{ prefix.sortOrder }}</td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ path('admin_forum_prefixes_edit', {id: prefix.id}) }}" class="btn btn-sm btn-neutral">{{ 'aacp.users.edit_action'|trans }}</a>
+                                <form method="post" action="{{ path('admin_forum_prefixes_delete', {id: prefix.id}) }}" onsubmit="return confirm({{ 'studio.forum.prefixes.index.delete_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_prefix') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+{% endblock %}

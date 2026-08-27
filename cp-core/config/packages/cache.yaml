@@ -1,0 +1,26 @@
+framework:
+    cache:
+        # Unique name of your app: used to compute stable namespaces for cache keys.
+        prefix_seed: cpalius/cmf
+
+        # The "app" cache: genel amaçlı pool, artık dosya sistemi yerine Redis.
+        app: cache.adapter.redis
+        default_redis_provider: '%env(REDIS_URL)%'
+
+        # Namespaced pools use the above "app" backend by default
+        pools:
+            # Doctrine query/metadata/result cache — doctrine.yaml'daki
+            # when@prod bloğu bu iki pool'u zaten adapter: cache.system /
+            # cache.app ile referans alıyordu; burada Redis'e bağlanır.
+            doctrine.result_cache_pool:
+                adapter: cache.adapter.redis
+            doctrine.system_cache_pool:
+                adapter: cache.adapter.redis
+
+            # Memcached: app cache'ten (Redis) AYRI, sadece HTTP
+            # fragment/ESI cache için ikinci bir pool (bkz. plan — Redis
+            # zaten genel cache'i karşılıyor, Memcached'e ayrı bir rol
+            # verildi).
+            cache.fragments:
+                adapter: cache.adapter.memcached
+                provider: '%env(MEMCACHED_DSN)%'

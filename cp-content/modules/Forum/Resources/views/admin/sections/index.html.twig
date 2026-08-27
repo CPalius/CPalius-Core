@@ -1,0 +1,63 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.sections.index.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.sections.index.action.dashboard'|trans }}</a>
+    <a href="{{ path('admin_forum_sections_create') }}" class="btn btn-sm btn-primary">{{ 'studio.forum.sections.index.action.new'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <div class="mb-sp-sm rounded-lg border border-primary-200 bg-primary-50 px-sp-sm py-sp-xs text-fs-sm text-primary-800">
+        <strong>{{ 'studio.forum.sections.index.hierarchy_hint_label'|trans }}</strong> {{ 'studio.forum.sections.index.hierarchy_hint'|trans|raw }}
+    </div>
+
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'studio.forum.sections.index.column.title'|trans,
+            'studio.forum.sections.index.column.type'|trans,
+            'studio.forum.sections.index.column.slug'|trans,
+            'studio.forum.sections.index.column.topics'|trans,
+            'studio.forum.sections.index.column.posts'|trans,
+            '',
+        ] }}" empty="{{ tree is empty }}" emptyText="{{ 'studio.forum.sections.index.empty_tree'|trans }}">
+            <twig:block name="rows">
+                {% for row in tree %}
+                    {% set section = row.section %}
+                    <tr>
+                        <td>
+                            <span style="padding-left: {{ row.depth * 20 }}px" class="inline-flex items-center gap-2">
+                                {% if row.type.value == 'division' %}
+                                    <twig:ux:icon name="heroicons:building-library" class="h-4 w-4 text-primary-600" />
+                                {% elseif row.type.value == 'category' %}
+                                    <twig:ux:icon name="heroicons:folder" class="h-4 w-4 text-neutral-500" />
+                                {% else %}
+                                    <twig:ux:icon name="heroicons:chat-bubble-left-right" class="h-4 w-4 text-neutral-400" />
+                                {% endif %}
+                                <a href="{{ path('admin_forum_sections_edit', {id: section.id}) }}" class="font-medium text-neutral-900 hover:text-primary-600">
+                                    {{ section.title }}
+                                </a>
+                            </span>
+                        </td>
+                        <td>
+                            <span class="inline-flex rounded-full px-2 py-0.5 text-fs-xs font-medium
+                                {{ row.type.value == 'division' ? 'bg-primary-100 text-primary-700' : (row.type.value == 'category' ? 'bg-neutral-100 text-neutral-700' : 'bg-success-50 text-success-700') }}">
+                                {{ row.type.label() }}
+                            </span>
+                        </td>
+                        <td><code>{{ section.slug }}</code></td>
+                        <td>{{ section.topicCount }}</td>
+                        <td>{{ section.postCount }}</td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ path('forum_section', {sectionSlug: section.slug, _locale: section.locale}) }}" class="btn btn-sm btn-neutral" target="_blank">{{ 'studio.forum.sections.index.action.view'|trans }}</a>
+                                <a href="{{ path('admin_forum_sections_edit', {id: section.id}) }}" class="btn btn-sm btn-neutral">{{ 'aacp.users.edit_action'|trans }}</a>
+                                <a href="{{ path('admin_forum_sections_delete', {id: section.id}) }}" class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</a>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+{% endblock %}

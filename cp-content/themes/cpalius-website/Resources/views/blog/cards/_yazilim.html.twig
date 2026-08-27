@@ -1,0 +1,35 @@
+{#
+    Yazılım / ürün kartı — büyük sürüm rozeti + indirme CTA; kapak zorunlu değil.
+    Beklenen: post (App\Entity\Node, post_sub_type='yazilim').
+#}
+{% set typeFields = post.getDataValue('type_fields', {}) %}
+<article class="slw-feed-card blog-card--yazilim slw-ctype--yazilim fade-in">
+    <div class="slw-feed-card__body">
+        <div class="slw-feed-card__head">
+            <span class="slw-type-badge slw-ctype--yazilim">
+                <span class="slw-type-badge__dot"></span> {{ 'blog.card.type.software'|trans }}
+            </span>
+            <time>{{ post.publishedAt ? post.publishedAt|date('d.m.Y') : '' }}</time>
+        </div>
+
+        {% if typeFields.version is defined and typeFields.version %}
+            <span class="blog-card-yazilim__version">v{{ typeFields.version }}</span>
+        {% endif %}
+
+        <h4 class="slw-feed-card__title">
+            <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
+        </h4>
+        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+
+        <div class="blog-card-yazilim__footer">
+            {% if typeFields.download_url is defined and typeFields.download_url %}
+                <a href="{{ typeFields.download_url }}" target="_blank" rel="noopener noreferrer" class="blog-card-yazilim__download">
+                    <i class="bi bi-download" aria-hidden="true"></i> {{ 'blog.card.link.download'|trans }}
+                </a>
+            {% endif %}
+            <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}" class="blog-card-yazilim__more">
+                {{ 'blog.card.type.software'|trans }} →
+            </a>
+        </div>
+    </div>
+</article>

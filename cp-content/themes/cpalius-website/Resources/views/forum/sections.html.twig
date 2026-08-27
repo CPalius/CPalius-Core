@@ -1,0 +1,104 @@
+{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+
+{% set pageTitle = currentSection ? currentSection.title : forumHome.title %}
+{% set pageDesc = currentSection and currentSection.description ? currentSection.description : forumHome.description %}
+
+{% block title %}{{ pageTitle }} — {{ forumHome.title }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
+{% block meta_description %}{{ currentSection and currentSection.description ? currentSection.description : forumHome.metaDescription }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    {% include '@CpaliusWebsiteTheme/forum/partials/_breadcrumbs.html.twig' with {
+        breadcrumbs: breadcrumbs|default([]),
+        forumHome: forumHome,
+    } %}
+{% endblock %}
+
+{% block forum_content %}
+    <header class="forum-header fade-in">
+        <div class="forum-header__top">
+            <div>
+                <p class="forum-header__kicker">{{ forumHome.label }}</p>
+                <h1 class="section-title">{{ pageTitle }}</h1>
+                {% if pageDesc %}
+                    <p class="forum-header__desc">{{ pageDesc }}</p>
+                {% endif %}
+            </div>
+            <div class="forum-header__actions">
+                <a href="{{ path('forum_search') }}" class="forum-search-btn"><i class="bi bi-search"></i> {{ 'forum.action.search'|trans }}</a>
+                <div class="forum-header__stats">
+                    <span><i class="bi bi-bar-chart"></i> <strong>{{ forumStats.topics }}</strong> {{ 'forum.stat.topic'|trans }}</span>
+                    <span><i class="bi bi-bar-chart-line"></i> <strong>{{ forumStats.posts }}</strong> {{ 'forum.stat.post'|trans }}</span>
+                    <span><i class="bi bi-people"></i> <strong>{{ forumStats.users }}</strong> {{ 'forum.stat.user'|trans }}</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    {% if currentSection is null %}
+        {% include '@CpaliusWebsiteTheme/forum/partials/activity_panel.html.twig' %}
+    {% endif %}
+
+    <div class="forum-list-head fade-in" aria-hidden="true">
+        <span></span>
+        <span>{{ 'forum.label.forum'|trans }}</span>
+        <span>{{ 'forum.label.last_post'|trans }}</span>
+        <span>{{ 'forum.label.stats'|trans }}</span>
+    </div>
+
+    {% if indexTree is empty %}
+        <div class="forum-empty">
+            <i class="bi bi-inboxes"></i>
+            {{ 'forum.empty.no_structure'|trans }}
+        </div>
+    {% endif %}
+
+    {% for block in indexTree %}
+        {% set division = block.division %}
+        <section class="forum-division fade-in">
+            <header class="forum-division__head">
+                <a href="{{ path('forum_section', {sectionSlug: division.slug}) }}" class="forum-division__link">
+                    <span class="forum-division__icon"><i class="bi {{ division.icon|default('bi-building', true) }}"></i></span>
+                    <span>
+                        <span class="forum-division__type">{{ 'forum.label.category'|trans }}</span>
+                        <span class="forum-division__title">{{ division.title }}</span>
+                    </span>
+                </a>
+                {% if division.description %}
+                    <p class="forum-division__desc">{{ division.description }}</p>
+                {% endif %}
+            </header>
+
+            {% for catBlock in block.categories %}
+                {% set category = catBlock.category %}
+                <div class="forum-category-block">
+                    <div class="forum-category-block__head">
+                        <i class="bi {{ category.icon|default('bi-folder2-open', true) }}"></i>
+                        <a href="{{ path('forum_section', {sectionSlug: category.slug}) }}">{{ category.title }}</a>
+                        {% if category.description %}<span class="forum-category-block__desc">{{ category.description }}</span>{% endif %}
+                    </div>
+                    <div class="forum-boards">
+                        {% for board in catBlock.subcategories %}
+                            {% include '@CpaliusWebsiteTheme/forum/partials/_board_row.html.twig' with {board: board} %}
+                        {% else %}
+                            <div class="forum-board forum-board--empty"><span>{{ 'forum.empty.no_subcategory'|trans }}</span></div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+
+            {% if block.directSubcategories is not empty %}
+                <div class="forum-category-block">
+                    <div class="forum-category-block__head forum-category-block__head--muted">
+                        <i class="bi bi-grid"></i>
+                        <span>{{ 'forum.label.direct_boards'|trans }}</span>
+                    </div>
+                    <div class="forum-boards">
+                        {% for board in block.directSubcategories %}
+                            {% include '@CpaliusWebsiteTheme/forum/partials/_board_row.html.twig' with {board: board} %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </section>
+    {% endfor %}
+{% endblock %}

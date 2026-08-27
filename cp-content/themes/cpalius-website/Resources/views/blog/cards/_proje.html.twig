@@ -1,0 +1,40 @@
+{#
+    Proje kartı — yatay vurgu, repo/demo aksiyon çubuğu, accent üst kenar.
+    Beklenen: post (App\Entity\Node, post_sub_type='proje').
+#}
+{% set typeFields = post.getDataValue('type_fields', {}) %}
+<article class="slw-feed-card blog-card--proje slw-ctype--proje fade-in">
+    <div class="blog-card-proje__inner">
+        <div class="blog-card-proje__media">
+            {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_cover.html.twig' with { post: post } %}
+        </div>
+        <div class="slw-feed-card__body blog-card-proje__body">
+            <div class="slw-feed-card__head">
+                <span class="slw-type-badge slw-ctype--proje">
+                    <i class="bi bi-kanban" aria-hidden="true"></i>
+                    {{ 'blog.card.type.project'|trans }}
+                </span>
+                <time>{{ post.publishedAt ? post.publishedAt|date('d.m.Y') : '' }}</time>
+            </div>
+            <h4 class="slw-feed-card__title">
+                <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
+            </h4>
+            {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+
+            {% if (typeFields.repo_url is defined and typeFields.repo_url) or (typeFields.demo_url is defined and typeFields.demo_url) %}
+                <div class="project-card-links blog-card-proje__actions">
+                    {% if typeFields.repo_url is defined and typeFields.repo_url %}
+                        <a href="{{ typeFields.repo_url }}" target="_blank" rel="noopener noreferrer" class="project-card-link">
+                            <i class="bi bi-github" aria-hidden="true"></i> {{ 'blog.card.link.repo'|trans }}
+                        </a>
+                    {% endif %}
+                    {% if typeFields.demo_url is defined and typeFields.demo_url %}
+                        <a href="{{ typeFields.demo_url }}" target="_blank" rel="noopener noreferrer" class="project-card-link">
+                            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> {{ 'blog.card.link.demo'|trans }}
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</article>

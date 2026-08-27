@@ -1,0 +1,122 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ cronJob ? 'aacp.cron.form.header_edit'|trans : 'aacp.cron.form.header_create'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md lg:w-[61.8%]">
+        {% if app.request.query.get('errors') %}
+            <div class="toast toast-error">
+                <ul class="list-inside list-disc space-y-1">
+                    {% for error in app.request.query.get('errors')|split('|') %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if app.request.query.get('run_completed') %}
+            <div class="toast toast-success">
+                {{ 'aacp.cron.form.run_completed'|trans }}
+            </div>
+        {% elseif app.request.query.get('run_rejected') %}
+            <div class="toast toast-error">
+                {{ 'aacp.cron.form.run_rejected'|trans }}
+            </div>
+        {% endif %}
+
+        <twig:cp:card title="{{ 'aacp.cron.form.section_info'|trans }}">
+            <form method="post" action="{{ path('aacp_cron_save') }}" class="space-y-sp-sm">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                {% if cronJob %}
+                    <input type="hidden" name="id" value="{{ cronJob.id }}">
+                {% endif %}
+
+                <div>
+                    <label class="form-label !text-slate-400">{{ 'aacp.cron.form.name'|trans }}</label>
+                    <input type="text" name="name" value="{{ cronJob ? cronJob.name : '' }}" required
+                           class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                </div>
+
+                <div>
+                    <label class="form-label !text-slate-400">{{ 'aacp.cron.form.command'|trans }}</label>
+                    <select name="command_name" required
+                            class="form-select !border-white/10 !bg-dark-1 !text-slate-100">
+                        <option value="">— {{ 'aacp.cron.form.select_placeholder'|trans }} —</option>
+                        {% for command in allowedCommands %}
+                            <option value="{{ command }}" {{ cronJob and cronJob.commandName == command ? 'selected' : '' }}>{{ command }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="mt-1 text-fs-xs !text-slate-600">{{ 'aacp.cron.form.command_hint'|trans }}</p>
+                </div>
+
+                <div>
+                    <label class="form-label !text-slate-400">{{ 'aacp.cron.form.arguments'|trans }}</label>
+                    <input type="text" name="command_arguments" value="{{ cronJob ? cronJob.commandArguments : '' }}"
+                           placeholder="{{ 'aacp.cron.form.arguments_placeholder'|trans }}"
+                           class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                </div>
+
+                <div>
+                    <label class="form-label !text-slate-400">{{ 'aacp.cron.form.expression'|trans }}</label>
+                    <input type="text" name="cron_expression" value="{{ cronJob ? cronJob.cronExpression : '*/5 * * * *' }}" required
+                           class="form-control !border-white/10 !bg-dark-1 font-mono !text-slate-100">
+                    <p class="mt-1 text-fs-xs !text-slate-600">{{ 'aacp.cron.form.expression_hint'|trans }}</p>
+                </div>
+
+                <label class="inline-flex items-center gap-2 text-fs-sm !text-slate-300">
+                    <input type="checkbox" name="active" value="1" {{ (cronJob is null or cronJob.active) ? 'checked' : '' }}
+                           class="form-check-input h-4 w-4 !border-white/10 !bg-dark-1 text-primary-500 focus:ring-primary-500/40">
+                    {{ 'aacp.cron.form.active'|trans }}
+                </label>
+
+                <div class="flex items-center gap-3 pt-sp-xs">
+                    <button type="submit" class="btn btn-primary">
+                        {{ 'aacp.settings.save'|trans }}
+                    </button>
+                    <a href="{{ path('aacp_cron') }}" class="text-fs-sm !text-slate-400 hover:!text-slate-200">{{ 'aacp.cron.form.cancel'|trans }}</a>
+                </div>
+            </form>
+        </twig:cp:card>
+
+        {% if cronJob %}
+            <twig:cp:card title="{{ 'aacp.cron.form.run_history'|trans }}" padded="{{ false }}">
+                <twig:cp:table headers="{{ [
+                    'aacp.cron.form.column.started_at'|trans,
+                    'aacp.cron.form.column.duration'|trans,
+                    'aacp.cron.form.column.trigger'|trans,
+                    'aacp.cron.form.column.result'|trans,
+                    '',
+                ] }}" empty="{{ recentRuns is empty }}">
+                    <twig:block name="rows">
+                        {% for run in recentRuns %}
+                            <tr>
+                                <td class="text-fs-xs !text-slate-400">{{ run.startedAt|date('d.m.Y H:i:s') }}</td>
+                                <td class="text-fs-xs !text-slate-500">
+                                    {{ run.finishedAt ? (run.finishedAt.timestamp - run.startedAt.timestamp) ~ 's' : 'aacp.cron.form.in_progress'|trans }}
+                                </td>
+                                <td class="text-fs-xs !text-slate-500">{{ run.triggeredManually ? 'aacp.cron.form.manual'|trans : 'aacp.cron.form.automatic'|trans }}</td>
+                                <td>
+                                    {% if run.success is null %}
+                                        <twig:cp:badge status="unknown" />
+                                    {% elseif run.success %}
+                                        <twig:cp:badge status="active" label="{{ 'aacp.cron.form.success'|trans }}" />
+                                    {% else %}
+                                        <twig:cp:badge status="quarantined" label="{{ 'aacp.cron.form.failure'|trans }}" />
+                                    {% endif %}
+                                </td>
+                                <td class="text-right">
+                                    {% if run.output %}
+                                        <details>
+                                            <summary class="cursor-pointer text-fs-xs font-medium !text-slate-400 hover:!text-slate-200">{{ 'aacp.cron.form.output'|trans }}</summary>
+                                            <pre class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-dark-1 p-sp-xs text-left font-mono text-fs-xs !text-slate-400">{{ run.output }}</pre>
+                                        </details>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+            </twig:cp:card>
+        {% endif %}
+    </div>
+{% endblock %}

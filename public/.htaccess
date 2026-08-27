@@ -1,0 +1,25 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Eğer projeniz bir alt klasördeyse (örn: localhost/CPalius-CMF/public/)
+    # ve yönlendirme çalışmazsa aşağıdaki RewriteBase satırının başındaki # işaretini kaldırın.
+    # RewriteBase /
+
+    # index.php içeren URL'leri temiz URL'ye yönlendir (SEO ve mükerrer içerik koruması)
+    RewriteCond %{ENV:REDIRECT_STATUS} ^$
+    RewriteRule ^index\.php(?:/(.*)|$) %{ENV:BASE}/$1 [R=301,L]
+
+    # Eğer talep edilen dosya veya klasör fiziksel olarak diskte varsa doğrudan onu oku (CSS, JS, Görseller vb.)
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Geri kalan tüm istekleri index.php dosyasına gönder (Symfony Router devralır)
+    RewriteRule ^ %{ENV:BASE}/index.php [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    <IfModule mod_alias.c>
+        # mod_rewrite pasifse fallback olarak yönlendir
+        RedirectMatch 302 ^/$ /index.php/
+    </IfModule>
+</IfModule>

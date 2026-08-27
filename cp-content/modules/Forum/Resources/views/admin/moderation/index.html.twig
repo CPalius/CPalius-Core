@@ -1,0 +1,58 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.moderation.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.moderation.action.dashboard'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'studio.forum.moderation.column.post'|trans,
+            'studio.forum.moderation.column.topic_section'|trans,
+            'studio.forum.moderation.column.reporter'|trans,
+            'studio.forum.moderation.column.reason'|trans,
+            'studio.forum.moderation.column.date'|trans,
+            '',
+        ] }}" empty="{{ reports is empty }}" emptyText="{{ 'studio.forum.moderation.empty'|trans }}">
+            <twig:block name="rows">
+                {% for report in reports %}
+                    {% set post = report.post %}
+                    {% set topic = post.topic %}
+                    <tr>
+                        <td class="max-w-xs">
+                            <p class="text-fs-sm text-neutral-900 line-clamp-3">{{ post.body|striptags|slice(0, 160) }}</p>
+                            <span class="text-fs-xs text-neutral-500">{{ post.posterName }} · {{ post.createdAt|date('d.m.Y H:i') }}</span>
+                        </td>
+                        <td>
+                            <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug, _locale: topic.section.locale}) }}#post{{ post.id }}" class="font-medium text-neutral-900 hover:text-primary-600" target="_blank">
+                                {{ topic.title }}
+                            </a>
+                            <div class="text-fs-xs text-neutral-500">{{ topic.section.title }}</div>
+                        </td>
+                        <td>{{ report.reporterName|default('studio.forum.moderation.reporter_fallback'|trans) }}</td>
+                        <td class="max-w-xs"><p class="text-fs-sm text-neutral-700">{{ report.reason }}</p></td>
+                        <td class="text-fs-xs text-neutral-500">{{ report.createdAt|date('d.m.Y H:i') }}</td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <form method="post" action="{{ path('admin_forum_moderation_dismiss', {id: report.id}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_moderation') }}">
+                                    <button type="submit" class="btn btn-sm btn-neutral">{{ 'studio.forum.moderation.action.dismiss'|trans }}</button>
+                                </form>
+                                <form method="post" action="{{ path('admin_forum_moderation_resolve', {id: report.id}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_moderation') }}">
+                                    <button type="submit" class="btn btn-sm btn-primary">{{ 'studio.forum.moderation.action.resolve'|trans }}</button>
+                                </form>
+                                <form method="post" action="{{ path('admin_forum_moderation_delete_post', {id: report.id}) }}" onsubmit="return confirm({{ 'studio.forum.moderation.delete_post_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_moderation') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'studio.forum.moderation.action.delete_post'|trans }}</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+{% endblock %}

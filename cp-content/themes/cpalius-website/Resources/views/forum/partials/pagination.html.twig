@@ -1,0 +1,15 @@
+{% set routeParams = routeParams|default({}) %}
+
+{% if result.totalPages > 1 %}
+    <nav class="forum-pagination" aria-label="{{ 'forum.pagination.aria_label'|trans }}">
+        {% if result.hasPreviousPage %}
+            <a href="{{ path(route, routeParams|merge({_locale: app.request.locale, page: result.currentPage - 1})) }}" class="btn btn-outline">‹ {{ 'forum.pagination.previous'|trans }}</a>
+        {% endif %}
+
+        <span class="forum-pagination-info">{{ result.currentPage }} / {{ result.totalPages }}</span>
+
+        {% if result.hasNextPage %}
+            <a href="{{ path(route, routeParams|merge({_locale: app.request.locale, page: result.currentPage + 1})) }}" class="btn btn-outline">{{ 'forum.pagination.next'|trans }} ›</a>
+        {% endif %}
+    </nav>
+{% endif %}

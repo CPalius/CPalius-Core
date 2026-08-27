@@ -1,0 +1,71 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'blog.posts.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_posts_create') }}" class="btn btn-sm btn-primary">
+        {{ 'blog.posts.create_action'|trans }}
+    </a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'blog.posts.column.title'|trans,
+            'blog.posts.column.type'|trans,
+            'blog.posts.column.status'|trans,
+            'blog.posts.column.updated_at'|trans,
+            '',
+        ] }}" empty="{{ posts is empty }}" emptyText="{{ 'blog.posts.empty'|trans }}">
+            <twig:block name="rows">
+                {% for post in posts %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('admin_posts_edit', {id: post.id}) }}" class="font-medium text-neutral-900 hover:text-primary-600">
+                                {{ post.title }}
+                            </a>
+                            <p class="text-fs-xs text-neutral-500">/{{ post.locale }}/{{ post.slug }}</p>
+                        </td>
+                        <td>
+                            <span class="badge badge-neutral">
+                                {{ ('blog.posts.sub_type.'~post.getDataValue('post_sub_type', 'makale'))|trans }}
+                            </span>
+                        </td>
+                        <td>
+                            <twig:studio:badge status="{{ post.status }}" />
+                        </td>
+                        <td class="text-fs-xs text-neutral-500">
+                            {{ post.updatedAt|date('d.m.Y H:i') }}
+                        </td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ path('admin_posts_edit', {id: post.id}) }}" class="btn btn-sm btn-neutral">
+                                    {{ 'aacp.users.edit_action'|trans }}
+                                </a>
+
+                                {% if post.status != 'published' %}
+                                    <form method="post" action="{{ path('admin_posts_publish', {id: post.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('admin_post_form') }}">
+                                        <button type="submit" class="btn btn-sm !bg-success-600 !text-white hover:!bg-success-700">
+                                            {{ 'blog.posts.publish'|trans }}
+                                        </button>
+                                    </form>
+                                {% endif %}
+
+                                <form method="post" action="{{ path('admin_posts_delete', {id: post.id}) }}"
+                                      onsubmit="return confirm({{ 'blog.posts.delete_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_post_form') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        {{ 'aacp.cron.delete'|trans }}
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+
+    <twig:studio:pagination result="{{ posts }}" route="admin_posts_index" />
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.localization.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('aacp_localization_export', {format: 'yaml'}) }}" download class="btn btn-sm btn-primary">
+        {{ 'aacp.localization.export_yaml'|trans }}
+    </a>
+    <a href="{{ path('aacp_localization_export', {format: 'json'}) }}" download class="btn btn-sm btn-neutral">
+        {{ 'aacp.localization.export_json'|trans }}
+    </a>
+    <button type="button" data-localization-import-trigger class="btn btn-sm btn-neutral">
+        {{ 'aacp.localization.import_action'|trans }}
+    </button>
+    <form data-localization-import-form class="hidden">
+        <input type="file" data-localization-import-input accept=".json,.yaml,.yml">
+    </form>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap('aacp-localization') }}
+{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md"
+         data-localization-root
+         data-localization-csrf="{{ csrf_token }}"
+         data-localization-update-url="{{ path('aacp_localization_update') }}"
+         data-localization-import-url="{{ path('aacp_localization_import') }}">
+
+        {% if focusLocale %}
+            <div class="rounded-lg border border-primary-500/40 bg-primary-500/5 px-3 py-2 text-fs-sm !text-primary-300">
+                "{{ focusLocale }}" dili için çeviri yönetimi. Aşağıdaki tablo tüm dilleri birlikte gösterir, ilgili sütunu düzenleyin.
+            </div>
+        {% endif %}
+
+        <div class="flex items-center gap-2">
+            <input type="text" data-localization-filter placeholder="{{ 'aacp.localization.search_placeholder'|trans }}"
+                   class="form-control !w-80 !bg-dark-1 !border-white/10 !text-slate-200 placeholder-slate-600">
+            <span class="text-fs-xs !text-slate-500" data-localization-count></span>
+        </div>
+
+        <twig:cp:card padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.localization.column.group'|trans,
+                'aacp.localization.column.key'|trans,
+                'aacp.localization.column.tr'|trans,
+                'aacp.localization.column.en'|trans,
+            ] }}" empty="{{ entries is empty }}" emptyText="{{ 'aacp.localization.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for entry in entries %}
+                        <tr data-localization-row data-group="{{ entry.group }}" data-key="{{ entry.key }}">
+                            <td>
+                                <span class="badge badge-neutral">{{ entry.group }}</span>
+                            </td>
+                            <td class="font-mono text-fs-xs !text-primary-400">{{ entry.key }}</td>
+                            <td data-localization-cell data-locale="tr">
+                                <span data-localization-value>{{ entry.tr }}</span>
+                            </td>
+                            <td data-localization-cell data-locale="en">
+                                <span data-localization-value>{{ entry.en }}</span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+{% endblock %}

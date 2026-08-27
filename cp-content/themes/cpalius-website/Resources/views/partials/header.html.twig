@@ -1,0 +1,83 @@
+<nav class="navbar" id="navbar">
+    <div class="container navbar-inner">
+        <a href="{{ path('theme_cpalius_website_home') }}" class="navbar-brand">
+            <img src="/CPalius.png" alt="CPalius CMF" class="navbar-logo">
+        </a>
+
+        <button class="navbar-toggle" id="navToggle" aria-label="{{ 'website.nav.toggle_aria'|trans }}" aria-expanded="false" aria-controls="navCollapse">
+            <i class="bi bi-list"></i>
+        </button>
+
+        <div class="navbar-collapse" id="navCollapse">
+            {# Menü modülünden gelen dinamik öğeler #}
+            <ul class="navbar-menu" id="navMenu">
+                {% for item in cp_menu('header') %}
+                    <li class="{{ item.children is not empty ? 'navbar-menu__item--dropdown' : '' }}">
+                        <a href="{{ item.url }}" {{ item.openInNewTab ? 'target="_blank" rel="noopener"' : '' }}>{{ item.label }}</a>
+                        {% if item.children is not empty %}
+                            <ul class="navbar-submenu">
+                                {% for child in item.children %}
+                                    <li><a href="{{ child.url }}" {{ child.openInNewTab ? 'target="_blank" rel="noopener"' : '' }}>{{ child.label }}</a></li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </li>
+                {% else %}
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#about">{{ 'website.nav.about'|trans }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#architecture">{{ 'website.nav.architecture'|trans }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#core">{{ 'website.nav.core'|trans }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#features">{{ 'website.nav.features'|trans }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#entity">{{ 'website.nav.entity'|trans }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#security">{{ 'website.nav.security'|trans }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#roadmap">{{ 'website.nav.roadmap'|trans }}</a></li>
+                    <li><a href="{{ path('blog_index') }}">{{ 'website.nav.blog'|trans }}</a></li>
+                    <li><a href="{{ path('forum_index') }}">{{ 'website.nav.forum'|trans }}</a></li>
+                {% endfor %}
+            </ul>
+
+            {# Sabit öğeler: arama, giriş/kayıt ya da kullanıcı menüsü #}
+            <div class="navbar-actions">
+                <div class="navbar-search" id="navSearch">
+                    <button type="button" class="navbar-search__toggle" id="navSearchToggle" aria-label="{{ 'website.nav.search_toggle_aria'|trans }}" aria-expanded="false" aria-controls="navSearchForm">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <form class="navbar-search__form" id="navSearchForm" action="{{ path('blog_search', {_locale: app.request.locale}) }}" method="get" role="search">
+                        <input type="search" name="q" class="navbar-search__input" placeholder="{{ 'website.nav.search_placeholder'|trans }}" aria-label="{{ 'website.nav.search_aria'|trans }}">
+                    </form>
+                </div>
+
+                {% if app.user %}
+                    <div class="navbar-user" id="navUser">
+                        <button type="button" class="navbar-user__trigger" id="navUserTrigger" aria-expanded="false" aria-controls="navUserDropdown">
+                            <span class="navbar-avatar">{{ app.user.fullName|default('?')|trim|first|upper }}</span>
+                            <span class="navbar-user__name">{{ app.user.fullName }}</span>
+                            <i class="bi bi-chevron-down navbar-user__caret"></i>
+                        </button>
+                        <div class="navbar-user__dropdown" id="navUserDropdown">
+                            <a href="{{ path('forum_profile', {userId: app.user.id}) }}" class="navbar-user__link">
+                                <i class="bi bi-person-circle"></i> {{ 'website.nav.profile'|trans }}
+                            </a>
+                            {% if is_granted('system.aacp.access') %}
+                                <a href="{{ path('admin_forum_dashboard') }}" target="_blank" rel="noopener" class="navbar-user__link">
+                                    <i class="bi bi-grid-1x2"></i> {{ 'website.nav.studio'|trans }}
+                                </a>
+                                <a href="{{ path('aacp_dashboard') }}" target="_blank" rel="noopener" class="navbar-user__link">
+                                    <i class="bi bi-shield-lock"></i> {{ 'website.nav.aacp'|trans }}
+                                </a>
+                            {% endif %}
+                            <div class="navbar-user__divider"></div>
+                            <a href="{{ path('admin_logout') }}" class="navbar-user__link navbar-user__link--danger">
+                                <i class="bi bi-box-arrow-right"></i> {{ 'website.nav.logout'|trans }}
+                            </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="navbar-auth">
+                        <a href="{{ path('account_login') }}" class="navbar-btn navbar-btn--ghost">{{ 'website.nav.login'|trans }}</a>
+                        <a href="{{ path('account_register') }}" class="navbar-btn navbar-btn--solid">{{ 'website.nav.register'|trans }}</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</nav>

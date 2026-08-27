@@ -1,0 +1,48 @@
+{% extends '@CpaliusWebsiteTheme/layout.html.twig' %}
+
+{% block title %}#{{ tagSlug }} — {{ 'blog.label.blog'|trans }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
+
+{% block content %}
+{% include '@CpaliusWebsiteTheme/blog/partials/hero.html.twig' %}
+
+<section class="section blog-archive-section" id="blog-tag">
+    <div class="container">
+        {% if not (blogHero is defined and blogHero.enabled) %}
+            <div class="section-header fade-in">
+                <span class="section-label">{{ 'blog.tag.label'|trans }}</span>
+                <h2 class="section-title">#{{ tagSlug }}</h2>
+            </div>
+        {% else %}
+            <div class="blog-feed-toolbar fade-in">
+                <h2 class="blog-feed-toolbar__title" id="blog-feed">#{{ tagSlug }}</h2>
+                <span class="blog-feed-toolbar__layout">{{ 'blog.tag.label'|trans }}</span>
+            </div>
+        {% endif %}
+
+        <div class="grid-golden grid-golden--blog">
+            <div class="grid-golden-major">
+                {% if posts.isEmpty %}
+                    <p class="section-desc">{{ 'blog.tag.empty'|trans }}</p>
+                {% else %}
+                    {% include '@CpaliusWebsiteTheme/blog/partials/posts_feed.html.twig' with {
+                        posts: posts,
+                        listLayout: listLayout|default('grid'),
+                    } %}
+
+                    {% include '@CpaliusWebsiteTheme/blog/partials/pagination.html.twig' with {
+                        result: posts,
+                        route: 'blog_tag',
+                        routeParams: {slug: tagSlug},
+                    } %}
+                {% endif %}
+            </div>
+
+            <aside class="grid-golden-minor" id="blog-sidebar">
+                {% include '@CpaliusWebsiteTheme/blog/partials/search_widget.html.twig' %}
+                {% include '@CpaliusWebsiteTheme/blog/partials/widget_sidebar.html.twig' %}
+                {% include '@CpaliusWebsiteTheme/blog/partials/archive_sidebar.html.twig' %}
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}

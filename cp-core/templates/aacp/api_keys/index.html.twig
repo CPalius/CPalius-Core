@@ -1,0 +1,75 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.api_keys.header'|trans }}{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap('aacp-api-keys') }}
+{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md" data-api-keys-root data-api-keys-csrf="{{ csrf_token }}">
+        <div data-api-key-reveal class="hidden rounded-lg border border-primary-500/40 bg-primary-500/5 p-sp-sm">
+            <p class="text-fs-xs font-semibold uppercase tracking-wide !text-primary-400">{{ 'aacp.api_keys.reveal_notice'|trans }}</p>
+            <p data-api-key-reveal-value class="mt-2 break-all rounded-lg bg-dark-1 px-3 py-2 font-mono text-fs-sm text-slate-100"></p>
+        </div>
+
+        <twig:cp:card title="{{ 'aacp.api_keys.generate_title'|trans }}">
+            <form data-api-key-create-form class="flex items-end gap-3">
+                <div class="flex-1">
+                    <label class="form-label !text-slate-400" for="api-key-label">{{ 'aacp.api_keys.label_field'|trans }}</label>
+                    <input type="text" id="api-key-label" name="label" required maxlength="191"
+                           placeholder="{{ 'aacp.api_keys.label_placeholder'|trans }}"
+                           class="form-control !border-white/10 !bg-dark-1 !text-slate-100 placeholder:!text-slate-600">
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    {{ 'aacp.api_keys.generate_action'|trans }}
+                </button>
+            </form>
+        </twig:cp:card>
+
+        <twig:cp:card title="{{ 'aacp.api_keys.registered_keys'|trans }}" padded="{{ false }}">
+            <div data-api-keys-table>
+                <twig:cp:table headers="{{ [
+                    'aacp.api_keys.column.label'|trans,
+                    'aacp.api_keys.column.key'|trans,
+                    'aacp.api_keys.column.created_at'|trans,
+                    'aacp.api_keys.column.status'|trans,
+                    '',
+                ] }}" empty="{{ apiKeys is empty }}" emptyText="{{ 'aacp.api_keys.empty'|trans }}">
+                    <twig:block name="rows">
+                        {% for apiKey in apiKeys %}
+                            <tr data-api-key-row="{{ apiKey.id }}">
+                                <td class="!text-slate-200">{{ apiKey.label }}</td>
+                                <td class="font-mono text-fs-xs !text-slate-500">••••{{ apiKey.lastFourChars }}</td>
+                                <td class="text-fs-xs !text-slate-500">{{ apiKey.createdAt|date('d.m.Y H:i') }}</td>
+                                <td>
+                                    <span data-api-key-status class="badge {{ apiKey.active ? 'badge-success' : 'badge-neutral' }}">
+                                        {{ apiKey.active ? 'aacp.plugins.active'|trans : 'aacp.plugins.inactive'|trans }}
+                                    </span>
+                                </td>
+                                <td class="text-right">
+                                    <div class="flex items-center justify-end gap-3">
+                                        <button type="button"
+                                                data-api-key-toggle
+                                                data-api-key-id="{{ apiKey.id }}"
+                                                data-api-key-active="{{ apiKey.active ? '1' : '0' }}"
+                                                class="text-fs-xs font-medium {{ apiKey.active ? '!text-slate-400 hover:!text-danger-300' : '!text-primary-400 hover:!text-success-300' }}">
+                                            {{ apiKey.active ? 'aacp.plugins.deactivate'|trans : 'aacp.plugins.activate'|trans }}
+                                        </button>
+                                        <button type="button"
+                                                data-api-key-delete
+                                                data-api-key-id="{{ apiKey.id }}"
+                                                class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
+                                            {{ 'aacp.cron.delete'|trans }}
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+            </div>
+        </twig:cp:card>
+    </div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ prefix ? 'studio.forum.prefixes.form.edit_header'|trans : 'studio.forum.prefixes.form.create_header'|trans }}{% endblock %}
+
+{% block body %}
+    <twig:studio:card>
+        <form method="post">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_prefix') }}">
+
+            <div class="grid gap-4 md:grid-cols-3">
+                <div>
+                    <label class="form-label">{{ 'studio.forum.prefixes.form.label'|trans }}</label>
+                    <input type="text" name="label" value="{{ formValues.label }}" required maxlength="32" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.prefixes.form.color'|trans }}</label>
+                    <input type="color" name="color" value="{{ formValues.color }}" class="form-control" style="height: 42px; padding: 4px;">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.prefixes.form.sort_order'|trans }}</label>
+                    <input type="number" name="sort_order" value="{{ formValues.sortOrder }}" class="form-control">
+                </div>
+            </div>
+
+            <div class="mt-6 flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ 'studio.forum.prefixes.form.save'|trans }}</button>
+                <a href="{{ path('admin_forum_prefixes_index') }}" class="btn btn-neutral">{{ 'studio.forum.prefixes.form.cancel'|trans }}</a>
+            </div>
+        </form>
+    </twig:studio:card>
+{% endblock %}

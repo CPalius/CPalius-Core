@@ -1,0 +1,41 @@
+{#
+    <twig:studio:table headers="['Başlık', 'Durum', '']">
+        <twig:block name="rows">
+            <tr>...</tr>
+        </twig:block>
+    </twig:studio:table>
+
+    <twig:cp:table>'ın Studio (aydınlık tema) karşılığı — bkz. studio/card.html.twig
+    üstündeki izolasyon notu.
+
+    Props:
+      headers   (array)  Başlık hücrelerinin metinleri (sırayla).
+      empty     (bool)   Satır yoksa true geçilir; "rows" bloğu yerine boş-durum mesajı gösterilir.
+      emptyText (string) Boş durumda gösterilecek metin.
+#}
+{% props headers = [], empty = false, emptyText = null %}
+
+<div {{ attributes.defaults({class: 'table-responsive'}) }}>
+    <table class="table">
+        {% if headers is not empty %}
+            <thead>
+                <tr>
+                    {% for header in headers %}
+                        <th>{{ header }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+        {% endif %}
+        <tbody>
+            {% if empty %}
+                <tr>
+                    <td colspan="{{ headers|length > 0 ? headers|length : 1 }}" class="py-6 text-center text-fs-sm text-neutral-500">
+                        {{ emptyText ?? 'studio.table.empty_default'|trans }}
+                    </td>
+                </tr>
+            {% else %}
+                {% block rows %}{% endblock %}
+            {% endif %}
+        </tbody>
+    </table>
+</div>

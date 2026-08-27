@@ -1,0 +1,81 @@
+{#
+    Vitrin — tüm featuredPosts; kapak yoksa tip renkli placeholder.
+    Beklenen: featuredPosts (list<Node>)
+#}
+{% set coverSlides = [] %}
+{% if featuredPosts is defined %}
+    {% for post in featuredPosts %}
+        {% set coverUrl = blog_featured_image_url(post) %}
+        {% set subType = post.getDataValue('post_sub_type', 'makale') %}
+        {% set coverSlides = coverSlides|merge([{
+            post: post,
+            coverUrl: coverUrl,
+            subType: subType,
+            author: post.author
+                ? post.author.getDataValue('display_name', post.author.email)
+                : null
+        }]) %}
+    {% endfor %}
+{% endif %}
+
+{% if coverSlides is not empty %}
+<section class="blog-featured-strip" id="blog-vitrin" aria-label="{{ 'blog.featured.aria'|trans }}">
+    <div class="container">
+        <div class="blog-featured-strip__head">
+            <h2 class="blog-featured-strip__title">{{ 'blog.featured.title'|trans }}</h2>
+            <p class="blog-featured-strip__hint">{{ 'blog.featured.hint'|trans }}</p>
+        </div>
+
+        <div class="blog-featured-slider" data-portal-slider data-autoplay>
+            <button
+                type="button"
+                class="blog-featured-slider__nav blog-featured-slider__nav--prev"
+                data-portal-slider-prev
+                aria-label="{{ 'blog.featured.prev'|trans }}"
+            >
+                <i class="bi bi-chevron-left" aria-hidden="true"></i>
+            </button>
+
+            <div class="blog-featured-slider__track" data-portal-slider-track>
+                {% for slide in coverSlides %}
+                    {% set slideHref = path('blog_show', {'_locale': slide.post.locale, 'slug': slide.post.slug}) %}
+                    {% set slideClass = 'blog-featured-slide' %}
+                    {% if not slide.coverUrl %}
+                        {% set slideClass = slideClass ~ ' blog-featured-slide--placeholder blog-featured-slide--' ~ slide.subType %}
+                    {% endif %}
+                    <a class="{{ slideClass }}" href="{{ slideHref }}">
+                        {% if slide.coverUrl %}
+                            <img
+                                src="{{ slide.coverUrl }}"
+                                alt="{{ slide.post.title }}"
+                                loading="lazy"
+                                decoding="async"
+                            >
+                        {% else %}
+                            <span class="blog-featured-slide__placeholder-label" aria-hidden="true">
+                                {{ blog_post_sub_type_label(slide.subType) }}
+                            </span>
+                        {% endif %}
+                        <span class="blog-featured-slide__overlay">
+                            <span class="blog-featured-slide__type">{{ blog_post_sub_type_label(slide.subType) }}</span>
+                            <span class="blog-featured-slide__title">{{ slide.post.title }}</span>
+                            {% if slide.author %}
+                                <span class="blog-featured-slide__author">{{ slide.author }}</span>
+                            {% endif %}
+                        </span>
+                    </a>
+                {% endfor %}
+            </div>
+
+            <button
+                type="button"
+                class="blog-featured-slider__nav blog-featured-slider__nav--next"
+                data-portal-slider-next
+                aria-label="{{ 'blog.featured.next'|trans }}"
+            >
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            </button>
+        </div>
+    </div>
+</section>
+{% endif %}

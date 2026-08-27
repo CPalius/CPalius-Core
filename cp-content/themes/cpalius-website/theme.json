@@ -1,0 +1,9 @@
+{
+    "name": "cpalius-website",
+    "version": "1.0.0",
+    "entry": {
+        "css": ["dist/style.css", "dist/forum.css"],
+        "js": ["dist/main.js", "dist/forum.js"]
+    },
+    "supports": ["blog", "menu", "forum"]
+}

@@ -1,0 +1,11 @@
+{#
+    Sidebar'ın (Golden minor kolon — %38.2) arama kutusu. archive/show/
+    tag/search şablonlarının hepsinde paylaşılan tek arama giriş noktası.
+#}
+<div class="blog-sidebar-widget">
+    <h5>{{ 'blog.sidebar.search_title'|trans }}</h5>
+    <form method="get" action="{{ path('blog_search', {_locale: app.request.locale}) }}" class="blog-search-form">
+        <input type="search" name="q" value="{{ term|default('') }}" placeholder="{{ 'blog.sidebar.search_placeholder'|trans }}" aria-label="{{ 'blog.sidebar.search_aria'|trans }}">
+        <button type="submit" class="btn btn-primary">{{ 'blog.sidebar.search_submit'|trans }}</button>
+    </form>
+</div>

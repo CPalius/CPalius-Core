@@ -1,0 +1,52 @@
+{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+
+{% block title %}{{ 'account.login.title'|trans({'app_name': cp_app_name|default('CPalius CMF')}) }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-nav fade-in" aria-label="{{ 'account.nav_aria'|trans }}">
+        <div class="container">
+            <div class="forum-nav__inner">
+                <ol class="forum-nav__crumbs">
+                    <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+                    <li class="is-active">{{ 'account.login.breadcrumb'|trans }}</li>
+                </ol>
+            </div>
+        </div>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in" style="text-align:center; max-width: 420px; margin: 0 auto var(--sp-lg);">
+    <span class="section-label">{{ 'account.login.label'|trans }}</span>
+    <h1 class="section-title">{{ 'account.login.heading'|trans }}</h1>
+    <p class="forum-header__desc" style="margin: 0 auto;">{{ 'account.login.desc'|trans }}</p>
+</div>
+
+{% if error is not null %}
+    <div class="forum-flash forum-flash--error" style="max-width: 420px; margin: 0 auto var(--sp-md);">{{ error.messageKey|trans(error.messageData, 'security')|default('account.login.error_default'|trans) }}</div>
+{% endif %}
+
+<div class="forum-form fade-in" style="max-width: 420px; margin: 0 auto;">
+    <form method="post" action="{{ path('admin_login') }}">
+        <div class="forum-field">
+            <label for="account-username">{{ 'account.login.username_label'|trans }}</label>
+            <input type="text" id="account-username" name="_username" value="{{ last_username }}" required autofocus autocomplete="username">
+        </div>
+
+        <div class="forum-field">
+            <label for="account-password">{{ 'account.login.password_label'|trans }}</label>
+            <input type="password" id="account-password" name="_password" required autocomplete="current-password">
+        </div>
+
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+        <div class="forum-form__actions">
+            <button type="submit" class="btn btn-primary btn-sm">{{ 'account.login.submit'|trans }}</button>
+        </div>
+    </form>
+
+    <p style="margin-top: var(--sp-md); text-align:center; font-size: var(--fs-sm); color: var(--slw-text-muted);">
+        {{ 'account.login.no_account'|trans }} <a href="{{ path('account_register') }}" style="color: var(--cp-accent); text-decoration: underline;">{{ 'account.login.register_link'|trans }}</a>
+    </p>
+</div>
+{% endblock %}

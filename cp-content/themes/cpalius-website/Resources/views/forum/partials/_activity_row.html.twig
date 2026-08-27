@@ -1,0 +1,74 @@
+{#
+    Tek satır — kompakt tablo satırı (thread veya user).
+    Beklenen: item
+#}
+{% set layout = item.layout|default('thread') %}
+<li class="forum-activity-thread" data-activity-row>
+    {% if layout == 'thread' %}
+        {% set topicHref = path('forum_topic', {topicId: item.topicId, slug: item.slug|default('')}) %}
+        {% if item.postId is defined and item.postId %}
+            {% set topicHref = topicHref ~ '#post' ~ item.postId %}
+        {% endif %}
+        <ol class="forum-activity-thread__cols">
+            <li class="forum-activity-thread__topic">
+                <a href="{{ topicHref }}" class="forum-activity-thread__link">
+                    {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: item.author|default('?')} %}
+                    <span class="forum-activity-thread__title-text">{{ item.title }}</span>
+                </a>
+            </li>
+            <li class="forum-activity-thread__stats" title="{{ 'forum.activity.col.replies_views'|trans }}">
+                <span>{{ item.replyCount|default(0) }}</span>
+                <i class="bi bi-circle-fill" aria-hidden="true"></i>
+                <span>{{ item.viewCount|default(0) }}</span>
+            </li>
+            <li class="forum-activity-thread__last">
+                {% if item.lastPosterId %}
+                    <a href="{{ path('forum_profile', {userId: item.lastPosterId}) }}">{{ item.lastPoster|default('—') }}</a>
+                {% else %}
+                    <span>{{ item.lastPoster|default('—') }}</span>
+                {% endif %}
+                {% if item.at %}
+                    <time datetime="{{ item.at|date('c') }}">{{ item.at|date('d.m.Y H:i') }}</time>
+                {% endif %}
+            </li>
+            <li class="forum-activity-thread__cat">
+                {% if item.sectionSlug is defined and item.sectionSlug %}
+                    <a href="{{ path('forum_section', {sectionSlug: item.sectionSlug}) }}">{{ item.sectionTitle|default('—') }}</a>
+                {% else %}
+                    <span>{{ item.sectionTitle|default('—') }}</span>
+                {% endif %}
+            </li>
+        </ol>
+    {% else %}
+        <ol class="forum-activity-thread__cols forum-activity-thread__cols--user">
+            <li class="forum-activity-thread__topic">
+                {% if item.authorId %}
+                    <a href="{{ path('forum_profile', {userId: item.authorId}) }}" class="forum-activity-thread__link">
+                        {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: item.title|default('?')} %}
+                        <span class="forum-activity-thread__title-text">{{ item.title }}</span>
+                    </a>
+                {% else %}
+                    <span class="forum-activity-thread__link">
+                        {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: item.title|default('?')} %}
+                        <span class="forum-activity-thread__title-text">{{ item.title }}</span>
+                    </span>
+                {% endif %}
+            </li>
+            <li class="forum-activity-thread__stats">
+                {% if item.postCount is defined %}
+                    <span>{{ 'forum.activity.posts_count'|trans({'count': item.postCount}) }}</span>
+                {% else %}
+                    <span>—</span>
+                {% endif %}
+            </li>
+            <li class="forum-activity-thread__last">
+                {% if item.at %}
+                    <time datetime="{{ item.at|date('c') }}">{{ item.at|date('d.m.Y H:i') }}</time>
+                {% else %}
+                    <span>—</span>
+                {% endif %}
+            </li>
+            <li class="forum-activity-thread__cat"><span>—</span></li>
+        </ol>
+    {% endif %}
+</li>

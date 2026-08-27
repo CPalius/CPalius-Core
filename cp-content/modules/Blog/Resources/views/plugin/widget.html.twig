@@ -1,0 +1,52 @@
+{#
+    Modules\Blog\Plugin\BlogWidgetPlugin::render()'ın çıktısı — mevcut
+    .blog-sidebar-widget CSS ailesini kullanır (Faz 1/2'de zaten kurulan
+    tasarım dili, yeni bir sınıf ailesi icat edilmez).
+
+    Beklenen değişkenler:
+      recentPosts (list<App\Entity\Node>)
+      popularTags (list<array{tag: App\Entity\Tag, usageCount: int}>)
+      socialGithubUrl (string) Boş string ise link gizlenir.
+      socialTwitterUrl (string) Boş string ise link gizlenir.
+#}
+{% if socialGithubUrl is not empty or socialTwitterUrl is not empty %}
+    <div class="blog-sidebar-widget">
+        <h5>{{ 'blog.widget.author_title'|trans }}</h5>
+        <div class="post-tags">
+            {% if socialGithubUrl is not empty %}
+                <a href="{{ socialGithubUrl }}" class="badge" target="_blank" rel="noopener noreferrer">Github</a>
+            {% endif %}
+            {% if socialTwitterUrl is not empty %}
+                <a href="{{ socialTwitterUrl }}" class="badge" target="_blank" rel="noopener noreferrer">Twitter</a>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
+
+{% if recentPosts is not empty %}
+    <div class="blog-sidebar-widget">
+        <h5>{{ 'blog.widget.recent_posts_title'|trans }}</h5>
+        <ul>
+            {% for post in recentPosts %}
+                <li>
+                    <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">
+                        {{ post.title }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+{% if popularTags is not empty %}
+    <div class="blog-sidebar-widget">
+        <h5>{{ 'blog.widget.popular_tags_title'|trans }}</h5>
+        <div class="post-tags">
+            {% for entry in popularTags %}
+                <a href="{{ path('blog_tag', {_locale: entry.tag.locale, slug: entry.tag.slug}) }}" class="badge">
+                    {{ entry.tag.name }} <span class="text-fs-xs">({{ entry.usageCount }})</span>
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}

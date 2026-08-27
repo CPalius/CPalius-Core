@@ -1,0 +1,57 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.url_alias.index.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('aacp_url_alias_create') }}" class="btn btn-sm btn-primary">
+        {{ 'aacp.url_alias.index.create_action'|trans }}
+    </a>
+{% endblock %}
+
+{% block body %}
+    <twig:cp:card padded="{{ false }}">
+        <twig:cp:table headers="{{ [
+            'aacp.url_alias.index.column.path'|trans,
+            'aacp.url_alias.index.column.locale'|trans,
+            'aacp.url_alias.index.column.target'|trans,
+            'aacp.url_alias.index.column.status'|trans,
+            '',
+        ] }}" empty="{{ aliases is empty }}" emptyText="{{ 'aacp.url_alias.index.empty'|trans }}">
+            <twig:block name="rows">
+                {% for alias in aliases %}
+                    <tr>
+                        <td class="font-mono text-fs-xs !text-slate-300">/{{ alias.aliasPath }}</td>
+                        <td class="text-fs-xs !text-slate-400">{{ alias.locale }}</td>
+                        <td class="text-fs-xs !text-slate-400">
+                            {% if alias.targetType == 'node' %}
+                                {{ 'aacp.url_alias.target.node'|trans }} #{{ alias.targetNodeId }}
+                            {% elseif alias.targetType == 'category' %}
+                                {{ 'aacp.url_alias.target.category'|trans }} #{{ alias.targetCategoryId }}
+                            {% else %}
+                                {{ 'aacp.url_alias.target.route'|trans }}: <code>{{ alias.targetRouteName }}</code>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {{ alias.active ? 'badge-success' : 'badge-neutral' }}">
+                                {{ alias.active ? 'aacp.url_alias.status.active'|trans : 'aacp.url_alias.status.inactive'|trans }}
+                            </span>
+                        </td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-3">
+                                <a href="{{ path('aacp_url_alias_edit', {id: alias.id}) }}" class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-400">
+                                    {{ 'aacp.url_alias.action.edit'|trans }}
+                                </a>
+                                <form method="post" action="{{ path('aacp_url_alias_delete', {id: alias.id}) }}" onsubmit="return confirm('{{ 'aacp.url_alias.action.delete_confirm'|trans }}');">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('aacp_url_alias_form') }}">
+                                    <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
+                                        {{ 'aacp.url_alias.action.delete'|trans }}
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:cp:table>
+    </twig:cp:card>
+{% endblock %}

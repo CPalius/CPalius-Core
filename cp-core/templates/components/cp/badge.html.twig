@@ -1,0 +1,35 @@
+{#
+    <twig:cp:badge status="active" />
+    <twig:cp:badge status="quarantined" label="Karantinada" />
+
+    Props:
+      status  (string)       'active' | 'inactive' | 'quarantined' | 'unknown'
+      label   (string|null)  Özel metin; verilmezse status'e göre çevrilmiş etiket kullanılır.
+#}
+{% props status = 'unknown', label = null %}
+
+{% set styles = {
+    active:      'badge-success',
+    inactive:    'badge-neutral',
+    quarantined: 'badge-danger',
+    unknown:     'badge-warning',
+} %}
+
+{% set labelKeys = {
+    active: 'cp.badge.status.active',
+    inactive: 'cp.badge.status.inactive',
+    quarantined: 'cp.badge.status.quarantined',
+    unknown: 'cp.badge.status.unknown',
+} %}
+
+{% set dots = {
+    active: 'bg-success-500',
+    inactive: 'bg-neutral-400',
+    quarantined: 'bg-danger-500',
+    unknown: 'bg-warning-500',
+} %}
+
+<span {{ attributes.defaults({class: 'badge font-mono uppercase tracking-wide ' ~ (styles[status] ?? styles.unknown) }) }}>
+    <span class="h-1.5 w-1.5 rounded-full {{ dots[status] ?? dots.unknown }}"></span>
+    {{ label ?? (labelKeys[status] ?? labelKeys.unknown)|trans }}
+</span>

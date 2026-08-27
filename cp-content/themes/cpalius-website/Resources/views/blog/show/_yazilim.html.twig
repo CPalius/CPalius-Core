@@ -1,0 +1,98 @@
+{#
+    Yazılım show — sürüm/indirme banner + ürün spesifikasyonu kenar çubuğu.
+    Beklenen: post, postBody, typeFields, relatedPosts.
+#}
+{% if (typeFields.version is defined and typeFields.version) or (typeFields.download_url is defined and typeFields.download_url) %}
+<section class="software-release-banner" aria-label="{{ 'blog.card.type.software'|trans }}">
+    <div class="container software-release-banner__inner">
+        <div class="software-release-banner__meta">
+            <span class="software-release-banner__label">{{ 'blog.card.type.software'|trans }}</span>
+            {% if typeFields.version is defined and typeFields.version %}
+                <span class="blog-card-yazilim__version">v{{ typeFields.version }}</span>
+            {% endif %}
+        </div>
+        {% if typeFields.download_url is defined and typeFields.download_url %}
+            <a href="{{ typeFields.download_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                <i class="bi bi-download" aria-hidden="true"></i> {{ 'blog.show.link.download'|trans }}
+            </a>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+<section class="section post-show post-show--yazilim" id="post-detail">
+    <div class="container">
+        <div class="grid-golden grid-golden--blog">
+            <div class="grid-golden-major">
+                <div class="slw-detail-panel slw-detail-panel--yazilim slw-ctype--yazilim">
+                    <div class="post-body">
+                        {{ postBody|raw }}
+                    </div>
+
+                    {% if post.tags is not empty %}
+                        <div class="post-tags">
+                            {% for tag in post.tags %}
+                                <a href="{{ path('blog_tag', {_locale: post.locale, slug: tag.slug}) }}" class="slw-tag-pill">#{{ tag.name }}</a>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <aside class="grid-golden-minor">
+                <div class="blog-sidebar-widget software-spec-card">
+                    <h5>{{ 'blog.card.type.software'|trans }}</h5>
+                    <ul class="software-spec-card__list">
+                        {% if typeFields.version is defined and typeFields.version %}
+                            <li>
+                                <span class="software-spec-card__key">Version</span>
+                                <span>v{{ typeFields.version }}</span>
+                            </li>
+                        {% endif %}
+                        {% if typeFields.download_url is defined and typeFields.download_url %}
+                            <li>
+                                <span class="software-spec-card__key">{{ 'blog.card.link.download'|trans }}</span>
+                                <a href="{{ typeFields.download_url }}" target="_blank" rel="noopener noreferrer">{{ 'blog.show.link.download'|trans }}</a>
+                            </li>
+                        {% endif %}
+                        {% if post.category %}
+                            <li>
+                                <span class="software-spec-card__key">{{ 'blog.label.category'|trans }}</span>
+                                <a href="{{ path('blog_category', {_locale: post.locale, slug: post.category.slug}) }}">{{ post.category.name }}</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                {% if post.author %}
+                    {% include '@CpaliusWebsiteTheme/blog/partials/author_card.html.twig' with { author: post.author } %}
+                {% endif %}
+
+                {% include '@CpaliusWebsiteTheme/blog/partials/search_widget.html.twig' %}
+                {% include '@CpaliusWebsiteTheme/blog/partials/widget_sidebar.html.twig' %}
+                {% include '@CpaliusWebsiteTheme/blog/partials/archive_sidebar.html.twig' %}
+
+                {% if relatedPosts is not empty %}
+                    <div class="blog-sidebar-widget">
+                        <h5>{{ 'blog.show.related_title'|trans }}</h5>
+                        <ul class="slw-related-list">
+                            {% for relatedPost in relatedPosts %}
+                                <li class="slw-related-list__item">
+                                    <a href="{{ path('blog_show', {_locale: relatedPost.locale, slug: relatedPost.slug}) }}">
+                                        <span class="slw-related-thumb"><i class="bi bi-box-seam"></i></span>
+                                        <span>
+                                            <span class="slw-related-list__title">{{ relatedPost.title }}</span>
+                                            {% if relatedPost.publishedAt %}
+                                                <time datetime="{{ relatedPost.publishedAt|date('c') }}">{{ relatedPost.publishedAt|date('d.m.Y') }}</time>
+                                            {% endif %}
+                                        </span>
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+</section>

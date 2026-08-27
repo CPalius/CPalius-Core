@@ -1,0 +1,74 @@
+{#
+    Studio (AACP olmayan yönetim paneli) formları için kurumsal "flat"
+    tasarım form teması. Bloklar bilinçli olarak MINIMAL tutulur: gerçek
+    görsel stil (border, focus ring, spacing) zaten her alanın kendi
+    PostType::buildForm() 'attr' seçeneklerinde tanımlanır (bkz.
+    Modules\Blog\Form\PostType) — bu tema sadece label/hata/help
+    markup'ının Studio kart bileşenleriyle (twig:studio:card) tutarlı bir
+    iskelete oturmasını sağlar, çift stil tanımını önler.
+
+    Uygulama: framework.yaml -> form.twig.form_themes ile global kaydedilir,
+    tüm Studio formları (yalnızca Blog değil) bunu otomatik miras alır.
+#}
+{% block form_row %}
+    <div class="mb-sp-sm">
+        {{ form_label(form) }}
+        {{ form_widget(form) }}
+        {{ form_help(form) }}
+        {{ form_errors(form) }}
+    </div>
+{% endblock form_row %}
+
+{% block form_label %}
+    {% if label is not same as(false) %}
+        {% set label_attr_class = label_attr.class|default('mb-1.5 block text-fs-xs font-medium text-neutral-500') %}
+        {% set merged_label_attr = label_attr|merge({'class': label_attr_class}) %}
+        <label {% with { attr: merged_label_attr } %}{{ block('attributes') }}{% endwith %} for="{{ id }}">
+            {{- translation_domain is same as(false) ? label : label|trans(label_translation_parameters, translation_domain) -}}
+        </label>
+    {% endif %}
+{% endblock form_label %}
+
+{% block form_help %}
+    {%- if help is not empty -%}
+        <p id="{{ id }}_help" class="mt-1 text-fs-xs text-neutral-500">
+            {{- translation_domain is same as(false) ? help : help|trans(help_translation_parameters, translation_domain) -}}
+        </p>
+    {%- endif -%}
+{% endblock form_help %}
+
+{% block form_errors %}
+    {%- if errors|length > 0 -%}
+        <ul class="mt-1 space-y-0.5 text-fs-xs font-medium text-danger-600">
+            {%- for error in errors -%}
+                <li>{{ error.message }}</li>
+            {%- endfor -%}
+        </ul>
+    {%- endif -%}
+{% endblock form_errors %}
+
+{#
+    Kategori checkbox listesi: EntityType(multiple: true, expanded: true)
+    varsayılan olarak her <input> için ayrı bir form_row üretir — Studio'nun
+    mevcut "Kategoriler" kartındaki tek sütunlu checkbox listesi görünümünü
+    korumak için choice_widget_expanded override edilir.
+#}
+{% block choice_widget_expanded %}
+    <div {{ block('widget_container_attributes') }} class="space-y-1.5">
+        {%- for child in form %}
+            <label class="flex items-center gap-2 text-fs-sm text-neutral-700">
+                {{ form_widget(child, {attr: {class: 'h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-600'}}) }}
+                {{ child.vars.label }}
+            </label>
+        {% endfor -%}
+    </div>
+{% endblock choice_widget_expanded %}
+
+{% block checkbox_row %}
+    <div class="mb-sp-sm flex items-center gap-2">
+        {{ form_widget(form) }}
+        {{ form_label(form, null, {label_attr: {class: 'text-fs-sm text-neutral-700'}}) }}
+        {{ form_help(form) }}
+        {{ form_errors(form) }}
+    </div>
+{% endblock checkbox_row %}

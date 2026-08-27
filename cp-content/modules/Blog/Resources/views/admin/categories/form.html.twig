@@ -1,0 +1,44 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ category ? 'blog.categories.form.header_edit'|trans : 'blog.categories.form.header_create'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="max-w-xl">
+        <twig:studio:card title="{{ 'blog.categories.form.section_info'|trans }}">
+            <form method="post"
+                  action="{{ category ? path('admin_categories_edit', {id: category.id}) : path('admin_categories_create') }}"
+                  class="space-y-sp-sm">
+                <input type="hidden" name="_token" value="{{ csrf_token('admin_category_form') }}">
+
+                <div>
+                    <label for="name" class="form-label">{{ 'blog.categories.form.name'|trans }}</label>
+                    <input type="text" id="name" name="name" value="{{ formValues.name }}" required
+                           class="form-control">
+                </div>
+
+                <div>
+                    <label for="description" class="form-label">{{ 'blog.categories.form.description'|trans }}</label>
+                    <textarea id="description" name="description" rows="3"
+                              class="form-control">{{ formValues.description }}</textarea>
+                </div>
+
+                <div>
+                    <label for="parent_id" class="form-label">{{ 'blog.categories.form.parent'|trans }}</label>
+                    <select id="parent_id" name="parent_id" class="form-select">
+                        <option value="">— {{ 'blog.categories.form.no_parent'|trans }} —</option>
+                        {% for existing in categories %}
+                            <option value="{{ existing.id }}" {{ existing.id == formValues.parentId ? 'selected' : '' }}>{{ existing.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-3 border-t border-neutral-200 pt-sp-sm">
+                    <button type="submit" class="btn btn-primary">
+                        {{ category ? 'aacp.users.form.submit_edit'|trans : 'blog.categories.form.submit_create'|trans }}
+                    </button>
+                    <a href="{{ path('admin_categories_index') }}" class="text-fs-sm font-medium text-neutral-500 hover:text-neutral-900">{{ 'aacp.users.form.cancel'|trans }}</a>
+                </div>
+            </form>
+        </twig:studio:card>
+    </div>
+{% endblock %}

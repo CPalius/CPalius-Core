@@ -1,0 +1,32 @@
+{% macro renderItems(nodes) %}
+    {% import _self as self %}
+    <ul class="{{ nodes is not empty and nodes[0].item.parent is null ? '' : 'ml-sp-md mt-1.5' }} space-y-1.5" data-sortable-list data-parent-id="{{ nodes is not empty ? (nodes[0].item.parent.id ?? '') : '' }}">
+        {% for node in nodes %}
+            <li data-item-id="{{ node.item.id }}" class="rounded-lg border border-neutral-200 bg-white p-sp-xs">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="cursor-move text-neutral-500" data-drag-handle>⠿</span>
+                        <span class="text-fs-sm font-medium text-neutral-900">{{ node.item.label }}</span>
+                        <span class="badge badge-neutral">{{ node.item.locale }}</span>
+                        {% if node.item.url %}
+                            <span class="text-fs-xs text-neutral-500">{{ node.item.url }}</span>
+                        {% elseif node.item.nodeId %}
+                            <span class="text-fs-xs text-neutral-500">{{ 'menu.edit.node_label'|trans({id: node.item.nodeId}) }}</span>
+                        {% endif %}
+                    </div>
+                    <form method="post" action="{{ path('admin_menus_delete_item', {itemId: node.item.id}) }}"
+                          onsubmit="return confirm({{ 'menu.edit.delete_confirm'|trans|json_encode|raw }});">
+                        <input type="hidden" name="_token" value="{{ csrf_token('admin_menu_form') }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            {{ 'aacp.cron.delete'|trans }}
+                        </button>
+                    </form>
+                </div>
+
+                {% if node.children is not empty %}
+                    {{ self.renderItems(node.children) }}
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{% endmacro %}

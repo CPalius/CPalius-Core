@@ -1,0 +1,118 @@
+<section class="portal-zone" id="entity">
+    <div class="container">
+        <div class="portal-module fade-in">
+            <div class="portal-module__head">
+                <h2 class="portal-module__title">
+                    <i class="bi bi-diagram-2"></i>
+                    <span>İki Sınıf Varlık: Content vs Business</span>
+                </h2>
+                <span class="portal-module__eyebrow">Bölüm 5</span>
+            </div>
+            <div class="portal-module__body portal-module__body--padded portal-marketing">
+                <p class="portal-module__intro">
+                    CPalius sadece bir CMS değildir; arkasında Oto Galeri, Turizm Acentası,
+                    Personel Yönetimi veya CRM/ERP sistemlerinin çalışabileceği esnek bir uygulama platformudur.
+                </p>
+
+                <div class="entity-table-wrapper">
+                    <table class="entity-table">
+                        <thead>
+                            <tr>
+                                <th>Özellik</th>
+                                <th><i class="bi bi-file-text"></i> Content Entities (Node)</th>
+                                <th><i class="bi bi-briefcase"></i> Business Records (Resource)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Kavramsal Karşılık</td>
+                                <td>Sayfa, Yazı, İlan Vitrini, Blog</td>
+                                <td>Araç, Fatura, Rezervasyon, Personel</td>
+                            </tr>
+                            <tr>
+                                <td>Slug</td>
+                                <td>Var — SEO dostu URL üretimi</td>
+                                <td>Yok — İç yönetim kaydı</td>
+                            </tr>
+                            <tr>
+                                <td>Çoklu Dil</td>
+                                <td>Var — translation_group_id ile</td>
+                                <td>Yok — Tek dilli kayıt</td>
+                            </tr>
+                            <tr>
+                                <td>Yayın Durumu</td>
+                                <td>Var — draft / published / archived</td>
+                                <td>Yok — Durum makinesi (workflow)</td>
+                            </tr>
+                            <tr>
+                                <td>SEO</td>
+                                <td>Var — Meta bilgileri JSON data içinde</td>
+                                <td>Yok — Herkese açık değil</td>
+                            </tr>
+                            <tr>
+                                <td>Ortak Payda</td>
+                                <td colspan="2" style="text-align:center;">Aynı Capability modeli, aynı Twig bileşenleri, aynı CLI yönetimi, aynı Config Sync</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="grid-golden">
+                    <div class="grid-golden-major">
+                        <h3>#[CpResource] <span class="text-accent">Devrimi</span></h3>
+                        <p>
+                            Geliştiricinin iş süreçlerini kodlamasını saniyeler seviyesine indirmek için
+                            özel bir PHP Attribute yapısı tasarlandı. Tek bir anotasyon ile veritabanındaki
+                            ham bir Doctrine sınıfını platformun tüm güçleriyle birleştiriyoruz.
+                        </p>
+                        <p><strong>Bu tek nitelik sayesinde:</strong></p>
+                        <ul>
+                            <li class="solution-item">
+                                <i class="bi bi-check2-circle"></i>
+                                <span>Rol ve yetenek matrisine dinamik yetenekler <strong>otomatik kaydolur</strong></span>
+                            </li>
+                            <li class="solution-item">
+                                <i class="bi bi-check2-circle"></i>
+                                <span>Otomatik CRUD formları ve liste ekranları <strong>dinamik türetilir</strong></span>
+                            </li>
+                            <li class="solution-item">
+                                <i class="bi bi-check2-circle"></i>
+                                <span>SaaS çoklu kiracı izolasyonu <strong>otomatik uygulanır</strong></span>
+                            </li>
+                            <li class="solution-item">
+                                <i class="bi bi-check2-circle"></i>
+                                <span>Tüm değişiklikler <strong>sürüm geçmişine</strong> (audit log) kaydedilir</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="grid-golden-minor">
+                        <div class="cp-resource-block">
+                            <div class="code-block-header">
+                                <i class="bi bi-file-code"></i> Örnek: Vehicle Entity
+                            </div>
+                            <pre><span class="comment">#[CpResource(</span>
+<span class="comment">    name: 'vehicle',</span>
+<span class="comment">    module: 'oto-galeri',</span>
+<span class="comment">    capabilities: [</span>
+<span class="comment">        'create','edit',</span>
+<span class="comment">        'delete','view'</span>
+<span class="comment">    ],</span>
+<span class="comment">    auditable: true,</span>
+<span class="comment">    multiTenant: true,</span>
+<span class="comment">    workflow: 'vehicle_lifecycle'</span>
+<span class="comment">)]</span>
+<span class="keyword">#[ORM\Entity]</span>
+<span class="keyword">class</span> <span class="function">Vehicle</span>
+{
+    <span class="keyword">private</span> ?<span class="function">int</span> $id;
+    <span class="keyword">private</span> ?<span class="function">string</span> $plate;
+    <span class="keyword">private</span> ?<span class="function">string</span> $brand;
+    <span class="keyword">private</span> ?<span class="function">int</span> $price;
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,23 @@
+# Çekirdeğin kendi yetenekleri (capabilities). Modüller kendi yeteneklerini
+# BURAYA değil, kendi Resources/config/capabilities.yaml dosyalarına eklerler
+# (bkz. App\Core\Security\DependencyInjection\Compiler\CapabilityRegistrationPass).
+#
+# node.post.* yetenekleri BURADA değildir: Blog modülüne ait olduğu için
+# cp-content/modules/Blog/Resources/config/capabilities.yaml içinde tanımlıdır.
+#
+# İsimlendirme kuralı: <alan>.<varlık>.<eylem>[.<kapsam>]
+#   - system.module.manage    -> AACP'den modül aktif/pasif etme
+capabilities:
+    - system.developer
+    - system.module.manage
+    - system.aacp.access
+    - system.settings.manage
+    - system.performance.manage
+    - system.cron.manage
+    - system.hooks.manage
+    - system.api.manage
+    - system.users.view
+    - system.users.manage
+    - system.localization.manage
+    - core.url_alias.manage
+    - admin.access

@@ -1,0 +1,34 @@
+{#
+    Studio header'ının ortak sağ blok içeriği: profil dropdown'u (önceden
+    sidebar altında düz metin olarak duran kullanıcı adı + logout linki
+    buraya taşındı, bkz. admin/layout.html.twig sidebar footer'ı).
+#}
+<div class="dropdown">
+    <button type="button" data-dropdown-trigger="studio-profile-menu"
+            class="flex items-center gap-2 rounded-full border border-neutral-300 py-1 pe-3 ps-1 hover:bg-neutral-50">
+        <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-fs-xs font-semibold text-primary-700">
+            {{ app.user ? app.user.email|slice(0, 1)|upper : '?' }}
+        </span>
+        <span class="hidden text-fs-sm text-neutral-700 sm:inline">{{ app.user ? app.user.email : '' }}</span>
+    </button>
+    <div id="studio-profile-menu" class="dropdown-menu end-0">
+        <a href="{{ path('aacp_users_profile') }}">
+            <twig:ux:icon name="tabler:user-circle" class="h-4 w-4" />
+            {{ 'studio.layout.my_profile'|trans }}
+        </a>
+        <a href="{{ path('theme_cpalius_website_home') }}" target="_blank" rel="noopener">
+            <twig:ux:icon name="tabler:external-link" class="h-4 w-4" />
+            {{ 'studio.layout.go_website'|trans }}
+        </a>
+        {% if is_granted('system.aacp.access') %}
+            <a href="{{ path('aacp_dashboard') }}">
+                <twig:ux:icon name="tabler:shield-lock" class="h-4 w-4" />
+                {{ 'studio.layout.go_aacp'|trans }}
+            </a>
+        {% endif %}
+        <a href="{{ path('admin_logout') }}" class="!text-danger-600 hover:!bg-danger-50">
+            <twig:ux:icon name="tabler:logout" class="h-4 w-4" />
+            {{ 'studio.layout.logout'|trans }}
+        </a>
+    </div>
+</div>

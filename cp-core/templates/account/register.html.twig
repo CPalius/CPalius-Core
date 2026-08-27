@@ -1,0 +1,70 @@
+{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+
+{% block title %}{{ 'account.register.title'|trans({'app_name': cp_app_name|default('CPalius CMF')}) }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-nav fade-in" aria-label="{{ 'account.nav_aria'|trans }}">
+        <div class="container">
+            <div class="forum-nav__inner">
+                <ol class="forum-nav__crumbs">
+                    <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+                    <li class="is-active">{{ 'account.register.breadcrumb'|trans }}</li>
+                </ol>
+            </div>
+        </div>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in" style="text-align:center; max-width: 460px; margin: 0 auto var(--sp-lg);">
+    <span class="section-label">{{ 'account.register.label'|trans }}</span>
+    <h1 class="section-title">{{ 'account.register.heading'|trans }}</h1>
+    <p class="forum-header__desc" style="margin: 0 auto;">{{ 'account.register.desc'|trans }}</p>
+</div>
+
+<div class="forum-form fade-in" style="max-width: 460px; margin: 0 auto;">
+    <form method="post">
+        <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 var(--sp-sm);">
+            <div class="forum-field">
+                <label for="reg-first-name">{{ 'account.register.first_name_label'|trans }}</label>
+                <input type="text" id="reg-first-name" name="first_name" value="{{ formValues.firstName }}" maxlength="100">
+            </div>
+            <div class="forum-field">
+                <label for="reg-last-name">{{ 'account.register.last_name_label'|trans }}</label>
+                <input type="text" id="reg-last-name" name="last_name" value="{{ formValues.lastName }}" maxlength="100">
+            </div>
+        </div>
+
+        <div class="forum-field">
+            <label for="reg-email">{{ 'account.register.email_label'|trans }}</label>
+            <input type="email" id="reg-email" name="email" value="{{ formValues.email }}" required autofocus autocomplete="email">
+        </div>
+
+        <div class="forum-field">
+            <label for="reg-username">{{ 'account.register.username_label'|trans }} <span style="text-transform:none; font-weight:400;">{{ 'account.register.optional'|trans }}</span></label>
+            <input type="text" id="reg-username" name="username" value="{{ formValues.username }}" maxlength="180" autocomplete="username">
+        </div>
+
+        <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 var(--sp-sm);">
+            <div class="forum-field">
+                <label for="reg-password">{{ 'account.register.password_label'|trans }}</label>
+                <input type="password" id="reg-password" name="password" required minlength="8" autocomplete="new-password">
+            </div>
+            <div class="forum-field">
+                <label for="reg-password-confirm">{{ 'account.register.password_confirm_label'|trans }}</label>
+                <input type="password" id="reg-password-confirm" name="password_confirm" required minlength="8" autocomplete="new-password">
+            </div>
+        </div>
+        <p class="forum-field-hint" style="margin-top:-8px;">{{ 'account.register.password_hint'|trans }}</p>
+
+        <div class="forum-form__actions">
+            <input type="hidden" name="_token" value="{{ csrf_token('account_register') }}">
+            <button type="submit" class="btn btn-primary btn-sm">{{ 'account.register.submit'|trans }}</button>
+        </div>
+    </form>
+
+    <p style="margin-top: var(--sp-md); text-align:center; font-size: var(--fs-sm); color: var(--slw-text-muted);">
+        {{ 'account.register.have_account'|trans }} <a href="{{ path('account_login') }}" style="color: var(--cp-accent); text-decoration: underline;">{{ 'account.register.login_link'|trans }}</a>
+    </p>
+</div>
+{% endblock %}

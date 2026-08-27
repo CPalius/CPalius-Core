@@ -1,0 +1,44 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.hooks.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <div class="grid grid-cols-1 gap-sp-sm sm:grid-cols-2">
+            <twig:cp:card title="{{ 'aacp.hooks.flat_file_hooks'|trans }}" padded="{{ true }}">
+                <p class="text-fs-xl font-semibold text-slate-100">{{ flatFileCount }}</p>
+                <p class="mt-1 text-fs-xs text-slate-500">
+                    {{ 'aacp.hooks.flat_file_desc'|trans }}
+                </p>
+            </twig:cp:card>
+            <twig:cp:card title="{{ 'aacp.hooks.attribute_hooks'|trans }}" padded="{{ true }}">
+                <p class="text-fs-xl font-semibold text-slate-100">{{ attributeCount }}</p>
+                <p class="mt-1 text-fs-xs text-slate-500">
+                    {{ 'aacp.hooks.attribute_desc'|trans }}
+                </p>
+            </twig:cp:card>
+        </div>
+
+        <twig:cp:card title="{{ 'aacp.hooks.registered_points'|trans }}" padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.hooks.column.hook_point'|trans,
+                'aacp.hooks.column.lane'|trans,
+                'aacp.hooks.column.source'|trans,
+                'aacp.hooks.column.detail'|trans,
+            ] }}" empty="{{ hooks is empty }}" emptyText="{{ 'aacp.hooks.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for hook in hooks %}
+                        <tr>
+                            <td class="font-mono text-fs-xs !text-primary-400">{{ hook.hookPoint }}</td>
+                            <td>
+                                <twig:cp:badge status="{{ hook.type == 'attribute' ? 'active' : 'inactive' }}" label="{{ hook.type == 'attribute' ? 'aacp.hooks.type_attribute'|trans : 'aacp.hooks.type_flat_file'|trans }}" />
+                            </td>
+                            <td class="font-mono text-fs-xs !text-slate-400">{{ hook.source }}</td>
+                            <td class="text-fs-xs !text-slate-500">{{ hook.detail }}</td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+{% endblock %}

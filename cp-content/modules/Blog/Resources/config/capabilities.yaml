@@ -1,0 +1,10 @@
+capabilities:
+    - blog.category.manage
+    - node.post.view.own
+    - node.post.view.any
+    - node.post.create
+    - node.post.edit.own
+    - node.post.edit.any
+    - node.post.delete.own
+    - node.post.delete.any
+    - node.post.publish

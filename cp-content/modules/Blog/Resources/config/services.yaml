@@ -1,0 +1,59 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Modules\Blog\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    # PostType, autoconfigure sayesinde AbstractType'tan türediği için
+    # otomatik 'form.type' etiketiyle kaydedilir — bu resource taraması
+    # olmadan Form/ dizini hiç servis konteynerine dahil edilmezdi.
+    Modules\Blog\Form\:
+        resource: '../../Form/'
+
+    # ScheduledPostsWidgetProvider, App\Core\Aacp\SystemWidgetProviderInterface'in
+    # #[AutoconfigureTag] niteliği sayesinde otomatik olarak
+    # 'cpalius.aacp.system_widget_provider' etiketiyle kaydedilir — AACP
+    # bu resource taraması olmadan Aacp/ dizinini hiç göremezdi.
+    Modules\Blog\Aacp\:
+        resource: '../../Aacp/'
+
+    # BlogWidgetPlugin ve BlogArchivePlugin, App\Core\Plugin\PluginInterface'in
+    # #[AutoconfigureTag] niteliği sayesinde otomatik olarak
+    # 'cpalius.module_plugin' etiketiyle kaydedilir — PluginRegistry bu
+    # resource taraması olmadan Plugin/ dizinini hiç göremezdi.
+    Modules\Blog\Plugin\:
+        resource: '../../Plugin/'
+
+    # BlogTwigExtension, Twig\Extension\AbstractExtension'dan türediği için
+    # autoconfigure sayesinde otomatik 'twig.extension' etiketiyle
+    # kaydedilir — bu resource taraması olmadan Twig/ dizini hiç servis
+    # konteynerine dahil edilmezdi (bkz. BlogTwigExtension docblock'u).
+    Modules\Blog\Twig\:
+        resource: '../../Twig/'
+
+    Modules\Blog\Service\:
+        resource: '../../Service/'
+
+    Modules\Blog\Command\:
+        resource: '../../Command/'
+
+    # Faz 7A örneği: BlogAttributeHooks #[CpHook] taşıyor. HookRegistrationPass
+    # bu servisi ANCAK container'da mevcutsa (yani BURADA resource olarak
+    # taranmışsa) tanır — bu resource taraması olmadan Hooks/ dizini hiç
+    # servis konteynerine dahil edilmezdi (aynı Twig//Plugin/ deseni).
+    Modules\Blog\Hooks\:
+        resource: '../../Hooks/'
+
+    # Faz 7B örneği: BlogApiEndpoints #[CpApi] taşıyor. ApiRegistrationPass
+    # bu servisi ANCAK container'da mevcutsa tanır — aynı Hooks/ deseni.
+    Modules\Blog\Api\:
+        resource: '../../Api/'
+
+    # Birleşik Otomasyon Motoru örneği: PublishScheduledPostsTask #[CpCronJob]
+    # taşıyor. CronRegistrationPass bu servisi ANCAK container'da mevcutsa
+    # tanır — aynı Hooks//Api/ deseni.
+    Modules\Blog\Cron\:
+        resource: '../../Cron/'

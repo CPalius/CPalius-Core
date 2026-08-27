@@ -1,0 +1,67 @@
+{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+
+{% block title %}{{ 'forum.new_topic.title_prefix'|trans }} — {{ section.title }} — {{ 'forum.breadcrumb.home_title'|trans }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-crumb fade-in" aria-label="{{ 'forum.nav_aria'|trans }}">
+        <ol class="forum-crumb__list">
+            <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+            <li><a href="{{ path('forum_index') }}">{{ 'forum.breadcrumb.home_title'|trans }}</a></li>
+            <li><a href="{{ path('forum_section', {sectionSlug: section.slug}) }}">{{ section.title }}</a></li>
+            <li class="is-active"><i class="bi bi-plus-circle"></i> {{ 'forum.new_topic.breadcrumb'|trans }}</li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap(['forum-editor-init']) }}
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-form fade-in">
+    <div class="forum-form__title"><i class="bi bi-plus-circle"></i> {{ 'forum.new_topic.form_title'|trans }}</div>
+    <form action="{{ path('forum_new_topic', {sectionSlug: section.slug}) }}" method="post">
+        <div class="forum-field">
+            <label for="ft-title">{{ 'forum.field.title'|trans }}</label>
+            <input type="text" id="ft-title" name="title" value="{{ formValues.title }}" maxlength="255" required autofocus>
+        </div>
+
+        <div class="forum-field">
+            <label for="ft-desc">{{ 'forum.field.description'|trans }} <span style="text-transform:none; font-weight:400;">{{ 'forum.field.optional'|trans }}</span></label>
+            <input type="text" id="ft-desc" name="description" value="{{ formValues.description }}" maxlength="255">
+        </div>
+
+        {% if prefixes is defined and prefixes is not empty %}
+            <div class="forum-field">
+                <label for="ft-prefix">{{ 'forum.field.prefix'|trans }} <span style="text-transform:none; font-weight:400;">{{ 'forum.field.optional'|trans }}</span></label>
+                <select id="ft-prefix" name="prefix_id">
+                    <option value="">{{ 'forum.field.prefix_none'|trans }}</option>
+                    {% for prefix in prefixes %}
+                        <option value="{{ prefix.id }}" {{ formValues.prefixId == prefix.id ? 'selected' : '' }}>{{ prefix.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        {% endif %}
+
+        <div class="forum-field forum-composer">
+            <label>{{ 'forum.field.message'|trans }}</label>
+            <textarea id="ft-body" name="body" data-forum-editor data-forum-editor-min-height="450" required placeholder="{{ 'forum.field.message_placeholder'|trans }}">{{ formValues.body }}</textarea>
+            <p class="forum-field-hint">{{ 'forum.new_topic.edit_hint'|trans }}</p>
+        </div>
+
+        <div class="forum-field">
+            <label class="forum-checkbox">
+                <input type="checkbox" name="private" value="1" {{ formValues.isPrivate ? 'checked' : '' }}>
+                {{ 'forum.new_topic.private_label'|trans }} <span class="hint">— {{ 'forum.new_topic.private_hint'|trans }}</span>
+            </label>
+        </div>
+
+        <div class="forum-form__actions">
+            <input type="hidden" name="_token" value="{{ csrf_token('forum_new_topic') }}">
+            <button type="submit" class="btn btn-primary btn-sm">{{ 'forum.action.publish_topic'|trans }}</button>
+            <a href="{{ path('forum_section', {sectionSlug: section.slug}) }}" class="forum-form__cancel">{{ 'forum.action.cancel'|trans }}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{#
+    Not show — dar konteyner, prose gövde, code_snippet için terminal.
+    GÜVENLİK: code_snippet |raw ile basılmaz (auto-escape).
+#}
+<section class="section post-show post-show--not" id="post-detail">
+    <div class="container container-narrow">
+        {% if postBody %}
+            <div class="post-body post-body--note fade-in">{{ postBody|raw }}</div>
+        {% endif %}
+
+        {% if typeFields.code_snippet is defined and typeFields.code_snippet %}
+            <div class="slw-term-window slw-term-window--note fade-in">
+                <div class="slw-term-window__bar">
+                    <span class="slw-term-window__dots"><i></i><i></i><i></i></span>
+                    <span class="slw-term-window__title">~ {{ post.slug }}.note</span>
+                </div>
+                <div class="slw-term-window__body">
+                    <pre class="slw-term-window__code"><code>{{ typeFields.code_snippet }}</code></pre>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if post.tags is not empty %}
+            <div class="post-tags mt-sp-md">
+                {% for tag in post.tags %}
+                    <a href="{{ path('blog_tag', {_locale: post.locale, slug: tag.slug}) }}" class="slw-tag-pill">#{{ tag.name }}</a>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</section>

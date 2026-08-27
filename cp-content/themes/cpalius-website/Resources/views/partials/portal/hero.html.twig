@@ -1,0 +1,71 @@
+<section class="hero" id="hero">
+    <div class="container hero-grid">
+        <div class="hero-content">
+            {% if portalBlock.label|default('') %}
+                <p class="hero-label">{{ portalBlock.label }}</p>
+            {% endif %}
+            <h1 class="hero-title">
+                {% set heroTitle = portalBlock.title|default('CPalius CMF') %}
+                {% if 'CMF' in heroTitle %}
+                    {{ heroTitle|replace({'CMF': ''})|trim }} <span class="text-accent">CMF</span>
+                {% else %}
+                    {{ heroTitle }}
+                {% endif %}
+            </h1>
+            {% if portalBlock.subtitle|default('') %}
+                <p class="hero-subtitle">{{ portalBlock.subtitle|nl2br }}</p>
+            {% endif %}
+            {% if portalBlock.description|default('') %}
+                <p class="hero-desc">{{ portalBlock.description }}</p>
+            {% endif %}
+            <div class="hero-actions">
+                {% if portalBlock.cta_primary_label|default('') %}
+                    <a href="{{ portalBlock.cta_primary_href|default('#') }}" class="btn btn-primary">
+                        <i class="bi bi-book"></i> {{ portalBlock.cta_primary_label }}
+                    </a>
+                {% endif %}
+                {% if portalBlock.cta_secondary_label|default('') %}
+                    <a href="{{ portalBlock.cta_secondary_href|default('#') }}" class="btn btn-secondary">
+                        <i class="bi bi-diagram-3"></i> {{ portalBlock.cta_secondary_label }}
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                {% endif %}
+            </div>
+            {% set badges = portalBlock.badges|default('')|split(',') %}
+            {% if badges|length > 0 and portalBlock.badges|default('') != '' %}
+                <div class="hero-tech-badges">
+                    {% for badge in badges %}
+                        {% set badgeText = badge|trim %}
+                        {% if badgeText %}
+                            <span class="badge">{{ badgeText }}</span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="hero-visual">
+            <div class="hero-stage">
+                <div class="hero-stage-ring ring-1"></div>
+                <div class="hero-stage-ring ring-2"></div>
+                <div class="hero-stage-ring ring-3"></div>
+                <div class="hero-stage-orbit">
+                    <span class="orbit-dot"></span>
+                </div>
+                <div class="hero-stage-orbit orbit-reverse">
+                    <span class="orbit-dot"></span>
+                </div>
+                <div class="hero-stage-glow"></div>
+                <div class="hero-stage-glow-core"></div>
+                <div class="hero-stage-floor"></div>
+                <img src="/CPalius.png" alt="CPalius CMF" class="hero-stage-logo">
+                <span class="hero-spark spark-1"></span>
+                <span class="hero-spark spark-2"></span>
+                <span class="hero-spark spark-3"></span>
+                <span class="hero-spark spark-4"></span>
+                <span class="hero-spark spark-5"></span>
+                <span class="hero-spark spark-6"></span>
+            </div>
+        </div>
+    </div>
+</section>

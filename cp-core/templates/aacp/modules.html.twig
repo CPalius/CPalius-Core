@@ -1,0 +1,57 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.modules.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        {% if activated %}
+            <div class="toast toast-success">
+                {{ 'aacp.modules.activated_notice'|trans }}
+            </div>
+        {% elseif activationFailed %}
+            <div class="toast toast-error">
+                {{ 'aacp.modules.activation_failed_notice'|trans }}
+            </div>
+        {% endif %}
+
+        <twig:cp:card title="{{ 'aacp.modules.installed_modules'|trans }}" padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.modules.column.name'|trans,
+                'aacp.modules.column.version'|trans,
+                'aacp.modules.column.class'|trans,
+                'aacp.modules.column.status'|trans,
+                '',
+            ] }}" empty="{{ modules is empty }}">
+                <twig:block name="rows">
+                    {% for module in modules %}
+                        <tr>
+                            <td class="!text-slate-200">{{ module.name }}</td>
+                            <td class="!text-slate-400 font-mono text-fs-xs">{{ module.version }}</td>
+                            <td class="font-mono text-fs-xs !text-slate-500">{{ module.class ?? '—' }}</td>
+                            <td><twig:cp:badge status="{{ module.status }}" /></td>
+                            <td class="text-right">
+                                {% if module.status == 'active' %}
+                                    <form method="post" action="{{ path('aacp_module_deactivate', {dirName: module.dirName}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                        <input type="hidden" name="_redirect" value="{{ path('aacp_modules') }}">
+                                        <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
+                                            {{ 'aacp.dashboard.deactivate'|trans }}
+                                        </button>
+                                    </form>
+                                {% elseif module.status == 'inactive' %}
+                                    <form method="post" action="{{ path('aacp_module_activate', {dirName: module.dirName}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                        <input type="hidden" name="_redirect" value="{{ path('aacp_modules') }}">
+                                        <button type="submit" class="text-fs-xs font-medium !text-primary-400 hover:!text-success-300">
+                                            {{ 'aacp.modules.activate'|trans }}
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+{% endblock %}

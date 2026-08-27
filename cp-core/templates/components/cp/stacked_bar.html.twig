@@ -1,0 +1,46 @@
+{#
+    <twig:cp:stacked_bar segments="{{ [
+        {label: 'post', count: 42, colorClass: 'bg-primary-500'},
+        {label: 'page', count: 18, colorClass: 'bg-success-500'},
+    ] }}" />
+
+    Tek satırlık, %100 toplamı kabul eden çok-segmentli progress bar —
+    5-6 satırlık bir bar-chart yerine dikey alan tasarrufu sağlayan bir
+    "kokpit göstergesi" (AACP Dashboard "Tipe Göre İçerik"/"Mime Tipi
+    Dağılımı" widget'ları için). twig:cp:gauge'un tek-değerli mantığından
+    farklı olarak çoklu segment destekler.
+
+    Props:
+      segments (list<array{label: string, count: int, colorClass: string}>)
+        colorClass çağıran taraftan (controller/template) verilir —
+        component kendi renk ataması yapmaz, "diğer" gibi bucket'lanmış
+        kategoriler için nötr bir ton seçimi çağıran tarafın kararıdır.
+#}
+{% props segments = [] %}
+
+{% set total = 0 %}
+{% for segment in segments %}
+    {% set total = total + segment.count %}
+{% endfor %}
+
+<div {{ attributes.defaults({class: 'space-y-2'}) }}>
+    <div class="flex h-3 w-full overflow-hidden rounded-full bg-dark-1 ring-1 ring-white/10">
+        {% for segment in segments %}
+            {% set pct = total > 0 ? (segment.count / total) * 100 : 0 %}
+            {% if pct > 0 %}
+                <div class="h-full {{ segment.colorClass }} transition-all duration-500 first:rounded-l-full last:rounded-r-full"
+                     style="width: {{ pct }}%" title="{{ segment.label }}: {{ segment.count }}"></div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <div class="flex flex-wrap gap-x-3 gap-y-1 text-fs-xs">
+        {% for segment in segments %}
+            <span class="inline-flex items-center gap-1.5 text-slate-400">
+                <span class="h-1.5 w-1.5 rounded-full {{ segment.colorClass }}"></span>
+                {{ segment.label }}
+                <span class="font-mono text-slate-300">{{ segment.count }}</span>
+            </span>
+        {% endfor %}
+    </div>
+</div>

@@ -1,0 +1,123 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.users.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="mb-sp-sm flex items-center justify-between gap-sp-sm">
+        <form method="get" class="flex items-center gap-2">
+            <input type="text" name="q" value="{{ search }}" placeholder="{{ 'aacp.users.search_placeholder'|trans }}"
+                   class="form-control !w-64 !bg-dark-1 !border-white/10 !text-slate-200 placeholder-slate-600">
+            <button type="submit" class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5">
+                {{ 'aacp.users.search_submit'|trans }}
+            </button>
+        </form>
+
+        {% if is_granted('system.users.manage') %}
+            <a href="{{ path('aacp_users_create') }}" class="btn btn-sm btn-primary">
+                <twig:ux:icon name="heroicons:plus" class="h-3.5 w-3.5" />
+                {{ 'aacp.users.create_action'|trans }}
+            </a>
+        {% endif %}
+    </div>
+
+    <twig:cp:card padded="{{ false }}">
+        <twig:cp:table headers="{{ [
+            'aacp.users.column.email'|trans,
+            'aacp.users.column.full_name'|trans,
+            'aacp.users.column.roles'|trans,
+            'aacp.users.column.status'|trans,
+            'aacp.users.column.created_at'|trans,
+            '',
+        ] }}" empty="{{ users is empty }}" emptyText="{{ 'aacp.users.empty'|trans }}">
+            <twig:block name="rows">
+                {% for user in users %}
+                    <tr>
+                        <td>
+                            <p class="font-medium !text-slate-200">{{ user.email }}</p>
+                            {% if user.username %}
+                                <p class="text-fs-xs !text-slate-500">@{{ user.username }}</p>
+                            {% endif %}
+                        </td>
+                        <td class="!text-slate-300">
+                            {{ user.fullName }}
+                        </td>
+                        <td>
+                            {% for role in user.cpaliusRoles %}
+                                <span class="badge badge-neutral mr-1">
+                                    {{ role }}
+                                </span>
+                            {% else %}
+                                <span class="text-fs-xs !text-slate-600">—</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <twig:cp:badge status="{{ user.status == 'active' ? 'active' : (user.status == 'banned' ? 'quarantined' : 'inactive') }}" />
+                        </td>
+                        <td class="text-fs-xs !text-slate-500">
+                            {{ user.createdAt|date('d.m.Y H:i') }}
+                        </td>
+                        <td class="text-right">
+                            {% if is_granted('system.users.manage') %}
+                                <div class="inline-flex items-center gap-1.5">
+                                    <a href="{{ path('aacp_users_edit', {id: user.id}) }}" class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5">
+                                        {{ 'aacp.users.edit_action'|trans }}
+                                    </a>
+                                    {% if user.id != app.user.id %}
+                                        <form method="post" action="{{ path('aacp_users_delete', {id: user.id}) }}"
+                                              onsubmit="return confirm({{ 'aacp.users.delete_confirm'|trans({email: user.email})|json_encode|raw }});">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('aacp_user_delete_' ~ user.id) }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                {{ 'aacp.users.delete_action'|trans }}
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:cp:table>
+    </twig:cp:card>
+
+    {% if users.totalPages > 1 %}
+        <nav class="mt-sp-md flex items-center justify-between border-t border-white/10 pt-sp-sm" aria-label="{{ 'aacp.pagination.aria_label'|trans }}">
+            <p class="text-fs-xs !text-slate-500">
+                {{ 'aacp.pagination.summary'|trans({
+                    current: users.currentPage,
+                    total: users.totalPages,
+                    items: users.totalItems,
+                }) }}
+            </p>
+
+            <div class="flex items-center gap-1.5">
+                {% if users.hasPreviousPage %}
+                    <a href="{{ path('aacp_users', {page: users.currentPage - 1, q: search}) }}"
+                       class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5">
+                        ‹ {{ 'aacp.pagination.previous'|trans }}
+                    </a>
+                {% endif %}
+
+                {% for pageNumber in max(1, users.currentPage - 2)..min(users.totalPages, users.currentPage + 2) %}
+                    {% if pageNumber == users.currentPage %}
+                        <span class="btn btn-sm btn-primary">
+                            {{ pageNumber }}
+                        </span>
+                    {% else %}
+                        <a href="{{ path('aacp_users', {page: pageNumber, q: search}) }}"
+                           class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5">
+                            {{ pageNumber }}
+                        </a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if users.hasNextPage %}
+                    <a href="{{ path('aacp_users', {page: users.currentPage + 1, q: search}) }}"
+                       class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5">
+                        {{ 'aacp.pagination.next'|trans }} ›
+                    </a>
+                {% endif %}
+            </div>
+        </nav>
+    {% endif %}
+{% endblock %}

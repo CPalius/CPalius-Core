@@ -1,0 +1,52 @@
+###> symfony/framework-bundle ###
+/.env
+/.env.dev
+/.env.local
+/.env.local.php
+/.env.*.local
+/cp-core/config/secrets/prod/prod.decrypt.private.php
+/cp-core/var/
+/cp-includes/vendor/
+/public/bundles/
+###< symfony/framework-bundle ###
+
+###> symfony/asset-mapper ###
+/public/assets/
+/cp-core/assets/vendor/
+###< symfony/asset-mapper ###
+
+###> phpunit ###
+.phpunit.result.cache
+/phpunit.xml
+###< phpunit ###
+
+###> CPalius: private / local / generated ###
+# Reference systems & legacy (never publish)
+/Diğer-sistemler/
+/Diger-sistemler/
+
+# Uploaded user media
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# Local IDE / AI tooling
+/.cursor/
+/.claude/
+/.idea/
+/.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Cursor / agent skill drafts (not part of the framework)
+/SKILL.md
+
+# Local agent rules (optional; keep private if desired)
+# /.rules
+
+# Logs & temp
+*.log
+*.tmp
+*.cache
+###< CPalius: private / local / generated ###

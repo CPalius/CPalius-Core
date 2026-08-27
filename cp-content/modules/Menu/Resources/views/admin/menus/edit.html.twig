@@ -1,0 +1,85 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ menu.name }}{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap('menu-sortable') }}
+{% endblock %}
+
+{% block body %}
+    {% import '@MenuModule/admin/menus/_macros.html.twig' as menuMacros %}
+    {% set treeHtml = tree is not empty ? menuMacros.renderItems(tree) : '' %}
+
+    <div class="flex flex-col gap-sp-md lg:flex-row lg:items-start">
+        <div class="min-w-0 space-y-sp-md lg:w-[61.8%]">
+            <twig:studio:card title="{{ 'menu.edit.structure_title'|trans }}">
+                {% if tree is empty %}
+                    <p class="text-fs-sm text-neutral-500">{{ 'menu.edit.no_items'|trans }}</p>
+                {% else %}
+                    {{ treeHtml }}
+                {% endif %}
+            </twig:studio:card>
+        </div>
+
+        <div class="min-w-0 space-y-sp-md lg:w-[38.2%]">
+            <twig:studio:card title="{{ 'menu.edit.add_item_title'|trans }}">
+                <form method="post" action="{{ path('admin_menus_add_item', {id: menu.id}) }}" class="space-y-sp-sm">
+                    <input type="hidden" name="_token" value="{{ csrf_token('admin_menu_form') }}">
+
+                    <div>
+                        <label class="form-label">{{ 'menu.edit.label_field'|trans }}</label>
+                        <input type="text" name="label" required class="form-control">
+                    </div>
+
+                    <div>
+                        <label class="form-label">{{ 'menu.edit.locale_field'|trans }}</label>
+                        <select name="locale" class="form-select">
+                            <option value="tr">Türkçe</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="form-label">{{ 'menu.edit.external_url_field'|trans }}</label>
+                        <input type="text" name="url" placeholder="{{ 'menu.edit.external_url_placeholder'|trans }}"
+                               class="form-control">
+                    </div>
+
+                    <div>
+                        <label class="form-label">{{ 'menu.edit.node_id_field'|trans }}</label>
+                        <input type="number" name="node_id" placeholder="{{ 'menu.edit.node_id_placeholder'|trans }}"
+                               class="form-control">
+                    </div>
+
+                    <div>
+                        <label class="form-label">{{ 'menu.edit.parent_field'|trans }}</label>
+                        <select name="parent_id" class="form-select">
+                            <option value="">— {{ 'menu.edit.parent_none'|trans }} —</option>
+                            {% for existing in allItems %}
+                                <option value="{{ existing.id }}">{{ existing.label }} ({{ existing.locale }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="open_in_new_tab" name="open_in_new_tab" value="1"
+                               class="form-check-input h-4 w-4 text-primary-600 focus:ring-primary-600">
+                        <label for="open_in_new_tab" class="text-fs-sm text-neutral-700">{{ 'menu.edit.open_in_new_tab'|trans }}</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-full">
+                        {{ 'menu.edit.add_item_submit'|trans }}
+                    </button>
+                </form>
+            </twig:studio:card>
+        </div>
+    </div>
+
+    <div
+        data-menu-reorder-config
+        data-reorder-url="{{ path('admin_menus_reorder', {id: menu.id}) }}"
+        data-csrf-token="{{ csrf_token('admin_menu_reorder') }}"
+        class="hidden"
+    ></div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.settings.plugins_header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        {% include 'aacp/_settings_tabs.html.twig' with { active: 'plugins' } %}
+
+        {% include 'aacp/_settings_form.html.twig' with {
+            settingGroups: settingGroups,
+            currentValues: currentValues,
+            csrf_token: csrf_token,
+            redirectTo: path('aacp_settings_plugins'),
+        } %}
+    </div>
+{% endblock %}

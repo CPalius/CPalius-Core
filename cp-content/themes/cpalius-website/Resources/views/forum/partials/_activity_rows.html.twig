@@ -1,0 +1,7 @@
+{#
+    AJAX load-more satırları — sadece <li> listesi.
+    Beklenen: items (list)
+#}
+{% for item in items %}
+    {% include '@CpaliusWebsiteTheme/forum/partials/_activity_row.html.twig' with { item: item } %}
+{% endfor %}

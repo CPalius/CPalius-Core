@@ -1,0 +1,6 @@
+# TOKEN TASARRUFU VE DAVRANIŞ KURALLARI
+
+- **Kod Değişiklikleri:** Bir dosyada değişiklik yaparken tüm dosyayı baştan yazma. Sadece değişen kısımları (diff veya belirli fonksiyonları) göster.
+- **Kısa Cevaplar:** Açıklamaları olabildiğince kısa ve öz tut. Tebrik, nezaket cümleleri veya "Tabii ki yardımcı olayım" gibi dolgu kelimeleri kullanma.
+- **Dosya Okuma Sınırı:** 300 satırdan uzun dosyaları tamamen okumadan önce benden onay iste. Sadece ilgili fonksiyonu veya satır aralığını oku.
+- **Ajan Davranışı (Agentic Mode):** Bir komut çalıştırmadan veya terminali kullanmadan önce sadece gerekli adımları planla. Döngüye girip (arka arkaya 2'ten fazla kez) aynı testi/komutu çalıştırma.

@@ -1,0 +1,200 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.homepage.header'|trans }}{% endblock %}
+
+{% block body %}
+    <p class="mb-sp-md text-fs-sm text-neutral-500">{{ 'studio.homepage.description'|trans }}</p>
+
+    <form method="post" action="{{ path('admin_homepage_settings_update') }}" id="portal-homepage-form" class="space-y-sp-md">
+        <input type="hidden" name="_token" value="{{ csrf_token }}">
+        <input type="hidden" name="portal_layout" id="portal-layout-json" value="">
+
+        <twig:cp:card title="{{ 'studio.homepage.mode_card'|trans }}">
+            <label class="form-label" for="homepage_mode">{{ modeDefinition.label|default('Ana Sayfa Modu') }}</label>
+            <select name="homepage_mode" id="homepage_mode" class="form-select lg:w-[61.8%]">
+                {% for value, label in modeDefinition.variants|default({}) %}
+                    <option value="{{ value }}" {{ modeValue == value ? 'selected' : '' }}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </twig:cp:card>
+
+        <twig:cp:card title="{{ 'studio.homepage.blocks_card'|trans }}">
+            <p class="mb-sp-sm text-fs-sm text-neutral-500">{{ 'studio.homepage.blocks_help'|trans }}</p>
+
+            <ul id="portal-block-list" class="space-y-2" data-portal-block-list>
+                {% for block in portalBlocks %}
+                    {% set meta = portalCatalog[block.id]|default(null) %}
+                    {% if meta %}
+                        <li class="rounded-lg border border-neutral-200 bg-white"
+                            data-block-id="{{ block.id }}"
+                            draggable="true">
+                            <div class="flex flex-wrap items-center gap-3 px-3 py-2.5">
+                                <button type="button"
+                                        class="cursor-grab text-neutral-400 hover:text-neutral-700"
+                                        data-drag-handle
+                                        aria-label="{{ 'studio.homepage.drag'|trans }}">
+                                    <twig:ux:icon name="tabler:grip-vertical" class="h-5 w-5" />
+                                </button>
+
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-fs-sm font-semibold text-neutral-900">{{ meta.label|trans }}</p>
+                                    <p class="text-fs-xs text-neutral-500">{{ block.id }} · {{ ('studio.homepage.group.' ~ meta.group)|trans }}</p>
+                                </div>
+
+                                <label class="inline-flex items-center gap-2 text-fs-sm text-neutral-700">
+                                    <input type="checkbox"
+                                           class="form-check-input h-4 w-4"
+                                           data-field="enabled"
+                                           {{ block.enabled ? 'checked' : '' }}>
+                                    {{ 'studio.homepage.enabled'|trans }}
+                                </label>
+
+                                <button type="button"
+                                        class="btn btn-secondary btn-sm"
+                                        data-toggle-settings
+                                        aria-expanded="false">
+                                    {{ 'studio.homepage.settings'|trans }}
+                                </button>
+                            </div>
+
+                            <div class="hidden border-t border-neutral-100 px-3 py-3 space-y-sp-sm bg-neutral-50/60" data-block-settings>
+                                {% if meta.supportsHeroFields %}
+                                    <div class="grid gap-3 md:grid-cols-2">
+                                        <div>
+                                            <label class="form-label">{{ 'studio.homepage.field.title'|trans }}</label>
+                                            <input type="text" class="form-control" data-field="title" value="{{ block.title|default('') }}">
+                                        </div>
+                                        <div>
+                                            <label class="form-label">{{ 'studio.homepage.field.label'|trans }}</label>
+                                            <input type="text" class="form-control" data-field="label" value="{{ block.label|default('') }}">
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <label class="form-label">{{ 'studio.homepage.field.subtitle'|trans }}</label>
+                                            <textarea class="form-control" rows="2" data-field="subtitle">{{ block.subtitle|default('') }}</textarea>
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <label class="form-label">{{ 'studio.homepage.field.description'|trans }}</label>
+                                            <textarea class="form-control" rows="3" data-field="description">{{ block.description|default('') }}</textarea>
+                                        </div>
+                                        <div>
+                                            <label class="form-label">{{ 'studio.homepage.field.cta_primary_label'|trans }}</label>
+                                            <input type="text" class="form-control" data-field="cta_primary_label" value="{{ block.cta_primary_label|default('') }}">
+                                        </div>
+                                        <div>
+                                            <label class="form-label">{{ 'studio.homepage.field.cta_primary_href'|trans }}</label>
+                                            <input type="text" class="form-control" data-field="cta_primary_href" value="{{ block.cta_primary_href|default('') }}">
+                                        </div>
+                                        <div>
+                                            <label class="form-label">{{ 'studio.homepage.field.cta_secondary_label'|trans }}</label>
+                                            <input type="text" class="form-control" data-field="cta_secondary_label" value="{{ block.cta_secondary_label|default('') }}">
+                                        </div>
+                                        <div>
+                                            <label class="form-label">{{ 'studio.homepage.field.cta_secondary_href'|trans }}</label>
+                                            <input type="text" class="form-control" data-field="cta_secondary_href" value="{{ block.cta_secondary_href|default('') }}">
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <label class="form-label">{{ 'studio.homepage.field.badges'|trans }}</label>
+                                            <input type="text" class="form-control" data-field="badges" value="{{ block.badges|default('') }}">
+                                            <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.homepage.field.badges_help'|trans }}</p>
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <div>
+                                        <label class="form-label">{{ 'studio.homepage.field.title'|trans }}</label>
+                                        <input type="text" class="form-control" data-field="title" value="{{ block.title|default('') }}" placeholder="{{ 'studio.homepage.field.title_placeholder'|trans }}">
+                                    </div>
+                                {% endif %}
+
+                                {% if meta.supportsLimit or meta.supportsLayout %}
+                                    <div class="grid gap-3 md:grid-cols-2">
+                                        {% if meta.supportsLimit %}
+                                            <div>
+                                                <label class="form-label">{{ 'studio.homepage.field.limit'|trans }}</label>
+                                                <input type="number" min="3" max="20" class="form-control" data-field="limit" value="{{ block.limit|default(5) }}">
+                                            </div>
+                                        {% endif %}
+                                        {% if meta.supportsLayout %}
+                                            <div>
+                                                <label class="form-label">{{ 'studio.homepage.field.layout'|trans }}</label>
+                                                <select class="form-select" data-field="layout">
+                                                    <option value="list" {{ (block.layout|default('list')) == 'list' ? 'selected' : '' }}>{{ 'studio.homepage.layout.list'|trans }}</option>
+                                                    <option value="cards" {{ (block.layout|default('')) == 'cards' ? 'selected' : '' }}>{{ 'studio.homepage.layout.cards'|trans }}</option>
+                                                    <option value="slider" {{ (block.layout|default('')) == 'slider' ? 'selected' : '' }}>{{ 'studio.homepage.layout.slider'|trans }}</option>
+                                                </select>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </twig:cp:card>
+
+        <button type="submit" class="btn btn-primary">{{ 'studio.homepage.save'|trans }}</button>
+    </form>
+
+    <script>
+    (() => {
+        const list = document.querySelector('[data-portal-block-list]');
+        const form = document.getElementById('portal-homepage-form');
+        const jsonInput = document.getElementById('portal-layout-json');
+        if (!list || !form || !jsonInput) return;
+
+        let dragEl = null;
+
+        list.querySelectorAll('[data-toggle-settings]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const row = btn.closest('li');
+                const panel = row?.querySelector('[data-block-settings]');
+                if (!panel) return;
+                const open = panel.classList.toggle('hidden') === false;
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+        });
+
+        list.querySelectorAll('li[draggable="true"]').forEach((item) => {
+            item.addEventListener('dragstart', (e) => {
+                dragEl = item;
+                item.classList.add('opacity-60');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', item.dataset.blockId || '');
+            });
+            item.addEventListener('dragend', () => {
+                item.classList.remove('opacity-60');
+                dragEl = null;
+            });
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const target = e.currentTarget;
+                if (!dragEl || dragEl === target) return;
+                const rect = target.getBoundingClientRect();
+                const before = (e.clientY - rect.top) < rect.height / 2;
+                list.insertBefore(dragEl, before ? target : target.nextSibling);
+            });
+        });
+
+        const readBlock = (li) => {
+            const block = { id: li.dataset.blockId };
+            li.querySelectorAll('[data-field]').forEach((el) => {
+                const key = el.getAttribute('data-field');
+                if (!key) return;
+                if (el.type === 'checkbox') {
+                    block[key] = el.checked;
+                } else if (el.type === 'number') {
+                    block[key] = Number(el.value || 0);
+                } else {
+                    block[key] = el.value;
+                }
+            });
+            return block;
+        };
+
+        form.addEventListener('submit', () => {
+            const blocks = Array.from(list.querySelectorAll('li[data-block-id]')).map(readBlock);
+            jsonInput.value = JSON.stringify(blocks);
+        });
+    })();
+    </script>
+{% endblock %}

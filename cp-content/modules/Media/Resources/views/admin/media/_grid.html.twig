@@ -1,0 +1,49 @@
+{#
+    Hem tam galeri sayfası (index.html.twig) hem seçici modal (picker.html.twig)
+    tarafından paylaşılan grid partial'i — tek bir görsel kaynağı, iki farklı
+    sarmalayıcı (tam sayfa Studio kabuğu vs. bağımsız modal içeriği).
+#}
+{% if assets is empty %}
+    <p class="p-sp-md text-center text-fs-sm text-neutral-500">{{ 'media.grid.empty'|trans }}</p>
+{% else %}
+    <div class="grid grid-cols-2 gap-sp-xs sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        {% for asset in assets %}
+            <div class="group relative overflow-hidden rounded-lg border border-neutral-200 bg-white"
+                 {% if picker %}
+                     data-media-item
+                     data-asset-id="{{ asset.id }}"
+                     data-asset-url="/uploads/{{ asset.storageKey }}"
+                     data-asset-name="{{ asset.originalName }}"
+                     role="button"
+                     tabindex="0"
+                 {% endif %}>
+                {% if asset.mimeType starts with 'image/' %}
+                    <img src="/uploads/{{ asset.storageKey }}" alt="{{ asset.originalName }}" class="aspect-square w-full object-cover" loading="lazy">
+                {% else %}
+                    <div class="flex aspect-square w-full items-center justify-center bg-neutral-50">
+                        <twig:ux:icon name="heroicons:document" class="h-8 w-8 text-neutral-500" />
+                    </div>
+                {% endif %}
+
+                <div class="p-1.5">
+                    <p class="truncate text-fs-xs font-medium text-neutral-900" title="{{ asset.originalName }}">{{ asset.originalName }}</p>
+                </div>
+
+                {% if picker %}
+                    <div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-primary-600/0 transition group-hover:bg-primary-600/10">
+                        <span class="hidden rounded-lg bg-primary-600 px-2 py-1 text-fs-xs font-semibold text-white group-hover:block">{{ 'media.grid.select'|trans }}</span>
+                    </div>
+                {% else %}
+                    <form method="post" action="{{ path('admin_media_delete', {id: asset.id}) }}"
+                          onsubmit="return confirm({{ 'media.grid.delete_confirm'|trans|json_encode|raw }});"
+                          class="absolute right-1 top-1 opacity-0 transition group-hover:opacity-100">
+                        <input type="hidden" name="_token" value="{{ csrf_token('admin_media_delete') }}">
+                        <button type="submit" class="rounded-lg bg-danger-600/90 px-1.5 py-1 text-fs-xs font-semibold text-white hover:bg-danger-600">
+                            {{ 'aacp.cron.delete'|trans }}
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}

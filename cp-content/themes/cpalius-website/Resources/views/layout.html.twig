@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="{{ app.request.locale }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    {% block seo %}
+        <title>{% block title %}CPalius CMF{% endblock %}</title>
+        <meta name="description" content="{% block meta_description %}{{ 'website.layout.meta_description'|trans }}{% endblock %}">
+        <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
+        {% block canonical %}{% endblock %}
+        {% block schema_org %}{% endblock %}
+    {% endblock %}
+
+    <link rel="icon" type="image/png" href="/CPalius.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,400;0,700;1,400;1,700&family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <link rel="stylesheet" href="/themes/cpalius-website/dist/style.css">
+
+    {% block stylesheets %}{% endblock %}
+</head>
+<body>
+    {% include '@CpaliusWebsiteTheme/partials/header.html.twig' %}
+
+    {% block content %}{% endblock %}
+
+    {% include '@CpaliusWebsiteTheme/partials/footer.html.twig' %}
+
+    <script src="/themes/cpalius-website/dist/main.js"></script>
+    {% block javascripts %}{% endblock %}
+</body>
+</html>

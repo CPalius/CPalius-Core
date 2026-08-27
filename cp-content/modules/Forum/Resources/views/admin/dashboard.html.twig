@@ -1,0 +1,133 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.dashboard.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_moderation_index') }}" class="btn btn-sm {{ openReportCount > 0 ? 'btn-outline-danger' : 'btn-neutral' }}">
+        {{ 'studio.forum.dashboard.action.moderation'|trans }}{% if openReportCount > 0 %} <span class="ml-1">({{ openReportCount }})</span>{% endif %}
+    </a>
+    <a href="{{ path('admin_forum_topics_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.dashboard.action.topics'|trans }}</a>
+    <a href="{{ path('admin_forum_members_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.dashboard.action.members'|trans }}</a>
+    <a href="{{ path('admin_forum_prefixes_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.dashboard.action.prefixes'|trans }}</a>
+    <a href="{{ path('admin_forum_ranks_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.dashboard.action.ranks'|trans }}</a>
+    <a href="{{ path('admin_forum_settings_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.dashboard.action.settings'|trans }}</a>
+    <a href="{{ path('admin_forum_sections_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.dashboard.action.sections'|trans }}</a>
+    <a href="{{ path('admin_forum_sections_create') }}" class="btn btn-sm btn-primary">{{ 'studio.forum.dashboard.action.new_section'|trans }}</a>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap(['forum-dashboard']) }}
+{% endblock %}
+
+{% block body %}
+    <div class="grid gap-4 md:grid-cols-5 mb-6">
+        <twig:studio:card title="{{ 'studio.forum.dashboard.stat.total_topics'|trans }}">
+            <p class="text-2xl font-semibold">{{ totalTopics }}</p>
+        </twig:studio:card>
+        <twig:studio:card title="{{ 'studio.forum.dashboard.stat.total_posts'|trans }}">
+            <p class="text-2xl font-semibold">{{ totalPosts }}</p>
+        </twig:studio:card>
+        <twig:studio:card title="{{ 'studio.forum.dashboard.stat.members'|trans }}">
+            <p class="text-2xl font-semibold">{{ totalMembers }}</p>
+        </twig:studio:card>
+        <twig:studio:card title="{{ 'studio.forum.dashboard.stat.section_count'|trans }}">
+            <p class="text-2xl font-semibold">{{ sections|length }}</p>
+        </twig:studio:card>
+        <twig:studio:card title="{{ 'studio.forum.dashboard.stat.open_reports'|trans }}">
+            <p class="text-2xl font-semibold {{ openReportCount > 0 ? 'text-red-600' : '' }}">{{ openReportCount }}</p>
+        </twig:studio:card>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-3 mb-6">
+        <twig:studio:card title="{{ 'studio.forum.dashboard.chart.moderation_health'|trans }}">
+            <div style="height: 200px; position: relative;">
+                <canvas id="forum-chart-moderation-gauge" data-open="{{ openReportCount }}" data-total="{{ totalReportCount }}"></canvas>
+            </div>
+        </twig:studio:card>
+        <twig:studio:card title="{{ 'studio.forum.dashboard.chart.posts_by_section'|trans }}">
+            <div style="height: 200px; position: relative;">
+                <canvas id="forum-chart-section-pie" data-labels="{{ chartSectionLabels|json_encode }}" data-values="{{ chartSectionPostCounts|json_encode }}"></canvas>
+            </div>
+        </twig:studio:card>
+        <twig:studio:card title="{{ 'studio.forum.dashboard.chart.topics_by_section'|trans }}">
+            <div style="height: 200px; position: relative;">
+                <canvas id="forum-chart-section-bar" data-labels="{{ chartSectionLabels|json_encode }}" data-values="{{ chartSectionTopicCounts|json_encode }}"></canvas>
+            </div>
+        </twig:studio:card>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-2 mb-6">
+        <twig:studio:card title="{{ 'studio.forum.dashboard.latest_topics'|trans }}" padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'studio.forum.dashboard.column.topic'|trans,
+                'studio.forum.dashboard.column.section'|trans,
+                'studio.forum.dashboard.column.author'|trans,
+                '',
+            ] }}" empty="{{ latestTopics is empty }}" emptyText="{{ 'studio.forum.dashboard.empty.topics'|trans }}">
+                <twig:block name="rows">
+                    {% for topic in latestTopics %}
+                        <tr>
+                            <td>
+                                <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug, _locale: 'tr'}) }}" class="font-medium text-neutral-900 hover:text-primary-600" target="_blank">
+                                    {{ topic.title }}
+                                </a>
+                                <div class="text-fs-xs text-neutral-500">{{ topic.updatedAt|date('d.m.Y H:i') }}</div>
+                            </td>
+                            <td>{{ topic.section.title }}</td>
+                            <td>{{ topic.firstPosterName }}</td>
+                            <td class="text-right">
+                                <form method="post" action="{{ path('admin_forum_topics_delete', {id: topic.id}) }}" onsubmit="return confirm({{ 'studio.forum.dashboard.delete_topic_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_topic') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'studio.forum.dashboard.latest_posts'|trans }}" padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'studio.forum.dashboard.column.post'|trans,
+                'studio.forum.dashboard.column.topic'|trans,
+                'studio.forum.dashboard.column.author'|trans,
+                'studio.forum.dashboard.column.date'|trans,
+            ] }}" empty="{{ latestPosts is empty }}" emptyText="{{ 'studio.forum.dashboard.empty.posts'|trans }}">
+                <twig:block name="rows">
+                    {% for post in latestPosts %}
+                        <tr>
+                            <td class="max-w-xs"><p class="text-fs-sm text-neutral-700 line-clamp-2">{{ post.body|striptags|slice(0, 90) }}</p></td>
+                            <td>
+                                <a href="{{ path('forum_topic', {topicId: post.topic.id, slug: post.topic.slug, _locale: 'tr'}) }}#post{{ post.id }}" class="text-neutral-900 hover:text-primary-600" target="_blank">{{ post.topic.title }}</a>
+                            </td>
+                            <td>{{ post.posterName }}</td>
+                            <td class="text-fs-xs text-neutral-500">{{ post.createdAt|date('d.m.Y H:i') }}</td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
+    </div>
+
+    <twig:studio:card title="{{ 'studio.forum.dashboard.latest_members'|trans }}" padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'studio.forum.dashboard.column.member'|trans,
+            'studio.forum.dashboard.column.email'|trans,
+            'studio.forum.dashboard.column.joined'|trans,
+        ] }}" empty="{{ latestMembers is empty }}" emptyText="{{ 'studio.forum.dashboard.empty.members'|trans }}">
+            <twig:block name="rows">
+                {% for member in latestMembers %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('forum_profile', {userId: member.id, _locale: 'tr'}) }}" class="font-medium text-neutral-900 hover:text-primary-600" target="_blank">{{ member.fullName }}</a>
+                        </td>
+                        <td class="text-fs-xs text-neutral-500">{{ member.email }}</td>
+                        <td class="text-fs-xs text-neutral-500">{{ member.createdAt|date('d.m.Y') }}</td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+{% endblock %}

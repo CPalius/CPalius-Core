@@ -1,0 +1,22 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Modules\Forum\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    Modules\Forum\Service\:
+        resource: '../../Service/'
+
+    Modules\Forum\Settings\:
+        resource: '../../Settings/'
+
+    # ForumBanGuardListener, EventSubscriberInterface'i implemente ettiği
+    # için autoconfigure sayesinde otomatik 'kernel.event_subscriber'
+    # etiketiyle kaydedilir — bu resource taraması olmadan EventListener/
+    # dizini hiç servis konteynerine dahil edilmezdi (Blog modülündeki
+    # Hooks//Twig/ deseniyle aynı gerekçe).
+    Modules\Forum\EventListener\:
+        resource: '../../EventListener/'

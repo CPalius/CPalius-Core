@@ -1,0 +1,77 @@
+{#
+    AACP header'ının ortak sağ blok içeriği: arama, dil seçici, bildirim
+    dropdown'u ve profil dropdown'u. layout.html.twig'in varsayılan
+    header_actions block'u tarafından include edilir; bir sayfa
+    header_actions'ı TAMAMEN override ederse (ör. localization/index.html.twig
+    export/import butonları için) bu partial o sayfada görünmez — bu
+    bilinçli bir tasarımdır, "parent()" ile zorunlu birleştirme yapılmaz.
+#}
+<form class="hidden sm:block" role="search">
+    <label class="relative block">
+        <span class="sr-only">{{ 'aacp.layout.header.search_label'|trans }}</span>
+        <input type="search"
+               class="form-control !w-56 !bg-dark-1 !border-white/10 !text-slate-200 placeholder-slate-600 !ps-9"
+               placeholder="{{ 'aacp.layout.header.search_placeholder'|trans }}">
+        <twig:ux:icon name="tabler:search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+    </label>
+</form>
+
+<div class="dropdown">
+    <button type="button" data-dropdown-trigger="aacp-locale-menu"
+            class="header-icon-btn !bg-dark-1 !text-slate-300 hover:!bg-white/5" title="{{ 'aacp.layout.header.locale'|trans }}">
+        <twig:ux:icon name="tabler:language" class="h-5 w-5" />
+    </button>
+    <div id="aacp-locale-menu" class="dropdown-menu !bg-dark-2 !border !border-white/10 end-0">
+        <a href="{{ path('aacp_locale_switch', {locale: 'tr'}) }}" class="!text-slate-300 hover:!bg-white/5{{ app.request.locale == 'tr' ? ' !text-primary-300' : '' }}">
+            {{ 'aacp.layout.header.locale_tr'|trans }}
+        </a>
+        <a href="{{ path('aacp_locale_switch', {locale: 'en'}) }}" class="!text-slate-300 hover:!bg-white/5{{ app.request.locale == 'en' ? ' !text-primary-300' : '' }}">
+            {{ 'aacp.layout.header.locale_en'|trans }}
+        </a>
+    </div>
+</div>
+
+<div class="dropdown">
+    <button type="button" data-dropdown-trigger="aacp-notification-menu"
+            class="header-icon-btn !bg-dark-1 !text-slate-300 hover:!bg-white/5" title="{{ 'aacp.layout.header.notifications'|trans }}">
+        <twig:ux:icon name="tabler:bell" class="h-5 w-5" />
+    </button>
+    <div id="aacp-notification-menu" class="dropdown-menu !bg-dark-2 !border !border-white/10 end-0 !w-80">
+        <p class="!text-slate-500 px-3 py-2 text-fs-xs">{{ 'aacp.layout.header.notifications_empty'|trans }}</p>
+    </div>
+</div>
+
+<div class="dropdown">
+    <button type="button" data-dropdown-trigger="aacp-profile-menu"
+            class="flex items-center gap-2 rounded-full !bg-dark-1 !border !border-white/10 py-1 pe-3 ps-1 hover:!bg-white/5">
+        {% set avatarUrl = cp_current_user_avatar_url() %}
+        {% if avatarUrl %}
+            <img src="{{ avatarUrl }}" alt="" class="h-7 w-7 rounded-full object-cover">
+        {% else %}
+            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary-500/20 text-fs-xs font-semibold text-primary-300">
+                {{ app.user ? app.user.email|slice(0, 1)|upper : '?' }}
+            </span>
+        {% endif %}
+        <span class="hidden text-fs-sm text-slate-300 sm:inline">{{ app.user ? app.user.email : '' }}</span>
+    </button>
+    <div id="aacp-profile-menu" class="dropdown-menu !bg-dark-2 !border !border-white/10 end-0">
+        <a href="{{ path('aacp_users_profile') }}" class="!text-slate-300 hover:!bg-white/5">
+            <twig:ux:icon name="tabler:user-circle" class="h-4 w-4" />
+            {{ 'aacp.layout.header.my_profile'|trans }}
+        </a>
+        <a href="{{ path('theme_cpalius_website_home') }}" target="_blank" rel="noopener" class="!text-slate-300 hover:!bg-white/5">
+            <twig:ux:icon name="tabler:external-link" class="h-4 w-4" />
+            {{ 'aacp.layout.header.go_website'|trans }}
+        </a>
+        {% if is_granted('admin.access') %}
+            <a href="{{ path('admin_dashboard') }}" class="!text-slate-300 hover:!bg-white/5">
+                <twig:ux:icon name="tabler:layout-dashboard" class="h-4 w-4" />
+                {{ 'aacp.layout.header.go_studio'|trans }}
+            </a>
+        {% endif %}
+        <a href="{{ path('admin_logout') }}" class="!text-danger-400 hover:!bg-danger-500/10">
+            <twig:ux:icon name="tabler:logout" class="h-4 w-4" />
+            {{ 'aacp.layout.header.logout'|trans }}
+        </a>
+    </div>
+</div>

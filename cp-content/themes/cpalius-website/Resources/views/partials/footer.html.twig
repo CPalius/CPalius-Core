@@ -1,0 +1,44 @@
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div>
+                <img src="/CPalius.png" alt="CPalius CMF" class="footer-logo">
+                <p class="footer-brand-text">
+                    {{ 'website.footer.brand_text'|trans }}
+                </p>
+            </div>
+
+            <div>
+                <h5>{{ 'website.footer.quick_links'|trans }}</h5>
+                <ul class="footer-links">
+                    {% for item in cp_menu('footer') %}
+                        <li><a href="{{ item.url }}"><i class="bi bi-chevron-right"></i> {{ item.label }}</a></li>
+                    {% else %}
+                        <li><a href="{{ path('theme_cpalius_website_home') }}#about"><i class="bi bi-chevron-right"></i> {{ 'website.footer.about'|trans }}</a></li>
+                        <li><a href="{{ path('blog_index') }}"><i class="bi bi-chevron-right"></i> {{ 'website.footer.blog'|trans }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div>
+                <h5>{{ 'website.footer.contact'|trans }}</h5>
+                <ul class="footer-links">
+                    {% for item in cp_menu('footer_contact') %}
+                        <li><a href="{{ item.url }}" {{ item.openInNewTab ? 'target="_blank" rel="noopener"' : '' }}>{{ item.label }}</a></li>
+                    {% else %}
+                        <li><a href="#"><i class="bi bi-github"></i> {{ 'website.footer.github'|trans }}</a></li>
+                        <li><a href="#"><i class="bi bi-envelope"></i> {{ 'website.footer.contact'|trans }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>{{ 'website.footer.copyright'|trans({'year': 'now'|date('Y')}) }}</p>
+            <p>
+                {{ 'website.footer.founder_label'|trans }} <a href="#">Ali Çömez (slaweally)</a> &middot;
+                <a href="#">{{ 'website.footer.license'|trans }}</a>
+            </p>
+        </div>
+    </div>
+</footer>

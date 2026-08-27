@@ -1,0 +1,83 @@
+{#
+    Blog hero — Studio Blog Ayarlarından beslenir.
+    Beklenen: blogHero, blogStats (opsiyonel), heading (sayfa bağlamı)
+#}
+{% if blogHero is defined and blogHero.enabled %}
+<section class="blog-hero{% if blogHero.imageUrl %} blog-hero--has-media{% endif %}" id="blog-hero">
+    {% if blogHero.imageUrl %}
+        <div class="blog-hero__media" aria-hidden="true">
+            <img src="{{ blogHero.imageUrl }}" alt="" loading="eager">
+            <div class="blog-hero__scrim"></div>
+        </div>
+    {% endif %}
+
+    <div class="container blog-hero__inner">
+        <div class="blog-hero__content fade-in">
+            {% if blogHero.label %}
+                <p class="blog-hero__label">{{ blogHero.label }}</p>
+            {% endif %}
+
+            <h1 class="blog-hero__title">{{ blogHero.title|default(heading|default('Blog')) }}</h1>
+
+            {% if blogHero.subtitle %}
+                <p class="blog-hero__subtitle">{{ blogHero.subtitle }}</p>
+            {% endif %}
+
+            {% if blogHero.description %}
+                <p class="blog-hero__description">{{ blogHero.description }}</p>
+            {% endif %}
+
+            {% if blogHero.ctaPrimaryLabel or blogHero.ctaSecondaryLabel %}
+                <div class="blog-hero__cta">
+                    {% if blogHero.ctaPrimaryLabel %}
+                        <a href="{{ blogHero.ctaPrimaryHref|default('#blog-feed') }}" class="btn btn-primary">{{ blogHero.ctaPrimaryLabel }}</a>
+                    {% endif %}
+                    {% if blogHero.ctaSecondaryLabel %}
+                        <a href="{{ blogHero.ctaSecondaryHref|default('#blog-sidebar') }}" class="btn btn-secondary">{{ blogHero.ctaSecondaryLabel }}</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            {% if blogHero.showStats and blogStats is defined %}
+                <ul class="blog-hero__stats" aria-label="{{ 'blog.hero.stats_aria'|trans }}">
+                    <li>
+                        <span class="blog-hero__stat-value">{{ blogStats.posts }}</span>
+                        <span class="blog-hero__stat-label">{{ 'blog.hero.stat_posts'|trans }}</span>
+                    </li>
+                    <li>
+                        <span class="blog-hero__stat-value">{{ blogStats.categories }}</span>
+                        <span class="blog-hero__stat-label">{{ 'blog.hero.stat_categories'|trans }}</span>
+                    </li>
+                    <li>
+                        <span class="blog-hero__stat-value">{{ blogStats.tags }}</span>
+                        <span class="blog-hero__stat-label">{{ 'blog.hero.stat_tags'|trans }}</span>
+                    </li>
+                </ul>
+            {% endif %}
+        </div>
+
+        {% if featuredPosts is defined and featuredPosts is not empty %}
+            {% set spotlight = featuredPosts|first %}
+            <aside class="blog-hero__feature fade-in" aria-label="{{ 'blog.hero.spotlight_aria'|trans }}">
+                <p class="blog-hero__feature-eyebrow">{{ 'blog.hero.spotlight'|trans }}</p>
+                {% set coverUrl = blog_featured_image_url(spotlight) %}
+                {% if coverUrl %}
+                    <a href="{{ path('blog_show', {_locale: spotlight.locale, slug: spotlight.slug}) }}" class="blog-hero__feature-cover">
+                        <img src="{{ coverUrl }}" alt="{{ spotlight.title }}" loading="lazy">
+                    </a>
+                {% endif %}
+                <h2 class="blog-hero__feature-title">
+                    <a href="{{ path('blog_show', {_locale: spotlight.locale, slug: spotlight.slug}) }}">{{ spotlight.title }}</a>
+                </h2>
+                {% set spotlightExcerpt = blog_list_excerpt(spotlight) %}
+                {% if spotlightExcerpt %}
+                    <p class="blog-hero__feature-excerpt">{{ spotlightExcerpt }}</p>
+                {% endif %}
+                <time class="blog-hero__feature-date" datetime="{{ spotlight.publishedAt ? spotlight.publishedAt|date('c') : '' }}">
+                    {{ spotlight.publishedAt ? spotlight.publishedAt|date('d.m.Y') : '' }}
+                </time>
+            </aside>
+        {% endif %}
+    </div>
+</section>
+{% endif %}

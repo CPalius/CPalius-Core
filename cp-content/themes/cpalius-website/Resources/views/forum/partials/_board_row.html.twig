@@ -1,0 +1,27 @@
+{#
+    Tek bir forum/bölüm satırı — hem forum index'te (sections.html.twig)
+    hem de bir bölümün kendi sayfasındaki "Alt forumlar" tablosunda
+    (topics.html.twig) kullanılan ortak bileşen.
+
+    Beklenen değişken: board (App\Entity\ForumSection)
+#}
+<div class="forum-board">
+    <span class="forum-board__icon"><i class="bi {{ board.icon|default(board.allowsTopics ? 'bi-chat-square-text' : 'bi-folder2', true) }}"></i></span>
+        <div class="forum-board__body">
+        <span class="forum-board__type">{{ 'forum.label.subcategory'|trans }}</span>
+        <h3><a href="{{ path('forum_section', {sectionSlug: board.slug}) }}">{{ board.title }}</a></h3>
+        {% if board.description %}<p>{{ board.description }}</p>{% endif %}
+    </div>
+    <div class="forum-board__last">
+        {% if board.lastTopicTitle %}
+            <a href="{{ path('forum_topic', {topicId: board.lastTopicId}) }}">{{ board.lastTopicTitle }}</a>
+            <span>{{ board.lastPosterName }} · {{ board.lastPostAt|date('d.m.Y H:i') }}</span>
+        {% else %}
+            <span class="empty">{{ 'forum.empty.no_posts_yet'|trans }}</span>
+        {% endif %}
+    </div>
+    <div class="forum-board__stats">
+        <strong>{{ board.topicCount }}</strong>
+        <span>{{ 'forum.stat.topic'|trans }}</span>
+    </div>
+</div>

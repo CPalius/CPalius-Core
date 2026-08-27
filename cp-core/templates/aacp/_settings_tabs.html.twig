@@ -1,0 +1,18 @@
+{#
+    "Modül Ayarları" / "Eklenti Ayarları" alt sayfaları arasında geçiş
+    yapan sekme çubuğu — AACP'nin Wowdash tabanlı kabuğuyla uyumlu, ayrı
+    bir bileşen icat etmek yerine burada tek bir partial olarak tutulur.
+
+    Beklenen değişken:
+      active ('modules'|'plugins') Hangi sekmenin seçili görüneceği.
+#}
+<div class="flex border-b border-white/10">
+    <a href="{{ path('aacp_settings_modules') }}"
+       class="border-b-2 px-sp-sm py-2.5 text-fs-sm font-medium {{ active == 'modules' ? 'border-primary-500 text-primary-400' : 'border-transparent text-slate-500 hover:text-slate-300' }}">
+        {{ 'aacp.settings.tab_modules'|trans }}
+    </a>
+    <a href="{{ path('aacp_settings_plugins') }}"
+       class="border-b-2 px-sp-sm py-2.5 text-fs-sm font-medium {{ active == 'plugins' ? 'border-primary-500 text-primary-400' : 'border-transparent text-slate-500 hover:text-slate-300' }}">
+        {{ 'aacp.settings.tab_plugins'|trans }}
+    </a>
+</div>

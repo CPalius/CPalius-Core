@@ -1,0 +1,20 @@
+# CPalius rol config'i — DB'de DEĞİL, burada (cp-content/config/sync/)
+# versiyon kontrolüne dahil, ortamlar arası taşınabilir bir dosyada yaşar.
+# Dosya adı kuralı: user.role.<id>.yaml — <id>, User::$roles içindeki
+# kimlikle birebir eşleşmelidir (bkz. RoleConfigManager).
+#
+# "member": foruma/siteye kayıt olan sıradan kullanıcıların varsayılan rolü
+# (bkz. AccountController::DEFAULT_ROLE). "editor" rolünün AKSİNE
+# node.post.* (blog yazısı oluşturma/düzenleme/yayınlama) İÇERMEZ — sıradan
+# bir kayıt, kullanıcıya içerik yönetimi yetkisi vermemelidir. Sadece forum
+# kullanımı için gereken kayıtlı-üye yeteneklerini taşır.
+role:
+    id: member
+    label: 'Üye'
+    capabilities:
+        - forum.view
+        - forum.topic.create
+        - forum.post.edit.own
+        - forum.post.delete.own
+        - forum.post.report
+        - forum.post.like

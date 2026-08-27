@@ -1,0 +1,6 @@
+{#
+    Modules\Blog\Plugin\BlogArchivePlugin'i (Faz 3 — Modül Eklentisi
+    mimarisi) sidebar'a gömer. Aynı fail-safe garanti widget_sidebar.html.twig
+    ile birebir aynıdır (bkz. o dosyanın doküman notu).
+#}
+{{ cp_plugin('blog_archive', {locale: app.request.locale}) }}

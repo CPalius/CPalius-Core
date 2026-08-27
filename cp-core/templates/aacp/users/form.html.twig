@@ -1,0 +1,52 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ user ? 'aacp.users.form.header_edit'|trans : 'aacp.users.form.header_create'|trans }}{% endblock %}
+
+{% block body %}
+    {{ form_start(form, {
+        action: user ? path('aacp_users_edit', {id: user.id}) : path('aacp_users_create'),
+    }) }}
+    <div class="flex flex-col gap-sp-md lg:flex-row lg:items-start">
+        <div class="min-w-0 space-y-sp-md lg:w-[70%]">
+            <twig:cp:card title="{{ 'aacp.users.form.section_account'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.email) }}
+                    {{ form_row(form.username) }}
+                    {{ form_row(form.plainPassword) }}
+                </div>
+            </twig:cp:card>
+
+            <twig:cp:card title="{{ 'aacp.users.form.section_profile'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.firstName) }}
+                    {{ form_row(form.lastName) }}
+                </div>
+            </twig:cp:card>
+        </div>
+
+        <div class="min-w-0 space-y-sp-md lg:w-[30%]">
+            <twig:cp:card title="{{ 'aacp.users.form.section_status'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.status) }}
+                </div>
+            </twig:cp:card>
+
+            <twig:cp:card title="{{ 'aacp.users.form.section_roles'|trans }}">
+                {{ form_widget(form.roles) }}
+                {{ form_errors(form.roles) }}
+            </twig:cp:card>
+
+            <twig:cp:card padded="{{ false }}">
+                <div class="space-y-2 card-body">
+                    <button type="submit" class="btn btn-primary w-full">
+                        {{ user ? 'aacp.users.form.submit_edit'|trans : 'aacp.users.form.submit_create'|trans }}
+                    </button>
+                    <a href="{{ path('aacp_users') }}" class="block text-center text-fs-sm font-medium !text-slate-500 hover:!text-slate-300">
+                        {{ 'aacp.users.form.cancel'|trans }}
+                    </a>
+                </div>
+            </twig:cp:card>
+        </div>
+    </div>
+    {{ form_end(form) }}
+{% endblock %}

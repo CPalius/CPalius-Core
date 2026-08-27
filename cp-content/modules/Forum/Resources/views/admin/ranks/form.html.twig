@@ -1,0 +1,39 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ rank ? 'studio.forum.ranks.form.edit_header'|trans : 'studio.forum.ranks.form.create_header'|trans }}{% endblock %}
+
+{% block body %}
+    <twig:studio:card>
+        <form method="post">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_rank') }}">
+
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="form-label">{{ 'studio.forum.ranks.form.label'|trans }}</label>
+                    <input type="text" name="label" value="{{ formValues.label }}" required maxlength="64" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.ranks.form.color'|trans }}</label>
+                    <input type="color" name="color" value="{{ formValues.color }}" class="form-control" style="height: 42px; padding: 4px;">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.ranks.form.icon'|trans }} <span class="text-fs-xs text-neutral-500">{{ 'studio.forum.ranks.form.icon_hint'|trans }}</span></label>
+                    <input type="text" name="icon" value="{{ formValues.icon }}" placeholder="{{ 'studio.forum.ranks.form.icon_placeholder'|trans }}" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.ranks.form.min_posts'|trans }} <span class="text-fs-xs text-neutral-500">{{ 'studio.forum.ranks.form.min_posts_hint'|trans }}</span></label>
+                    <input type="number" name="min_posts" value="{{ formValues.minPosts }}" min="0" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.ranks.form.sort_order'|trans }}</label>
+                    <input type="number" name="sort_order" value="{{ formValues.sortOrder }}" class="form-control">
+                </div>
+            </div>
+
+            <div class="mt-6 flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ 'studio.forum.ranks.form.save'|trans }}</button>
+                <a href="{{ path('admin_forum_ranks_index') }}" class="btn btn-neutral">{{ 'studio.forum.ranks.form.cancel'|trans }}</a>
+            </div>
+        </form>
+    </twig:studio:card>
+{% endblock %}

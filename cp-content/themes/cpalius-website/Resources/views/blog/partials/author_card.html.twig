@@ -1,0 +1,20 @@
+{#
+    Sidebar'ın (Golden minor kolon — %38.2) yazar kartı. blog/show.html.twig
+    içinde, sadece post.author dolu olduğunda include edilir.
+
+    App\Entity\User içinde "username" alanı YOKTUR (bkz. User entity —
+    kimlik email'dir, ad/soyad gibi profil bilgileri data JSON'unda
+    saklanır). Bu yüzden görünen ad için önce data.display_name'e bakılır,
+    o da yoksa email'e (User::getEmail()) düşülür — sessiz bir "isimsiz
+    yazar" görünümü yerine her zaman bir kimlik gösterilir.
+#}
+<div class="blog-sidebar-widget slw-sidebar-profile">
+    <h5>{{ 'blog.sidebar.author_whoami'|trans }}</h5>
+    <div class="slw-sidebar-profile__avatar">
+        <i class="bi bi-person-workspace"></i>
+    </div>
+    <strong class="slw-sidebar-profile__name">{{ author.getDataValue('display_name', author.email) }}</strong>
+    {% if author.getDataValue('bio') %}
+        <p class="slw-sidebar-profile__bio">{{ author.getDataValue('bio') }}</p>
+    {% endif %}
+</div>

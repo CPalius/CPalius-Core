@@ -1,0 +1,166 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ post ? 'blog.posts.form.header_edit'|trans : 'blog.posts.form.header_create'|trans }}{% endblock %}
+
+{% block javascripts %}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'admin-post-form', 'media-picker', 'cp-editor-init']) }}
+{% endblock %}
+
+{% block body %}
+    <div id="post-form-container" data-post-form-root data-current-url="{{ post ? path('admin_posts_edit', {id: post.id}) : path('admin_posts_create', {translation_group: translationGroupId, locale: currentLocale}) }}">
+    {% if activeLocales|default([])|length > 1 %}
+        <div class="mb-sp-md flex flex-wrap items-center gap-2" data-post-translation-tabs>
+            {% for locale in activeLocales %}
+                {% set translation = translations[locale.code] ?? null %}
+                {% if locale.code == currentLocale %}
+                    <span class="badge badge-primary">{{ locale.nativeName }}</span>
+                {% elseif translation %}
+                    <a href="{{ path('admin_posts_edit', {id: translation.id}) }}" data-post-translation-link class="badge badge-success hover:opacity-80">
+                        {{ locale.nativeName }}
+                    </a>
+                {% elseif post and translationGroupId %}
+                    <a href="{{ path('admin_posts_create', {translation_group: translationGroupId, locale: locale.code}) }}" data-post-translation-link class="badge badge-neutral hover:opacity-80">
+                        + {{ locale.nativeName }}
+                    </a>
+                {% elseif post %}
+                    <form method="post" action="{{ path('admin_posts_assign_translation_group', {id: post.id}) }}" class="inline" data-post-translation-assign-form>
+                        <input type="hidden" name="_token" value="{{ csrf_token('admin_post_form') }}">
+                        <button type="submit" class="badge badge-neutral hover:opacity-80">
+                            + {{ locale.nativeName }}
+                        </button>
+                    </form>
+                {% else %}
+                    <button type="button" data-post-translation-locked class="badge badge-neutral opacity-60 cursor-not-allowed" title="{{ 'blog.posts.form.translation_locked_hint'|trans }}">
+                        + {{ locale.nativeName }}
+                    </button>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {{ form_start(form, {
+        action: post ? path('admin_posts_edit', {id: post.id}) : path('admin_posts_create', {translation_group: translationGroupId, locale: currentLocale}),
+        attr: {'data-post-form': ''},
+    }) }}
+    <div class="flex flex-col gap-sp-md lg:flex-row lg:items-start">
+        <div class="min-w-0 space-y-sp-md lg:w-[75%]">
+
+            <twig:studio:card title="{{ 'blog.posts.form.section_content'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.title) }}
+                    {{ form_row(form.excerpt) }}
+                    {{ form_row(form.body) }}
+                </div>
+            </twig:studio:card>
+
+            <twig:studio:card title="{{ 'blog.posts.form.section_project'|trans }}" data-post-sub-type-panel="proje">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.projectRepoUrl) }}
+                    {{ form_row(form.projectDemoUrl) }}
+                </div>
+            </twig:studio:card>
+
+            <twig:studio:card title="{{ 'blog.posts.form.section_software'|trans }}" data-post-sub-type-panel="yazilim">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.softwareVersion) }}
+                    {{ form_row(form.softwareDownloadUrl) }}
+                </div>
+            </twig:studio:card>
+
+            <twig:studio:card title="{{ 'blog.posts.form.section_note'|trans }}" data-post-sub-type-panel="not">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.noteCodeSnippet) }}
+                </div>
+            </twig:studio:card>
+
+            <twig:studio:card padded="{{ false }}">
+                <details class="group">
+                    <summary class="flex cursor-pointer list-none items-center justify-between px-sp-sm py-3 text-fs-sm font-semibold text-neutral-900">
+                        SEO &amp; Schema.org
+                        <span class="text-fs-xs text-neutral-500 transition group-open:rotate-180">▾</span>
+                    </summary>
+
+                    <div class="space-y-sp-sm border-t border-neutral-200 px-sp-sm py-sp-sm">
+                        <div>
+                            <label for="{{ form.slug.vars.id }}" class="form-label">Slug</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-fs-sm text-neutral-500">/{{ currentLocale|default('tr') }}/blog/</span>
+                                {{ form_widget(form.slug) }}
+                            </div>
+                            <p class="mt-1 text-fs-xs text-neutral-500">{{ 'blog.posts.form.slug_hint'|trans }}</p>
+                            {{ form_errors(form.slug) }}
+                        </div>
+
+                        <div>
+                            {{ form_label(form.seoMetaDescription) }}
+                            {{ form_widget(form.seoMetaDescription) }}
+                            <p class="mt-1 text-fs-xs text-neutral-500">{{ 'blog.posts.form.seo_char_count'|trans({count: form.vars.value.seoMetaDescription|default('')|length}) }}</p>
+                            {{ form_errors(form.seoMetaDescription) }}
+                        </div>
+
+                        {{ form_row(form.seoFocusKeyword) }}
+                        {{ form_row(form.seoCanonicalUrl) }}
+                        {{ form_row(form.seoNoindex) }}
+
+                        <p class="border-t border-neutral-200 pt-sp-xs text-fs-xs text-neutral-500">
+                            {{ 'blog.posts.form.schema_notice'|trans }}
+                        </p>
+                    </div>
+                </details>
+            </twig:studio:card>
+        </div>
+
+        <div class="min-w-0 space-y-sp-md lg:w-[25%]">
+            <twig:studio:card title="{{ 'blog.posts.form.section_publish'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.postSubType) }}
+                    {{ form_row(form.status) }}
+                    {{ form_row(form.publishedAt) }}
+                    {{ form_row(form.isFeatured) }}
+
+                    {% if post %}
+                        <div class="border-t border-neutral-200 pt-sp-sm">
+                            <twig:studio:badge status="{{ post.status }}" />
+                        </div>
+                    {% endif %}
+
+                    <div class="flex items-center gap-3 border-t border-neutral-200 pt-sp-sm">
+                        <button type="submit" class="btn btn-primary w-full">
+                            {{ post ? 'aacp.users.form.submit_edit'|trans : 'blog.posts.form.submit_create'|trans }}
+                        </button>
+                    </div>
+                    <a href="{{ path('admin_posts_index') }}" class="block text-center text-fs-sm font-medium text-neutral-500 hover:text-neutral-900">
+                        {{ 'aacp.users.form.cancel'|trans }}
+                    </a>
+                </div>
+            </twig:studio:card>
+
+            <twig:studio:card title="{{ 'blog.categories.header'|trans }}">
+                {{ form_widget(form.categoryIds) }}
+            </twig:studio:card>
+
+            <twig:studio:card title="{{ 'blog.tags.header'|trans }}">
+                {{ form_widget(form.tags) }}
+                <p class="mt-1 text-fs-xs text-neutral-500">{{ 'blog.posts.form.tags_hint'|trans }}</p>
+            </twig:studio:card>
+
+            <twig:studio:card title="{{ 'blog.posts.form.section_featured_image'|trans }}">
+                <div data-featured-image-preview class="mb-sp-xs">
+                    {% if featuredImageUrl %}
+                        <img src="{{ featuredImageUrl }}" class="max-h-40 rounded-lg">
+                    {% endif %}
+                </div>
+                {{ form_widget(form.featuredImageAssetId, {attr: {'data-target-input': 'featured_image_asset_id'}}) }}
+                <button type="button"
+                        data-media-picker-trigger
+                        data-target-input="featured_image_asset_id"
+                        data-target-preview="featured-image-preview"
+                        class="btn btn-sm btn-neutral w-full">
+                    {{ 'blog.posts.form.select_image'|trans }}
+                </button>
+            </twig:studio:card>
+        </div>
+    </div>
+    {{ form_end(form) }}
+    </div>
+{% endblock %}

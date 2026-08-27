@@ -1,0 +1,55 @@
+{#
+    <twig:studio:pagination result="{{ posts }}" route="admin_posts_index" />
+
+    App\Core\Pagination\PaginatedResult ile üretilen bir sonuç kümesi için
+    Studio'nun sayfa numarası şeridi. AACP paletiyle bilinçli olarak
+    paylaşılmaz (bkz. studio/card.html.twig'in izolasyon notu) — AACP kendi
+    pagination'ını ayrı tutmalıdır.
+
+    Props:
+      result      (App\Core\Pagination\PaginatedResult)  Zorunlu.
+      route       (string)                                path() için route adı.
+      routeParams (array)                                 route'un {page} dışındaki diğer parametreleri (ör. kategori slug'ı).
+#}
+{% props result, route, routeParams = {} %}
+
+{% if result.totalPages > 1 %}
+    <nav class="mt-sp-md flex items-center justify-between border-t border-neutral-200 pt-sp-sm" aria-label="{{ 'studio.pagination.aria_label'|trans }}">
+        <p class="text-fs-xs text-neutral-500">
+            {{ 'studio.pagination.summary'|trans({
+                current: result.currentPage,
+                total: result.totalPages,
+                items: result.totalItems,
+            }) }}
+        </p>
+
+        <div class="flex items-center gap-1.5">
+            {% if result.hasPreviousPage %}
+                <a href="{{ path(route, routeParams|merge({page: result.currentPage - 1})) }}"
+                   class="btn btn-sm btn-neutral">
+                    ‹ {{ 'studio.pagination.previous'|trans }}
+                </a>
+            {% endif %}
+
+            {% for pageNumber in max(1, result.currentPage - 2)..min(result.totalPages, result.currentPage + 2) %}
+                {% if pageNumber == result.currentPage %}
+                    <span class="btn btn-sm btn-primary">
+                        {{ pageNumber }}
+                    </span>
+                {% else %}
+                    <a href="{{ path(route, routeParams|merge({page: pageNumber})) }}"
+                       class="btn btn-sm btn-neutral">
+                        {{ pageNumber }}
+                    </a>
+                {% endif %}
+            {% endfor %}
+
+            {% if result.hasNextPage %}
+                <a href="{{ path(route, routeParams|merge({page: result.currentPage + 1})) }}"
+                   class="btn btn-sm btn-neutral">
+                    {{ 'studio.pagination.next'|trans }} ›
+                </a>
+            {% endif %}
+        </div>
+    </nav>
+{% endif %}

@@ -1,0 +1,87 @@
+security:
+    # https://symfony.com/doc/current/security.html#registering-the-user-hashing-passwords
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+
+    # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
+    #
+    # İki provider tanımlıdır:
+    #   - cpalius_users: Symfony'nin "entity provider" kısayolu (bkz.
+    #     UserRepository::loadUserByIdentifier), SADECE email property'sine
+    #     göre arar. "main" firewall'ının VARSAYILANIdır.
+    #   - cpalius_users_by_login: App\Core\Security\CpUserProvider servisi,
+    #     e-posta VEYA kullanıcı adı ile giriş yapılmasını destekler (bkz.
+    #     CpUserProvider sınıf üstü doküman). Kullanıcı adıyla giriş
+    #     desteği isteniyorsa "main" firewall'ının "provider:" anahtarı
+    #     "cpalius_users_by_login" olarak değiştirilebilir.
+    providers:
+        cpalius_users:
+            entity:
+                class: App\Entity\User
+                property: email
+        cpalius_users_by_login:
+            id: App\Core\Security\CpUserProvider
+
+    firewalls:
+        dev:
+            # Ensure dev tools and static assets are always allowed
+            pattern: ^/(_profiler|_wdt|assets|build)/
+            security: false
+        main:
+            lazy: true
+            provider: cpalius_users_by_login
+
+            form_login:
+                login_path: admin_login
+                check_path: admin_login
+                default_target_path: admin_dashboard
+                enable_csrf: true
+
+            logout:
+                path: admin_logout
+                target: admin_login
+
+            # Activate different ways to authenticate:
+            # https://symfony.com/doc/current/security.html#the-firewall
+
+            # https://symfony.com/doc/current/security/impersonating_user.html
+            # switch_user: true
+
+    # Not: CPalius'ta ROLE_* sabit kontrolü YASAKTIR (bkz. CPaliusVoter,
+    # Manifesto Law 4). access_control burada SADECE "giriş yapılmış mı"
+    # (kimlik doğrulama) sınırını çizer; hangi kullanıcının hangi işlemi
+    # yapabileceği (yetkilendirme) her zaman controller/template seviyesinde
+    # is_granted('admin.access') gibi dinamik bir capability sorgusuyla
+    # CPaliusVoter üzerinden çözülür.
+    #
+    # /aacp/recovery BİLİNÇLİ olarak bu listenin DIŞINDA tutulur (yani
+    # PUBLIC_ACCESS): Manifesto Law 2.3 gereği bu uç, firewall/DB tamamen
+    # çökmüşken bile .env'deki AACP_RECOVERY_TOKEN ile erişilebilir olmalı
+    # (bkz. AACPController::recovery() - kendi token doğrulamasını yapar).
+    # Only the *first* matching rule is applied, bu yüzden recovery path'i
+    # genel /aacp kuralından ÖNCE tanımlanır.
+    #
+    # /api BİLİNÇLİ olarak PUBLIC_ACCESS: Faz 7B REST API Gateway'i
+    # (App\Core\Api\Controller\ApiGatewayController) form_login/session
+    # tabanlı kimlik doğrulamayı KULLANMAZ, kendi stateless X-CP-API-KEY
+    # header doğrulamasını yapar (bkz. ApiKeyService::isValid()). Bu kural
+    # OLMADAN firewall, anahtarı geçerli bir isteği bile login sayfasına
+    # yönlendirirdi — "public: false" olan #[CpApi] uçlarının 401 döndürme
+    # sorumluluğu TAMAMEN ApiGatewayController'a aittir, firewall'a değil.
+    access_control:
+        - { path: ^/login, roles: PUBLIC_ACCESS }
+        - { path: ^/aacp/recovery, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: PUBLIC_ACCESS }
+        - { path: ^/admin, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/aacp, roles: IS_AUTHENTICATED_FULLY }
+
+when@test:
+    security:
+        password_hashers:
+            # Password hashers are resource-intensive by design to ensure security.
+            # In tests, it's safe to reduce their cost to improve performance.
+            Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+                algorithm: auto
+                cost: 4 # Lowest possible value for bcrypt
+                time_cost: 3 # Lowest possible value for argon
+                memory_cost: 10 # Lowest possible value for argon

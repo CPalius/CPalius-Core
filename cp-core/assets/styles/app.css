@@ -1,0 +1,494 @@
+@import "tailwindcss";
+
+/* Tailwind'in tarayacağı şablon kaynakları: çekirdek + tüm modül arayüzleri.
+   AssetMapper/Node.js olmadığı için içerik yolları CSS içinden @source ile
+   tanımlanır (Tailwind v4 "Zero Node.js" yaklaşımı). */
+@source "../../templates/**/*.twig";
+@source "../../../cp-content/modules/*/Resources/views/**/*.twig";
+@source "../../../cp-content/themes/**/*.twig";
+
+/*
+ * CPalius Design System — Wowdash Entegrasyonu
+ *
+ * Bu token seti, satın alınan "Wowdash" (wowtheme7) Tailwind admin temasının
+ * renk paleti, tipografi ölçeği ve bileşen dilinden üretilmiştir
+ * (bkz. Tailwind-CSS-admin-panel/src/assets/scss). Kaynak tema klasörüne
+ * runtime bağımlılığı YOKTUR — tüm değerler burada birebir taşınmıştır,
+ * kaynak klasör silinse bile bu dosya bağımsız çalışır.
+ *
+ * Spacing/font-size token adları (sp-*, fs-*) geriye dönük uyumluluk için
+ * korunmuştur; şablonlar bu adları değiştirmeden kullanmaya devam eder.
+ */
+@theme {
+    /* Wowdash Primary (mavi) */
+    --color-primary-50: #E4F1FF;
+    --color-primary-100: #BFDCFF;
+    --color-primary-200: #95C7FF;
+    --color-primary-300: #6BB1FF;
+    --color-primary-400: #519FFF;
+    --color-primary-500: #458EFF;
+    --color-primary-600: #487FFF;
+    --color-primary-700: #486CEA;
+    --color-primary-800: #4759D6;
+    --color-primary-900: #4536B6;
+
+    /* Wowdash Neutral (gri tonları) */
+    --color-neutral-50: #F5F6FA;
+    --color-neutral-100: #F3F4F6;
+    --color-neutral-200: #EBECEF;
+    --color-neutral-300: #D1D5DB;
+    --color-neutral-400: #9CA3AF;
+    --color-neutral-500: #6B7280;
+    --color-neutral-600: #4B5563;
+    --color-neutral-700: #374151;
+    --color-neutral-800: #1F2937;
+    --color-neutral-900: #111827;
+
+    /* Wowdash Danger */
+    --color-danger-50: #FEF2F2;
+    --color-danger-100: #FEE2E2;
+    --color-danger-200: #FECACA;
+    --color-danger-300: #FCA5A5;
+    --color-danger-400: #F87171;
+    --color-danger-500: #EF4444;
+    --color-danger-600: #DC2626;
+    --color-danger-700: #B91C1C;
+    --color-danger-800: #991B1B;
+    --color-danger-900: #7F1D1D;
+
+    /* Wowdash Success */
+    --color-success-50: #F0FDF4;
+    --color-success-100: #DCFCE7;
+    --color-success-200: #BBF7D0;
+    --color-success-300: #86EFAC;
+    --color-success-400: #4ADE80;
+    --color-success-500: #22C55E;
+    --color-success-600: #16A34A;
+    --color-success-700: #15803D;
+    --color-success-800: #166534;
+    --color-success-900: #14532D;
+
+    /* Wowdash Warning */
+    --color-warning-50: #FEFCE8;
+    --color-warning-100: #FEF9C3;
+    --color-warning-200: #FEF08A;
+    --color-warning-300: #FDE047;
+    --color-warning-400: #FACC15;
+    --color-warning-500: #EAB308;
+    --color-warning-600: #FF9F29;
+    --color-warning-700: #F39016;
+    --color-warning-800: #E58209;
+    --color-warning-900: #D77907;
+
+    /* Wowdash Info */
+    --color-info-50: #EFF6FF;
+    --color-info-100: #DBEAFE;
+    --color-info-200: #BFDBFE;
+    --color-info-300: #93C5FD;
+    --color-info-400: #60A5FA;
+    --color-info-500: #3B82F6;
+    --color-info-600: #2563EB;
+    --color-info-700: #1D4ED8;
+    --color-info-800: #1E40AF;
+    --color-info-900: #1E3A8A;
+
+    /* Wowdash Dark yüzey tonları (AACP koyu kabuk için) */
+    --color-dark-1: #1B2431;
+    --color-dark-2: #273142;
+    --color-dark-3: #323D4E;
+
+    /* Wowdash marka vurgu renkleri */
+    --color-purple: #8252E9;
+    --color-lilac-600: #8252E9;
+    --color-lilac-700: #6F37E6;
+    --color-lilac-800: #601EEF;
+    --color-cyan-600: #00B8F2;
+
+    /* Font ailesi */
+    --font-sans: 'Inter', sans-serif;
+
+    /* Spacing (geriye dönük token adları, Wowdash spacing ölçeğine eşlendi) */
+    --spacing-sp-xs: 0.625rem;
+    --spacing-sp-sm: 1rem;
+    --spacing-sp-md: 1.5rem;
+    --spacing-sp-lg: 2.5rem;
+
+    /* Font Sizes (geriye dönük token adları) */
+    --text-fs-xs: 0.75rem;
+    --text-fs-sm: 0.875rem;
+    --text-fs-base: 0.9375rem;
+    --text-fs-md: 1rem;
+    --text-fs-lg: 1.125rem;
+    --text-fs-xl: 1.5rem;
+
+    /* Border Radius (Wowdash: yumuşak, modern köşeler) */
+    --radius-sm: 0.375rem;
+    --radius-DEFAULT: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+
+    /* Ekran genişlikleri (Wowdash ölçeği) */
+    --breakpoint-sm: 576px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 992px;
+    --breakpoint-xl: 1200px;
+    --breakpoint-2xl: 1400px;
+    --breakpoint-3xl: 1650px;
+}
+
+/*
+ * Wowdash Bileşen Katmanı
+ *
+ * Wowdash'ın SCSS @apply katmanlarından (layouts/_sidebar.scss,
+ * layouts/_navbar.scss, components/_card.scss, components/_button.scss,
+ * components/_table.scss, components/_dropdown.scss, components/_form.scss)
+ * birebir taşınmış, Tailwind v4 @layer components sözdizimine çevrilmiştir.
+ */
+@layer components {
+    /* --- Sidebar --- */
+    .sidebar {
+        @apply fixed start-[-105%] xl:start-0 top-0 w-[250px] xl:w-[220px] 2xl:w-[275px] 3xl:w-[312px] h-screen bg-white z-30 transition-all duration-300;
+    }
+    .sidebar.sidebar-open {
+        @apply start-0;
+    }
+    .sidebar.active {
+        @apply xl:start-[-105%];
+    }
+    .sidebar-close-btn {
+        @apply absolute top-0 end-[0.625rem] w-[1.75rem] h-[1.75rem] border border-neutral-300 rounded-full inline-flex justify-center items-center xl:hidden;
+    }
+    .sidebar-logo {
+        @apply h-[72px] px-4 py-[14px] border-e border-b border-neutral-200 flex items-center justify-start gap-2;
+    }
+    .sidebar-logo img {
+        @apply max-h-[3.4375rem];
+    }
+    .sidebar-menu-area {
+        @apply h-[calc(100vh-72px)] px-4 py-3 overflow-y-auto border-e border-neutral-200;
+    }
+    .sidebar-menu-group-title {
+        @apply text-neutral-500 font-semibold my-2 text-fs-xs uppercase tracking-wider px-3 pt-3;
+    }
+    .sidebar-menu {
+        @apply space-y-1;
+    }
+    .sidebar-menu li a {
+        @apply px-3 py-2.5 font-medium flex items-center gap-2 text-neutral-600 transition rounded-lg text-fs-sm;
+    }
+    .sidebar-menu li a:hover {
+        @apply text-primary-600 bg-primary-50;
+    }
+    .sidebar-menu li a.active-page,
+    .sidebar-menu li.dropdown.open > a,
+    .sidebar-menu li.dropdown.dropdown-open > a {
+        @apply bg-primary-600 text-white;
+    }
+    .sidebar-menu li a.active-page:hover,
+    .sidebar-menu li.dropdown.open > a:hover,
+    .sidebar-menu li.dropdown.dropdown-open > a:hover {
+        @apply text-white;
+    }
+    .sidebar-menu li a .menu-icon {
+        @apply text-[1.125rem] shrink-0;
+    }
+    .submenu-caret {
+        @apply flex h-6 w-6 shrink-0 items-center justify-center rounded transition-transform duration-200 hover:bg-black/10;
+    }
+    .sidebar-menu li.dropdown.open > a .submenu-caret {
+        @apply rotate-180;
+    }
+    .sidebar-menu .sidebar-submenu {
+        @apply pt-3 hidden ps-6 space-y-1;
+    }
+    .sidebar-menu .sidebar-submenu.open {
+        @apply block;
+    }
+    .sidebar-menu .sidebar-submenu li a {
+        @apply px-3 py-1.5 text-fs-xs;
+    }
+    .sidebar-menu .sidebar-submenu li.active-page a {
+        @apply bg-primary-50 text-primary-700 font-semibold;
+    }
+
+    /* --- Dashboard main (sidebar sabit/fixed olduğu için, içeriğin
+       sidebar'ın altında kalmaması adına sidebar genişliği kadar
+       margin-inline-start verir; bkz. Wowdash _dashboard-body.scss) --- */
+    .dashboard-main {
+        @apply ms-0 xl:ms-[220px] 2xl:ms-[275px] 3xl:ms-[312px] min-w-0 flex-1 overflow-y-auto transition-all duration-300;
+    }
+    .dashboard-main.sidebar-collapsed {
+        @apply xl:ms-0;
+    }
+
+    /* --- Navbar / Header --- */
+    .navbar-header {
+        @apply h-[4.5rem] bg-white sticky top-0 py-4 px-6 z-20 border-b border-neutral-200 flex items-center justify-between gap-3;
+    }
+    .sidebar-toggle,
+    .sidebar-mobile-toggle {
+        @apply leading-none text-neutral-900 cursor-pointer;
+    }
+    .sidebar-toggle {
+        @apply hidden xl:inline-flex;
+    }
+    .sidebar-mobile-toggle {
+        @apply inline-flex xl:hidden;
+    }
+    .navbar-search {
+        @apply relative hidden lg:inline-block;
+    }
+    .navbar-search input {
+        @apply w-[24.25rem] h-10 bg-neutral-50 border border-neutral-300 rounded-lg py-[0.3125rem] ps-10 pe-5 text-neutral-900 text-fs-sm;
+    }
+    .navbar-search input:focus {
+        @apply border-primary-600 outline-none ring-1 ring-primary-600;
+    }
+    .navbar-search .icon {
+        @apply absolute top-1/2 -translate-y-1/2 start-3 text-[1.125rem] text-neutral-500;
+    }
+    .header-icon-btn {
+        @apply flex h-10 w-10 items-center justify-center rounded-full transition;
+    }
+
+    /* --- Overlay (mobil sidebar) --- */
+    .sidebar-overlay {
+        @apply fixed inset-0 z-20 hidden bg-neutral-900/50;
+    }
+    .sidebar-overlay.open {
+        @apply block xl:hidden;
+    }
+
+    /* --- Kart --- */
+    .card {
+        @apply bg-white rounded-lg border border-neutral-200 shadow-sm;
+    }
+    .card-header {
+        @apply border-b border-neutral-200 px-6 py-3 flex items-center justify-between gap-3;
+    }
+    .card-body {
+        @apply px-6 py-5;
+    }
+
+    /* --- Buton --- */
+    .btn {
+        @apply rounded-lg py-2.5 px-5 inline-flex items-center justify-center gap-2 transition text-fs-sm font-medium cursor-pointer disabled:cursor-not-allowed disabled:opacity-60;
+    }
+    .btn-sm {
+        @apply py-1.5 px-3.5 text-fs-xs;
+    }
+    .btn-primary {
+        @apply bg-primary-600 text-white hover:bg-primary-700;
+    }
+    .btn-outline-primary {
+        @apply border border-primary-600 text-primary-600 hover:text-white hover:bg-primary-600;
+    }
+    .btn-danger {
+        @apply bg-danger-600 text-white hover:bg-danger-700;
+    }
+    .btn-outline-danger {
+        @apply border border-danger-300 text-danger-600 hover:text-white hover:bg-danger-600;
+    }
+    .btn-neutral {
+        @apply border border-neutral-300 text-neutral-700 hover:bg-neutral-100;
+    }
+
+    /* --- Rozet (badge) --- */
+    .badge {
+        @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-fs-xs font-medium;
+    }
+    .badge-success {
+        @apply bg-success-100 text-success-700;
+    }
+    .badge-danger {
+        @apply bg-danger-100 text-danger-700;
+    }
+    .badge-warning {
+        @apply bg-warning-100 text-warning-800;
+    }
+    .badge-info {
+        @apply bg-info-100 text-info-700;
+    }
+    .badge-neutral {
+        @apply bg-neutral-100 text-neutral-700;
+    }
+
+    /* --- Tablo --- */
+    .table-responsive {
+        @apply overflow-x-auto;
+    }
+    .table {
+        @apply w-full min-w-max border-separate border-spacing-0 rounded-lg border border-neutral-200;
+    }
+    .table th {
+        @apply px-4 py-3 bg-neutral-50 text-start font-semibold text-fs-xs uppercase tracking-wider text-neutral-600 first:rounded-tl-lg last:rounded-tr-lg;
+    }
+    .table td {
+        @apply px-4 py-3 text-start border-b border-neutral-200 text-fs-sm text-neutral-700;
+    }
+    .table tr:last-child td {
+        @apply border-b-0;
+    }
+    .table tr:last-child td:first-child {
+        @apply rounded-bl-lg;
+    }
+    .table tr:last-child td:last-child {
+        @apply rounded-br-lg;
+    }
+
+    /* --- Form --- */
+    .form-label {
+        @apply text-fs-sm font-semibold text-neutral-700 inline-block mb-2;
+    }
+    .form-control,
+    .form-select {
+        @apply border border-neutral-300 rounded-lg bg-white px-4 py-2.5 w-full text-fs-sm text-neutral-900 transition;
+    }
+    .form-control:focus,
+    .form-select:focus {
+        @apply outline-none border-primary-600 ring-1 ring-primary-600;
+    }
+    .form-control[readonly],
+    .form-control:disabled {
+        @apply bg-neutral-100 border-neutral-300 text-neutral-500;
+    }
+    .form-check-input {
+        @apply border-neutral-400 rounded;
+    }
+
+    /* --- Dropdown --- */
+    .dropdown {
+        @apply relative;
+    }
+    .dropdown-menu {
+        @apply absolute z-40 mt-2 min-w-[12rem] rounded-xl border-0 bg-white p-2 shadow-[0px_13px_30px_10px_rgba(46,45,116,0.08)] hidden;
+    }
+    .dropdown-menu.open {
+        @apply block;
+    }
+    .dropdown-menu a,
+    .dropdown-menu button {
+        @apply flex w-full items-center gap-2 rounded-lg px-3 py-2 text-fs-sm text-neutral-700 transition hover:bg-neutral-50 hover:text-primary-600;
+    }
+
+    /* --- Toast --- */
+    .toast {
+        @apply pointer-events-auto flex items-center gap-2 rounded-lg border px-4 py-3 text-fs-sm font-medium shadow-lg;
+    }
+    .toast-success {
+        @apply border-success-300 bg-success-50 text-success-700;
+    }
+    .toast-error {
+        @apply border-danger-300 bg-danger-50 text-danger-700;
+    }
+
+    /* --- Modal --- */
+    .modal-overlay {
+        @apply fixed inset-0 z-50 hidden items-center justify-center bg-neutral-900/60 p-sp-md;
+    }
+    .modal-overlay.open {
+        @apply flex;
+    }
+    .modal-panel {
+        @apply w-full max-w-lg rounded-xl bg-white shadow-2xl;
+    }
+    .modal-header {
+        @apply flex items-center justify-between border-b border-neutral-200 px-5 py-4;
+    }
+    .modal-body {
+        @apply max-h-[60vh] overflow-y-auto px-5 py-4;
+    }
+    .modal-footer {
+        @apply flex items-center justify-end gap-2 border-t border-neutral-200 px-5 py-4;
+    }
+    .modal-log-line {
+        @apply font-mono text-fs-xs leading-relaxed;
+    }
+
+    /* --- Studio Dashboard --- */
+    .studio-dash {
+        @apply mx-auto w-full max-w-[1600px] space-y-sp-sm pb-sp-sm;
+    }
+    .studio-dash-hero {
+        @apply relative overflow-hidden rounded-xl px-sp-sm py-sp-md text-white shadow-md;
+        background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-800) 55%, #2d4a9e 100%);
+    }
+    .studio-dash-hero-glow {
+        @apply pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full opacity-30;
+        background: radial-gradient(circle, rgba(255,255,255,0.45) 0%, transparent 70%);
+    }
+    .studio-dash-hero-stat {
+        @apply flex min-w-0 flex-col gap-0.5;
+    }
+    .studio-dash-hero-label {
+        @apply truncate text-[0.65rem] font-medium uppercase tracking-wider text-primary-100/90;
+    }
+    .studio-dash-hero-value {
+        @apply text-2xl font-bold leading-none sm:text-3xl;
+        font-family: 'Roboto Condensed', Arial, sans-serif;
+    }
+    .studio-dash-section {
+        @apply overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm;
+    }
+    .studio-dash-section-toggle {
+        @apply flex w-full items-center gap-2 px-sp-sm py-2.5 text-left text-fs-sm font-semibold text-neutral-800 transition hover:bg-neutral-50;
+    }
+    .studio-dash-section-toggle--collapsed {
+        @apply border-b-0;
+    }
+    .studio-dash-chevron {
+        @apply shrink-0 text-neutral-400 transition-transform duration-200;
+    }
+    .studio-dash-section-body {
+        @apply border-t border-neutral-100 px-sp-xs pb-sp-xs pt-sp-xs;
+    }
+    .studio-dash-section-body--collapsed {
+        @apply hidden;
+    }
+    .studio-dash-grid {
+        @apply grid grid-cols-1 gap-sp-xs min-w-0 sm:grid-cols-2 xl:grid-cols-3;
+    }
+    .studio-dash-widget {
+        @apply min-w-0;
+    }
+    .studio-dash-widget--wide {
+        @apply sm:col-span-2 xl:col-span-2;
+    }
+    .studio-dash-panel {
+        @apply flex h-full min-h-0 flex-col rounded-lg border border-neutral-100 bg-gradient-to-b from-white to-neutral-50/80 p-3;
+    }
+    .studio-dash-panel--links {
+        @apply justify-center;
+    }
+    .studio-dash-panel-title {
+        @apply mb-2 shrink-0 text-[0.65rem] font-semibold uppercase tracking-wide text-neutral-500;
+    }
+    .studio-dash-chart {
+        @apply relative min-h-0 w-full flex-1;
+        height: 10.5rem;
+        max-height: 10.5rem;
+    }
+    .studio-dash-chart--center {
+        height: 9.5rem;
+        max-height: 9.5rem;
+    }
+    .studio-dash-chart--wide {
+        height: 8.75rem;
+        max-height: 8.75rem;
+    }
+    .studio-dash-chart canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+        max-height: 100%;
+    }
+    .studio-dash-links {
+        @apply flex flex-wrap gap-1.5;
+    }
+    .studio-dash-link {
+        @apply inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-fs-xs font-medium text-neutral-700 shadow-sm transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700;
+    }
+    .studio-dash-settings {
+        @apply fixed inset-y-0 right-0 z-50 w-full max-w-sm overflow-y-auto border-l border-neutral-200 bg-white p-sp-md shadow-2xl;
+    }
+}

@@ -1,0 +1,26 @@
+{#
+    <twig:cp:card title="Sistem Sağlığı">
+        ... içerik ...
+    </twig:cp:card>
+
+    Props:
+      title    (string|null)  Kart başlığı, verilmezse header gizlenir.
+      variant  (string)       'default' | 'danger' — karantina/uyarı kartları için kırmızı vurgu.
+      padded   (bool)         İçerik alanına varsayılan padding uygulansın mı.
+#}
+{% props title = null, variant = 'default', padded = true %}
+
+<div {{ attributes.defaults({class: 'card !bg-dark-2 ' ~ (variant == 'danger' ? '!border-danger-500/60 shadow-[0_0_20px_rgba(239,68,68,0.08)]' : '!border-white/10') }) }}>
+    {% if title is not null %}
+        <div class="card-header !border-white/10 {{ variant == 'danger' ? '!border-danger-500/40' : '' }}">
+            <h3 class="text-fs-sm font-semibold tracking-wide {{ variant == 'danger' ? 'text-danger-300' : 'text-slate-200' }}">
+                {{ title }}
+            </h3>
+            {% block actions %}{% endblock %}
+        </div>
+    {% endif %}
+
+    <div class="{{ padded ? 'card-body' : '' }}">
+        {% block content %}{% endblock %}
+    </div>
+</div>

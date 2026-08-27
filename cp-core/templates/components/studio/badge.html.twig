@@ -1,0 +1,37 @@
+{#
+    <twig:studio:badge status="published" />
+    <twig:studio:badge status="draft" label="Taslak" />
+
+    <twig:cp:badge>'ın Studio (aydınlık tema) karşılığı.
+
+    Props:
+      status  (string)       'published' | 'draft' | 'scheduled' | 'deleted'
+      label   (string|null)  Özel metin; verilmezse status'e göre çevrilmiş etiket kullanılır.
+#}
+{% props status = 'draft', label = null %}
+
+{% set styles = {
+    published: 'badge-success',
+    draft:     'badge-neutral',
+    scheduled: 'badge-warning',
+    deleted:   'badge-danger',
+} %}
+
+{% set labelKeys = {
+    published: 'studio.badge.status.published',
+    draft: 'studio.badge.status.draft',
+    scheduled: 'studio.badge.status.scheduled',
+    deleted: 'studio.badge.status.deleted',
+} %}
+
+{% set dots = {
+    published: 'bg-success-500',
+    draft: 'bg-neutral-400',
+    scheduled: 'bg-warning-500',
+    deleted: 'bg-danger-500',
+} %}
+
+<span {{ attributes.defaults({class: 'badge uppercase tracking-wide ' ~ (styles[status] ?? styles.draft) }) }}>
+    <span class="h-1.5 w-1.5 rounded-full {{ dots[status] ?? dots.draft }}"></span>
+    {{ label ?? (labelKeys[status] ?? labelKeys.draft)|trans }}
+</span>

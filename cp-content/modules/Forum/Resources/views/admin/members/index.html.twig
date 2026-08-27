@@ -1,0 +1,88 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.members.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.members.action.dashboard'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'studio.forum.members.column.member'|trans,
+            'studio.forum.members.column.rank'|trans,
+            'studio.forum.members.column.topics'|trans,
+            'studio.forum.members.column.posts'|trans,
+            'studio.forum.members.column.status'|trans,
+            '',
+        ] }}" empty="{{ members is empty }}" emptyText="{{ 'studio.forum.members.empty_assigned'|trans }}">
+            <twig:block name="rows">
+                {% for member in members %}
+                    {% set user = member.user %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('forum_profile', {userId: user.id, _locale: 'tr'}) }}" class="font-medium text-neutral-900 hover:text-primary-600" target="_blank">
+                                {{ user.fullName }}
+                            </a>
+                            <div class="text-fs-xs text-neutral-500">{{ user.email }}</div>
+                        </td>
+                        <td>
+                            <form method="post" action="{{ path('admin_forum_members_assign_rank', {id: user.id}) }}" class="flex items-center gap-1">
+                                <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_member') }}">
+                                <select name="rank_id" class="form-select text-fs-xs" style="padding: 4px 6px;">
+                                    <option value="">— {{ 'studio.forum.members.rank_select.automatic'|trans }} —</option>
+                                    {% for rank in allRanks %}
+                                        <option value="{{ rank.id }}" {{ member.rank and member.rank.id == rank.id ? 'selected' : '' }}>{{ rank.label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-neutral">{{ 'studio.forum.members.action.assign_rank'|trans }}</button>
+                            </form>
+                        </td>
+                        <td>{{ member.topicCount }}</td>
+                        <td>{{ member.postCount }}</td>
+                        <td>
+                            {% if member.ban %}
+                                <span class="text-fs-xs" style="color:#C0392B; font-weight:600;">{{ 'studio.forum.members.status.banned'|trans }}</span>
+                                <form method="post" action="{{ path('admin_forum_members_revoke', {banId: member.ban.id}) }}" class="inline">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_member') }}">
+                                    <button type="submit" class="btn btn-sm btn-neutral">{{ 'studio.forum.members.action.remove'|trans }}</button>
+                                </form>
+                            {% elseif member.mute %}
+                                <span class="text-fs-xs" style="color:#C8A86E; font-weight:600;">{{ 'studio.forum.members.status.muted'|trans }}</span>
+                                <form method="post" action="{{ path('admin_forum_members_revoke', {banId: member.mute.id}) }}" class="inline">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_member') }}">
+                                    <button type="submit" class="btn btn-sm btn-neutral">{{ 'studio.forum.members.action.remove'|trans }}</button>
+                                </form>
+                            {% else %}
+                                <span class="text-fs-xs text-neutral-400">{{ 'studio.forum.members.status.normal'|trans }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            <details style="display:inline-block; text-align:left;">
+                                <summary class="btn btn-sm btn-outline-danger" style="cursor:pointer; display:inline-block;">{{ 'studio.forum.members.action.ban_mute'|trans }}</summary>
+                                <form method="post" action="{{ path('admin_forum_members_ban', {id: user.id}) }}" style="margin-top:8px; padding:10px; border:1px solid var(--neutral-200, #e5e7eb); border-radius:6px; min-width:220px;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_member') }}">
+                                    <div class="mb-2">
+                                        <label class="flex items-center gap-1 text-fs-xs"><input type="radio" name="type" value="mute" checked> {{ 'studio.forum.members.type.mute_hint'|trans }}</label>
+                                        <label class="flex items-center gap-1 text-fs-xs"><input type="radio" name="type" value="ban"> {{ 'studio.forum.members.type.ban_hint'|trans }}</label>
+                                    </div>
+                                    <input type="text" name="reason" placeholder="{{ 'studio.forum.members.reason_placeholder'|trans }}" required class="form-control text-fs-xs mb-2">
+                                    <input type="number" name="duration_days" placeholder="{{ 'studio.forum.members.duration_placeholder'|trans }}" min="0" class="form-control text-fs-xs mb-2">
+                                    <button type="submit" class="btn btn-sm btn-primary">{{ 'studio.forum.members.action.apply'|trans }}</button>
+                                </form>
+                            </details>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+
+    {% if totalPages > 1 %}
+        <nav class="flex items-center justify-center gap-4 mt-4">
+            {% if page > 1 %}<a href="{{ path('admin_forum_members_index', {page: page - 1}) }}" class="btn btn-sm btn-neutral">‹ {{ 'studio.forum.members.pagination.previous'|trans }}</a>{% endif %}
+            <span class="text-fs-xs text-neutral-500">{{ page }} / {{ totalPages }}</span>
+            {% if page < totalPages %}<a href="{{ path('admin_forum_members_index', {page: page + 1}) }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.members.pagination.next'|trans }} ›</a>{% endif %}
+        </nav>
+    {% endif %}
+{% endblock %}

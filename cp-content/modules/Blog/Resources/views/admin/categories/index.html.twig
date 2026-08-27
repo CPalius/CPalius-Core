@@ -1,0 +1,52 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'blog.categories.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_categories_create') }}" class="btn btn-sm btn-primary">
+        {{ 'blog.categories.create_action'|trans }}
+    </a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'blog.categories.column.name'|trans,
+            'blog.categories.column.parent'|trans,
+            'blog.categories.column.slug'|trans,
+            '',
+        ] }}" empty="{{ categories is empty }}" emptyText="{{ 'blog.categories.empty'|trans }}">
+            <twig:block name="rows">
+                {% for category in categories %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('admin_categories_edit', {id: category.id}) }}" class="font-medium text-neutral-900 hover:text-primary-600">
+                                {{ category.name }}
+                            </a>
+                        </td>
+                        <td class="text-fs-xs text-neutral-500">
+                            {{ category.parent ? category.parent.name : '—' }}
+                        </td>
+                        <td class="text-fs-xs text-neutral-500">
+                            <code>{{ category.slug }}</code>
+                        </td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ path('admin_categories_edit', {id: category.id}) }}" class="btn btn-sm btn-neutral">
+                                    {{ 'aacp.users.edit_action'|trans }}
+                                </a>
+                                <form method="post" action="{{ path('admin_categories_delete', {id: category.id}) }}"
+                                      onsubmit="return confirm({{ 'blog.categories.delete_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_category_form') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        {{ 'aacp.cron.delete'|trans }}
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+{% endblock %}

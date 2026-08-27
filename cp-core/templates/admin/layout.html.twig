@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="tr" class="h-full">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %}{{ 'studio.layout.title.default'|trans }}{% endblock %}</title>
+
+        {#
+            Studio, AACP'nin aksine "normal" bir Symfony ekranıdır: temaların
+            veya modüllerin yanında yaşar, ama kendi çekirdek AssetMapper
+            girişini (app.css/app.js) kullanır — editör deneyimi bir modül
+            asset hatasından etkilenmemelidir.
+        #}
+        {% block stylesheets %}{% endblock %}
+        {% block javascripts %}
+            {{ importmap(['app', 'studio-quick-cache-clear']) }}
+        {% endblock %}
+    </head>
+    <body class="h-full bg-neutral-50 text-neutral-700 antialiased text-fs-base font-sans">
+        <div class="flex h-full">
+            <div data-sidebar-overlay class="sidebar-overlay"></div>
+
+            <aside data-sidebar class="sidebar">
+                <button type="button" data-sidebar-close class="sidebar-close-btn">
+                    <twig:ux:icon name="tabler:x" class="h-3.5 w-3.5" />
+                </button>
+
+                <div class="sidebar-logo">
+                    <img src="/CPalius.png" alt="CPalius" class="h-6 w-auto shrink-0">
+                    <div class="leading-tight">
+                        <p class="text-fs-sm font-semibold text-neutral-900">{{ 'studio.layout.brand.name'|trans }}</p>
+                        <p class="text-fs-xs text-neutral-500">{{ 'studio.layout.brand.subtitle'|trans }}</p>
+                    </div>
+                </div>
+
+                <nav class="sidebar-menu-area">
+                    <ul class="sidebar-menu" id="sidebar-menu">
+                        {% set currentGroup = null %}
+                        {% for item in cp_admin_menu('studio') %}
+                            {% if item.group is not null and item.group != currentGroup %}
+                                <li class="sidebar-menu-group-title">{{ item.group|trans }}</li>
+                                {% set currentGroup = item.group %}
+                            {% endif %}
+                            <li>
+                                <a href="{{ path(item.routeName) }}"
+                                   class="{{ app.request.attributes.get('_route') starts with item.routePrefix ? 'active-page' : '' }}">
+                                    <twig:ux:icon name="{{ item.icon }}" class="menu-icon shrink-0" />
+                                    <span>{{ item.label|trans }}</span>
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </nav>
+
+                <div class="border-t border-neutral-200 px-sp-sm py-sp-xs text-fs-xs text-neutral-500 font-mono">
+                    {{ cp_app_name|default('CPalius CMF') }} · v{{ cp_app_version|default('1.0.0') }}
+                </div>
+            </aside>
+
+            <main data-sidebar-main class="dashboard-main">
+                <header class="navbar-header">
+                    <div class="flex items-center gap-3">
+                        <button type="button" data-sidebar-toggle class="sidebar-toggle">
+                            <twig:ux:icon name="tabler:menu-2" class="h-5 w-5" />
+                        </button>
+                        <button type="button" data-sidebar-mobile-toggle class="sidebar-mobile-toggle">
+                            <twig:ux:icon name="tabler:menu-2" class="h-5 w-5" />
+                        </button>
+                        <h1 class="text-fs-md font-semibold text-neutral-900">{% block header %}{{ 'studio.layout.header.default'|trans }}{% endblock %}</h1>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {% block header_actions %}
+                            {{ include('admin/_header_actions.html.twig') }}
+                        {% endblock %}
+
+                        {% if is_granted('system.aacp.access') %}
+                            <button type="button"
+                                    data-quick-cache-clear-trigger
+                                    data-quick-cache-clear-url="{{ path('aacp_cache_rebuild_clear_symfony') }}"
+                                    data-quick-cache-clear-csrf="{{ csrf_token('aacp_cache_rebuild') }}"
+                                    title="{{ 'studio.layout.clear_cache'|trans }}"
+                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-neutral-500 transition hover:border-primary-600 hover:text-primary-600">
+                                <twig:ux:icon name="heroicons:bolt" class="h-4 w-4" />
+                            </button>
+                        {% endif %}
+                    </div>
+                </header>
+
+                {% if is_granted('system.aacp.access') %}
+                    <div data-quick-cache-clear-modal class="modal-overlay">
+                        <div class="modal-panel">
+                            <div class="modal-header">
+                                <h2 class="text-fs-md font-semibold text-neutral-900">{{ 'studio.layout.clear_cache_modal.title'|trans }}</h2>
+                                <button type="button" data-quick-cache-clear-modal-close class="text-neutral-400 hover:text-neutral-600">
+                                    <twig:ux:icon name="tabler:x" class="h-5 w-5" />
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <p data-quick-cache-clear-modal-status
+                                   data-running-text="{{ 'studio.layout.clear_cache_modal.running'|trans }}"
+                                   data-success-text="{{ 'studio.layout.clear_cache_modal.success'|trans }}"
+                                   data-error-text="{{ 'studio.layout.clear_cache_modal.error'|trans }}"
+                                   class="mb-3 text-fs-sm text-neutral-600">
+                                    {{ 'studio.layout.clear_cache_modal.running'|trans }}
+                                </p>
+                                <div data-quick-cache-clear-modal-log class="space-y-1"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" data-quick-cache-clear-modal-close class="btn btn-sm btn-neutral">
+                                    {{ 'studio.layout.clear_cache_modal.close'|trans }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="pointer-events-none fixed right-sp-md top-[5.25rem] z-40 flex flex-col gap-2" data-toast-stack>
+                    {% for label, messages in app.flashes %}
+                        {% for message in messages %}
+                            <div class="toast {{ label == 'error' ? 'toast-error' : 'toast-success' }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+
+                <div class="p-sp-md">
+                    {% block body %}{% endblock %}
+                </div>
+            </main>
+        </div>
+    </body>
+</html>

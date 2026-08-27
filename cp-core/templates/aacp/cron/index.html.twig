@@ -1,0 +1,155 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.cron.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <div class="flex justify-end">
+            <a href="{{ path('aacp_cron_new') }}" class="btn btn-primary">
+                {{ 'aacp.cron.new_job'|trans }}
+            </a>
+        </div>
+
+        <twig:cp:card title="{{ 'aacp.cron.registered_tasks'|trans }}" padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.cron.column.name'|trans,
+                'aacp.cron.column.source'|trans,
+                'aacp.cron.column.command'|trans,
+                'aacp.cron.column.schedule'|trans,
+                'aacp.cron.column.last_run'|trans,
+                'aacp.cron.column.status'|trans,
+                '',
+            ] }}" empty="{{ tasks is empty }}">
+                <twig:block name="rows">
+                    {% for task in tasks %}
+                        <tr data-cron-row="{{ task.codeBased ? 'code:' ~ task.jobName : 'db:' ~ task.id }}">
+                            <td class="!text-slate-200">
+                                {% if task.codeBased %}
+                                    {{ task.name }}
+                                {% else %}
+                                    <a href="{{ path('aacp_cron_edit', {id: task.id}) }}" class="hover:text-primary-400">{{ task.name }}</a>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if task.codeBased %}
+                                    <span class="badge badge-info">{{ 'aacp.cron.source_code'|trans }}</span>
+                                {% else %}
+                                    <span class="badge badge-neutral">{{ 'aacp.cron.source_manual'|trans }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="font-mono text-fs-xs !text-slate-500">
+                                {% if task.codeBased %}
+                                    {{ task.sourceDetail }}
+                                {% else %}
+                                    {{ task.commandName }}
+                                {% endif %}
+                            </td>
+                            <td class="font-mono text-fs-xs !text-slate-400">{{ task.cronExpression }}</td>
+                            <td class="text-fs-xs !text-slate-500" data-cron-last-run>
+                                {% if task.codeBased %}
+                                    {{ 'aacp.cron.not_tracked'|trans }}
+                                {% else %}
+                                    {{ task.lastRunAt ? task.lastRunAt|date('d.m.Y H:i') : 'aacp.cron.never_run'|trans }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if task.codeBased %}
+                                    <twig:cp:badge status="active" />
+                                {% else %}
+                                    <twig:cp:badge status="{{ task.active ? 'active' : 'inactive' }}" />
+                                {% endif %}
+                            </td>
+                            <td class="text-right">
+                                <div class="flex items-center justify-end gap-3">
+                                    <button type="button"
+                                            data-cron-run-button
+                                            data-cron-type="{{ task.codeBased ? 'code' : 'db' }}"
+                                            data-cron-id="{{ task.codeBased ? '' : task.id }}"
+                                            data-cron-job-name="{{ task.codeBased ? task.jobName : '' }}"
+                                            class="text-fs-xs font-medium !text-primary-400 hover:!text-success-300">
+                                        {{ 'aacp.cron.run_now'|trans }}
+                                    </button>
+                                    {% if not task.codeBased %}
+                                        <a href="{{ path('aacp_cron_edit', {id: task.id}) }}" class="text-fs-xs font-medium !text-slate-400 hover:!text-slate-200">
+                                            {{ 'aacp.users.edit_action'|trans }}
+                                        </a>
+                                        <form method="post" action="{{ path('aacp_cron_delete', {id: task.id}) }}"
+                                              onsubmit="return confirm('&quot;' + {{ task.name|json_encode|raw }} + '&quot; {{ 'aacp.cron.delete_confirm_suffix'|trans }}');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                            <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
+                                                {{ 'aacp.cron.delete'|trans }}
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+
+        <twig:cp:card title="{{ 'aacp.cron.run_console'|trans }}" padded="{{ true }}">
+            <pre id="cp-cron-console" class="max-h-96 min-h-[6rem] overflow-auto whitespace-pre-wrap rounded-lg bg-dark-1 p-sp-sm font-mono text-fs-xs text-success-400">{{ 'aacp.cron.console_hint'|trans }}</pre>
+        </twig:cp:card>
+    </div>
+
+    <script>
+        (function () {
+            const csrfToken = {{ csrf_token|json_encode|raw }};
+            const consoleEl = document.getElementById('cp-cron-console');
+            const runningLabel = {{ 'aacp.cron.js.running'|trans|json_encode|raw }};
+            const executingLabel = {{ 'aacp.cron.js.executing'|trans|json_encode|raw }};
+            const successLabel = {{ 'aacp.cron.js.success'|trans|json_encode|raw }};
+            const failureLabel = {{ 'aacp.cron.js.failure'|trans|json_encode|raw }};
+            const noOutputLabel = {{ 'aacp.cron.js.no_output'|trans|json_encode|raw }};
+            const requestFailedLabel = {{ 'aacp.cron.js.request_failed'|trans|json_encode|raw }};
+
+            document.querySelectorAll('[data-cron-run-button]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    const type = button.getAttribute('data-cron-type');
+                    const id = button.getAttribute('data-cron-id');
+                    const jobName = button.getAttribute('data-cron-job-name');
+                    const row = button.closest('[data-cron-row]');
+
+                    button.disabled = true;
+                    const originalText = button.textContent;
+                    button.textContent = runningLabel;
+                    consoleEl.textContent = executingLabel + ' ' + (type === 'code' ? jobName : ('#' + id)) + ' ...';
+
+                    const body = new URLSearchParams();
+                    body.set('_token', csrfToken);
+                    body.set('type', type);
+                    if (type === 'db') {
+                        body.set('id', id);
+                    } else {
+                        body.set('jobName', jobName);
+                    }
+
+                    fetch('{{ path('aacp_cron_run_now_ajax') }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: body.toString(),
+                    })
+                        .then(function (response) { return response.json(); })
+                        .then(function (data) {
+                            consoleEl.textContent = (data.success ? '[' + successLabel + ']\n' : '[' + failureLabel + ']\n') + (data.output || noOutputLabel);
+                            if (data.lastRunAt && row) {
+                                const lastRunCell = row.querySelector('[data-cron-last-run]');
+                                if (lastRunCell) {
+                                    lastRunCell.textContent = data.lastRunAt;
+                                }
+                            }
+                        })
+                        .catch(function (error) {
+                            consoleEl.textContent = requestFailedLabel + ': ' + error;
+                        })
+                        .finally(function () {
+                            button.disabled = false;
+                            button.textContent = originalText;
+                        });
+                });
+            });
+        })();
+    </script>
+{% endblock %}

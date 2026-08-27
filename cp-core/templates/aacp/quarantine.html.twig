@@ -1,0 +1,54 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.quarantine.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        {% if quarantinedModules is not empty %}
+            <twig:cp:card title="{{ 'aacp.system.quarantined_modules'|trans }}" variant="danger" padded="{{ false }}">
+                <twig:cp:table headers="{{ [
+                    'aacp.system.column.module'|trans,
+                    'aacp.system.column.reason'|trans,
+                    '',
+                ] }}">
+                    <twig:block name="rows">
+                        {% for module in quarantinedModules %}
+                            <tr>
+                                <td class="!text-danger-200 font-medium">{{ module.name }}</td>
+                                <td class="!text-danger-300/80 text-fs-xs">{{ module.reason }}</td>
+                                <td class="text-right">
+                                    <form method="post" action="{{ path('aacp_module_deactivate', {dirName: module.dirName}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                        <input type="hidden" name="_redirect" value="{{ path('aacp_quarantine') }}">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            {{ 'aacp.dashboard.deactivate'|trans }}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+            </twig:cp:card>
+        {% else %}
+            <twig:cp:card>
+                <div class="flex items-center gap-2">
+                    <twig:cp:badge status="active" label="{{ 'aacp.quarantine.clean'|trans }}" />
+                    <p class="text-fs-sm text-slate-400">{{ 'aacp.quarantine.no_quarantined_modules'|trans }}</p>
+                </div>
+            </twig:cp:card>
+        {% endif %}
+
+        <twig:cp:card title="{{ 'aacp.quarantine.log_title'|trans }}" padded="{{ false }}">
+            {% if logEntries is empty %}
+                <p class="card-body text-fs-sm text-slate-500">{{ 'aacp.quarantine.log_empty'|trans }}</p>
+            {% else %}
+                <ul class="divide-y divide-white/10 font-mono text-fs-xs">
+                    {% for line in logEntries %}
+                        <li class="px-sp-sm py-2.5 text-slate-400 break-words">{{ line }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </twig:cp:card>
+    </div>
+{% endblock %}

@@ -1,0 +1,24 @@
+twig:
+    file_name_pattern: '*.twig'
+    # Pristine Root: proje kökünde templates/ oluşmasını engellemek için
+    # varsayılan şablon dizinini cp-core/templates olarak taşıyoruz.
+    # cp-content/modules/*/Resources/views altındaki modül şablonları
+    # kendi bundle'ları üzerinden (@ModuleAdı namespace'i) otomatik eklenir.
+    default_path: '%kernel.project_dir%/cp-core/templates'
+    paths:
+        '%kernel.project_dir%/cp-core/templates': ~
+        # Aktif frontend tema (bkz. Manifesto Law 7 — tek tema olduğu sürece
+        # sabit bir path yeterli ve doğru mühendislik kararıdır; birden fazla
+        # tema desteklenecekse bu bir ThemeRegistry + compiler pass'e taşınır).
+        '%kernel.project_dir%/cp-content/themes/cpalius-website/Resources/views': 'CpaliusWebsiteTheme'
+    globals:
+        cp_app_name: '%env(CP_APP_NAME)%'
+        cp_app_version: '%env(CP_APP_VERSION)%'
+    form_themes:
+        # Studio'nun tüm form bileşenleri (Blog, Portfolio vb.) için ortak
+        # kurumsal flat tasarım iskeleti — bkz. dosyanın kendi docblock'u.
+        - 'form/studio_flat_theme.html.twig'
+
+when@test:
+    twig:
+        strict_variables: true

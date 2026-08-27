@@ -1,0 +1,165 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}Yönetim{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-lg">
+        <div>
+            <h2 class="mb-sp-sm text-fs-base font-semibold !text-slate-200">Genel Ayarlar</h2>
+
+            <form method="post" action="{{ path('aacp_advanced_management_update') }}" class="space-y-sp-md lg:w-[61.8%]">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+                {% if settingGroups is empty %}
+                    <twig:cp:card>
+                        <p class="text-fs-sm text-slate-500">Henüz tanımlı bir çekirdek ayar yok.</p>
+                    </twig:cp:card>
+                {% endif %}
+
+                {% for groupName, settingDefs in settingGroups %}
+                    <twig:cp:card title="{{ groupName|capitalize }}">
+                        <div class="space-y-sp-sm">
+                            {% for setting in settingDefs %}
+                                <div>
+                                    <label class="form-label !text-slate-400">{{ setting.label }}</label>
+
+                                    {% if setting.type == 'checkbox' %}
+                                        <label class="inline-flex items-center gap-2 text-fs-sm !text-slate-300">
+                                            <input type="checkbox" name="settings[{{ setting.key }}]" value="1"
+                                                   {{ currentValues[setting.key] ? 'checked' : '' }}
+                                                   class="form-check-input h-4 w-4 !border-white/10 !bg-dark-1 text-primary-500 focus:ring-primary-500/40">
+                                        </label>
+                                    {% elseif setting.type == 'select' %}
+                                        <select name="settings[{{ setting.key }}]"
+                                                class="form-select !border-white/10 !bg-dark-1 !text-slate-100">
+                                            {% for value, label in setting.variants %}
+                                                <option value="{{ value }}" {{ currentValues[setting.key] == value ? 'selected' : '' }}>{{ label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    {% elseif setting.type == 'textarea' %}
+                                        <textarea name="settings[{{ setting.key }}]" rows="3"
+                                                  class="form-control !border-white/10 !bg-dark-1 !text-slate-100">{{ currentValues[setting.key] }}</textarea>
+                                    {% else %}
+                                        <input type="text" name="settings[{{ setting.key }}]" value="{{ currentValues[setting.key] }}"
+                                               class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </twig:cp:card>
+                {% endfor %}
+
+                <button type="submit" class="btn btn-primary">Kaydet</button>
+            </form>
+        </div>
+
+        <div data-locales-root data-locales-csrf="{{ locales_csrf_token }}">
+            <div class="mb-sp-sm flex items-center justify-between">
+                <h2 class="text-fs-base font-semibold !text-slate-200">Diller</h2>
+                <a href="{{ path('aacp_locales_create') }}" class="btn btn-sm btn-primary">Yeni Dil Ekle</a>
+            </div>
+
+            <twig:cp:card padded="{{ false }}">
+                <twig:cp:table headers="{{ [
+                    'Kod',
+                    'Ad',
+                    'Yerel Ad',
+                    'Durum',
+                    'Varsayılan',
+                    '',
+                ] }}" empty="{{ locales is empty }}" emptyText="Henüz dil eklenmedi.">
+                    <twig:block name="rows">
+                        {% for locale in locales %}
+                            <tr data-locale-row="{{ locale.id }}">
+                                <td class="font-mono text-fs-xs !text-slate-400">{{ locale.code }}</td>
+                                <td class="!text-slate-200">
+                                    <a href="{{ path('aacp_locales_edit', {id: locale.id}) }}" class="font-medium hover:!text-primary-400">
+                                        {{ locale.name }}
+                                    </a>
+                                </td>
+                                <td class="!text-slate-400">{{ locale.nativeName }}</td>
+                                <td>
+                                    <span class="badge {{ locale.active ? 'badge-success' : 'badge-neutral' }}">
+                                        {{ locale.active ? 'Aktif' : 'Pasif' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if locale.default %}
+                                        <span class="badge badge-primary">Varsayılan</span>
+                                    {% else %}
+                                        <button type="button"
+                                                data-locale-set-default
+                                                data-locale-id="{{ locale.id }}"
+                                                class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-400">
+                                            Varsayılan Yap
+                                        </button>
+                                    {% endif %}
+                                </td>
+                                <td class="text-right">
+                                    <div class="flex items-center justify-end gap-3">
+                                        <a href="{{ path('aacp_localization', {locale: locale.code}) }}" class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-400">
+                                            Dili Yönet
+                                        </a>
+                                        <a href="{{ path('aacp_locales_edit', {id: locale.id}) }}" class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-400">
+                                            Düzenle
+                                        </a>
+                                        {% if not (locale.default and locale.active) %}
+                                            <button type="button"
+                                                    data-locale-toggle-active
+                                                    data-locale-id="{{ locale.id }}"
+                                                    data-locale-active="{{ locale.active ? '1' : '0' }}"
+                                                    class="text-fs-xs font-medium {{ locale.active ? '!text-slate-400 hover:!text-danger-300' : '!text-primary-400 hover:!text-success-300' }}">
+                                                {{ locale.active ? 'Devre Dışı Bırak' : 'Etkinleştir' }}
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+            </twig:cp:card>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        (function () {
+            const root = document.querySelector('[data-locales-root]');
+            if (!root) return;
+            const csrfToken = root.dataset.localesCsrf;
+
+            async function post(url) {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-Token': csrfToken },
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    alert(data.error || 'Bir hata oluştu.');
+                    return null;
+                }
+                return data;
+            }
+
+            root.addEventListener('click', async (event) => {
+                const setDefaultBtn = event.target.closest('[data-locale-set-default]');
+                if (setDefaultBtn) {
+                    const id = setDefaultBtn.dataset.localeId;
+                    const result = await post(`/aacp/advanced/locales/${id}/set-default`);
+                    if (result) window.location.reload();
+                    return;
+                }
+
+                const toggleBtn = event.target.closest('[data-locale-toggle-active]');
+                if (toggleBtn) {
+                    const id = toggleBtn.dataset.localeId;
+                    const result = await post(`/aacp/advanced/locales/${id}/toggle-active`);
+                    if (result) window.location.reload();
+                }
+            });
+        })();
+    </script>
+{% endblock %}

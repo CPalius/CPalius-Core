@@ -1,0 +1,65 @@
+{#
+    Dört performans backend'inin (Redis/Memcached/Varnish/PageSpeed) hepsinin
+    paylaştığı ortak kart partial'ı — bkz. _settings_form.html.twig'in tip
+    bazlı if/elseif deseni, burada 4 kez kopyalanmak yerine tek yerde tutulur.
+
+    Beklenen değişkenler:
+      backendId   (string) 'redis'|'memcached'|'varnish'|'pagespeed'
+      title       (string) Kart başlığı.
+      fields      (array<string, array{key: string, label: string}>) Ayar alanları.
+      config      (array<string, mixed>) Alanların mevcut değerleri.
+      status      (App\Entity\PerformanceBackendStatus|null)
+      csrf_token  (string)
+#}
+{% set enabled = status and status.enabled %}
+{% set lastTestSuccess = status and status.lastTestSuccess %}
+
+<twig:cp:card title="{{ title }}" variant="{{ enabled ? 'default' : (lastTestSuccess ? 'default' : 'danger') }}">
+    <div data-performance-root="1"
+         data-performance-backend="{{ backendId }}"
+         data-performance-test-url="{{ path('aacp_performance_test', {backend: backendId}) }}"
+         data-performance-enable-url="{{ path('aacp_performance_enable', {backend: backendId}) }}"
+         data-performance-disable-url="{{ path('aacp_performance_disable', {backend: backendId}) }}"
+         data-performance-csrf="{{ csrf_token }}"
+         class="space-y-sp-sm">
+
+        <div class="flex items-center gap-2">
+            <twig:cp:badge status="{{ enabled ? 'active' : (lastTestSuccess ? 'inactive' : 'quarantined') }}"
+                           label="{{ enabled ? 'aacp.performance.status.enabled'|trans : (lastTestSuccess ? 'aacp.performance.status.ok_disabled'|trans : 'aacp.performance.status.disabled'|trans) }}" />
+            <span class="text-fs-xs text-slate-500" data-performance-last-tested>
+                {% if status and status.lastTestedAt %}
+                    {{ 'aacp.performance.last_test'|trans({date: status.lastTestedAt|date('d.m.Y H:i'), message: status.lastTestMessageKey|trans(status.lastTestMessageParams)}) }}
+                {% else %}
+                    {{ 'aacp.performance.never_tested'|trans }}
+                {% endif %}
+            </span>
+        </div>
+
+        <div class="grid grid-cols-1 gap-sp-sm sm:grid-cols-2">
+            {% for field in fields %}
+                <div>
+                    <label class="form-label !text-slate-400">{{ field.label }}</label>
+                    <input type="{{ field.key starts with 'password' ? 'password' : 'text' }}"
+                           name="{{ field.key }}"
+                           value="{{ config[field.key] }}"
+                           data-performance-field="{{ field.key }}"
+                           class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button type="button" class="btn btn-sm btn-secondary" data-performance-action="test">
+                {{ 'aacp.performance.action.test'|trans }}
+            </button>
+            <button type="button" class="btn btn-sm btn-primary" data-performance-action="enable" {{ lastTestSuccess and not enabled ? '' : 'disabled' }}>
+                {{ 'aacp.performance.action.enable'|trans }}
+            </button>
+            <button type="button" class="btn btn-sm btn-danger" data-performance-action="disable" {{ enabled ? '' : 'disabled' }}>
+                {{ 'aacp.performance.action.disable'|trans }}
+            </button>
+        </div>
+
+        <pre class="text-fs-xs text-slate-500 whitespace-pre-wrap" data-performance-log></pre>
+    </div>
+</twig:cp:card>

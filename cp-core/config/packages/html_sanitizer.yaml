@@ -1,0 +1,18 @@
+framework:
+    html_sanitizer:
+        sanitizers:
+            # Jodit gibi zengin metin editörlerinden gelen HTML'i kaydetmeden
+            # önce temizlemek için (Manifesto Law 5.3: "rich-text field...
+            # aggressively sanitized using symfony/html-sanitizer before
+            # saving"). Node modülünden bağımsız, generic bir sanitizer —
+            # herhangi bir Node type'ında rich-text alanı olan modül kullanabilir.
+            cpalius_richtext:
+                allow_safe_elements: true
+                allow_static_elements: true
+                allow_elements:
+                    img: ['src', 'alt', 'width', 'height', 'class']
+                    a: ['href', 'title', 'target', 'rel']
+                allow_attributes:
+                    class: '*'
+                allowed_link_schemes: ['http', 'https']
+                allow_relative_links: true

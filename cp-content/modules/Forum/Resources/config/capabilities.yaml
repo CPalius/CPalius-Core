@@ -1,0 +1,12 @@
+capabilities:
+    - forum.view
+    - forum.section.manage
+    - forum.topic.create
+    - forum.post.edit.own
+    - forum.post.edit.any
+    - forum.post.delete.own
+    - forum.post.delete.any
+    - forum.post.report
+    - forum.post.like
+    - forum.topic.moderate
+    - forum.user.manage

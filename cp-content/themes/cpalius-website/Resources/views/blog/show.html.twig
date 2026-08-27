@@ -1,0 +1,74 @@
+{% extends '@CpaliusWebsiteTheme/layout.html.twig' %}
+
+{% set seo = post.getDataValue('seo') %}
+{% set postBody = post.getDataValue('body') %}
+{% set subType = post.getDataValue('post_sub_type', 'makale') %}
+{% set typeFields = post.getDataValue('type_fields', {}) %}
+
+{% block title %}{{ post.title }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
+{% block meta_description %}{{ seo is not null and seo.meta_description is defined ? seo.meta_description : '' }}{% endblock %}
+{% block meta_robots %}{{ seo is not null and seo.noindex is defined and seo.noindex ? 'noindex, nofollow' : 'index, follow' }}{% endblock %}
+
+{% block canonical %}
+    {% if seo is not null and seo.canonical_url is defined and seo.canonical_url %}
+        <link rel="canonical" href="{{ seo.canonical_url }}">
+    {% endif %}
+{% endblock %}
+
+{% block schema_org %}
+    <script type="application/ld+json">{{ cp_schema_org(post)|raw }}</script>
+{% endblock %}
+
+{% block content %}
+<section class="post-hero post-hero--{{ subType }}" id="post-hero">
+    <div class="container{% if subType == 'not' %} container-narrow{% endif %}">
+        <ul class="slw-breadcrumb fade-in">
+            <li><a href="{{ path('blog_index') }}">~/blog</a></li>
+            {% if post.category %}
+                <li><a href="{{ path('blog_category', {_locale: post.locale, slug: post.category.slug}) }}">{{ post.category.name }}</a></li>
+            {% endif %}
+            <li>{{ post.slug }}</li>
+        </ul>
+
+        <div class="slw-ctype-strip slw-ctype--{{ subType }} fade-in">
+            <span class="slw-type-badge__dot"></span>
+            {{ blog_post_sub_type_label(subType) }}
+            <span class="slw-ctype-strip__extra">{{ 'blog.reading_time'|trans({'minutes': postBody|reading_time}) }}</span>
+        </div>
+
+        <h1 class="post-hero-title fade-in">{{ post.title }}</h1>
+
+        {% if post.getDataValue('excerpt') %}
+            <p class="post-hero-excerpt fade-in">{{ post.getDataValue('excerpt') }}</p>
+        {% endif %}
+
+        <div class="slw-detail-meta fade-in">
+            {% if post.publishedAt %}
+                <time class="slw-detail-meta__item" datetime="{{ post.publishedAt|date('c') }}">{{ post.publishedAt|date('d M Y') }}</time>
+            {% endif %}
+            {% if post.author %}
+                <span class="slw-detail-meta__sep">·</span>
+                <span class="slw-detail-meta__item"><i class="bi bi-person-workspace"></i> {{ post.author.getDataValue('display_name', post.author.email) }}</span>
+            {% endif %}
+            <span class="slw-detail-meta__sep">·</span>
+            <span class="slw-detail-meta__item"><i class="bi bi-clock"></i> {{ 'blog.reading_time'|trans({'minutes': postBody|reading_time}) }}</span>
+        </div>
+
+        {% if featuredImageUrl and subType != 'not' %}
+            <div class="post-hero-image fade-in">
+                <img src="{{ featuredImageUrl }}" alt="{{ post.title }}" loading="eager">
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+{% include [
+    '@CpaliusWebsiteTheme/blog/show/_' ~ subType ~ '.html.twig',
+    '@CpaliusWebsiteTheme/blog/show/_makale.html.twig',
+] with {
+    post: post,
+    postBody: postBody,
+    typeFields: typeFields,
+    relatedPosts: relatedPosts,
+} %}
+{% endblock %}

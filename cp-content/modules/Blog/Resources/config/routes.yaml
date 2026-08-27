@@ -1,0 +1,19 @@
+blog_module_legacy_redirect:
+    resource: ../../Controller/LegacyBlogRedirectController.php
+    type: attribute
+
+blog_module_front:
+    resource: ../../Controller/
+    type: attribute
+    prefix: /{_locale}
+    requirements:
+        _locale: 'tr|en'
+    defaults:
+        _locale: 'tr'
+    exclude:
+        - ../../Controller/Admin/
+        - ../../Controller/LegacyBlogRedirectController.php
+
+blog_module_admin:
+    resource: ../../Controller/Admin/
+    type: attribute

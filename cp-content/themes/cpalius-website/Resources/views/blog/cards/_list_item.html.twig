@@ -1,0 +1,107 @@
+{#
+    Liste görünümü — türe göre belirgin satır düzeni.
+    Beklenen: post (App\Entity\Node, type='post').
+#}
+{% set subType = post.getDataValue('post_sub_type', 'makale') %}
+{% set typeFields = post.getDataValue('type_fields', {}) %}
+{% set typeLabelKey = {
+    'makale': 'blog.card.type.article',
+    'proje': 'blog.card.type.project',
+    'yazilim': 'blog.card.type.software',
+    'not': 'blog.card.type.note'
+}[subType]|default('blog.card.type.article') %}
+
+{% if subType == 'proje' %}
+<article class="blog-list-item blog-list-item--proje blog-card--proje slw-ctype--proje fade-in">
+    <div class="blog-list-item__body">
+        <div class="blog-list-item__meta">
+            <span class="slw-type-badge slw-ctype--proje"><i class="bi bi-kanban" aria-hidden="true"></i> {{ typeLabelKey|trans }}</span>
+            <time datetime="{{ post.publishedAt ? post.publishedAt|date('c') : '' }}">
+                {{ post.publishedAt ? post.publishedAt|date('d.m.Y') : '' }}
+            </time>
+        </div>
+        <h3 class="blog-list-item__title">
+            <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
+        </h3>
+        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+        {% if (typeFields.repo_url is defined and typeFields.repo_url) or (typeFields.demo_url is defined and typeFields.demo_url) %}
+            <div class="project-card-links blog-card-proje__actions">
+                {% if typeFields.repo_url is defined and typeFields.repo_url %}
+                    <a href="{{ typeFields.repo_url }}" target="_blank" rel="noopener noreferrer" class="project-card-link">
+                        <i class="bi bi-github" aria-hidden="true"></i> {{ 'blog.card.link.repo'|trans }}
+                    </a>
+                {% endif %}
+                {% if typeFields.demo_url is defined and typeFields.demo_url %}
+                    <a href="{{ typeFields.demo_url }}" target="_blank" rel="noopener noreferrer" class="project-card-link">
+                        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> {{ 'blog.card.link.demo'|trans }}
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</article>
+
+{% elseif subType == 'yazilim' %}
+<article class="blog-list-item blog-list-item--yazilim blog-card--yazilim slw-ctype--yazilim fade-in">
+    <div class="blog-list-item__thumb blog-list-item__thumb--version">
+        {% if typeFields.version is defined and typeFields.version %}
+            <span class="blog-card-yazilim__version">v{{ typeFields.version }}</span>
+        {% else %}
+            <span class="blog-card-yazilim__version blog-card-yazilim__version--empty">SW</span>
+        {% endif %}
+    </div>
+    <div class="blog-list-item__body">
+        <div class="blog-list-item__meta">
+            <span class="slw-type-badge slw-ctype--yazilim"><span class="slw-type-badge__dot"></span> {{ typeLabelKey|trans }}</span>
+            <time datetime="{{ post.publishedAt ? post.publishedAt|date('c') : '' }}">
+                {{ post.publishedAt ? post.publishedAt|date('d.m.Y') : '' }}
+            </time>
+        </div>
+        <h3 class="blog-list-item__title">
+            <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
+        </h3>
+        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+        {% if typeFields.download_url is defined and typeFields.download_url %}
+            <a href="{{ typeFields.download_url }}" target="_blank" rel="noopener noreferrer" class="blog-card-yazilim__download">
+                <i class="bi bi-download" aria-hidden="true"></i> {{ 'blog.card.link.download'|trans }}
+            </a>
+        {% endif %}
+    </div>
+</article>
+
+{% elseif subType == 'not' %}
+<article class="blog-list-item blog-list-item--not blog-card--not slw-ctype--not fade-in">
+    <div class="blog-list-item__body blog-card-not__body">
+        <div class="blog-list-item__meta">
+            <span class="slw-type-badge slw-ctype--not"><span class="slw-type-badge__dot"></span> {{ typeLabelKey|trans }}</span>
+            <time datetime="{{ post.publishedAt ? post.publishedAt|date('c') : '' }}">
+                {{ post.publishedAt ? post.publishedAt|date('d.m.Y') : '' }}
+            </time>
+        </div>
+        <h3 class="blog-list-item__title blog-card-not__title">
+            <span class="blog-card-not__prompt" aria-hidden="true">$</span>
+            <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
+        </h3>
+        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+    </div>
+</article>
+
+{% else %}
+<article class="blog-list-item blog-list-item--makale blog-card--makale slw-ctype--makale fade-in">
+    <div class="blog-list-item__thumb">
+        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_cover.html.twig' with { post: post } %}
+    </div>
+    <div class="blog-list-item__body">
+        <div class="blog-list-item__meta">
+            <span class="slw-type-badge slw-ctype--makale"><span class="slw-type-badge__dot"></span> {{ typeLabelKey|trans }}</span>
+            <time datetime="{{ post.publishedAt ? post.publishedAt|date('c') : '' }}">
+                {{ post.publishedAt ? post.publishedAt|date('d.m.Y') : '' }}
+            </time>
+        </div>
+        <h3 class="blog-list-item__title blog-card__title--editorial">
+            <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
+        </h3>
+        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+    </div>
+</article>
+{% endif %}

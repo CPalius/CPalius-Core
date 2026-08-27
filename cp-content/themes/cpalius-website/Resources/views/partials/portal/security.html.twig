@@ -1,0 +1,44 @@
+<section class="portal-zone" id="security">
+    <div class="container">
+        <div class="portal-module fade-in">
+            <div class="portal-module__head">
+                <h2 class="portal-module__title">
+                    <i class="bi bi-shield-lock"></i>
+                    <span>Güvenlik ve Performans Anayasası</span>
+                </h2>
+                <span class="portal-module__eyebrow">Bölüm 6</span>
+            </div>
+            <div class="portal-module__body portal-module__body--padded portal-marketing">
+                <p class="portal-module__intro">
+                    Güvenlik ve performans, projenin son aşamasında "üzerine eklenen" bir cila değildir;
+                    sistemin en temel yapı taşlarıdır.
+                </p>
+
+                <div class="security-grid">
+                    <div class="security-card">
+                        <div class="security-icon"><i class="bi bi-shield-lock"></i></div>
+                        <h4>Yetenek Tabanlı Erişim Kontrolü (CBAC)</h4>
+                        <p>Standart ROLE_ADMIN yaklaşımı yerine dinamik olarak üretilen yetenekler kontrol edilir. Kodun hiçbir yerinde rol ismi kontrol edilmez.</p>
+                        <p><code class="code-inline">denyAccessUnlessGranted('system.module.manage')</code></p>
+                        <p>
+                            <strong>Roller = Config (YAML):</strong> Git ile taşınır.<br>
+                            <strong>Kullanıcılar = Content (DB):</strong> Asla dışa aktarılmaz.
+                        </p>
+                    </div>
+                    <div class="security-card">
+                        <div class="security-icon"><i class="bi bi-building-lock"></i></div>
+                        <h4>SaaS Tenant Sızıntı Koruması</h4>
+                        <p>Çok kiracılı (SaaS) sistemlerde en büyük güvenlik açığı: yazılımcının <code class="code-inline">WHERE tenant_id = ?</code> yazmayı unutması.</p>
+                        <p>CPalius'ta bu ihtimal <strong>platform seviyesinde yok edilmiştir</strong>. Doctrine SQLFilter otomatik olarak her sorguya tenant kısıtını enjekte eder.</p>
+                    </div>
+                    <div class="security-card">
+                        <div class="security-icon"><i class="bi bi-speedometer2"></i></div>
+                        <h4>N+1 Sorgu Muhafızı</h4>
+                        <p>Veritabanı yavaşlıklarının en yaygın sebebi olan N+1 sorgu hatalarını engelleyen Doctrine Listener. Dev ortamında tetiklenir.</p>
+                        <p>Tek HTTP isteğinde aynı tabloya atılan sorgu sayısı limiti aşarsa <code class="code-inline">MaxQueriesExceededException</code> fırlatılır.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

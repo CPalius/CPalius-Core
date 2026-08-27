@@ -1,0 +1,119 @@
+{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+
+{% block title %}{{ 'forum.search.title_prefix'|trans }}: {{ query }} — {{ 'forum.breadcrumb.home_title'|trans }}{% endblock %}
+{% block meta_description %}{{ 'forum.search.meta_description'|trans({'query': query}) }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-crumb fade-in" aria-label="{{ 'forum.nav_aria'|trans }}">
+        <ol class="forum-crumb__list">
+            <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+            <li><a href="{{ path('forum_index') }}">{{ 'forum.breadcrumb.home_title'|trans }}</a></li>
+            <li class="is-active"><i class="bi bi-search"></i> {{ 'forum.search.breadcrumb'|trans }}</li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-search-form fade-in">
+    <form action="{{ path('forum_search') }}" method="get" class="forum-search-box">
+        <div class="forum-search-box__field">
+            <i class="bi bi-search"></i>
+            <input type="search" name="q" value="{{ query }}" placeholder="{{ 'forum.search.input_placeholder'|trans }}" autofocus autocomplete="off">
+        </div>
+        <div class="forum-search-box__filters">
+            <select name="scope">
+                <option value="all" {{ scope == 'all' ? 'selected' : '' }}>{{ 'forum.search.scope_all'|trans }}</option>
+                <option value="topics" {{ scope == 'topics' ? 'selected' : '' }}>{{ 'forum.search.scope_topics'|trans }}</option>
+                <option value="posts" {{ scope == 'posts' ? 'selected' : '' }}>{{ 'forum.search.scope_posts'|trans }}</option>
+            </select>
+            {% if sections is defined and sections is not empty %}
+                <select name="section">
+                    <option value="">{{ 'forum.search.all_sections'|trans }}</option>
+                    {% for s in sections %}
+                        <option value="{{ s.id }}" {{ sectionFilter == s.id ? 'selected' : '' }}>{{ s.title }}</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search"></i> {{ 'forum.action.search'|trans }}</button>
+        </div>
+    </form>
+</div>
+
+{% if query %}
+    {% if topicResults is not empty or postResults is not empty %}
+        <div class="forum-search-summary fade-in">
+            <strong>{{ totalResults }}</strong> {{ 'forum.search.results_count_suffix'|trans }}
+        </div>
+    {% endif %}
+
+    {% if topicResults is not empty %}
+        <div class="forum-search-section fade-in">
+            <h2 class="forum-search-section__title"><i class="bi bi-chat-square-text"></i> {{ 'forum.search.section_topics'|trans }}</h2>
+            <div class="forum-topics">
+                {% for topic in topicResults %}
+                    <div class="forum-topic">
+                        <span class="forum-topic__icon"><i class="bi bi-chat-square-text"></i></span>
+                        <div>
+                            <div class="forum-topic__title">
+                                {% if topic.prefix %}<span class="forum-badge" style="background: color-mix(in srgb, {{ topic.prefix.color }} 15%, white); color: {{ topic.prefix.color }};">{{ topic.prefix.label }}</span>{% endif %}
+                                <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}">{{ topic.title }}</a>
+                            </div>
+                            <div class="forum-topic__meta">
+                                <b>{{ topic.firstPosterName }}</b> · {{ topic.createdAt|date('d.m.Y') }}
+                                · <a href="{{ path('forum_section', {sectionSlug: topic.section.slug}) }}">{{ topic.section.title }}</a>
+                            </div>
+                        </div>
+                        <div class="forum-topic__stat">
+                            <strong>{{ topic.postCount - 1 }}</strong>
+                            <span>{{ 'forum.stat.reply'|trans }}</span>
+                        </div>
+                        <div class="forum-topic__stat">
+                            <strong>{{ topic.viewCount }}</strong>
+                            <span>{{ 'forum.stat.view'|trans }}</span>
+                        </div>
+                        <div class="forum-topic-activity">
+                            {% if topic.lastPosterName %}
+                                {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: topic.lastPosterName} %}
+                                <div class="forum-topic__activity-text">
+                                    <span>{{ topic.lastPosterName }}</span>
+                                    <time>{{ topic.updatedAt|date('d.m.Y H:i') }}</time>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if postResults is not empty %}
+        <div class="forum-search-section fade-in">
+            <h2 class="forum-search-section__title"><i class="bi bi-chat-left-text"></i> {{ 'forum.search.section_posts'|trans }}</h2>
+            <div class="forum-search-posts">
+                {% for post in postResults %}
+                    <div class="forum-search-post">
+                        <div class="forum-search-post__header">
+                            {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: post.posterName} %}
+                            <div>
+                                <strong>{{ post.posterName }}</strong>
+                                <span>{{ post.createdAt|date('d.m.Y H:i') }}</span>
+                            </div>
+                            <a href="{{ path('forum_topic', {topicId: post.topic.id, slug: post.topic.slug}) }}#post{{ post.id }}" class="forum-search-post__topic">
+                                <i class="bi bi-arrow-right"></i> {{ post.topic.title }}
+                            </a>
+                        </div>
+                        <div class="forum-search-post__body">{{ post.body|striptags|slice(0, 250) }}{% if post.body|striptags|length > 250 %}...{% endif %}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if topicResults is empty and postResults is empty %}
+        <div class="forum-empty fade-in">
+            <i class="bi bi-search"></i>
+            {{ 'forum.search.no_results'|trans({'query': query}) }}
+        </div>
+    {% endif %}
+{% endif %}
+{% endblock %}

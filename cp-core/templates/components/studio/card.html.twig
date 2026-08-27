@@ -1,0 +1,32 @@
+{#
+    <twig:studio:card title="Yazılar">
+        ... içerik ...
+    </twig:studio:card>
+
+    Studio (aydınlık tema) için <twig:cp:card>'ın açık renk karşılığı.
+    AACP'nin koyu paleti Studio'da kullanılmaz; bu iki bileşen bilinçli
+    olarak AYRI dosyalardır, aynı kaynağın "variant"ı değil — AACP zaten
+    "sıfır bağımlılık" ilkesiyle izole tutulur, Studio'nun tema
+    değişiklikleri o izolasyona hiç dokunmamalıdır.
+
+    Props:
+      title    (string|null)  Kart başlığı, verilmezse header gizlenir.
+      variant  (string)       'default' | 'danger' — uyarı/silme kartları için kırmızı vurgu.
+      padded   (bool)         İçerik alanına varsayılan padding uygulansın mı.
+#}
+{% props title = null, variant = 'default', padded = true %}
+
+<div {{ attributes.defaults({class: 'card ' ~ (variant == 'danger' ? '!border-danger-300' : '') }) }}>
+    {% if title is not null %}
+        <div class="card-header {{ variant == 'danger' ? '!bg-danger-50' : '' }}">
+            <h3 class="text-fs-sm font-semibold tracking-wide {{ variant == 'danger' ? 'text-danger-700' : 'text-neutral-900' }}">
+                {{ title }}
+            </h3>
+            {% block actions %}{% endblock %}
+        </div>
+    {% endif %}
+
+    <div class="{{ padded ? 'card-body' : '' }}">
+        {% block content %}{% endblock %}
+    </div>
+</div>

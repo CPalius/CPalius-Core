@@ -1,0 +1,61 @@
+{#
+    Kategori haritası — kök + alt kategori ağacı.
+    Beklenen: blogCategories = { roots: list<Category>, postCounts: array<int, int> }
+#}
+{% set roots = blogCategories.roots|default([]) %}
+{% set postCounts = blogCategories.postCounts|default({}) %}
+{% if roots is not empty %}
+<section class="blog-taxonomy" id="blog-categories" aria-label="{{ 'blog.categories_map.aria'|trans }}">
+    <div class="container">
+        <div class="blog-taxonomy__head">
+            <div>
+                <p class="blog-taxonomy__eyebrow">{{ 'blog.categories_map.eyebrow'|trans }}</p>
+                <h2 class="blog-taxonomy__title">{{ 'blog.categories_map.title'|trans }}</h2>
+            </div>
+            <p class="blog-taxonomy__hint">{{ 'blog.categories_map.hint'|trans }}</p>
+        </div>
+
+        <div class="blog-taxonomy__map" role="list">
+            {% for root in roots %}
+                {% set rootCount = postCounts[root.id]|default(0) %}
+                {% set children = root.children %}
+                <article class="blog-taxonomy__branch" role="listitem">
+                    <a
+                        class="blog-taxonomy__root"
+                        href="{{ path('blog_category', {_locale: root.locale, slug: root.slug}) }}"
+                    >
+                        <span class="blog-taxonomy__path" aria-hidden="true">~/</span>
+                        <span class="blog-taxonomy__name">{{ root.name }}</span>
+                        <span class="blog-taxonomy__meta">
+                            <span class="blog-taxonomy__count">{{ rootCount }}</span>
+                            <span class="blog-taxonomy__count-label">{{ 'blog.categories_map.posts'|trans }}</span>
+                        </span>
+                    </a>
+
+                    {% if root.description %}
+                        <p class="blog-taxonomy__desc">{{ root.description|striptags|slice(0, 110) }}{% if root.description|striptags|length > 110 %}…{% endif %}</p>
+                    {% endif %}
+
+                    {% if children is not empty %}
+                        <ul class="blog-taxonomy__children">
+                            {% for child in children %}
+                                {% set childCount = postCounts[child.id]|default(0) %}
+                                <li class="blog-taxonomy__child{% if loop.last %} is-last{% endif %}">
+                                    <span class="blog-taxonomy__rail" aria-hidden="true"></span>
+                                    <a
+                                        class="blog-taxonomy__leaf"
+                                        href="{{ path('blog_category', {_locale: child.locale, slug: child.slug}) }}"
+                                    >
+                                        <span class="blog-taxonomy__leaf-name">{{ child.name }}</span>
+                                        <span class="blog-taxonomy__leaf-count">{{ childCount }}</span>
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}

@@ -1,0 +1,137 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ section ? 'studio.forum.sections.form.edit_header'|trans : 'studio.forum.sections.form.create_header'|trans }}{% endblock %}
+
+{% block body %}
+    <twig:studio:card>
+        <form method="post" id="forum-section-form">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_section') }}">
+
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="form-label" for="section_type">{{ 'studio.forum.sections.form.level'|trans }}</label>
+                    <select name="section_type" id="section_type" class="form-select" required>
+                        <option value="division" {{ formValues.sectionType == 'division' ? 'selected' : '' }}>{{ 'studio.forum.sections.form.level.division'|trans }}</option>
+                        <option value="category" {{ formValues.sectionType == 'category' ? 'selected' : '' }}>{{ 'studio.forum.sections.form.level.category'|trans }}</option>
+                        <option value="subcategory" {{ formValues.sectionType == 'subcategory' ? 'selected' : '' }}>{{ 'studio.forum.sections.form.level.subcategory'|trans }}</option>
+                    </select>
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.forum.sections.form.level_hint'|trans }}</p>
+                </div>
+                <div id="parent-field">
+                    <label class="form-label" for="parent_id">{{ 'studio.forum.sections.form.parent'|trans }}</label>
+                    <select name="parent_id" id="parent_id" class="form-select" data-initial-parent="{{ formValues.parentId ?? '' }}">
+                        <option value="">{{ 'studio.forum.sections.form.parent_none'|trans }}</option>
+                    </select>
+                    <p id="parent-hint" class="mt-1 text-fs-xs text-neutral-500"></p>
+                    <p id="parent-empty" class="mt-1 hidden text-fs-xs text-warning-700"></p>
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.sections.form.title'|trans }}</label>
+                    <input type="text" name="title" value="{{ formValues.title }}" required class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.sections.form.code'|trans }}</label>
+                    <input type="text" name="code" value="{{ formValues.code }}" {{ section ? 'readonly' : 'required' }} class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.sections.form.slug'|trans }}</label>
+                    <input type="text" name="slug" value="{{ formValues.slug }}" class="form-control" placeholder="{{ 'studio.forum.sections.form.slug_placeholder'|trans }}">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.sections.form.sort_order'|trans }}</label>
+                    <input type="number" name="sort_order" value="{{ formValues.sortOrder }}" class="form-control">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label">{{ 'studio.forum.sections.form.icon'|trans }} <span class="text-fs-xs text-neutral-500">{{ 'studio.forum.sections.form.icon_hint'|trans }}</span></label>
+                    <div class="flex items-center gap-2">
+                        <i class="bi {{ formValues.icon|default('bi-chat-square-text', true) }}" style="font-size: 1.25rem;"></i>
+                        <input type="text" name="icon" value="{{ formValues.icon }}" class="form-control" placeholder="{{ 'studio.forum.sections.form.icon_placeholder'|trans }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <label class="form-label">{{ 'studio.forum.sections.form.description'|trans }}</label>
+                <textarea name="description" rows="3" class="form-control">{{ formValues.description }}</textarea>
+            </div>
+
+            <div class="mt-6 flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ 'studio.forum.sections.form.save'|trans }}</button>
+                <a href="{{ path('admin_forum_sections_index') }}" class="btn btn-neutral">{{ 'studio.forum.sections.form.cancel'|trans }}</a>
+            </div>
+        </form>
+    </twig:studio:card>
+
+    <script>
+        (function () {
+            const parentOptionsByType = {{ parentOptionsByType|json_encode|raw }};
+            const hints = {
+                division: {{ 'studio.forum.sections.form.parent_hint_division'|trans|json_encode|raw }},
+                category: {{ 'studio.forum.sections.form.parent_hint_category'|trans|json_encode|raw }},
+                subcategory: {{ 'studio.forum.sections.form.parent_hint_subcategory'|trans|json_encode|raw }},
+            };
+            const emptyMessages = {
+                category: {{ 'studio.forum.sections.form.parent_empty_category'|trans|json_encode|raw }},
+                subcategory: {{ 'studio.forum.sections.form.parent_empty_subcategory'|trans|json_encode|raw }},
+            };
+
+            const typeSelect = document.getElementById('section_type');
+            const parentSelect = document.getElementById('parent_id');
+            const parentField = document.getElementById('parent-field');
+            const parentHint = document.getElementById('parent-hint');
+            const parentEmpty = document.getElementById('parent-empty');
+            const initialParent = parentSelect.dataset.initialParent || '';
+
+            function syncParentOptions() {
+                const type = typeSelect.value;
+                const options = parentOptionsByType[type] || [];
+                const previous = parentSelect.value || initialParent;
+
+                parentSelect.innerHTML = '';
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = {{ 'studio.forum.sections.form.parent_none'|trans|json_encode|raw }};
+                parentSelect.appendChild(placeholder);
+
+                options.forEach(function (option) {
+                    const el = document.createElement('option');
+                    el.value = String(option.id);
+                    el.textContent = option.label;
+                    if (String(option.id) === String(previous)) {
+                        el.selected = true;
+                    }
+                    parentSelect.appendChild(el);
+                });
+
+                if (type === 'division') {
+                    parentField.classList.add('opacity-50');
+                    parentSelect.disabled = true;
+                    parentSelect.removeAttribute('required');
+                    parentHint.textContent = hints.division;
+                    parentEmpty.classList.add('hidden');
+                    parentSelect.value = '';
+                    return;
+                }
+
+                parentField.classList.remove('opacity-50');
+                parentSelect.disabled = false;
+                parentSelect.required = true;
+                parentHint.textContent = hints[type] || '';
+
+                if (options.length === 0) {
+                    parentEmpty.textContent = emptyMessages[type] || '';
+                    parentEmpty.classList.remove('hidden');
+                } else {
+                    parentEmpty.classList.add('hidden');
+                }
+
+                if (options.length === 1) {
+                    parentSelect.value = String(options[0].id);
+                }
+            }
+
+            typeSelect.addEventListener('change', syncParentOptions);
+            syncParentOptions();
+        })();
+    </script>
+{% endblock %}

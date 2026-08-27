@@ -1,0 +1,89 @@
+{#
+    Forum kök sayfası — Son olaylar (kompakt tablo / featuredThreads tarzı).
+    Beklenen: forumActivity
+#}
+{% if forumActivity is defined and forumActivity.enabled and forumActivity.tabs is not empty %}
+{% set firstTab = forumActivity.tabs|first %}
+{% set tabIcons = {
+    'latest_topics': 'bi-newspaper',
+    'latest_posts': 'bi-chat-left-text',
+    'newest_users': 'bi-person-plus',
+    'top_posters': 'bi-bar-chart-line'
+} %}
+<section
+    class="forum-activity fade-in"
+    id="forum-activity"
+    data-forum-activity
+    data-activity-url="{{ path('forum_activity') }}"
+    data-load-more="{{ forumActivity.loadMore }}"
+    style="--forum-activity-rows: {{ forumActivity.perTab }}"
+    aria-label="{{ 'forum.activity.aria'|trans }}"
+>
+    <ul class="forum-activity__tabs" role="tablist">
+        {% for tab in forumActivity.tabs %}
+            <li class="forum-activity__tab-item{% if tab == firstTab %} is-active{% endif %}" role="presentation">
+                <button
+                    type="button"
+                    class="forum-activity__tab{% if tab == firstTab %} is-active{% endif %}"
+                    role="tab"
+                    data-activity-tab="{{ tab }}"
+                    aria-selected="{{ tab == firstTab ? 'true' : 'false' }}"
+                >
+                    <i class="bi {{ tabIcons[tab]|default('bi-list') }}" aria-hidden="true"></i>
+                    {{ ('forum.activity.tab.' ~ tab)|trans }}
+                </button>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <div class="forum-activity__body">
+        {% for tab in forumActivity.tabs %}
+            {% set chunk = forumActivity.initial[tab]|default({items: [], hasMore: false}) %}
+            {% set isThreadTab = tab in ['latest_topics', 'latest_posts'] %}
+            <div
+                class="forum-activity__panel{% if tab == firstTab %} is-active{% endif %}"
+                data-activity-panel="{{ tab }}"
+                role="tabpanel"
+                {% if tab != firstTab %}hidden{% endif %}
+            >
+                <div class="forum-activity__thead" aria-hidden="true">
+                    {% if isThreadTab %}
+                        <span>{{ 'forum.activity.col.topic'|trans }}</span>
+                        <span class="forum-activity__thead-icons" title="{{ 'forum.activity.col.replies_views'|trans }}">
+                            <i class="bi bi-chat-dots" aria-hidden="true"></i>
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </span>
+                        <span>{{ 'forum.activity.col.last_reply'|trans }}</span>
+                        <span>{{ 'forum.activity.col.category'|trans }}</span>
+                    {% else %}
+                        <span>{{ 'forum.activity.col.member'|trans }}</span>
+                        <span>{{ 'forum.activity.col.posts'|trans }}</span>
+                        <span>{{ 'forum.activity.col.joined'|trans }}</span>
+                        <span></span>
+                    {% endif %}
+                </div>
+
+                <ul class="forum-activity__list" data-activity-list>
+                    {% if chunk.items is empty %}
+                        <li class="forum-activity__empty">{{ 'forum.activity.empty'|trans }}</li>
+                    {% else %}
+                        {% for item in chunk.items %}
+                            {% include '@CpaliusWebsiteTheme/forum/partials/_activity_row.html.twig' with { item: item } %}
+                        {% endfor %}
+                    {% endif %}
+                </ul>
+
+                <button
+                    type="button"
+                    class="forum-activity__more{% if not chunk.hasMore %} is-exhausted{% endif %}"
+                    data-activity-more
+                    data-offset="{{ chunk.items|length }}"
+                    {% if not chunk.hasMore %}tabindex="-1" aria-hidden="true"{% endif %}
+                >
+                    {{ 'forum.activity.load_more'|trans }}
+                </button>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}

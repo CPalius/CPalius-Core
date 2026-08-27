@@ -1,0 +1,37 @@
+# see https://symfony.com/doc/current/reference/configuration/framework.html
+framework:
+    secret: '%env(APP_SECRET)%'
+
+    # Note that the session will be started ONLY if you read or write from it.
+    # handler_id boş bırakılırsa PHP'nin varsayılan (dosya) session
+    # handler'ı kullanılır; Redis'e taşımak için cache.redis servisini
+    # session handler'ı olarak veriyoruz.
+    session:
+        handler_id: 'session.handler.redis'
+        cookie_secure: auto
+        cookie_samesite: lax
+
+    csrf_protection: true
+
+    form: true
+
+    # Varnish önde reverse-proxy olarak koşacağı için Symfony'nin ESI
+    # (Edge Side Includes) desteği açılır — Surrogate-Capable header'ını
+    # okuyup fragment'ları Varnish'e devredebilir.
+    esi: true
+    fragments: { path: /_fragment }
+
+    # http_cache.enabled BİLİNÇLİ OLARAK false: Symfony'nin dahili
+    # AppCache reverse-proxy'si DEĞİL, gerçek Varnish önde koşuyor. Bu
+    # blok sadece response header stratejisini (terminate_on_cache_hit)
+    # ayarlar — Varnish TCP bağlantısını PHP-FPM/worker beklemeden
+    # kapatabilsin diye cache-hit'lerde PHP süreci erken sonlanır.
+    http_cache:
+        enabled: false
+        terminate_on_cache_hit: true
+
+when@test:
+    framework:
+        test: true
+        session:
+            storage_factory_id: session.storage.factory.mock_file

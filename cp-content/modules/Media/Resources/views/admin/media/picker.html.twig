@@ -1,0 +1,29 @@
+{#
+    Bağımsız bir dış çatı — admin/layout.html.twig'i BİLİNÇLİ OLARAK extend
+    ETMEZ, çünkü bu içerik bir <dialog> içine fetch+innerHTML ile enjekte
+    edilir (bkz. cp-core/assets/media-picker.js). Studio kabuğunu tekrar
+    render etmek hem gereksiz hem de modal deneyimini bozar.
+#}
+<div class="border-b border-neutral-200 p-sp-sm">
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <form method="get" data-media-picker-search class="min-w-0 flex-1">
+            <input type="text" name="q" value="{{ query }}" placeholder="{{ 'media.index.search_placeholder'|trans }}"
+                   class="form-control">
+        </form>
+
+        {% if canUpload|default(false) %}
+            <label class="btn btn-sm btn-primary cursor-pointer shrink-0">
+                {{ 'media.picker.upload_action'|trans }}
+                <input type="file"
+                       data-media-picker-upload
+                       class="hidden"
+                       accept="image/*,application/pdf,video/*">
+            </label>
+        {% endif %}
+    </div>
+    <p data-media-picker-upload-status class="mt-2 hidden text-fs-xs text-neutral-500"></p>
+</div>
+
+<div class="max-h-[60vh] overflow-y-auto p-sp-sm" data-media-grid>
+    {% include '@MediaModule/admin/media/_grid.html.twig' with {assets: assets, picker: true} %}
+</div>

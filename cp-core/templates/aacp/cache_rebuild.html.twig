@@ -1,0 +1,61 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.cache_rebuild.header'|trans }}{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap('aacp-cache-rebuild') }}
+{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md"
+         data-cache-rebuild-root
+         data-cache-rebuild-csrf="{{ csrf_token }}"
+         data-cache-rebuild-clear-url="{{ path('aacp_cache_rebuild_clear_symfony') }}"
+         data-cache-rebuild-opcache-url="{{ path('aacp_cache_rebuild_reset_opcache') }}"
+         data-cache-rebuild-assets-url="{{ path('aacp_cache_rebuild_assets') }}">
+
+        <p class="text-fs-xs text-slate-500 font-mono">
+            {{ 'aacp.cache_rebuild.intro'|trans }}
+        </p>
+
+        <div class="grid grid-cols-1 gap-sp-md sm:grid-cols-3">
+            <twig:cp:card title="{{ 'aacp.cache_rebuild.symfony_cache'|trans }}">
+                <p class="mb-sp-xs text-fs-xs text-slate-500">
+                    {{ 'aacp.cache_rebuild.symfony_cache_desc'|trans }}
+                </p>
+                <button type="button"
+                        data-cache-rebuild-trigger="clear"
+                        class="btn btn-primary w-full disabled:cursor-wait disabled:opacity-60">
+                    {{ 'aacp.cache_rebuild.clear_cache'|trans }}
+                </button>
+            </twig:cp:card>
+
+            <twig:cp:card title="OPcache">
+                <p class="mb-sp-xs text-fs-xs text-slate-500">
+                    {{ 'aacp.cache_rebuild.opcache_desc'|trans }}
+                </p>
+                <button type="button"
+                        data-cache-rebuild-trigger="opcache"
+                        class="btn btn-primary w-full disabled:cursor-wait disabled:opacity-60">
+                    {{ 'aacp.cache_rebuild.reset_opcache'|trans }}
+                </button>
+            </twig:cp:card>
+
+            <twig:cp:card title="{{ 'aacp.cache_rebuild.tailwind_assets'|trans }}">
+                <p class="mb-sp-xs text-fs-xs text-slate-500">
+                    {{ 'aacp.cache_rebuild.tailwind_assets_desc'|trans }}
+                </p>
+                <button type="button"
+                        data-cache-rebuild-trigger="assets"
+                        class="btn btn-primary w-full disabled:cursor-wait disabled:opacity-60">
+                    {{ 'aacp.cache_rebuild.rebuild_assets'|trans }}
+                </button>
+            </twig:cp:card>
+        </div>
+
+        <twig:cp:card title="{{ 'aacp.cache_rebuild.console_output'|trans }}" padded="{{ false }}">
+            <pre data-cache-rebuild-log class="m-0 max-h-96 overflow-y-auto whitespace-pre-wrap break-words bg-black p-sp-sm font-mono text-fs-xs leading-relaxed text-primary-400">{{ 'aacp.cache_rebuild.select_action'|trans }}</pre>
+        </twig:cp:card>
+    </div>
+{% endblock %}

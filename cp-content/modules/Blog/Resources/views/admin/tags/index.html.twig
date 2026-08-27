@@ -1,0 +1,48 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'blog.tags.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_tags_create') }}" class="btn btn-sm btn-primary">
+        {{ 'blog.tags.create_action'|trans }}
+    </a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'blog.tags.column.name'|trans,
+            'blog.tags.column.slug'|trans,
+            '',
+        ] }}" empty="{{ tags is empty }}" emptyText="{{ 'blog.tags.empty'|trans }}">
+            <twig:block name="rows">
+                {% for tag in tags %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('admin_tags_edit', {id: tag.id}) }}" class="font-medium text-neutral-900 hover:text-primary-600">
+                                {{ tag.name }}
+                            </a>
+                        </td>
+                        <td class="text-fs-xs text-neutral-500">
+                            <code>{{ tag.slug }}</code>
+                        </td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ path('admin_tags_edit', {id: tag.id}) }}" class="btn btn-sm btn-neutral">
+                                    {{ 'aacp.users.edit_action'|trans }}
+                                </a>
+                                <form method="post" action="{{ path('admin_tags_delete', {id: tag.id}) }}"
+                                      onsubmit="return confirm({{ 'blog.tags.delete_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_tag_form') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        {{ 'aacp.cron.delete'|trans }}
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.blog.settings.index.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_posts_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.blog.settings.index.action.posts'|trans }}</a>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap('media-picker') }}
+{% endblock %}
+
+{% block body %}
+    <form method="post" action="{{ path('admin_blog_settings_update') }}" class="space-y-sp-sm">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_blog_settings') }}">
+
+        {% for groupKey, groupDefs in grouped %}
+            <twig:studio:card title="{{ (groupLabels[groupKey]|default(groupKey))|trans }}">
+                <div class="grid gap-4 md:grid-cols-2">
+                    {% for definition in groupDefs %}
+                        <div class="{{ definition.type == 'textarea' or definition.key == 'blog.hero_image_asset_id' ? 'md:col-span-2' : '' }}">
+                            <label class="form-label">{{ definition.label }}</label>
+
+                            {% if definition.type in ['checkbox', 'boolean'] %}
+                                <label class="mt-1 flex items-center gap-2">
+                                    <input type="checkbox" name="settings[{{ definition.key }}]" value="1" {{ values[definition.key] ? 'checked' : '' }}>
+                                    <span class="text-fs-sm text-neutral-600">{{ 'studio.blog.settings.index.enabled'|trans }}</span>
+                                </label>
+                            {% elseif definition.type == 'textarea' %}
+                                <textarea name="settings[{{ definition.key }}]" class="form-control" rows="3">{{ values[definition.key] }}</textarea>
+                            {% elseif definition.type == 'select' %}
+                                <select name="settings[{{ definition.key }}]" class="form-select">
+                                    {% for value, label in definition.variants %}
+                                        <option value="{{ value }}" {{ values[definition.key] == value ? 'selected' : '' }}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% elseif definition.type == 'integer' %}
+                                <input type="number" name="settings[{{ definition.key }}]" value="{{ values[definition.key] }}" class="form-control">
+                            {% elseif definition.key == 'blog.hero_image_asset_id' %}
+                                <div class="flex flex-wrap items-end gap-3">
+                                    <div class="min-w-0 flex-1">
+                                        <input type="text"
+                                               name="settings[{{ definition.key }}]"
+                                               value="{{ values[definition.key] }}"
+                                               class="form-control"
+                                               data-target-input="blog_hero_image_asset_id"
+                                               placeholder="{{ 'studio.blog.settings.hero_image_placeholder'|trans }}">
+                                    </div>
+                                    <button type="button"
+                                            class="btn btn-sm btn-neutral"
+                                            data-media-picker-trigger
+                                            data-target-input="blog_hero_image_asset_id"
+                                            data-target-preview="blog-hero-image-preview">
+                                        {{ 'studio.blog.settings.pick_image'|trans }}
+                                    </button>
+                                </div>
+                                <div data-blog-hero-image-preview class="mt-2">
+                                    {% set heroAssetId = values[definition.key] %}
+                                    {% if heroAssetId %}
+                                        <p class="text-fs-xs text-neutral-500">{{ 'studio.blog.settings.hero_image_selected'|trans({'id': heroAssetId}) }}</p>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <input type="text" name="settings[{{ definition.key }}]" value="{{ values[definition.key] }}" class="form-control">
+                            {% endif %}
+
+                            <code class="text-fs-xs text-neutral-400">{{ definition.key }}</code>
+                        </div>
+                    {% endfor %}
+                </div>
+            </twig:studio:card>
+        {% else %}
+            <twig:studio:card>
+                <p class="text-neutral-500">{{ 'studio.blog.settings.index.no_settings'|trans }}</p>
+            </twig:studio:card>
+        {% endfor %}
+
+        <div>
+            <button type="submit" class="btn btn-primary">{{ 'studio.blog.settings.index.save'|trans }}</button>
+        </div>
+    </form>
+{% endblock %}

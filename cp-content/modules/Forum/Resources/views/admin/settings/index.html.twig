@@ -1,0 +1,48 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.settings.index.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.settings.index.action.dashboard'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card>
+        <form method="post" action="{{ path('admin_forum_settings_update') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_settings') }}">
+
+            <div class="grid gap-4 md:grid-cols-2">
+                {% for definition in definitions %}
+                    <div>
+                        <label class="form-label">{{ definition.label }}</label>
+                        {% if definition.type in ['checkbox', 'boolean'] %}
+                            <label class="flex items-center gap-2 mt-1">
+                                <input type="checkbox" name="settings[{{ definition.key }}]" value="1" {{ values[definition.key] ? 'checked' : '' }}>
+                                <span class="text-fs-sm text-neutral-600">{{ 'studio.forum.settings.index.enabled'|trans }}</span>
+                            </label>
+                        {% elseif definition.type == 'textarea' %}
+                            <textarea name="settings[{{ definition.key }}]" class="form-control" rows="3">{{ values[definition.key] }}</textarea>
+                        {% elseif definition.type == 'select' %}
+                            <select name="settings[{{ definition.key }}]" class="form-select">
+                                {% for value, label in definition.variants %}
+                                    <option value="{{ value }}" {{ values[definition.key] == value ? 'selected' : '' }}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        {% elseif definition.type == 'integer' %}
+                            <input type="number" name="settings[{{ definition.key }}]" value="{{ values[definition.key] }}" class="form-control">
+                        {% else %}
+                            <input type="text" name="settings[{{ definition.key }}]" value="{{ values[definition.key] }}" class="form-control">
+                        {% endif %}
+                        <code class="text-fs-xs text-neutral-400">{{ definition.key }}</code>
+                    </div>
+                {% else %}
+                    <p class="text-neutral-500">{{ 'studio.forum.settings.index.no_settings'|trans }}</p>
+                {% endfor %}
+            </div>
+
+            <div class="mt-6">
+                <button type="submit" class="btn btn-primary">{{ 'studio.forum.settings.index.save'|trans }}</button>
+            </div>
+        </form>
+    </twig:studio:card>
+{% endblock %}

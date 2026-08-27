@@ -1,0 +1,88 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.sections.delete.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_sections_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.sections.delete.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card>
+        <div class="space-y-4">
+            <div>
+                <p class="text-fs-sm text-neutral-600">{{ 'studio.forum.sections.delete.intro'|trans }}</p>
+                <h2 class="mt-2 text-lg font-semibold text-neutral-900">{{ section.title }}</h2>
+                <p class="text-fs-sm text-neutral-500">
+                    {{ section.getSectionType().label() }} · <code>{{ section.slug }}</code>
+                </p>
+            </div>
+
+            <div class="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+                <h3 class="mb-3 text-sm font-semibold text-neutral-800">{{ 'studio.forum.sections.delete.impact_title'|trans }}</h3>
+                <dl class="grid gap-2 text-fs-sm sm:grid-cols-3">
+                    <div>
+                        <dt class="text-neutral-500">{{ 'studio.forum.sections.delete.child_sections'|trans }}</dt>
+                        <dd class="font-semibold text-neutral-900">{{ impact.childSectionCount }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-neutral-500">{{ 'studio.forum.sections.index.column.topics'|trans }}</dt>
+                        <dd class="font-semibold text-neutral-900">{{ impact.topicCount }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-neutral-500">{{ 'studio.forum.sections.index.column.posts'|trans }}</dt>
+                        <dd class="font-semibold text-neutral-900">{{ impact.postCount }}</dd>
+                    </div>
+                </dl>
+            </div>
+
+            {% if impact.hasChildSections %}
+                <div class="rounded-lg border border-danger-200 bg-danger-50 p-4 text-fs-sm text-danger-800">
+                    <p class="font-semibold">{{ 'studio.forum.sections.delete.blocked_title'|trans }}</p>
+                    <p class="mt-1">{{ 'studio.forum.sections.delete.blocked_body'|trans({count: impact.childSectionCount}) }}</p>
+                    {% if impact.childSectionTitles is not empty %}
+                        <ul class="mt-3 list-disc pl-5">
+                            {% for title in impact.childSectionTitles %}
+                                <li>{{ title }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+
+                <a href="{{ path('admin_forum_sections_index') }}" class="btn btn-neutral">{{ 'studio.forum.sections.delete.back'|trans }}</a>
+            {% else %}
+                {% if impact.hasTopics %}
+                    <div class="rounded-lg border border-danger-200 bg-danger-50 p-4 text-fs-sm text-danger-800">
+                        <p class="font-semibold">{{ 'studio.forum.sections.delete.danger_title'|trans }}</p>
+                        <p class="mt-1">{{ 'studio.forum.sections.delete.danger_body'|trans({topics: impact.topicCount, posts: impact.postCount}) }}</p>
+                    </div>
+                {% else %}
+                    <div class="rounded-lg border border-warning-200 bg-warning-50 p-4 text-fs-sm text-warning-900">
+                        {{ 'studio.forum.sections.delete.empty_body'|trans }}
+                    </div>
+                {% endif %}
+
+                <form method="post" action="{{ path('admin_forum_sections_delete', {id: section.id}) }}" class="space-y-4 border-t border-neutral-200 pt-4">
+                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_section_delete') }}">
+
+                    <label class="flex items-start gap-2 text-fs-sm text-neutral-700">
+                        <input type="checkbox" name="confirm_delete" value="1" required class="mt-1">
+                        <span>{{ 'studio.forum.sections.delete.confirm_checkbox'|trans }}</span>
+                    </label>
+
+                    {% if impact.requiresTitleConfirmation %}
+                        <div>
+                            <label class="form-label" for="confirm_title">{{ 'studio.forum.sections.delete.confirm_title_label'|trans }}</label>
+                            <input type="text" id="confirm_title" name="confirm_title" class="form-control" required autocomplete="off" placeholder="{{ section.title }}">
+                            <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.forum.sections.delete.confirm_title_hint'|trans({'title': section.title}) }}</p>
+                        </div>
+                    {% endif %}
+
+                    <div class="flex gap-2">
+                        <button type="submit" class="btn btn-danger">{{ 'studio.forum.sections.delete.submit'|trans }}</button>
+                        <a href="{{ path('admin_forum_sections_index') }}" class="btn btn-neutral">{{ 'studio.forum.sections.form.cancel'|trans }}</a>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </twig:studio:card>
+{% endblock %}

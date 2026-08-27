@@ -1,0 +1,564 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.dashboard.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    {{ parent() }}
+    <button type="button" data-aacp-widget-settings-trigger
+            class="header-icon-btn !bg-dark-1 !text-slate-300 hover:!bg-white/5"
+            title="{{ 'aacp.dashboard.widget_settings'|trans }}">
+        <twig:ux:icon name="tabler:settings" class="h-5 w-5" />
+    </button>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap('aacp-dashboard') }}
+{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md"
+         data-aacp-dashboard
+         data-aacp-dashboard-url="{{ path('aacp_system_metrics') }}"
+         data-aacp-dashboard-interval="4000">
+
+        {#
+            Üst durum şeridi: sistemin tek bakışta "yeşil mi kırmızı mı"
+            olduğunu gösteren kompakt özet + canlı zaman damgası.
+        #}
+        <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-dark-2 px-sp-sm py-sp-xs">
+            <div class="flex items-center gap-2">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span data-aacp-dashboard-target="pulse" class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"></span>
+                    <span data-aacp-dashboard-target="dot" class="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary-500"></span>
+                </span>
+                <span data-aacp-dashboard-target="status" class="text-fs-xs font-semibold uppercase tracking-wide text-primary-400">{{ 'aacp.system.live'|trans }}</span>
+                <span class="text-fs-xs text-slate-600">·</span>
+                <span class="text-fs-xs text-slate-500 font-mono">{{ 'aacp.system.last_update'|trans }}: <span data-aacp-dashboard-target="updatedAt">{{ system.generatedAt }}</span></span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <twig:cp:badge status="{{ health.dbConnected ? 'active' : 'quarantined' }}" label="{{ 'aacp.dashboard.database'|trans }}" />
+                <twig:cp:badge status="{{ system.opcache.enabled ? 'active' : 'unknown' }}" label="OPcache" />
+                <twig:cp:badge status="{{ health.quarantinedModuleCount > 0 ? 'quarantined' : 'active' }}" label="{{ 'aacp.dashboard.quarantined_modules'|trans }} ({{ health.quarantinedModuleCount }})" />
+            </div>
+        </div>
+
+        {# KPI şeridi: en üst düzey rakamlar #}
+        <div class="grid grid-cols-2 gap-sp-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div class="rounded-lg border border-white/10 bg-dark-2 p-sp-sm">
+                <p class="text-fs-xs uppercase tracking-wide text-slate-500">{{ 'aacp.dashboard.php_version'|trans }}</p>
+                <p class="mt-1 text-fs-xl font-semibold text-slate-100 font-mono">{{ health.phpVersion }}</p>
+            </div>
+            <div class="rounded-lg border border-white/10 bg-dark-2 p-sp-sm">
+                <p class="text-fs-xs uppercase tracking-wide text-slate-500">{{ 'aacp.dashboard.active_modules'|trans }}</p>
+                <p class="mt-1 text-fs-xl font-semibold text-slate-100 font-mono">{{ health.activeModuleCount }} <span class="text-fs-sm font-normal text-slate-500">/ {{ health.totalModuleCount }}</span></p>
+            </div>
+            <div class="rounded-lg border {{ health.quarantinedModuleCount > 0 ? 'border-danger-500/60' : 'border-white/10' }} bg-dark-2 p-sp-sm">
+                <p class="text-fs-xs uppercase tracking-wide text-slate-500">{{ 'aacp.dashboard.quarantined_modules'|trans }}</p>
+                <p class="mt-1 text-fs-xl font-semibold font-mono {{ health.quarantinedModuleCount > 0 ? 'text-danger-300' : 'text-slate-100' }}">{{ health.quarantinedModuleCount }}</p>
+            </div>
+            <div class="rounded-lg border {{ system.database.connected ? 'border-white/10' : 'border-danger-500/60' }} bg-dark-2 p-sp-sm">
+                <p class="text-fs-xs uppercase tracking-wide text-slate-500">{{ 'aacp.system.queue'|trans }}</p>
+                <p class="mt-1 text-fs-md font-semibold font-mono text-slate-100">{{ system.queue.available ? 'aacp.system.queue_installed'|trans : 'aacp.system.queue_not_installed'|trans }}</p>
+            </div>
+        </div>
+
+        {#
+            Kritik Uyarı Şeridi: widget gizleme tercihlerini yok sayar,
+            hiçbir data-widget-id taşımaz — sadece gerçek bir alarm
+            koşulu varsa görünür. /aacp/system/metrics polling'i
+            criticalAlerts'i döndürdüğü için aacp-dashboard.js bunu
+            canlı tutar (bkz. renderCriticalAlerts()).
+        #}
+        <div data-aacp-critical-alerts class="space-y-2">
+            {% for alert in criticalAlerts %}
+                <div class="flex items-center gap-3 rounded-lg border {{ alert.level == 'danger' ? 'border-danger-500/60 bg-danger-500/10' : 'border-warning-500/60 bg-warning-500/10' }} px-sp-sm py-sp-xs">
+                    <twig:ux:icon name="tabler:alert-triangle" class="h-5 w-5 shrink-0 {{ alert.level == 'danger' ? 'text-danger-400' : 'text-warning-400' }}" />
+                    <p class="text-fs-sm font-medium {{ alert.level == 'danger' ? 'text-danger-200' : 'text-warning-200' }}">{{ alert.messageKey|trans(alert.params) }}</p>
+                </div>
+            {% endfor %}
+        </div>
+
+        {# ============================= SİSTEM ============================= #}
+        <section data-aacp-widget-section="system" class="space-y-sp-sm">
+            <h2 class="text-fs-sm font-semibold uppercase tracking-wide text-slate-500">{{ 'aacp.dashboard.section.system'|trans }}</h2>
+            <div class="grid grid-cols-1 gap-sp-md sm:grid-cols-2 lg:grid-cols-3">
+                <div data-widget-id="system.load" class="{{ 'system.load' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.system.load_average'|trans }}">
+                        {% if system.load.available %}
+                            <div class="flex items-center gap-sp-sm">
+                                <div class="relative h-24 w-24 shrink-0">
+                                    <canvas data-aacp-chart="load" data-chart-max="4" width="96" height="96"></canvas>
+                                    <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                                        <span class="text-fs-lg font-mono font-semibold text-slate-100" data-aacp-dashboard-target="load" data-field="one">{{ system.load.one }}</span>
+                                        <span class="text-[10px] uppercase tracking-wide text-slate-500">{{ 'aacp.system.load.one_min'|trans }}</span>
+                                    </div>
+                                </div>
+                                <dl class="grid flex-1 grid-cols-2 gap-x-2 gap-y-1 text-fs-xs">
+                                    <dt class="text-slate-500">{{ 'aacp.system.load.five_min'|trans }}</dt>
+                                    <dd class="text-right font-mono font-semibold text-slate-200" data-aacp-dashboard-target="load" data-field="five">{{ system.load.five }}</dd>
+                                    <dt class="text-slate-500">{{ 'aacp.system.load.fifteen_min'|trans }}</dt>
+                                    <dd class="text-right font-mono font-semibold text-slate-200" data-aacp-dashboard-target="load" data-field="fifteen">{{ system.load.fifteen }}</dd>
+                                </dl>
+                            </div>
+                            <div class="mt-sp-xs">
+                                <canvas data-aacp-chart="load-history" height="48"></canvas>
+                            </div>
+                        {% else %}
+                            <div class="flex items-center gap-2">
+                                <twig:cp:badge status="unknown" label="{{ 'aacp.system.unavailable'|trans }}" />
+                            </div>
+                            <p class="mt-2 text-fs-xs text-slate-500">{{ 'aacp.system.load_unsupported'|trans }}</p>
+                        {% endif %}
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="system.memory" class="{{ 'system.memory' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.system.php_memory'|trans }}">
+                        <div class="flex items-center gap-sp-sm">
+                            <div class="relative h-24 w-24 shrink-0">
+                                <canvas data-aacp-chart="memory" data-chart-max="100" width="96" height="96"></canvas>
+                                <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                                    <span class="text-fs-md font-mono font-semibold text-slate-100" data-aacp-dashboard-target="memory" data-field="memoryUsagePercent">{{ system.memory.memoryUsagePercent ?? '—' }}{% if system.memory.memoryUsagePercent is not null %}%{% endif %}</span>
+                                    <span class="text-[10px] uppercase tracking-wide text-slate-500">peak</span>
+                                </div>
+                            </div>
+                            <dl class="flex-1 space-y-1 text-fs-xs">
+                                <div class="flex items-center justify-between">
+                                    <dt class="text-slate-500">{{ 'aacp.system.memory.current'|trans }}</dt>
+                                    <dd class="font-mono font-semibold text-slate-200" data-aacp-dashboard-target="memory" data-field="phpUsageMiB">{{ system.memory.phpUsageMiB }} MiB</dd>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <dt class="text-slate-500">{{ 'aacp.system.memory.peak'|trans }}</dt>
+                                    <dd class="font-mono font-semibold text-slate-200" data-aacp-dashboard-target="memory" data-field="phpPeakMiB">{{ system.memory.phpPeakMiB }} MiB</dd>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <dt class="text-slate-500">memory_limit</dt>
+                                    <dd class="font-mono text-slate-400" data-aacp-dashboard-target="memory" data-field="limit">{{ system.memory.limit }}</dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="system.opcache" class="{{ 'system.opcache' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="OPcache" variant="{{ system.opcache.enabled ? 'default' : 'danger' }}">
+                        {% if system.opcache.enabled %}
+                            <div class="flex items-center gap-sp-sm">
+                                <div class="relative h-24 w-24 shrink-0">
+                                    <canvas data-aacp-chart="opcache" data-chart-max="100" width="96" height="96"></canvas>
+                                    <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                                        <span class="text-fs-md font-mono font-semibold text-slate-100" data-aacp-dashboard-target="opcache" data-field="hitRate">%{{ system.opcache.hitRate }}</span>
+                                        <span class="text-[10px] uppercase tracking-wide text-slate-500">{{ 'aacp.system.opcache.hit_rate'|trans }}</span>
+                                    </div>
+                                </div>
+                                <dl class="flex-1 space-y-1 text-fs-xs">
+                                    <div class="flex items-center justify-between">
+                                        <dt class="text-slate-500">{{ 'aacp.system.opcache.used_memory'|trans }}</dt>
+                                        <dd class="font-mono font-semibold text-slate-200" data-aacp-dashboard-target="opcache" data-field="usedMemoryMiB">{{ system.opcache.usedMemoryMiB }} MiB</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <dt class="text-slate-500">{{ 'aacp.system.opcache.free_memory'|trans }}</dt>
+                                        <dd class="font-mono text-slate-300" data-aacp-dashboard-target="opcache" data-field="freeMemoryMiB">{{ system.opcache.freeMemoryMiB }} MiB</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <dt class="text-slate-500">{{ 'aacp.system.opcache.cached_scripts'|trans }}</dt>
+                                        <dd class="font-mono text-slate-300" data-aacp-dashboard-target="opcache" data-field="numCachedScripts">{{ system.opcache.numCachedScripts }}</dd>
+                                    </div>
+                                </dl>
+                            </div>
+                        {% else %}
+                            <div class="flex items-center gap-2">
+                                <twig:cp:badge status="quarantined" label="{{ 'aacp.system.disabled'|trans }}" />
+                            </div>
+                            <p class="mt-2 text-fs-xs text-danger-300/80">{{ system.opcache.message }}</p>
+                        {% endif %}
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="system.database" class="{{ 'system.database' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.database'|trans }}" variant="{{ system.database.connected ? 'default' : 'danger' }}">
+                        <div class="flex items-center gap-2" data-aacp-dashboard-target="database">
+                            <twig:cp:badge status="{{ system.database.connected ? 'active' : 'quarantined' }}"
+                                            label="{{ system.database.connected ? 'aacp.system.db_connected'|trans : 'aacp.system.db_disconnected'|trans }}"
+                                            data-field="badge" />
+                        </div>
+                        {% if system.database.connected %}
+                            <p class="mt-2 text-fs-xs text-slate-500 break-words" data-field="platform">{{ system.database.platform }}</p>
+                        {% else %}
+                            <p class="mt-2 text-fs-xs text-danger-300/80 break-words" data-field="error">{{ system.database.error }}</p>
+                        {% endif %}
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="system.queue" class="{{ 'system.queue' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.system.queue'|trans }}" variant="{{ system.queue.available ? 'default' : 'danger' }}">
+                        <div class="flex items-center gap-2">
+                            <twig:cp:badge status="{{ system.queue.available ? 'active' : 'unknown' }}"
+                                            label="{{ system.queue.available ? 'aacp.system.queue_installed'|trans : 'aacp.system.queue_not_installed'|trans }}" />
+                        </div>
+                        <p class="mt-2 text-fs-xs text-slate-500">{{ system.queue.message }}</p>
+                        {% if system.queue.available and system.queue.pending is not null %}
+                            <p class="mt-2 text-fs-xl font-semibold font-mono text-slate-100">{{ system.queue.pending }} <span class="text-fs-sm font-normal text-slate-500">{{ 'aacp.system.pending_jobs'|trans }}</span></p>
+                        {% endif %}
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="system.quarantine_count" class="{{ 'system.quarantine_count' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.system.quarantine_console'|trans }}" variant="{{ system.quarantine|length > 0 ? 'danger' : 'default' }}">
+                        <p class="text-fs-xl font-semibold font-mono {{ system.quarantine|length > 0 ? 'text-danger-300' : 'text-slate-100' }}">
+                            {{ system.quarantine|length }}
+                        </p>
+                        <p class="mt-1 text-fs-xs text-slate-500">
+                            <a href="{{ path('aacp_quarantine') }}" class="underline hover:text-primary-400">{{ 'aacp.system.view_quarantine_log'|trans }} →</a>
+                        </p>
+                    </twig:cp:card>
+                </div>
+            </div>
+        </section>
+
+        {# ============================= İÇERİK ============================= #}
+        <section data-aacp-widget-section="content" class="space-y-sp-sm">
+            <h2 class="text-fs-sm font-semibold uppercase tracking-wide text-slate-500">{{ 'aacp.dashboard.section.content'|trans }}</h2>
+            <div class="grid grid-cols-1 gap-sp-md sm:grid-cols-2 lg:grid-cols-3">
+                <div data-widget-id="content.nodes.total" class="{{ 'content.nodes.total' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.content.nodes_total'|trans }}">
+                        <p class="text-fs-xl font-semibold font-mono text-slate-100">{{ content.nodesTotal }}</p>
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="content.nodes.by_type" class="{{ 'content.nodes.by_type' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.content.nodes_by_type'|trans }}" padded="{{ false }}">
+                        <twig:cp:table headers="{{ [
+                            'aacp.system.column.type'|trans,
+                            'aacp.system.column.count'|trans,
+                        ] }}" empty="{{ content.nodesByType is empty }}">
+                            <twig:block name="rows">
+                                {% for row in content.nodesByType %}
+                                    <tr>
+                                        <td class="!text-slate-200">{{ row.type }}</td>
+                                        <td class="!text-slate-400 font-mono">{{ row.count }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </twig:block>
+                        </twig:cp:table>
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="content.nodes.by_status" class="{{ 'content.nodes.by_status' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.content.nodes_by_status'|trans }}" padded="{{ false }}">
+                        <twig:cp:table headers="{{ [
+                            'aacp.dashboard.column.status'|trans,
+                            'aacp.system.column.count'|trans,
+                        ] }}" empty="{{ content.nodesByStatus is empty }}">
+                            <twig:block name="rows">
+                                {% for row in content.nodesByStatus %}
+                                    <tr>
+                                        <td><twig:cp:badge status="{{ row.status }}" /></td>
+                                        <td class="!text-slate-400 font-mono">{{ row.count }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </twig:block>
+                        </twig:cp:table>
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="content.categories.total" class="{{ 'content.categories.total' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.content.categories_total'|trans }}">
+                        <p class="text-fs-xl font-semibold font-mono text-slate-100">{{ content.categoriesTotal }}</p>
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="content.tags.total" class="{{ 'content.tags.total' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.content.tags_total'|trans }}">
+                        <p class="text-fs-xl font-semibold font-mono text-slate-100">{{ content.tagsTotal }}</p>
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="content.users.total" class="{{ 'content.users.total' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.content.users_total'|trans }}">
+                        <p class="text-fs-xl font-semibold font-mono text-slate-100">{{ content.usersTotal }}</p>
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="content.users.by_status" class="{{ 'content.users.by_status' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.content.users_by_status'|trans }}">
+                        <canvas data-aacp-chart="doughnut-static"
+                                data-chart-labels="{{ content.usersByStatus|map(row => row.status)|join(',') }}"
+                                data-chart-values="{{ content.usersByStatus|map(row => row.count)|join(',') }}"
+                                height="140"></canvas>
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="content.assets.total" class="{{ 'content.assets.total' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.content.assets_total'|trans }}">
+                        <p class="text-fs-xl font-semibold font-mono text-slate-100">{{ content.assetsTotal }}</p>
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="content.assets.disk_usage" class="{{ 'content.assets.disk_usage' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.content.assets_disk_usage'|trans }}">
+                        <twig:cp:gauge value="{{ (content.assetsDiskUsageBytes / 1024 / 1024)|round(1) }}" max="{{ 10240 }}" unit=" MiB" />
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="content.assets.by_mime" class="{{ 'content.assets.by_mime' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.content.assets_by_mime'|trans }}" padded="{{ false }}">
+                        <twig:cp:table headers="{{ [
+                            'aacp.system.column.mime_type'|trans,
+                            'aacp.system.column.count'|trans,
+                        ] }}" empty="{{ content.assetsByMimeType is empty }}">
+                            <twig:block name="rows">
+                                {% for row in content.assetsByMimeType %}
+                                    <tr>
+                                        <td class="!text-slate-200 font-mono text-fs-xs">{{ row.mimeType }}</td>
+                                        <td class="!text-slate-400 font-mono">{{ row.count }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </twig:block>
+                        </twig:cp:table>
+                    </twig:cp:card>
+                </div>
+            </div>
+        </section>
+
+        {# ===================== GÜVENLİK / MODÜL ===================== #}
+        <section data-aacp-widget-section="security" class="space-y-sp-sm">
+            <h2 class="text-fs-sm font-semibold uppercase tracking-wide text-slate-500">{{ 'aacp.dashboard.section.security'|trans }}</h2>
+            <div class="grid grid-cols-1 gap-sp-md sm:grid-cols-2 lg:grid-cols-3">
+                <div data-widget-id="security.api_keys.total" class="{{ 'security.api_keys.total' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.security.api_keys'|trans }}">
+                        <div class="flex items-baseline gap-2">
+                            <p class="text-fs-xl font-semibold font-mono text-slate-100">{{ infrastructure.apiKeysActive }}</p>
+                            <twig:cp:badge status="active" label="{{ infrastructure.apiKeysActive }} aktif" />
+                            {% if infrastructure.apiKeysInactive > 0 %}
+                                <twig:cp:badge status="inactive" label="{{ infrastructure.apiKeysInactive }} pasif" />
+                            {% endif %}
+                        </div>
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="modules.versions" class="{{ 'modules.versions' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.security.module_versions'|trans }}" padded="{{ false }}">
+                        <twig:cp:table headers="{{ [
+                            'aacp.dashboard.column.version'|trans,
+                            'aacp.system.column.count'|trans,
+                        ] }}" empty="{{ moduleStats.versions is empty }}">
+                            <twig:block name="rows">
+                                {% for row in moduleStats.versions %}
+                                    <tr>
+                                        <td class="!text-slate-200 font-mono text-fs-xs">{{ row.version }}</td>
+                                        <td class="!text-slate-400 font-mono">{{ row.count }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </twig:block>
+                        </twig:cp:table>
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="modules.status_breakdown" class="{{ 'modules.status_breakdown' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.security.module_status'|trans }}" padded="{{ false }}">
+                        <twig:cp:table headers="{{ [
+                            'aacp.dashboard.column.status'|trans,
+                            'aacp.system.column.count'|trans,
+                        ] }}" empty="{{ moduleStats.statusBreakdown is empty }}">
+                            <twig:block name="rows">
+                                {% for row in moduleStats.statusBreakdown %}
+                                    <tr>
+                                        <td><twig:cp:badge status="{{ row.status }}" /></td>
+                                        <td class="!text-slate-400 font-mono">{{ row.count }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </twig:block>
+                        </twig:cp:table>
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="security.locales.active" class="{{ 'security.locales.active' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.security.locales_active'|trans }}">
+                        <twig:cp:gauge value="{{ infrastructure.localesActive }}" max="{{ infrastructure.localesTotal }}" />
+                    </twig:cp:card>
+                </div>
+
+                <div data-widget-id="security.hooks.total" class="{{ 'security.hooks.total' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.security.hooks_total'|trans }}">
+                        <canvas data-aacp-chart="bar"
+                                data-chart-labels="{{ infrastructure.hooksByType|map(row => row.type)|join(',') }}"
+                                data-chart-values="{{ infrastructure.hooksByType|map(row => row.count)|join(',') }}"
+                                height="100"></canvas>
+                    </twig:cp:card>
+                </div>
+            </div>
+        </section>
+
+        {# ============================= ALTYAPI ============================= #}
+        <section data-aacp-widget-section="infrastructure" class="space-y-sp-sm">
+            <h2 class="text-fs-sm font-semibold uppercase tracking-wide text-slate-500">{{ 'aacp.dashboard.section.infrastructure'|trans }}</h2>
+            <div class="grid grid-cols-1 gap-sp-md sm:grid-cols-2 lg:grid-cols-3">
+                <div data-widget-id="infra.cron.jobs_total" class="{{ 'infra.cron.jobs_total' in hiddenWidgetIds ? 'hidden' : '' }}">
+                    <twig:cp:card title="{{ 'aacp.dashboard.infra.cron_jobs_total'|trans }}">
+                        <p class="text-fs-xl font-semibold font-mono text-slate-100">{{ infrastructure.cronJobsTotal }}</p>
+                        <p class="mt-1 text-fs-xs text-slate-500">
+                            <a href="{{ path('aacp_cron') }}" class="underline hover:text-primary-400">{{ 'aacp.system.view_details'|trans }} →</a>
+                        </p>
+                    </twig:cp:card>
+                </div>
+
+                {#
+                    Modüllerin App\Core\Aacp\SystemWidgetProviderInterface ile
+                    kaydettiği kartlar (Redis/Memcached/Varnish/PageSpeed +
+                    Blog'un "Zamanlanmış Yayın" sayacı). Bu kartların
+                    data-widget-id'si YOKTUR — provider tabanlı sistem
+                    kendi başına bir widget kataloğu değil, ayrı bir
+                    genişletme noktasıdır (bkz. plan: "SystemWidgetProviderInterface
+                    değişmeden korunur"), bu yüzden kullanıcı gizleme
+                    panelinde tek tek görünmezler.
+                #}
+                {% for widget in system.moduleWidgets %}
+                    <twig:cp:card title="{{ widget.title }}" variant="{{ widget.variant }}">
+                        <p class="text-fs-xl font-semibold font-mono {{ widget.variant == 'danger' ? 'text-danger-300' : 'text-slate-100' }}">
+                            {{ widget.value }}{{ widget.unit }}
+                        </p>
+                        {% if widget.description %}
+                            <p class="mt-1 text-fs-xs text-slate-500">{{ widget.description }}</p>
+                        {% endif %}
+                        {% if widget.gaugeMax is not null %}
+                            <div class="mt-sp-xs">
+                                <twig:cp:gauge value="{{ widget.value }}" max="{{ widget.gaugeMax }}" unit="{{ widget.unit }}" />
+                            </div>
+                        {% endif %}
+                        {% if widget.linkRoute %}
+                            <p class="mt-2 text-fs-xs text-slate-500">
+                                <a href="{{ path(widget.linkRoute, widget.linkRouteParams) }}" class="underline hover:text-primary-400">{{ 'aacp.system.view_details'|trans }} →</a>
+                            </p>
+                        {% endif %}
+                    </twig:cp:card>
+                {% endfor %}
+            </div>
+        </section>
+
+        {% for module in modules %}
+            {% if module.status == 'quarantined' %}
+                <twig:cp:card variant="danger" padded="{{ false }}">
+                    <twig:block name="actions">
+                        <form method="post" action="{{ path('aacp_module_deactivate', {dirName: module.dirName}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                {{ 'aacp.dashboard.deactivate'|trans }}
+                            </button>
+                        </form>
+                    </twig:block>
+
+                    <div class="card-body">
+                        <p class="text-fs-sm font-semibold text-danger-200">{{ 'aacp.dashboard.quarantined_notice'|trans({name: module.name}) }}</p>
+                        <p class="mt-1 text-fs-xs text-danger-300/80">{{ module.reason }}</p>
+                    </div>
+                </twig:cp:card>
+            {% endif %}
+        {% endfor %}
+
+        {% if system.quarantine|length > 0 %}
+            <twig:cp:card title="{{ 'aacp.system.quarantined_modules'|trans }}" variant="danger" padded="{{ false }}">
+                <twig:cp:table headers="{{ [
+                    'aacp.system.column.module'|trans,
+                    'aacp.system.column.reason'|trans,
+                    '',
+                ] }}">
+                    <twig:block name="rows">
+                        {% for module in system.quarantine %}
+                            <tr>
+                                <td class="!text-danger-200 font-medium">{{ module.name }}</td>
+                                <td class="!text-danger-300/80 text-fs-xs">{{ module.reason }}</td>
+                                <td class="text-right">
+                                    <form method="post" action="{{ path('aacp_module_deactivate', {dirName: module.dirName}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('aacp_module_deactivate') }}">
+                                        <input type="hidden" name="_redirect" value="{{ path('aacp_dashboard') }}">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            {{ 'aacp.dashboard.deactivate'|trans }}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+            </twig:cp:card>
+        {% endif %}
+
+        <twig:cp:card title="{{ 'aacp.dashboard.installed_modules'|trans }}" padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.dashboard.column.name'|trans,
+                'aacp.dashboard.column.version'|trans,
+                'aacp.dashboard.column.status'|trans,
+                '',
+            ] }}" empty="{{ modules is empty }}">
+                <twig:block name="rows">
+                    {% for module in modules %}
+                        <tr>
+                            <td class="!text-slate-200">{{ module.name }}</td>
+                            <td class="!text-slate-400 font-mono text-fs-xs">{{ module.version }}</td>
+                            <td><twig:cp:badge status="{{ module.status }}" /></td>
+                            <td class="text-right">
+                                {% if module.status == 'active' %}
+                                    <form method="post" action="{{ path('aacp_module_deactivate', {dirName: module.dirName}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                        <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
+                                            {{ 'aacp.dashboard.deactivate'|trans }}
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+
+    {#
+        Widget aç/kapa paneli — controller'ın widgetCatalog listesi
+        (tek doğruluk kaynağı) üzerinden section'a göre gruplanmış
+        checkbox'lar. data-aacp-widget-visibility-url ve
+        data-csrf-token, aacp-dashboard.js'in initWidgetSettings()'inin
+        ihtiyaç duyduğu tek statik veri kaynağıdır.
+    #}
+    <div data-aacp-widget-settings-panel
+         data-aacp-widget-visibility-url="{{ path('aacp_dashboard_widget_visibility') }}"
+         data-csrf-token="{{ widget_visibility_csrf_token }}"
+         hidden
+         class="fixed inset-y-0 right-0 z-50 w-full max-w-sm overflow-y-auto border-l border-white/10 bg-dark-2 p-sp-md shadow-2xl">
+        <div class="mb-sp-md flex items-center justify-between">
+            <h2 class="text-fs-base font-semibold text-slate-100">{{ 'aacp.dashboard.widget_settings'|trans }}</h2>
+            <button type="button" data-aacp-widget-settings-close class="text-slate-500 hover:text-slate-300">
+                <twig:ux:icon name="tabler:x" class="h-5 w-5" />
+            </button>
+        </div>
+
+        <div class="mb-sp-sm">
+            <button type="button" data-aacp-widget-settings-show-all class="text-fs-xs font-medium text-primary-400 hover:text-primary-300">
+                {{ 'aacp.dashboard.widget_settings.show_all'|trans }}
+            </button>
+        </div>
+
+        {% set catalogBySection = {} %}
+        {% for entry in widgetCatalog %}
+            {% set catalogBySection = catalogBySection|merge({(entry.section): (catalogBySection[entry.section] ?? [])|merge([entry])}) %}
+        {% endfor %}
+
+        {% for sectionKey, entries in catalogBySection %}
+            <div class="mb-sp-md">
+                <h3 class="mb-2 text-fs-xs font-semibold uppercase tracking-wide text-slate-500">{{ ('aacp.dashboard.section.' ~ sectionKey)|trans }}</h3>
+                <div class="space-y-1.5">
+                    {% for entry in entries %}
+                        <label class="flex items-center gap-2 text-fs-sm text-slate-300">
+                            <input type="checkbox" data-widget-toggle="{{ entry.widgetId }}"
+                                   {{ entry.widgetId in hiddenWidgetIds ? '' : 'checked' }}
+                                   class="form-check-input h-4 w-4 !border-white/10 !bg-dark-1 text-primary-500 focus:ring-primary-500/40">
+                            {{ entry.titleKey|trans }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}

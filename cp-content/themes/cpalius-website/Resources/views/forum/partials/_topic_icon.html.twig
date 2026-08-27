@@ -1,0 +1,31 @@
+{#
+    Konu durum ikonu — Cotonti forums_icon_topic mantığının (taşınmış >
+    popüler > sabit > kilitli > duyuru > özel öncelik sırası) modern rozet
+    karşılığı.
+
+    Beklenen değişkenler: topic, hotThreshold (int)
+#}
+{% set icon = 'bi-chat-square-text' %}
+{% set extraClass = '' %}
+
+{% if topic.movedToTopic %}
+    {% set icon = 'bi-arrow-right-circle' %}
+    {% set extraClass = 'is-moved' %}
+{% elseif topic.isLocked and topic.sticky %}
+    {% set icon = 'bi-megaphone-fill' %}
+    {% set extraClass = 'is-sticky' %}
+{% elseif topic.sticky %}
+    {% set icon = 'bi-pin-angle-fill' %}
+    {% set extraClass = 'is-sticky' %}
+{% elseif topic.isLocked %}
+    {% set icon = 'bi-lock-fill' %}
+    {% set extraClass = 'is-locked' %}
+{% elseif topic.postCount >= hotThreshold %}
+    {% set icon = 'bi-fire' %}
+    {% set extraClass = 'is-hot' %}
+{% elseif topic.isPrivate %}
+    {% set icon = 'bi-eye-slash' %}
+    {% set extraClass = 'is-private' %}
+{% endif %}
+
+<span class="forum-topic__icon {{ extraClass }}"><i class="bi {{ icon }}"></i></span>

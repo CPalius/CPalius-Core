@@ -1,0 +1,19 @@
+forum_module_legacy_redirect:
+    resource: ../../Controller/LegacyForumRedirectController.php
+    type: attribute
+
+forum_module_front:
+    resource: ../../Controller/
+    type: attribute
+    prefix: /{_locale}
+    requirements:
+        _locale: 'tr|en'
+    defaults:
+        _locale: 'tr'
+    exclude:
+        - ../../Controller/Admin/
+        - ../../Controller/LegacyForumRedirectController.php
+
+forum_module_admin:
+    resource: ../../Controller/Admin/
+    type: attribute

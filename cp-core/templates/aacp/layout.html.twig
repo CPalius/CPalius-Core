@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="tr" class="h-full">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %}{{ 'aacp.layout.title.default'|trans }}{% endblock %}</title>
+
+        {#
+            AACP kabuğu bilinçli olarak modüllerden ve temalardan izole
+            tutulur: burada SADECE çekirdek AssetMapper girişi (Tailwind
+            derlemesi dahil app.css) kullanılır. Bir modül veya temanın
+            asset'i bozulsa bile bu ekran ayakta kalmalıdır.
+        #}
+        {% block stylesheets %}{% endblock %}
+        {% block javascripts %}
+            {{ importmap('app') }}
+        {% endblock %}
+    </head>
+    <body class="h-full bg-dark-1 text-slate-100 antialiased text-fs-base font-sans">
+        <div class="flex h-full">
+            <div data-sidebar-overlay class="sidebar-overlay"></div>
+
+            <aside data-sidebar class="sidebar !bg-dark-2 border-e border-white/10">
+                <button type="button" data-sidebar-close class="sidebar-close-btn !border-white/20 !text-slate-300">
+                    <twig:ux:icon name="tabler:x" class="h-3.5 w-3.5" />
+                </button>
+
+                <div class="sidebar-logo !border-white/10">
+                    <img src="/CPalius.png" alt="CPalius" class="h-6 w-auto shrink-0">
+                    <div class="leading-tight">
+                        <p class="text-fs-sm font-semibold text-slate-100">{{ 'aacp.layout.brand.name'|trans }}</p>
+                        <p class="text-fs-xs text-slate-500">{{ 'aacp.layout.brand.subtitle'|trans }}</p>
+                    </div>
+                </div>
+
+                <nav class="sidebar-menu-area !border-white/10">
+                    <ul class="sidebar-menu" id="sidebar-menu">
+                        {% set currentGroup = null %}
+                        {% for item in cp_admin_menu('aacp') %}
+                            {% if item.group is not null and item.group != currentGroup %}
+                                <li class="sidebar-menu-group-title !text-slate-600">{{ item.group|trans }}</li>
+                                {% set currentGroup = item.group %}
+                            {% endif %}
+
+                            {% set itemActive = app.request.attributes.get('_route') starts with item.routePrefix %}
+                            {% set childActive = false %}
+                            {% for child in item.children %}
+                                {% if app.request.attributes.get('_route') starts with child.routePrefix %}
+                                    {% set childActive = true %}
+                                {% endif %}
+                            {% endfor %}
+
+                            <li{% if item.children is not empty %} class="dropdown{{ (itemActive or childActive) ? ' open' : '' }}"{% endif %}>
+                                <a href="{{ path(item.routeName) }}"
+                                   class="{{ (itemActive or childActive) ? 'active-page' : '!text-slate-400 hover:!bg-white/5 hover:!text-slate-200' }}{{ item.children is not empty ? ' has-submenu-trigger' : '' }}">
+                                    <twig:ux:icon name="{{ item.icon }}" class="menu-icon shrink-0" />
+                                    <span>{{ item.label|trans }}</span>
+                                    {% if item.children is not empty %}
+                                        <span data-sidebar-dropdown-trigger class="submenu-caret ms-auto">
+                                            <twig:ux:icon name="tabler:chevron-down" class="h-3.5 w-3.5 shrink-0" />
+                                        </span>
+                                    {% endif %}
+                                </a>
+
+                                {% if item.children is not empty %}
+                                    <ul class="sidebar-submenu{{ (itemActive or childActive) ? ' open' : '' }}">
+                                        {% for child in item.children %}
+                                            <li{% if app.request.attributes.get('_route') starts with child.routePrefix %} class="active-page"{% endif %}>
+                                                <a href="{{ path(child.routeName) }}"
+                                                   class="{{ app.request.attributes.get('_route') starts with child.routePrefix ? '!bg-primary-500/10 !text-primary-300' : '!text-slate-500 hover:!text-slate-300' }}">
+                                                    <twig:ux:icon name="{{ child.icon }}" class="h-3.5 w-3.5 shrink-0" />
+                                                    <span>{{ child.label|trans }}</span>
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </nav>
+
+                <div class="border-t border-white/10 px-sp-sm py-sp-xs text-fs-xs text-slate-600 font-mono">
+                    {{ cp_app_name|default('CPalius CMF') }} · v{{ cp_app_version|default('1.0.0') }}
+                </div>
+            </aside>
+
+            <main data-sidebar-main class="dashboard-main">
+                <header class="navbar-header !bg-dark-2 !border-white/10">
+                    <div class="flex items-center gap-3">
+                        <button type="button" data-sidebar-toggle class="sidebar-toggle !text-slate-300">
+                            <twig:ux:icon name="tabler:menu-2" class="h-5 w-5" />
+                        </button>
+                        <button type="button" data-sidebar-mobile-toggle class="sidebar-mobile-toggle !text-slate-300">
+                            <twig:ux:icon name="tabler:menu-2" class="h-5 w-5" />
+                        </button>
+                        <h1 class="text-fs-md font-semibold text-slate-200">{% block header %}{{ 'aacp.layout.header.default'|trans }}{% endblock %}</h1>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {% block header_actions %}
+                            {{ include('aacp/_header_actions.html.twig') }}
+                        {% endblock %}
+                    </div>
+                </header>
+
+                <div class="pointer-events-none fixed right-sp-md top-[5.25rem] z-40 flex flex-col gap-2" data-toast-stack>
+                    {% for label, messages in app.flashes %}
+                        {% for message in messages %}
+                            <div class="toast {{ label == 'error' ? 'toast-error !border-danger-500/40 !bg-danger-500/10 !text-danger-300' : 'toast-success !border-success-500/40 !bg-success-500/10 !text-success-300' }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+
+                <div class="p-sp-md">
+                    {% block body %}{% endblock %}
+                </div>
+            </main>
+        </div>
+    </body>
+</html>

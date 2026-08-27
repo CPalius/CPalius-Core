@@ -1,0 +1,46 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.recovery.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <twig:cp:card variant="danger">
+            <div class="flex items-center gap-2">
+                <twig:cp:badge status="quarantined" label="{{ 'aacp.recovery.mode_active'|trans }}" />
+                <p class="text-fs-sm text-danger-200">
+                    {{ 'aacp.recovery.warning'|trans }}
+                </p>
+            </div>
+        </twig:cp:card>
+
+        <twig:cp:card title="{{ 'aacp.recovery.modules'|trans }}" padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.system.column.module'|trans,
+                'aacp.recovery.column.status'|trans,
+                '',
+            ] }}">
+                <twig:block name="rows">
+                    {% for module in modules %}
+                        <tr>
+                            <td class="!text-slate-200 font-medium">{{ module.name }}</td>
+                            <td>
+                                <twig:cp:badge status="{{ module.status }}" label="{{ module.status }}" />
+                            </td>
+                            <td class="text-right">
+                                {% if module.status != 'inactive' and module.class is not null %}
+                                    <form method="post" action="{{ path('aacp_recovery_module_deactivate', {dirName: module.dirName}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                        <input type="hidden" name="recovery_token" value="{{ token }}">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            {{ 'aacp.dashboard.deactivate'|trans }}
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+{% endblock %}

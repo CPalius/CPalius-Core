@@ -1,0 +1,151 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+        bind:
+            string $projectDir: '%kernel.project_dir%'
+
+    # Redis bağlantısı: framework.yaml'daki cache.default_redis_provider
+    # (app/Doctrine cache pool'ları) ile session.handler.redis burada
+    # AYNI bağlantıyı paylaşır — iki ayrı TCP bağlantısı açmaya gerek yok.
+    #
+    # lazy: true ŞART — createConnection() servis INSTANTIATE edilir
+    # edilmez (container derlenirken değil ama ilk erişimde) TCP bağlantısı
+    # kurmaya çalışır ve başarısızsa InvalidArgumentException fırlatır. lazy
+    # olmadan bu, FailoverRedisSessionHandler'ın try/catch'ine hiç
+    # girmeden, servis grafiği kurulurken (session henüz devrede değilken)
+    # patlar — bkz. bugünkü canlı doğrulama: Redis kapalıyken /aacp 500
+    # verdi çünkü hata handler'ın DIŞINDA oluşuyordu.
+    Redis:
+        class: Redis
+        lazy: true
+        factory: ['Symfony\Component\Cache\Adapter\RedisAdapter', 'createConnection']
+        arguments:
+            - '%env(REDIS_URL)%'
+
+    session.handler.redis.primary:
+        class: Symfony\Component\HttpFoundation\Session\Storage\Handler\RedisSessionHandler
+        arguments:
+            - '@Redis'
+
+    # Redis erişilemez olduğunda (bağlantı kopması, RDB yazma reddi vb.)
+    # framework.yaml'daki session.handler_id BUNU kullanır — primary
+    # Redis handler'ı \Throwable fırlatırsa aynı istekte dosya tabanlı
+    # fallback'e düşer (bkz. FailoverRedisSessionHandler docblock'u).
+    session.handler.redis:
+        class: App\Core\Session\FailoverRedisSessionHandler
+        arguments:
+            - '@session.handler.redis.primary'
+            - '%kernel.project_dir%/cp-core/var/sessions/%kernel.environment%'
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones
+    App\Core\Module\ModuleRegistry:
+        arguments:
+            $activeModulesFile: '%kernel.project_dir%/cp-core/config/active_modules.php'
+            $quarantineLogFile: '%kernel.project_dir%/cp-core/var/log/module_quarantine.log'
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+
+    App\Core\Module\ActiveModulesFileWriter:
+        arguments:
+            $activeModulesFile: '%kernel.project_dir%/cp-core/config/active_modules.php'
+
+    App\Core\Routing\SafeModuleRouteLoader:
+        tags:
+            - { name: 'routing.loader' }
+
+    App\Core\EventListener\LocaleListener:
+        arguments:
+            $defaultLocale: '%kernel.default_locale%'
+            $supportedLocales: ['tr', 'en']
+
+    App\Core\Security\RoleConfigManager:
+        arguments:
+            $syncDir: '%kernel.project_dir%/cp-content/config/sync'
+
+    App\Core\Localization\TranslationFileLocator:
+        arguments:
+            $coreTranslationsDir: '%kernel.project_dir%/cp-content/translations'
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+
+    App\Controller\Admin\AACPController:
+        arguments:
+            $recoveryToken: '%env(AACP_RECOVERY_TOKEN)%'
+
+    # HookManager: $attributeHooks HookRegistrationPass::CONTAINER_PARAMETER'dan
+    # (derleme zamanında toplanan #[CpHook] listesi) beslenir. $serviceLocator
+    # HookRegistrationPass tarafından ServiceLocatorTagPass::register() ile
+    # üretilip setArgument() ile BURADAKİ null placeholder'ın üzerine yazılır —
+    # burada açıkça null verilmesinin sebebi, autowire'ın bu union-type
+    # olmayan parametre için bir servis tahmin etmeye ÇALIŞMAMASINI sağlamaktır.
+    App\Core\Hook\HookManager:
+        arguments:
+            $serviceLocator: null
+            $attributeHooks: '%cpalius.hook_definitions%'
+
+    # ApiGatewayController: $apiEndpoints ApiRegistrationPass::CONTAINER_PARAMETER'dan
+    # beslenir (derleme zamanında toplanan #[CpApi] listesi), $serviceLocator
+    # da aynı pass tarafından setArgument() ile bağlanır.
+    App\Core\Api\Controller\ApiGatewayController:
+        arguments:
+            $serviceLocator: null
+            $apiEndpoints: '%cpalius.api_definitions%'
+
+    # CronManager: $cronDefinitions CronRegistrationPass::CONTAINER_PARAMETER'dan
+    # beslenir (derleme zamanında toplanan #[CpCronJob] + flat-file "cron.*.php"
+    # listesi), $serviceLocator da aynı pass tarafından setArgument() ile bağlanır.
+    App\Core\Cron\CronManager:
+        arguments:
+            $serviceLocator: null
+            $cronDefinitions: '%cpalius.cron_definitions%'
+
+    # CronExecuteController: dışarıdan tetiklenen /cron/execute pseudo-cron
+    # ucunun tek yetkilendirme sırrı. AACP_RECOVERY_TOKEN ile AYNI desen
+    # (bkz. AACPController), ayrı bir env değişkeni kullanır çünkü ikisi
+    # birbirinden bağımsız güvenlik sınırlarıdır (biri kurtarma konsolu,
+    # diğeri cron tetikleme).
+    App\Controller\CronExecuteController:
+        arguments:
+            $cronToken: '%env(CRON_TOKEN)%'
+
+when@dev:
+    services:
+        # Bu blok, kök `services:` altındaki `_defaults` (autowire/autoconfigure)
+        # ayarlarını miras ALMAZ — when@dev kendi bağımsız bir servis
+        # tanımlama alanıdır. _defaults'ı burada tekrar açıkça vermezsek
+        # QueryCounterMiddleware gibi sadece `tags:` belirten servisler
+        # autowire=false ile derlenir ve constructor argümanı enjekte
+        # edilmez (bkz. "Too few arguments" hatası).
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        # Manifesto Law 6.1 (Dev-Mode N+1 Exception Guard): bu tag SADECE
+        # dev ortamında eklenir, bu yüzden QueryCounterMiddleware sadece
+        # dev'de DBAL Driver zincirine girer. Sınıfların kendisi `App\:`
+        # wildcard'ı ile her ortamda TANIMLI olsa da, hiçbir yerden
+        # (middleware zinciri, event listener) çağrılmadıkları sürece
+        # prod'da hiç instantiate edilmezler — sıfır çalışma zamanı maliyeti.
+        App\Core\Database\QueryCounter:
+            arguments:
+                $maxQueriesPerTable: 10
+
+        App\Core\Database\Middleware\QueryCounterMiddleware:
+            tags:
+                - { name: 'doctrine.middleware' }

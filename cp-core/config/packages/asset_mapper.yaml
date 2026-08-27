@@ -1,0 +1,20 @@
+framework:
+    asset_mapper:
+        # Pristine Root: varlıklar proje kökünde değil cp-core/assets
+        # altında yaşar. Modüllerin kendi Resources/assets klasörleri
+        # kendi bundle tanımları üzerinden ayrıca eklenebilir.
+        paths:
+            - cp-core/assets/
+        missing_import_mode: strict
+        # Varsayılan vendor_dir (importmap:require ile indirilen CDN
+        # paketlerinin önbelleklendiği yer) proje köküne "assets/vendor"
+        # yazardı — Pristine Root ihlali. cp-core/assets altında tutulur.
+        # MUTLAK path zorunlu: göreli verilirse RemotePackageStorage bunu
+        # çalışma zamanı CWD'sine göre çözer (web isteğinde CWD projenin
+        # kökü olmayabilir), bu da "vendor asset is missing" hatasına yol açar.
+        vendor_dir: '%kernel.project_dir%/cp-core/assets/vendor'
+
+when@prod:
+    framework:
+        asset_mapper:
+            missing_import_mode: warn

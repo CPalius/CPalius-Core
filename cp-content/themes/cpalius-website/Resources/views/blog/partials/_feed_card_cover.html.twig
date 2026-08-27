@@ -1,0 +1,10 @@
+{#
+    Kapak görseli — blog_featured_image_url() ile çözülür.
+    Beklenen değişken: post
+#}
+{% set coverUrl = blog_featured_image_url(post) %}
+{% if coverUrl %}
+    <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}" class="slw-feed-card__cover">
+        <img src="{{ coverUrl }}" alt="{{ post.title }}" loading="lazy" width="640" height="360">
+    </a>
+{% endif %}

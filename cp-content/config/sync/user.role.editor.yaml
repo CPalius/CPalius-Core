@@ -1,0 +1,17 @@
+role:
+    id: editor
+    label: 'Editör'
+    capabilities:
+        - node.post.view.own
+        - node.post.create
+        - node.post.edit.own
+        - node.post.delete.own
+        - node.post.publish
+        - forum.view
+        - forum.topic.create
+        - forum.post.edit.own
+        - forum.post.delete.own
+        - forum.post.report
+        - forum.post.like
+        - media.view
+        - media.upload

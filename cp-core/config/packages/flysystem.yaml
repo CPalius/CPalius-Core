@@ -1,0 +1,12 @@
+# Read the documentation at https://github.com/thephpleague/flysystem-bundle/blob/master/docs/1-getting-started.md
+#
+# Pimcore tarzı 1. sınıf Asset (medya) altyapısının depolama katmanı.
+# 'Pristine Root' kuralı gereği fiziksel dosyalar cp-core/ dışına,
+# doğrudan public/uploads altına yazılır — bu sayede web sunucusu
+# ek bir sembolik link/route olmadan dosyalara doğrudan erişebilir.
+flysystem:
+    storages:
+        cpalius_storage:
+            adapter: 'local'
+            options:
+                directory: '%kernel.project_dir%/public/uploads'

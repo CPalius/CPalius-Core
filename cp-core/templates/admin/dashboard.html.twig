@@ -1,0 +1,394 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.dashboard.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    {{ parent() }}
+    <button type="button" data-studio-widget-settings-trigger
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-neutral-500 transition hover:border-primary-600 hover:text-primary-600"
+            title="{{ 'studio.dashboard.widget_settings'|trans }}">
+        <twig:ux:icon name="tabler:layout-dashboard" class="h-4 w-4" />
+    </button>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap(['studio-dashboard']) }}
+{% endblock %}
+
+{% block body %}
+    {% set moduleByKey = {} %}
+    {% for mod in modules %}
+        {% set moduleByKey = moduleByKey|merge({ (mod.key): mod }) %}
+    {% endfor %}
+
+    <div class="studio-dash" data-studio-dashboard>
+        {# Hero özet şeridi #}
+        <div data-studio-widget-id="hero.summary" class="studio-dash-widget {{ 'hero.summary' in hiddenWidgetIds ? 'hidden' : '' }}">
+            <div class="studio-dash-hero">
+                <div class="studio-dash-hero-glow"></div>
+                <div class="relative z-10 grid grid-cols-2 gap-x-sp-sm gap-y-sp-xs sm:grid-cols-3 lg:grid-cols-6">
+                    <div class="studio-dash-hero-stat">
+                        <span class="studio-dash-hero-label">{{ 'studio.dashboard.overview.total_content'|trans }}</span>
+                        <span class="studio-dash-hero-value">{{ overview.totalContent }}</span>
+                    </div>
+                    <div class="studio-dash-hero-stat">
+                        <span class="studio-dash-hero-label">{{ 'studio.dashboard.kind.blog_posts'|trans }}</span>
+                        <span class="studio-dash-hero-value">{{ overview.blogPosts }}</span>
+                    </div>
+                    <div class="studio-dash-hero-stat">
+                        <span class="studio-dash-hero-label">{{ 'studio.dashboard.kind.forum_topics'|trans }}</span>
+                        <span class="studio-dash-hero-value">{{ overview.forumTopics }}</span>
+                    </div>
+                    <div class="studio-dash-hero-stat">
+                        <span class="studio-dash-hero-label">{{ 'studio.dashboard.kind.forum_posts'|trans }}</span>
+                        <span class="studio-dash-hero-value">{{ overview.forumPosts }}</span>
+                    </div>
+                    <div class="studio-dash-hero-stat">
+                        <span class="studio-dash-hero-label">{{ 'studio.dashboard.kind.media'|trans }}</span>
+                        <span class="studio-dash-hero-value">{{ overview.mediaFiles }}</span>
+                    </div>
+                    <div class="studio-dash-hero-stat">
+                        <span class="studio-dash-hero-label">{{ 'studio.dashboard.overview.active_modules'|trans }}</span>
+                        <span class="studio-dash-hero-value">{{ overview.activeModuleCount }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# İçerik analizi — blog + forum + medya #}
+        <section class="studio-dash-section" data-studio-section="content">
+            <button type="button" class="studio-dash-section-toggle" data-studio-section-toggle="content">
+                <twig:ux:icon name="tabler:chart-donut-3" class="h-5 w-5 text-primary-600" />
+                <span>{{ 'studio.dashboard.section.content'|trans }}</span>
+                <twig:ux:icon name="tabler:chevron-down" class="studio-dash-chevron ml-auto h-4 w-4" />
+            </button>
+            <div class="studio-dash-section-body" data-studio-section-body="content">
+                <div class="studio-dash-grid">
+                    <div data-studio-widget-id="content.mix_doughnut" class="studio-dash-widget studio-dash-widget--tall {{ 'content.mix_doughnut' in hiddenWidgetIds ? 'hidden' : '' }}">
+                        <div class="studio-dash-panel">
+                            <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.by_kind'|trans }}</h3>
+                            <div class="studio-dash-chart studio-dash-chart--center">
+                                <canvas data-studio-chart="doughnut-center"
+                                        data-center="{{ overview.totalContent }}"
+                                        data-center-label="{{ 'studio.dashboard.overview.total_content'|trans }}"
+                                        data-labels="{{ charts.contentMix|map(row => row.label|trans)|json_encode }}"
+                                        data-values="{{ charts.contentMix|map(row => row.count)|json_encode }}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div data-studio-widget-id="content.mix_bar" class="studio-dash-widget studio-dash-widget--tall {{ 'content.mix_bar' in hiddenWidgetIds ? 'hidden' : '' }}">
+                        <div class="studio-dash-panel">
+                            <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.by_kind_bar'|trans }}</h3>
+                            <div class="studio-dash-chart">
+                                <canvas data-studio-chart="bar-h"
+                                        data-labels="{{ charts.contentMix|map(row => row.label|trans)|json_encode }}"
+                                        data-values="{{ charts.contentMix|map(row => row.count)|json_encode }}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div data-studio-widget-id="content.trend_line" class="studio-dash-widget studio-dash-widget--wide {{ 'content.trend_line' in hiddenWidgetIds ? 'hidden' : '' }}">
+                        <div class="studio-dash-panel">
+                            <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.trend'|trans }}</h3>
+                            <div class="studio-dash-chart studio-dash-chart--wide">
+                                <canvas data-studio-chart="line-multi"
+                                        data-labels="{{ charts.contentTrend.labels|json_encode }}"
+                                        data-series="{{ charts.contentTrend.series|map(s => { label: s.label|trans, values: s.values })|json_encode }}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div data-studio-widget-id="content.status_doughnut" class="studio-dash-widget studio-dash-widget--tall {{ 'content.status_doughnut' in hiddenWidgetIds ? 'hidden' : '' }}">
+                        <div class="studio-dash-panel">
+                            <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.by_status'|trans }}</h3>
+                            <div class="studio-dash-chart studio-dash-chart--center">
+                                {% set blogTotal = overview.blogPosts %}
+                                <canvas data-studio-chart="doughnut-center"
+                                        data-center="{{ blogTotal }}"
+                                        data-center-label="{{ 'studio.dashboard.kind.blog_posts'|trans }}"
+                                        data-labels="{{ charts.contentByStatus|map(row => ('studio.dashboard.status.' ~ row.status)|trans)|json_encode }}"
+                                        data-values="{{ charts.contentByStatus|map(row => row.count)|json_encode }}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {# Modül özeti #}
+        <section class="studio-dash-section" data-studio-section="modules">
+            <button type="button" class="studio-dash-section-toggle" data-studio-section-toggle="modules">
+                <twig:ux:icon name="tabler:chart-radar" class="h-5 w-5 text-primary-600" />
+                <span>{{ 'studio.dashboard.section.modules'|trans }}</span>
+                <twig:ux:icon name="tabler:chevron-down" class="studio-dash-chevron ml-auto h-4 w-4" />
+            </button>
+            <div class="studio-dash-section-body" data-studio-section-body="modules">
+                <div class="studio-dash-grid">
+                    <div data-studio-widget-id="modules.radar" class="studio-dash-widget studio-dash-widget--tall {{ 'modules.radar' in hiddenWidgetIds ? 'hidden' : '' }}">
+                        <div class="studio-dash-panel">
+                            <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.module_radar'|trans }}</h3>
+                            <div class="studio-dash-chart">
+                                <canvas data-studio-chart="radar"
+                                        data-labels="{{ charts.moduleRadar|map(row => row.label|trans)|json_encode }}"
+                                        data-values="{{ charts.moduleRadar|map(row => row.value)|json_encode }}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div data-studio-widget-id="modules.bar" class="studio-dash-widget studio-dash-widget--tall {{ 'modules.bar' in hiddenWidgetIds ? 'hidden' : '' }}">
+                        <div class="studio-dash-panel">
+                            <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.module_overview'|trans }}</h3>
+                            <div class="studio-dash-chart">
+                                <canvas data-studio-chart="bar-v"
+                                        data-labels="{{ charts.moduleOverview|map(row => row.label|trans)|json_encode }}"
+                                        data-values="{{ charts.moduleOverview|map(row => row.count)|json_encode }}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {# Blog #}
+        {% if moduleByKey.blog is defined %}
+            <section class="studio-dash-section" data-studio-section="blog">
+                <button type="button" class="studio-dash-section-toggle" data-studio-section-toggle="blog">
+                    <twig:ux:icon name="heroicons:document-text" class="h-5 w-5 text-primary-600" />
+                    <span>{{ moduleByKey.blog.name }}</span>
+                    <twig:ux:icon name="tabler:chevron-down" class="studio-dash-chevron ml-auto h-4 w-4" />
+                </button>
+                <div class="studio-dash-section-body" data-studio-section-body="blog">
+                    <div class="studio-dash-grid">
+                        <div data-studio-widget-id="blog.publish_gauge" class="studio-dash-widget studio-dash-widget--tall {{ 'blog.publish_gauge' in hiddenWidgetIds ? 'hidden' : '' }}">
+                            <div class="studio-dash-panel">
+                                <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.blog_publish_rate'|trans }}</h3>
+                                <div class="studio-dash-chart studio-dash-chart--center">
+                                    <canvas data-studio-chart="gauge"
+                                            data-value="{{ overview.publishRate }}"
+                                            data-max="100"
+                                            data-center="{{ overview.publishRate ~ '%' }}"
+                                            data-center-label="{{ 'studio.dashboard.published'|trans }}"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div data-studio-widget-id="blog.radar" class="studio-dash-widget studio-dash-widget--tall {{ 'blog.radar' in hiddenWidgetIds ? 'hidden' : '' }}">
+                            <div class="studio-dash-panel">
+                                <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.blog_radar'|trans }}</h3>
+                                <div class="studio-dash-chart">
+                                    <canvas data-studio-chart="radar"
+                                            data-labels="{{ charts.blogRadar|map(row => row.label|trans)|json_encode }}"
+                                            data-values="{{ charts.blogRadar|map(row => row.value)|json_encode }}"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div data-studio-widget-id="blog.links" class="studio-dash-widget studio-dash-widget--wide {{ 'blog.links' in hiddenWidgetIds ? 'hidden' : '' }}">
+                            <div class="studio-dash-panel studio-dash-panel--links">
+                                <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.widget.quick_links'|trans }}</h3>
+                                <div class="studio-dash-links">
+                                    {% for link in moduleByKey.blog.links %}
+                                        <a href="{{ path(link.routeName) }}" class="studio-dash-link">
+                                            <twig:ux:icon name="{{ link.icon }}" class="h-4 w-4" />
+                                            {{ link.label|trans }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+
+        {# Forum #}
+        {% if moduleByKey.forum is defined %}
+            <section class="studio-dash-section" data-studio-section="forum">
+                <button type="button" class="studio-dash-section-toggle" data-studio-section-toggle="forum">
+                    <twig:ux:icon name="heroicons:chat-bubble-left-right" class="h-5 w-5 text-primary-600" />
+                    <span>{{ moduleByKey.forum.name }}</span>
+                    <twig:ux:icon name="tabler:chevron-down" class="studio-dash-chevron ml-auto h-4 w-4" />
+                </button>
+                <div class="studio-dash-section-body" data-studio-section-body="forum">
+                    <div class="studio-dash-grid">
+                        <div data-studio-widget-id="forum.moderation_gauge" class="studio-dash-widget studio-dash-widget--tall {{ 'forum.moderation_gauge' in hiddenWidgetIds ? 'hidden' : '' }}">
+                            <div class="studio-dash-panel">
+                                <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.forum_moderation'|trans }}</h3>
+                                <div class="studio-dash-chart studio-dash-chart--center">
+                                    <canvas data-studio-chart="gauge"
+                                            data-open="{{ charts.forumModeration.open }}"
+                                            data-total="{{ charts.forumModeration.total }}"
+                                            data-center="{{ charts.forumModeration.open }}"
+                                            data-center-label="{{ 'studio.dashboard.forum.open_reports'|trans }}"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if charts.forumSections %}
+                        <div data-studio-widget-id="forum.section_pie" class="studio-dash-widget studio-dash-widget--tall {{ 'forum.section_pie' in hiddenWidgetIds ? 'hidden' : '' }}">
+                            <div class="studio-dash-panel">
+                                <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.forum_section_pie'|trans }}</h3>
+                                <div class="studio-dash-chart">
+                                    <canvas data-studio-chart="pie"
+                                            data-labels="{{ charts.forumSections.labels|json_encode }}"
+                                            data-values="{{ charts.forumSections.postCounts|json_encode }}"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div data-studio-widget-id="forum.section_bar" class="studio-dash-widget studio-dash-widget--tall {{ 'forum.section_bar' in hiddenWidgetIds ? 'hidden' : '' }}">
+                            <div class="studio-dash-panel">
+                                <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.forum_section_bar'|trans }}</h3>
+                                <div class="studio-dash-chart">
+                                    <canvas data-studio-chart="bar-v"
+                                            data-labels="{{ charts.forumSections.labels|json_encode }}"
+                                            data-values="{{ charts.forumSections.topicCounts|json_encode }}"
+                                            data-dataset-label="{{ 'studio.dashboard.forum.topics'|trans }}"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div data-studio-widget-id="forum.activity_line" class="studio-dash-widget studio-dash-widget--wide {{ 'forum.activity_line' in hiddenWidgetIds ? 'hidden' : '' }}">
+                            <div class="studio-dash-panel">
+                                <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.forum_activity'|trans }}</h3>
+                                <div class="studio-dash-chart studio-dash-chart--wide">
+                                    <canvas data-studio-chart="line-multi"
+                                            data-labels="{{ charts.forumSections.labels|json_encode }}"
+                                            data-series="{{ [
+                                                {'label': 'studio.dashboard.forum.topics'|trans, 'values': charts.forumSections.topicCounts},
+                                                {'label': 'studio.dashboard.forum.posts'|trans, 'values': charts.forumSections.postCounts}
+                                            ]|json_encode }}"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div data-studio-widget-id="forum.links" class="studio-dash-widget studio-dash-widget--wide {{ 'forum.links' in hiddenWidgetIds ? 'hidden' : '' }}">
+                            <div class="studio-dash-panel studio-dash-panel--links">
+                                <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.widget.quick_links'|trans }}</h3>
+                                <div class="studio-dash-links">
+                                    {% for link in moduleByKey.forum.links %}
+                                        <a href="{{ path(link.routeName) }}" class="studio-dash-link">
+                                            <twig:ux:icon name="{{ link.icon }}" class="h-4 w-4" />
+                                            {{ link.label|trans }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+
+        {# Medya #}
+        {% if moduleByKey.media is defined %}
+            <section class="studio-dash-section" data-studio-section="media">
+                <button type="button" class="studio-dash-section-toggle" data-studio-section-toggle="media">
+                    <twig:ux:icon name="heroicons:photo" class="h-5 w-5 text-primary-600" />
+                    <span>{{ moduleByKey.media.name }}</span>
+                    <twig:ux:icon name="tabler:chevron-down" class="studio-dash-chevron ml-auto h-4 w-4" />
+                </button>
+                <div class="studio-dash-section-body" data-studio-section-body="media">
+                    <div class="studio-dash-grid">
+                        {% if charts.mediaByMimeType is not empty %}
+                            <div data-studio-widget-id="media.mime_pie" class="studio-dash-widget studio-dash-widget--tall {{ 'media.mime_pie' in hiddenWidgetIds ? 'hidden' : '' }}">
+                                <div class="studio-dash-panel">
+                                    <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.media_mime'|trans }}</h3>
+                                    <div class="studio-dash-chart">
+                                        <canvas data-studio-chart="pie"
+                                                data-labels="{{ charts.mediaByMimeType|map(row => row.mime)|json_encode }}"
+                                                data-values="{{ charts.mediaByMimeType|map(row => row.count)|json_encode }}"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div data-studio-widget-id="media.mime_polar" class="studio-dash-widget studio-dash-widget--tall {{ 'media.mime_polar' in hiddenWidgetIds ? 'hidden' : '' }}">
+                                <div class="studio-dash-panel">
+                                    <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.media_polar'|trans }}</h3>
+                                    <div class="studio-dash-chart">
+                                        <canvas data-studio-chart="polar"
+                                                data-labels="{{ charts.mediaByMimeType|map(row => row.mime)|json_encode }}"
+                                                data-values="{{ charts.mediaByMimeType|map(row => row.count)|json_encode }}"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <div data-studio-widget-id="media.disk_gauge" class="studio-dash-widget studio-dash-widget--tall {{ 'media.disk_gauge' in hiddenWidgetIds ? 'hidden' : '' }}">
+                            <div class="studio-dash-panel">
+                                <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.media_disk'|trans }}</h3>
+                                <div class="studio-dash-chart studio-dash-chart--center">
+                                    {% set diskMax = charts.mediaDisk.bytes > 0 ? (charts.mediaDisk.bytes * 1.25)|round : 1048576 %}
+                                    <canvas data-studio-chart="gauge"
+                                            data-value="{{ charts.mediaDisk.bytes }}"
+                                            data-max="{{ diskMax }}"
+                                            data-center="{{ charts.mediaDisk.label }}"
+                                            data-center-label="{{ 'studio.dashboard.media.disk_usage'|trans }}"></canvas>
+                                </div>
+                                <p class="mt-2 text-center text-fs-sm text-neutral-500">
+                                    {{ charts.mediaDisk.files }} {{ 'studio.dashboard.media.files_label'|trans }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div data-studio-widget-id="media.links" class="studio-dash-widget studio-dash-widget--wide {{ 'media.links' in hiddenWidgetIds ? 'hidden' : '' }}">
+                            <div class="studio-dash-panel studio-dash-panel--links">
+                                <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.widget.quick_links'|trans }}</h3>
+                                <div class="studio-dash-links">
+                                    {% for link in moduleByKey.media.links %}
+                                        <a href="{{ path(link.routeName) }}" class="studio-dash-link">
+                                            <twig:ux:icon name="{{ link.icon }}" class="h-4 w-4" />
+                                            {{ link.label|trans }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+    </div>
+
+    {# Widget görünürlük paneli #}
+    <div data-studio-widget-settings-panel
+         data-studio-widget-visibility-url="{{ path('admin_dashboard_widget_visibility') }}"
+         data-csrf-token="{{ widget_visibility_csrf_token }}"
+         hidden
+         class="studio-dash-settings">
+        <div class="mb-sp-md flex items-center justify-between">
+            <h2 class="text-fs-base font-semibold text-neutral-900">{{ 'studio.dashboard.widget_settings'|trans }}</h2>
+            <button type="button" data-studio-widget-settings-close class="text-neutral-400 hover:text-neutral-600">
+                <twig:ux:icon name="tabler:x" class="h-5 w-5" />
+            </button>
+        </div>
+
+        <button type="button" data-studio-widget-settings-show-all class="mb-sp-sm text-fs-xs font-medium text-primary-600 hover:text-primary-700">
+            {{ 'studio.dashboard.widget_settings.show_all'|trans }}
+        </button>
+
+        {% set catalogBySection = {} %}
+        {% for entry in widgetCatalog %}
+            {% set catalogBySection = catalogBySection|merge({ (entry.section): (catalogBySection[entry.section] ?? [])|merge([entry]) }) %}
+        {% endfor %}
+
+        {% for sectionKey, entries in catalogBySection %}
+            <div class="mb-sp-md">
+                <h3 class="mb-2 text-fs-xs font-semibold uppercase tracking-wide text-neutral-500">{{ ('studio.dashboard.section.' ~ sectionKey)|trans }}</h3>
+                <div class="space-y-1.5">
+                    {% for entry in entries %}
+                        <label class="flex items-center gap-2 text-fs-sm text-neutral-700">
+                            <input type="checkbox" data-studio-widget-toggle="{{ entry.widgetId }}"
+                                   {{ entry.widgetId in hiddenWidgetIds ? '' : 'checked' }}
+                                   class="form-check-input h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500/40">
+                            {{ entry.titleKey|trans }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.ranks.index.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.ranks.index.action.dashboard'|trans }}</a>
+    <a href="{{ path('admin_forum_ranks_create') }}" class="btn btn-sm btn-primary">{{ 'studio.forum.ranks.index.action.new'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'studio.forum.ranks.index.column.rank'|trans,
+            'studio.forum.ranks.index.column.assignment'|trans,
+            'studio.forum.ranks.index.column.sort_order'|trans,
+            '',
+        ] }}" empty="{{ ranks is empty }}" emptyText="{{ 'studio.forum.ranks.index.empty'|trans }}">
+            <twig:block name="rows">
+                {% for rank in ranks %}
+                    <tr>
+                        <td>
+                            <span style="display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:3px; font-size:11px; font-weight:700; color:#fff; background:{{ rank.color }};">
+                                {% if rank.icon %}<i class="bi {{ rank.icon }}"></i>{% endif %} {{ rank.label }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if rank.automatic %}
+                                <span class="text-fs-xs text-neutral-500">{{ 'studio.forum.ranks.index.automatic'|trans({minPosts: rank.minPosts}) }}</span>
+                            {% else %}
+                                <span class="text-fs-xs text-neutral-500">{{ 'studio.forum.ranks.index.manual'|trans }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ rank.sortOrder }}</td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ path('admin_forum_ranks_edit', {id: rank.id}) }}" class="btn btn-sm btn-neutral">{{ 'aacp.users.edit_action'|trans }}</a>
+                                <form method="post" action="{{ path('admin_forum_ranks_delete', {id: rank.id}) }}" onsubmit="return confirm({{ 'studio.forum.ranks.index.delete_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_rank') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+{% endblock %}

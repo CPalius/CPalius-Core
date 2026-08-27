@@ -1,0 +1,64 @@
+{% set items = data.items|default([]) %}
+{% if items is not empty %}
+{% set title = portalBlock.title|default('website.landing.portal.forum_title'|trans) %}
+{% set layout = portalBlock.layout|default('list') %}
+{% embed '@CpaliusWebsiteTheme/partials/portal/_rail.html.twig' with {
+    blockId: 'latest_forum_topics',
+    title: title,
+    moreHref: path('forum_index'),
+    moreLabel: 'website.landing.portal.forum_more'|trans,
+    layout: layout,
+    moduleIcon: 'bi-chat-square-text',
+    items: items
+} %}
+    {% block list_items %}
+        <table class="portal-topic-table">
+            <thead>
+                <tr>
+                    <th class="portal-topic-table__col-icon"></th>
+                    <th>{{ 'website.landing.portal.col_topic'|trans }}</th>
+                    <th class="portal-topic-table__col-meta">{{ 'website.landing.portal.col_replies'|trans }}</th>
+                    <th class="portal-topic-table__col-meta">{{ 'website.landing.portal.col_updated'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for topic in items %}
+                    <tr>
+                        <td class="portal-topic-table__col-icon">
+                            <span class="portal-topic-table__icon"><i class="bi bi-chat-dots"></i></span>
+                        </td>
+                        <td>
+                            <a class="portal-topic-table__title" href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug|default('')}) }}">{{ topic.title }}</a>
+                            <div class="portal-topic-table__sub">
+                                <span>{{ topic.section.title|default('') }}</span>
+                                <span>·</span>
+                                <span>{{ topic.firstPosterName }}</span>
+                            </div>
+                        </td>
+                        <td class="portal-topic-table__col-meta">{{ topic.postCount }}</td>
+                        <td class="portal-topic-table__col-meta">{{ topic.updatedAt|date('d.m.Y') }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endblock %}
+    {% block card_items %}
+        {% for topic in items %}
+            <a class="portal-tile" href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug|default('')}) }}">
+                <span class="portal-tile__badge"><i class="bi bi-chat-square-text"></i></span>
+                <span class="portal-tile__title">{{ topic.title }}</span>
+                <span class="portal-tile__meta">{{ topic.firstPosterName }} · {{ topic.updatedAt|date('d.m.Y') }}</span>
+            </a>
+        {% endfor %}
+    {% endblock %}
+    {% block slider_items %}
+        {% for topic in items %}
+            <a class="portal-tile portal-slider__item" href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug|default('')}) }}">
+                <span class="portal-tile__badge"><i class="bi bi-chat-square-text"></i></span>
+                <span class="portal-tile__title">{{ topic.title }}</span>
+                <span class="portal-tile__meta">{{ topic.postCount }} {{ 'website.landing.portal.replies'|trans }}</span>
+            </a>
+        {% endfor %}
+    {% endblock %}
+{% endembed %}
+{% endif %}

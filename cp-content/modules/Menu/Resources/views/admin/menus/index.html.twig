@@ -1,0 +1,43 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'menu.index.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_menus_create') }}" class="btn btn-sm btn-primary">
+        {{ 'menu.index.create_action'|trans }}
+    </a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'menu.index.column.name'|trans,
+            'menu.index.column.identifier'|trans,
+            'menu.index.column.item_count'|trans,
+            '',
+        ] }}" empty="{{ menus is empty }}" emptyText="{{ 'menu.index.empty'|trans }}">
+            <twig:block name="rows">
+                {% for menu in menus %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('admin_menus_edit', {id: menu.id}) }}" class="font-medium text-neutral-900 hover:text-primary-600">
+                                {{ menu.name }}
+                            </a>
+                        </td>
+                        <td class="text-fs-xs text-neutral-500">
+                            <code>{{ menu.identifier }}</code>
+                        </td>
+                        <td class="text-fs-xs text-neutral-500">
+                            {{ menu.items|length }}
+                        </td>
+                        <td class="text-right">
+                            <a href="{{ path('admin_menus_edit', {id: menu.id}) }}" class="btn btn-sm btn-neutral">
+                                {{ 'aacp.users.edit_action'|trans }}
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+{% endblock %}

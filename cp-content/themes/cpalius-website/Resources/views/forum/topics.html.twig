@@ -1,0 +1,94 @@
+{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+
+{% block title %}{{ section.title }} — {{ 'forum.breadcrumb.home_title'|trans }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
+{% block meta_description %}{{ section.description|default('forum.desc.default'|trans({'title': section.title})) }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    {% include '@CpaliusWebsiteTheme/forum/partials/_breadcrumbs.html.twig' with {
+        breadcrumbs: breadcrumbs|default([]),
+        forumHome: forumHome|default({title: 'forum.breadcrumb.home_title'|trans}),
+    } %}
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in">
+    <div class="forum-header__top">
+        <div>
+            <h1 class="section-title">{{ section.title }}</h1>
+            {% if section.description %}<p class="forum-header__desc">{{ section.description }}</p>{% endif %}
+        </div>
+        <div class="forum-header__actions">
+            <div class="forum-stats-inline">
+                <span><strong>{{ section.topicCount }}</strong> {{ 'forum.stat.topic'|trans }}</span>
+                <span><strong>{{ section.postCount }}</strong> {{ 'forum.stat.post'|trans }}</span>
+            </div>
+            {% if is_granted('forum.topic.create') %}
+                <a href="{{ path('forum_new_topic', {sectionSlug: section.slug}) }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> {{ 'forum.action.new_topic'|trans }}</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if childSections is not empty %}
+    <div class="forum-group fade-in">
+        <div class="forum-group__title"><i class="bi bi-folder2"></i> {{ 'forum.subforums_title'|trans }}</div>
+        <div class="forum-boards">
+            {% for child in childSections %}
+                {% include '@CpaliusWebsiteTheme/forum/partials/_board_row.html.twig' with {board: child} %}
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
+
+<div class="forum-topics fade-in">
+    {% for topic in topics %}
+        <div class="forum-topic {{ topic.sticky ? 'forum-topic--sticky' : '' }} {{ topic.isLocked ? 'forum-topic--locked' : '' }}">
+            {% include '@CpaliusWebsiteTheme/forum/partials/_topic_icon.html.twig' with {topic: topic, hotThreshold: hotThreshold} %}
+
+            <div>
+                <div class="forum-topic__title">
+                    {% if topic.prefix %}<span class="forum-badge" style="background: color-mix(in srgb, {{ topic.prefix.color }} 15%, white); color: {{ topic.prefix.color }};">{{ topic.prefix.label }}</span>{% endif %}
+                    <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}" title="{{ topic.preview }}">{{ topic.title }}</a>
+                    {% if topic.sticky and topic.isLocked %}<span class="forum-badge forum-badge--sticky">{{ 'forum.badge.announcement'|trans }}</span>
+                    {% elseif topic.sticky %}<span class="forum-badge forum-badge--sticky">{{ 'forum.badge.sticky'|trans }}</span>{% endif %}
+                    {% if topic.isLocked and not topic.sticky %}<span class="forum-badge forum-badge--locked">{{ 'forum.badge.locked'|trans }}</span>{% endif %}
+                    {% if topic.postCount >= hotThreshold %}<span class="forum-badge forum-badge--hot">{{ 'forum.badge.hot'|trans }}</span>{% endif %}
+                    {% if topic.isPrivate %}<span class="forum-badge forum-badge--private">{{ 'forum.badge.private'|trans }}</span>{% endif %}
+                </div>
+                <div class="forum-topic__meta">{{ 'forum.by'|trans({'name': '<b>' ~ topic.firstPosterName ~ '</b>'})|raw }} · {{ topic.createdAt|date('d.m.Y H:i') }}</div>
+            </div>
+
+            <div class="forum-topic__stat">
+                <strong>{{ topic.postCount - 1 }}</strong>
+                <span>{{ 'forum.stat.reply'|trans }}</span>
+            </div>
+            <div class="forum-topic__stat">
+                <strong>{{ topic.viewCount }}</strong>
+                <span>{{ 'forum.stat.view'|trans }}</span>
+            </div>
+
+            <div class="forum-topic__activity">
+                {% if topic.lastPosterName %}
+                    {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: topic.lastPosterName} %}
+                    {% set lastPage = ((topic.postCount - 1) // postsPerPage) + 1 %}
+                    <div class="forum-topic__activity-text">
+                        <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug, page: lastPage}) }}">{{ topic.lastPosterName }}</a>
+                        <time>{{ topic.updatedAt|date('d.m.Y H:i') }}</time>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        <div class="forum-empty">
+            <i class="bi bi-chat-square-dots"></i>
+            {{ 'forum.empty.no_topics_in_section'|trans }}
+        </div>
+    {% endfor %}
+</div>
+
+{% include '@CpaliusWebsiteTheme/forum/partials/pagination.html.twig' with {
+    result: topics,
+    route: 'forum_section',
+    routeParams: {sectionSlug: section.slug}
+} %}
+{% endblock %}

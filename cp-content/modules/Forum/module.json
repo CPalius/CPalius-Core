@@ -1,0 +1,7 @@
+{
+    "name": "Forum",
+    "version": "1.0.0",
+    "description": "CPalius forum modülü — bölüm, konu ve mesaj yönetimi.",
+    "author": "CPalius",
+    "bundle": "Modules\\Forum\\ForumModule"
+}

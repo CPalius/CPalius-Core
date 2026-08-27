@@ -1,0 +1,85 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'studio.login.title'|trans({'app_name': cp_app_name|default('CPalius CMF')}) }}{% endblock %}
+
+{% block body %}
+    <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-neutral-900 px-4 py-12 antialiased">
+        {#
+            Hafif ızgara deseni: harici bir asset/SVG dosyası gerektirmeden,
+            tek bir linear-gradient çifti ile 40px'lik ince bir grid çizilir.
+            Zero Node.js ruhuna uygun — build adımı, ek dosya yok.
+        #}
+        <div class="pointer-events-none absolute inset-0 opacity-[0.07]"
+             style="background-image: linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px); background-size: 40px 40px;"></div>
+
+        <div class="relative w-full max-w-sm">
+            {% if error is not null %}
+                <div
+                    role="alert"
+                    class="mb-sp-sm flex items-start gap-3 rounded-lg border border-danger-500/40 bg-danger-950/60 px-4 py-3 text-fs-sm text-danger-200"
+                >
+                    <twig:ux:icon name="heroicons:exclamation-triangle" class="mt-0.5 h-4 w-4 shrink-0 text-danger-400" />
+                    <p>{{ error.messageKey|trans(error.messageData, 'security')|default('studio.login.error'|trans) }}</p>
+                </div>
+            {% endif %}
+
+            <div class="mb-sp-lg flex flex-col items-center gap-3 text-center">
+                <span class="flex h-14 w-14 items-center justify-center rounded-lg bg-primary-600 text-fs-xl font-bold text-white ring-1 ring-primary-400/40">
+                    C
+                </span>
+                <div>
+                    <p class="text-fs-md font-semibold tracking-tight text-white">{{ cp_app_name|default('CPalius CMF') }}</p>
+                    <p class="text-fs-xs text-neutral-400">{{ 'studio.login.subtitle'|trans }}</p>
+                </div>
+            </div>
+
+            <div class="card !bg-dark-2 !border-white/10">
+                <div class="border-b border-white/10 px-sp-sm pb-sp-xs pt-sp-sm">
+                    <h1 class="text-fs-sm font-medium text-neutral-200">{{ 'studio.login.heading'|trans }}</h1>
+                </div>
+
+                <div class="p-sp-sm">
+                    <form method="post" class="space-y-sp-sm">
+                        <div>
+                            <label for="username" class="form-label !text-neutral-400">{{ 'studio.login.email'|trans }}</label>
+                            <input
+                                type="email"
+                                id="username"
+                                name="_username"
+                                value="{{ last_username }}"
+                                autocomplete="email"
+                                required
+                                autofocus
+                                class="form-control !border-white/10 !bg-neutral-900 !text-neutral-100 placeholder-neutral-600"
+                                placeholder="admin@ornek.com"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="password" class="form-label !text-neutral-400">{{ 'studio.login.password'|trans }}</label>
+                            <input
+                                type="password"
+                                id="password"
+                                name="_password"
+                                autocomplete="current-password"
+                                required
+                                class="form-control !border-white/10 !bg-neutral-900 !text-neutral-100 placeholder-neutral-600"
+                                placeholder="••••••••"
+                            >
+                        </div>
+
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                        <button type="submit" class="btn btn-primary w-full">
+                            {{ 'studio.login.submit'|trans }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <p class="mt-sp-sm text-center text-fs-xs text-neutral-500">
+                {{ cp_app_name|default('CPalius CMF') }} · v{{ cp_app_version|default('1.0.0') }}
+            </p>
+        </div>
+    </div>
+{% endblock %}

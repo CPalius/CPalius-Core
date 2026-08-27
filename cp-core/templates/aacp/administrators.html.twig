@@ -1,0 +1,46 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.administrators.header'|trans }}{% endblock %}
+
+{% block body %}
+    <p class="mb-sp-sm text-fs-sm !text-slate-500">{{ 'aacp.administrators.description'|trans }}</p>
+
+    <twig:cp:card padded="{{ false }}">
+        <twig:cp:table headers="{{ [
+            'aacp.users.column.email'|trans,
+            'aacp.users.column.full_name'|trans,
+            'aacp.users.column.status'|trans,
+            'aacp.users.column.created_at'|trans,
+            '',
+        ] }}" empty="{{ administrators is empty }}" emptyText="{{ 'aacp.administrators.empty'|trans }}">
+            <twig:block name="rows">
+                {% for user in administrators %}
+                    <tr>
+                        <td>
+                            <p class="font-medium !text-slate-200">{{ user.email }}</p>
+                            {% if user.username %}
+                                <p class="text-fs-xs !text-slate-500">@{{ user.username }}</p>
+                            {% endif %}
+                        </td>
+                        <td class="!text-slate-300">
+                            {{ user.fullName }}
+                        </td>
+                        <td>
+                            <twig:cp:badge status="{{ user.status == 'active' ? 'active' : (user.status == 'banned' ? 'quarantined' : 'inactive') }}" />
+                        </td>
+                        <td class="text-fs-xs !text-slate-500">
+                            {{ user.createdAt|date('d.m.Y H:i') }}
+                        </td>
+                        <td class="text-right">
+                            {% if is_granted('system.users.manage') %}
+                                <a href="{{ path('aacp_users_edit', {id: user.id}) }}" class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5">
+                                    {{ 'aacp.users.edit_action'|trans }}
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:cp:table>
+    </twig:cp:card>
+{% endblock %}

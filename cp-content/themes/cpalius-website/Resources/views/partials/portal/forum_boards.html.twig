@@ -1,0 +1,77 @@
+{% set items = data.items|default([]) %}
+{% if items is not empty %}
+{% set title = portalBlock.title|default('website.landing.portal.boards_title'|trans) %}
+{% set layout = portalBlock.layout|default('cards') %}
+{% embed '@CpaliusWebsiteTheme/partials/portal/_rail.html.twig' with {
+    blockId: 'forum_boards',
+    title: title,
+    moreHref: path('forum_index'),
+    moreLabel: 'website.landing.portal.forum_more'|trans,
+    layout: layout,
+    moduleIcon: 'bi-collection',
+    items: items
+} %}
+    {% block list_items %}
+        <table class="portal-board-table">
+            <thead>
+                <tr>
+                    <th class="portal-board-table__col-icon"></th>
+                    <th>{{ 'website.landing.portal.col_board'|trans }}</th>
+                    <th class="portal-board-table__col-stat">{{ 'website.landing.portal.topics'|trans }}</th>
+                    <th class="portal-board-table__col-stat">{{ 'website.landing.portal.posts'|trans }}</th>
+                    <th class="portal-board-table__col-last">{{ 'website.landing.portal.col_last'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for board in items %}
+                    <tr>
+                        <td class="portal-board-table__col-icon">
+                            <span class="portal-board-table__icon"><i class="bi {{ board.icon|default('bi-folder2-open') }}"></i></span>
+                        </td>
+                        <td>
+                            <a class="portal-board-table__title" href="{{ path('forum_section', {sectionSlug: board.slug}) }}">{{ board.title }}</a>
+                            {% if board.description %}
+                                <div class="portal-board-table__desc">{{ board.description|striptags|slice(0, 110) }}{% if board.description|length > 110 %}…{% endif %}</div>
+                            {% endif %}
+                        </td>
+                        <td class="portal-board-table__col-stat">{{ board.topicCount }}</td>
+                        <td class="portal-board-table__col-stat">{{ board.postCount }}</td>
+                        <td class="portal-board-table__col-last">
+                            {% if board.lastTopicTitle %}
+                                <span class="portal-board-table__last-title">{{ board.lastTopicTitle|slice(0, 42) }}{% if board.lastTopicTitle|length > 42 %}…{% endif %}</span>
+                                <span class="portal-board-table__last-meta">
+                                    {{ board.lastPosterName|default('') }}
+                                    {% if board.lastPostAt %} · {{ board.lastPostAt|date('d.m.Y') }}{% endif %}
+                                </span>
+                            {% else %}
+                                <span class="portal-board-table__last-meta">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endblock %}
+    {% block card_items %}
+        {% for board in items %}
+            <a class="portal-tile portal-tile--board" href="{{ path('forum_section', {sectionSlug: board.slug}) }}">
+                <span class="portal-tile__badge"><i class="bi {{ board.icon|default('bi-folder2-open') }}"></i></span>
+                <span class="portal-tile__title">{{ board.title }}</span>
+                <span class="portal-tile__meta">
+                    {{ board.topicCount }} {{ 'website.landing.portal.topics'|trans }}
+                    · {{ board.postCount }} {{ 'website.landing.portal.posts'|trans }}
+                </span>
+            </a>
+        {% endfor %}
+    {% endblock %}
+    {% block slider_items %}
+        {% for board in items %}
+            <a class="portal-tile portal-tile--board portal-slider__item" href="{{ path('forum_section', {sectionSlug: board.slug}) }}">
+                <span class="portal-tile__badge"><i class="bi {{ board.icon|default('bi-folder2-open') }}"></i></span>
+                <span class="portal-tile__title">{{ board.title }}</span>
+                <span class="portal-tile__meta">{{ board.topicCount }} {{ 'website.landing.portal.topics'|trans }}</span>
+            </a>
+        {% endfor %}
+    {% endblock %}
+{% endembed %}
+{% endif %}

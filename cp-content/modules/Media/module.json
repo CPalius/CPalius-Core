@@ -1,0 +1,7 @@
+{
+    "name": "Media",
+    "version": "1.0.0",
+    "description": "CPalius medya kütüphanesi ve görsel seçici.",
+    "author": "CPalius",
+    "bundle": "Modules\\Media\\MediaModule"
+}

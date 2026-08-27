@@ -1,0 +1,83 @@
+{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+
+{% block title %}{{ profileUser.fullName }} — {{ 'forum.profile.title_suffix'|trans }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-crumb fade-in" aria-label="{{ 'forum.nav_aria'|trans }}">
+        <ol class="forum-crumb__list">
+            <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+            <li><a href="{{ path('forum_index') }}">{{ 'forum.breadcrumb.home_title'|trans }}</a></li>
+            <li class="is-active">{{ profileUser.fullName }}</li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-profile-card fade-in">
+    {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: profileUser.fullName, size: 'lg'} %}
+    <div class="forum-profile-card__body">
+        <h1 class="forum-profile-card__name">{{ profileUser.fullName }}</h1>
+        {% if rank %}
+            <span class="forum-badge" style="background: color-mix(in srgb, {{ rank.color }} 15%, white); color: {{ rank.color }};">
+                {% if rank.icon %}<i class="bi {{ rank.icon }}"></i>{% endif %} {{ rank.label }}
+            </span>
+        {% endif %}
+        <div class="forum-profile-card__meta">
+            <span><i class="bi bi-calendar3"></i> {{ 'forum.meta.joined'|trans({'date': profileUser.createdAt|date('d.m.Y')}) }}</span>
+        </div>
+    </div>
+    <div class="forum-profile-card__stats">
+        <div><strong>{{ topicCount }}</strong><span>{{ 'forum.stat.topic'|trans }}</span></div>
+        <div><strong>{{ postCount }}</strong><span>{{ 'forum.stat.post'|trans }}</span></div>
+    </div>
+</div>
+
+<div class="forum-toolbar fade-in" style="border-bottom: 2px solid var(--slw-border); margin-bottom: var(--sp-md);">
+    <div class="forum-profile-tabs">
+        <a href="{{ path('forum_profile', {userId: profileUser.id, tab: 'topics'}) }}" class="{{ tab == 'topics' ? 'is-active' : '' }}">{{ 'forum.tab.topics'|trans }}</a>
+        <a href="{{ path('forum_profile', {userId: profileUser.id, tab: 'posts'}) }}" class="{{ tab == 'posts' ? 'is-active' : '' }}">{{ 'forum.tab.posts'|trans }}</a>
+    </div>
+</div>
+
+{% if tab == 'topics' %}
+    <div class="forum-topics fade-in">
+        {% for topic in items %}
+            <div class="forum-topic">
+                {% include '@CpaliusWebsiteTheme/forum/partials/_topic_icon.html.twig' with {topic: topic, hotThreshold: 20} %}
+                <div>
+                    <div class="forum-topic__title">
+                        <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}">{{ topic.title }}</a>
+                    </div>
+                    <div class="forum-topic__meta">{{ topic.section.title }} · {{ topic.createdAt|date('d.m.Y H:i') }}</div>
+                </div>
+                <div class="forum-topic__stat"><strong>{{ topic.postCount - 1 }}</strong><span>{{ 'forum.stat.reply'|trans }}</span></div>
+                <div class="forum-topic__stat"><strong>{{ topic.viewCount }}</strong><span>{{ 'forum.stat.view'|trans }}</span></div>
+                <div></div>
+            </div>
+        {% else %}
+            <div class="forum-empty"><i class="bi bi-chat-square-dots"></i> {{ 'forum.empty.no_topics_started'|trans }}</div>
+        {% endfor %}
+    </div>
+    {% include '@CpaliusWebsiteTheme/forum/partials/pagination.html.twig' with {result: items, route: 'forum_profile', routeParams: {userId: profileUser.id, tab: 'topics'}} %}
+{% else %}
+    <div class="forum-topics fade-in">
+        {% for topic in items %}
+            <div class="forum-topic">
+                {% include '@CpaliusWebsiteTheme/forum/partials/_topic_icon.html.twig' with {topic: topic, hotThreshold: 20} %}
+                <div>
+                    <div class="forum-topic__title">
+                        <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}">{{ topic.title }}</a>
+                    </div>
+                    <div class="forum-topic__meta">{{ topic.section.title }} · {{ 'forum.profile.last_activity'|trans({'date': topic.updatedAt|date('d.m.Y H:i')}) }}</div>
+                </div>
+                <div class="forum-topic__stat"><strong>{{ topic.postCount - 1 }}</strong><span>{{ 'forum.stat.reply'|trans }}</span></div>
+                <div class="forum-topic__stat"><strong>{{ topic.viewCount }}</strong><span>{{ 'forum.stat.view'|trans }}</span></div>
+                <div></div>
+            </div>
+        {% else %}
+            <div class="forum-empty"><i class="bi bi-chat-square-dots"></i> {{ 'forum.empty.no_topics_replied'|trans }}</div>
+        {% endfor %}
+    </div>
+    {% include '@CpaliusWebsiteTheme/forum/partials/pagination.html.twig' with {result: items, route: 'forum_profile', routeParams: {userId: profileUser.id, tab: 'posts'}} %}
+{% endif %}
+{% endblock %}

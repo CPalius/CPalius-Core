@@ -1,0 +1,42 @@
+{# Klasik portal modül kutusu (2015–2020): başlık şeridi + gövde #}
+<section class="portal-zone" id="{{ blockId|default('portal-block') }}">
+    <div class="container">
+        <div class="portal-module fade-in">
+            <div class="portal-module__head">
+                <h2 class="portal-module__title">
+                    {% if moduleIcon is defined and moduleIcon %}
+                        <i class="bi {{ moduleIcon }}"></i>
+                    {% endif %}
+                    <span>{{ title }}</span>
+                </h2>
+                {% if moreHref is defined and moreHref %}
+                    <a href="{{ moreHref }}" class="portal-module__more">
+                        {{ moreLabel|default('website.landing.portal.more'|trans) }} »
+                    </a>
+                {% endif %}
+            </div>
+            <div class="portal-module__body">
+                {% set layoutMode = layout|default('list') %}
+                {% if layoutMode == 'slider' %}
+                    <div class="portal-slider" data-portal-slider>
+                        <button type="button" class="portal-slider__nav portal-slider__nav--prev" data-portal-slider-prev aria-label="Prev">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <div class="portal-slider__track" data-portal-slider-track>
+                            {% block slider_items %}{% endblock %}
+                        </div>
+                        <button type="button" class="portal-slider__nav portal-slider__nav--next" data-portal-slider-next aria-label="Next">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                {% elseif layoutMode == 'cards' %}
+                    <div class="portal-tile-grid">
+                        {% block card_items %}{% endblock %}
+                    </div>
+                {% else %}
+                    {% block list_items %}{% endblock %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
