@@ -14,6 +14,10 @@
     initDislikeForms();
     initShareButtons();
     initActivityPanel();
+    initReputationModal();
+    initThreadTools();
+    initMultiQuote();
+    initSharePostButtons();
   });
 
   // ---- Silme/tehlikeli eylemler için onay ----
@@ -47,21 +51,117 @@
 
         var author = btn.getAttribute('data-quote-author') || '';
         var text = (btn.getAttribute('data-quote-body') || '').trim();
-        var quotedHtml = '<blockquote><strong>' + escapeHtml(author) + ' yazdı:</strong><p>' + escapeHtml(text).replace(/\n/g, '<br>') + '</p></blockquote><p></p>';
+        var postId = btn.getAttribute('data-quote-post') || '';
+        var quotedHtml = buildQuoteHtml(author, text, postId);
 
-        var editor = replyBody.__cpForumEditor;
-        if (editor) {
-          editor.setData(editor.getData() + quotedHtml);
-        } else {
-          var quotedPlain = author + ' yazdı:\n' + text + '\n\n';
-          replyBody.value = replyBody.value ? replyBody.value + '\n' + quotedPlain : quotedPlain;
-        }
+        appendToEditor(replyBody, quotedHtml);
+        scrollToReply(replyBody);
+      });
+    });
+  }
 
-        var anchor = document.getElementById('reply');
-        if (anchor) {
-          anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  function initMultiQuote() {
+    var applyBtn = document.querySelector('[data-multi-quote-apply]');
+    var replyBody = document.getElementById('forum-reply-body');
+    if (!applyBtn || !replyBody) return;
+
+    function refreshButton() {
+      var any = document.querySelector('[data-multi-quote]:checked');
+      if (any) {
+        applyBtn.removeAttribute('hidden');
+      } else {
+        applyBtn.setAttribute('hidden', 'hidden');
+      }
+    }
+
+    document.querySelectorAll('[data-multi-quote]').forEach(function (cb) {
+      cb.addEventListener('change', refreshButton);
+    });
+
+    applyBtn.addEventListener('click', function () {
+      var blocks = [];
+      document.querySelectorAll('[data-multi-quote]:checked').forEach(function (cb) {
+        var author = cb.getAttribute('data-quote-author') || '';
+        var text = (cb.getAttribute('data-quote-body') || '').trim();
+        var postId = cb.getAttribute('data-quote-post') || '';
+        if (!text) return;
+        blocks.push(buildQuoteHtml(author, text, postId));
+        cb.checked = false;
+      });
+      if (blocks.length === 0) return;
+      appendToEditor(replyBody, blocks.join(''));
+      refreshButton();
+      scrollToReply(replyBody);
+    });
+  }
+
+  function buildQuoteHtml(author, text, postId) {
+    var quoteData = postId ? ' data-post="' + escapeHtml(postId) + '"' : '';
+    return '<blockquote class="cp-quote-post-' + escapeHtml(postId) + '"' + quoteData + '><strong>' + escapeHtml(author) + ':</strong><p>' + escapeHtml(text).replace(/\n/g, '<br>') + '</p></blockquote><p></p>';
+  }
+
+  function appendToEditor(replyBody, html) {
+    var editor = replyBody.__cpForumEditor;
+    if (editor) {
+      editor.setData(editor.getData() + html);
+    } else {
+      replyBody.value = replyBody.value ? replyBody.value + '\n' + html.replace(/<[^>]+>/g, ' ') : html.replace(/<[^>]+>/g, ' ');
+    }
+  }
+
+  function scrollToReply(replyBody) {
+    var anchor = document.getElementById('reply');
+    if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    replyBody.focus();
+  }
+
+  function initSharePostButtons() {
+    document.querySelectorAll('[data-share-post]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var post = btn.closest('.forum-post');
+        var url = window.location.href.split('#')[0] + (post && post.id ? '#' + post.id : '');
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(url);
         }
-        replyBody.focus();
+      });
+    });
+  }
+
+  function initThreadTools() {
+    document.querySelectorAll('[data-thread-tools]').forEach(function (root) {
+      var toggle = root.querySelector('[data-thread-tools-toggle]');
+      var menu = root.querySelector('.forum-tools__menu');
+      var header = root.closest('.forum-header');
+      if (!toggle || !menu) return;
+
+      function closeAll() {
+        document.querySelectorAll('.forum-tools__menu').forEach(function (other) {
+          other.setAttribute('hidden', 'hidden');
+        });
+        document.querySelectorAll('.forum-header--tools-open').forEach(function (el) {
+          el.classList.remove('forum-header--tools-open');
+        });
+      }
+
+      toggle.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var open = menu.hasAttribute('hidden');
+        closeAll();
+        if (open) {
+          menu.removeAttribute('hidden');
+          if (header) header.classList.add('forum-header--tools-open');
+        }
+      });
+    });
+
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('[data-thread-tools]')) return;
+      document.querySelectorAll('.forum-tools__menu').forEach(function (menu) {
+        menu.setAttribute('hidden', 'hidden');
+      });
+      document.querySelectorAll('.forum-header--tools-open').forEach(function (el) {
+        el.classList.remove('forum-header--tools-open');
       });
     });
   }
@@ -70,6 +170,59 @@
     var div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  // ---- Reputation modal (profil + postbit) ----
+  function initReputationModal() {
+    var modal = document.querySelector('[data-rep-modal]');
+    if (!modal) return;
+
+    var form = modal.querySelector('form');
+    var titleEl = modal.querySelector('[data-rep-title], .forum-rep-modal__header h2');
+    var topicInput = modal.querySelector('[data-rep-topic-input]');
+    var postInput = modal.querySelector('[data-rep-post-input]');
+
+    document.querySelectorAll('[data-rep-open]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var identifier = btn.getAttribute('data-rep-user');
+        var name = btn.getAttribute('data-rep-name') || '';
+        var postId = btn.getAttribute('data-rep-post') || '';
+        var topicId = btn.getAttribute('data-rep-topic') || '';
+
+        if (form && identifier && modal.hasAttribute('data-rep-thread')) {
+          var localeMatch = window.location.pathname.match(/^\/(tr|en)\//);
+          var locale = localeMatch ? localeMatch[1] : 'tr';
+          form.action = '/' + locale + '/forum/uye/' + encodeURIComponent(identifier) + '/rep';
+        }
+
+        if (titleEl && modal.hasAttribute('data-rep-thread')) {
+          titleEl.textContent = name;
+        }
+
+        if (topicInput) topicInput.value = topicId;
+        if (postInput) postInput.value = postId;
+
+        if (typeof modal.showModal === 'function') {
+          modal.showModal();
+        } else {
+          modal.setAttribute('open', 'open');
+        }
+      });
+    });
+
+    modal.querySelectorAll('[data-rep-close]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (typeof modal.close === 'function') modal.close();
+        else modal.removeAttribute('open');
+      });
+    });
+
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) {
+        if (typeof modal.close === 'function') modal.close();
+        else modal.removeAttribute('open');
+      }
+    });
   }
 
   // ---- "Raporla" butonları — sebep sorup gizli forma yazıp gönderir ----
@@ -89,31 +242,37 @@
   }
 
   // ---- Beğeni / beğenmeme — AJAX toggle ----
+  // Native form.submit() catch'te YAPILMAZ: fetch sunucuya ulaştıysa
+  // ikinci POST beğeniyi geri alır (sayfa yenilenir, kalp boş kalır).
   function initReactionForms(selector, options) {
     document.querySelectorAll(selector).forEach(function (form) {
       form.addEventListener('submit', function (e) {
         e.preventDefault();
 
         var btn = form.querySelector(options.buttonSelector) || form.querySelector('button[type="submit"]');
-        if (!btn) {
+        if (!btn || btn.disabled) {
           return;
         }
 
         var icon = btn.querySelector('i');
         var countEl = btn.querySelector(options.countSelector);
-        var siblingForm = null;
-        if (options.siblingSelector) {
-          var toolbar = form.closest('.forum-post__toolbar');
-          siblingForm = toolbar ? toolbar.querySelector(options.siblingSelector) : null;
-        }
+        var wrap = form.closest('.forum-post__engagement') || form.closest('.forum-post');
+        var siblingForm = wrap && options.siblingSelector ? wrap.querySelector(options.siblingSelector) : null;
+
+        btn.disabled = true;
 
         fetch(form.action, {
           method: 'POST',
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+          },
           body: new FormData(form),
+          credentials: 'same-origin',
         })
           .then(function (res) {
-            if (!res.ok) {
+            var contentType = res.headers.get('Content-Type') || '';
+            if (!res.ok || contentType.indexOf('application/json') === -1) {
               throw new Error('reaction_failed');
             }
             return res.json();
@@ -128,7 +287,6 @@
               countEl.textContent = data.count;
             }
 
-            // Karşılıklı dışlama: karşı reaksiyon UI'sını sıfırla (sunucu da temizler).
             if (active && siblingForm) {
               var sibBtn = siblingForm.querySelector('button[type="submit"]');
               if (sibBtn) {
@@ -146,9 +304,9 @@
               }
             }
           })
-          .catch(function () {
-            // Yalnızca ağ/parse hatasında native submit (çift toggle riskini azaltır).
-            form.submit();
+          .catch(function () { /* native yeniden gönderilmez */ })
+          .finally(function () {
+            btn.disabled = false;
           });
       });
     });

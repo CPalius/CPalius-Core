@@ -3,7 +3,7 @@
 {% block header %}{{ 'aacp.users.profile.header'|trans }}{% endblock %}
 
 {% block javascripts %}
-    {{ importmap(['app', 'media-picker', 'cp-editor-init']) }}
+    {{ importmap(['app', 'cp-editor-init']) }}
 {% endblock %}
 
 {% block body %}
@@ -43,17 +43,24 @@
             <twig:cp:card title="{{ 'aacp.users.profile.section_avatar'|trans }}">
                 <div data-avatar-preview class="mb-sp-xs">
                     {% if avatarUrl %}
-                        <img src="{{ avatarUrl }}" class="max-h-40 rounded-lg">
+                        <img src="{{ avatarUrl }}" class="max-h-40 rounded-lg" alt="">
+                    {% else %}
+                        {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: app.user.fullName, user: app.user, size: 'lg', square: true} %}
                     {% endif %}
                 </div>
-                {{ form_widget(form.avatarAssetId, {attr: {'data-target-input': 'avatar_asset_id'}}) }}
-                <button type="button"
-                        data-media-picker-trigger
-                        data-target-input="avatar_asset_id"
-                        data-target-preview="avatar-preview"
-                        class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5 w-full">
-                    {{ 'aacp.users.profile.select_avatar'|trans }}
-                </button>
+                <form method="post" action="{{ path('account_avatar_upload') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="_token" value="{{ csrf_token('account_avatar_upload') }}">
+                    <label class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5 w-full">
+                        {{ 'aacp.users.profile.select_avatar'|trans }}
+                        <input type="file" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" hidden onchange="this.form.submit()">
+                    </label>
+                </form>
+                {% if avatarUrl %}
+                    <form method="post" action="{{ path('account_avatar_remove') }}" class="mt-2">
+                        <input type="hidden" name="_token" value="{{ csrf_token('account_avatar_remove') }}">
+                        <button type="submit" class="btn btn-sm btn-ghost w-full">{{ 'account.profile.avatar_remove'|trans }}</button>
+                    </form>
+                {% endif %}
             </twig:cp:card>
 
             <twig:cp:card padded="{{ false }}">

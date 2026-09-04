@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Portal;
 
 /**
- * Portal landing blok kataloğu — sabit ID'ler ve varsayılan yapılandırma.
+ * Portal landing block catalog — fixed IDs and default configuration.
  */
 final class PortalBlockCatalog
 {
@@ -41,19 +41,12 @@ final class PortalBlockCatalog
                 'group' => self::GROUP_HERO,
                 'supportsLimit' => false,
                 'supportsLayout' => false,
-                'supportsHeroFields' => true,
+                // Copy lives in portal.tr.yaml / portal.en.yaml (bilingual), not Studio fields.
+                'supportsHeroFields' => false,
                 'default' => [
                     'id' => 'hero',
                     'enabled' => true,
-                    'title' => 'CPalius CMF',
-                    'label' => 'NEXT-GEN CONTENT MANAGEMENT FRAMEWORK',
-                    'subtitle' => "Bir İçerik Yönetim Sisteminden\n\"Kurşun Geçirmez\" Kurumsal Uygulama Framework'üne",
-                    'description' => 'Modern web ekosisteminde hazır eklenti sistemleriyle donatılmış ama hantal CMS\'ler ile her şeye sıfırdan başlamayı gerektiren saf framework\'ler arasındaki köprüyü kuran, dünya standartlarında optimize, güvenli ve genişletilebilir altyapı.',
-                    'cta_primary_label' => "Whitepaper'ı İncele",
-                    'cta_primary_href' => '#about',
-                    'cta_secondary_label' => "Blog'a Göz At",
-                    'cta_secondary_href' => '/blog',
-                    'badges' => 'PHP 8.2+,Symfony 7.4 LTS,Doctrine ORM,AssetMapper,Açık Kaynak',
+                    'title' => '',
                 ],
             ],
             'latest_forum_topics' => [
@@ -205,10 +198,10 @@ final class PortalBlockCatalog
             'roadmap' => [
                 'label' => 'studio.homepage.blocks.roadmap',
                 'group' => self::GROUP_MARKETING,
-                'supportsLimit' => false,
+                'supportsLimit' => true,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'roadmap', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'roadmap', 'enabled' => true, 'title' => '', 'limit' => 3],
             ],
             'community' => [
                 'label' => 'studio.homepage.blocks.community',
@@ -218,11 +211,75 @@ final class PortalBlockCatalog
                 'supportsHeroFields' => false,
                 'default' => ['id' => 'community', 'enabled' => true, 'title' => ''],
             ],
+            'audit' => [
+                'label' => 'studio.homepage.blocks.audit',
+                'group' => self::GROUP_MARKETING,
+                'supportsLimit' => false,
+                'supportsLayout' => false,
+                'supportsHeroFields' => false,
+                'default' => ['id' => 'audit', 'enabled' => true, 'title' => ''],
+            ],
+            'platform' => [
+                'label' => 'studio.homepage.blocks.platform',
+                'group' => self::GROUP_MARKETING,
+                'supportsLimit' => false,
+                'supportsLayout' => false,
+                'supportsHeroFields' => false,
+                'default' => ['id' => 'platform', 'enabled' => true, 'title' => ''],
+            ],
+            'aacp' => [
+                'label' => 'studio.homepage.blocks.aacp',
+                'group' => self::GROUP_MARKETING,
+                'supportsLimit' => false,
+                'supportsLayout' => false,
+                'supportsHeroFields' => false,
+                'default' => ['id' => 'aacp', 'enabled' => true, 'title' => ''],
+            ],
+            'modules' => [
+                'label' => 'studio.homepage.blocks.modules',
+                'group' => self::GROUP_MARKETING,
+                'supportsLimit' => false,
+                'supportsLayout' => false,
+                'supportsHeroFields' => false,
+                'default' => ['id' => 'modules', 'enabled' => true, 'title' => ''],
+            ],
+            'forum_engine' => [
+                'label' => 'studio.homepage.blocks.forum_engine',
+                'group' => self::GROUP_MARKETING,
+                'supportsLimit' => false,
+                'supportsLayout' => false,
+                'supportsHeroFields' => false,
+                'default' => ['id' => 'forum_engine', 'enabled' => true, 'title' => ''],
+            ],
+            'media_pipeline' => [
+                'label' => 'studio.homepage.blocks.media_pipeline',
+                'group' => self::GROUP_MARKETING,
+                'supportsLimit' => false,
+                'supportsLayout' => false,
+                'supportsHeroFields' => false,
+                'default' => ['id' => 'media_pipeline', 'enabled' => true, 'title' => ''],
+            ],
+            'localization' => [
+                'label' => 'studio.homepage.blocks.localization',
+                'group' => self::GROUP_MARKETING,
+                'supportsLimit' => false,
+                'supportsLayout' => false,
+                'supportsHeroFields' => false,
+                'default' => ['id' => 'localization', 'enabled' => true, 'title' => ''],
+            ],
+            'manifesto' => [
+                'label' => 'studio.homepage.blocks.manifesto',
+                'group' => self::GROUP_MARKETING,
+                'supportsLimit' => false,
+                'supportsLayout' => false,
+                'supportsHeroFields' => false,
+                'default' => ['id' => 'manifesto', 'enabled' => true, 'title' => ''],
+            ],
         ];
     }
 
     /**
-     * Portal ağırlıklı varsayılan sıra (plan).
+     * Marketing showcase order restored from the original cpalius-website.
      *
      * @return list<array<string, mixed>>
      */
@@ -231,19 +288,21 @@ final class PortalBlockCatalog
         $defs = self::definitions();
         $order = [
             'hero',
-            'latest_forum_topics',
-            'latest_blog_posts',
             'about',
-            'popular_forum_topics',
-            'features',
-            'forum_boards',
-            'forum_stats',
-            'latest_forum_posts',
             'architecture',
             'core',
+            'features',
             'techstack',
             'entity',
+            'audit',
+            'platform',
+            'aacp',
+            'modules',
+            'forum_engine',
+            'media_pipeline',
+            'localization',
             'security',
+            'manifesto',
             'stats',
             'roadmap',
             'community',

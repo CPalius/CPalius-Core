@@ -21,29 +21,8 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
- * PostFormModel DTO'suna maplenen Studio (Yönetim Paneli) formu — Blog
- * modülünün "post" tipi Node'ları için tek CRUD form kaynağı (create/edit
- * ikisinde de PostAdminController tarafından kullanılır).
- *
- * Bilinçli tasarım kararları:
- * - data_class PostFormModel::class'tır, Node DEĞİL: form katmanı Doctrine
- *   entity'sinden tamamen izole tutulur (Manifesto Law 3.1 hibrit model
- *   ruhu) — Node'a yazım her zaman controller'daki mapDtoToNode() üzerinden,
- *   açık ve denetlenebilir bir adımda yapılır.
- * - 'body' bilinçli olarak sanitize EDİLMEZ burada: RichTextSanitizer,
- *   controller'da mapDtoToNode() içinde çağrılır (Manifesto Law 5.3),
- *   form katmanı ham veriyi taşır.
- * - csrf_protection: PostAdminController zaten kendi CSRF token'ını
- *   ('admin_post_form') manuel doğruluyordu; form bileşenine geçişte de
- *   aynı token id'si korunur, böylece mevcut Studio form şablonundaki
- *   davranış (tek CSRF alanı) değişmez.
- * - postSubType + türe özel alanlar: her biri 'data-post-sub-type-block'
- *   attribute'u taşır (hangi türde görünür olacağı) — cp-core/assets/
- *   admin-post-form.js bu attribute'u okuyup JS ile show/hide yapar.
- *   Sunucu tarafında form seviyesinde koşullu "required" YOKTUR (hepsi
- *   required: false) çünkü zorunluluk PostFormModel::validatePostSubTypeFields()
- *   içinde çalışma zamanı türüne göre değerlendirilir (bkz. o sınıfın
- *   #[Assert\Callback] doküman notu).
+ * Studio PostType form mapped to PostFormModel (not Node); persistence via mapDtoToNode().
+ * Body is sanitized in the controller; sub-type fields use data-post-sub-type-block for JS show/hide.
  */
 final class PostType extends AbstractType
 {
@@ -139,8 +118,7 @@ final class PostType extends AbstractType
                 'multiple' => true,
                 'expanded' => true,
                 'required' => false,
-                // Repository ve locale filtresi PostAdminController tarafından
-                // options içinde inject edilir (bkz. build() options 'category_choices').
+                // category_choices are injected by PostAdminController.
                 'choices' => $options['category_choices'] ?? [],
                 'attr' => [
                     'class' => 'space-y-1.5',

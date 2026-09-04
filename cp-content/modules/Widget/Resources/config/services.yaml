@@ -1,0 +1,9 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # Settings carriers are scanned by SettingsRegistrationPass, but the
+    # directory must still be a registered service resource.
+    Modules\Widget\Settings\:
+        resource: '../../Settings/'

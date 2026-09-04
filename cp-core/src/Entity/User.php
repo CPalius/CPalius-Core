@@ -8,17 +8,8 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
- * CPalius'ta yetkilendirme ROLE_* sabit kontrolüyle DEĞİL, dinamik
- * yeteneklerle (capabilities) yapılır (bkz. CPaliusVoter). Bu yüzden
- * getRoles(), Symfony'nin firewall/is_granted altyapısının ihtiyaç
- * duyduğu ASGARİ "ROLE_USER" sabitini döner — gerçek yetki mantığı
- * $roles alanındaki CPalius rol kimlikleridir ("admin", "editor" vb.),
- * bunlar RoleConfigManager üzerinden cp-content/config/sync/ altındaki
- * YAML dosyalarına karşı çözülür.
- *
- * Node/Asset ile aynı hibrit felsefe: sık sorgulanan/filtrelenen alanlar
- * (email, status) sabit kolon, profil bilgileri gibi değişken alanlar
- * $data JSON kolonunda.
+ * Hybrid user: filtered columns plus JSON $data. Auth is capabilities, not Symfony ROLE_*.
+ * getRoles() returns ROLE_USER for the firewall; CPalius roles live in YAML via RoleConfigManager.
  */
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'users')]
@@ -40,12 +31,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private string $email;
 
     /**
-     * Opsiyonel kullanıcı adı — girişte e-postanın yanı sıra alternatif bir
-     * kimlik olarak kullanılabilir (bkz. CpUserProvider::loadUserByIdentifier()).
-     * getUserIdentifier() BİLİNÇLİ OLARAK hâlâ email döner (mevcut
-     * session/remember-me davranışıyla geriye dönük uyumluluk); username
-     * sadece GİRİŞ ANINDA hangi kullanıcının yükleneceğini bulmak için
-     * ikincil bir arama anahtarıdır.
+     * Optional login alias. getUserIdentifier() stays email for session compatibility.
      */
     #[ORM\Column(type: 'string', length: 180, nullable: true)]
     private ?string $username = null;
@@ -57,12 +43,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private string $status = self::STATUS_ACTIVE;
 
     /**
-     * Bu kullanıcıya atanmış CPalius rol kimlikleri (ör. ["admin"],
-     * ["editor", "support"]). Foreign key DEĞİLDİR: roller DB'de değil
-     * cp-content/config/sync/user.role.*.yaml dosyalarında yaşar (bkz.
-     * RoleConfigManager). Burada sadece rol kimliği string'leri tutulur;
-     * bir rol config'i silinirse ilgili kimlik burada "sahipsiz" kalır
-     * ve CPaliusVoter onu sessizce yok sayar (fail-safe).
+     * CPalius role ids (not FKs). Unknown ids are ignored by CPaliusVoter.
      *
      * @var list<string>
      */
@@ -70,9 +51,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private array $roles = [];
 
     /**
-     * Ad, soyad, avatar, biyografi gibi profil bilgileri ve modüllerin
-     * kullanıcıya eklediği diğer dinamik alanlar. Node::data ile aynı
-     * mantık: sık filtrelenmeyen her şey burada.
+     * Profile and module fields that are not filtered as columns.
      *
      * @var array<string, mixed>
      */
@@ -118,8 +97,20 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
-     * Symfony'nin kullanıcıyı benzersiz tanımlamak için kullandığı
-     * kimlik (session/remember-me/vs. içinde saklanır).
+     * Public profile URL segment: username when URL-safe, otherwise numeric id.
+     */
+    public function getProfileSlug(): string
+    {
+        $username = trim((string) ($this->username ?? ''));
+        if ($username !== '' && !ctype_digit($username) && preg_match('/^[a-zA-Z0-9_.-]+$/', $username) === 1) {
+            return $username;
+        }
+
+        return (string) ($this->id ?? '');
+    }
+
+    /**
+     * Symfony session / remember-me identifier (email).
      */
     public function getUserIdentifier(): string
     {
@@ -156,10 +147,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
-     * Symfony UserInterface sözleşmesi gereği vardır; gerçek yetki
-     * kararları için KULLANILMAZ (bkz. sınıf üstü doküman). Sadece
-     * firewall'ın "kimliği doğrulanmış kullanıcı" ayrımı yapabilmesi
-     * için sabit bir taban rol döner.
+     * Firewall base role only. Real authorization uses CPalius capabilities.
      *
      * @return list<string>
      */
@@ -169,8 +157,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
-     * CPalius rol kimlikleri (RoleConfigManager + CPaliusVoter tarafından
-     * kullanılır) — Symfony'nin ROLE_* mekanizmasıyla KARIŞTIRILMAMALIDIR.
+     * CPalius role ids for RoleConfigManager / CPaliusVoter. Not Symfony ROLE_*.
      *
      * @return list<string>
      */
@@ -239,11 +226,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
-     * Profil bilgileri (ad, soyad, avatar, biyografi) $data JSON kolonunda
-     * yaşar (bkz. sınıf üstü doküman). Bu getter/setter'lar Node'un
-     * "featured_image_asset_id" desenindeki gibi doğrudan JSON anahtarına
-     * erişim sağlar; Asset ile foreign key İLİŞKİSİ kurulmaz (Manifesto
-     * Law 3 hibrit model felsefesi).
+     * Name fields live in $data JSON (hybrid model, no Asset FK).
      */
     public function getFirstName(): string
     {
@@ -283,10 +266,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
-     * Avatar için kullanılan App\Entity\Asset kimliği, seçilmemişse null.
-     * Çözümleme (Asset::getStorageKey() -> URL) çağıran tarafın
-     * AssetRepository üzerinden yapması beklenir (bkz. PostAdminController::resolveAssetUrl
-     * ile aynı desen).
+     * Avatar Asset id in JSON, or null. Callers resolve the URL via AssetRepository.
      */
     public function getAvatarAssetId(): ?int
     {
@@ -305,10 +285,118 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->createdAt;
     }
 
+    public function isEmailVerified(): bool
+    {
+        return $this->getDataValue('email_verified_at') !== null;
+    }
+
+    public function markEmailVerified(): void
+    {
+        $this->setDataValue('email_verified_at', (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM));
+        $this->setDataValue('email_verification_token', null);
+    }
+
+    public function getEmailVerificationToken(): ?string
+    {
+        $token = $this->getDataValue('email_verification_token');
+
+        return is_string($token) && $token !== '' ? $token : null;
+    }
+
+    public function setEmailVerificationToken(?string $token): static
+    {
+        return $this->setDataValue('email_verification_token', $token);
+    }
+
+    public function markRegistrationApproved(): void
+    {
+        $this->setDataValue('registration_pending_approval', false);
+        $this->setDataValue('approved_at', (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM));
+    }
+
+    public function getLocation(): string
+    {
+        return (string) $this->getDataValue('location', '');
+    }
+
+    public function setLocation(string $location): static
+    {
+        return $this->setDataValue('location', $location);
+    }
+
+    public function getSignature(): string
+    {
+        return (string) $this->getDataValue('signature', '');
+    }
+
+    public function setSignature(string $signature): static
+    {
+        return $this->setDataValue('signature', mb_substr($signature, 0, 500));
+    }
+
+    public function getCustomTitle(): string
+    {
+        return (string) $this->getDataValue('custom_title', '');
+    }
+
+    public function setCustomTitle(string $title): static
+    {
+        return $this->setDataValue('custom_title', mb_substr($title, 0, 120));
+    }
+
+    public function getCustomTitleColor(): string
+    {
+        $color = (string) $this->getDataValue('custom_title_color', '');
+
+        return \preg_match('/^#[0-9A-Fa-f]{6}$/', $color) === 1 ? $color : '';
+    }
+
+    public function setCustomTitleColor(string $color): static
+    {
+        $color = \trim($color);
+        if (\preg_match('/^#[0-9A-Fa-f]{6}$/', $color) !== 1) {
+            $color = '';
+        }
+
+        return $this->setDataValue('custom_title_color', $color);
+    }
+
     /**
-     * Hassas geçici veriyi (ör. düz metin şifre) session'dan temizler.
-     * Symfony 7'de UserInterface'in bir parçası değildir ama password
-     * hasher akışında güvenlik alışkanlığı olarak boş bırakılır.
+     * Visual style for the forum custom title: plain, bold, or badge.
+     */
+    public function getCustomTitleStyle(): string
+    {
+        $style = (string) $this->getDataValue('custom_title_style', 'plain');
+
+        return \in_array($style, ['plain', 'bold', 'badge'], true) ? $style : 'plain';
+    }
+
+    public function setCustomTitleStyle(string $style): static
+    {
+        if (!\in_array($style, ['plain', 'bold', 'badge'], true)) {
+            $style = 'plain';
+        }
+
+        return $this->setDataValue('custom_title_style', $style);
+    }
+
+    public function getCustomTitleIcon(): string
+    {
+        return (string) $this->getDataValue('custom_title_icon', '');
+    }
+
+    public function setCustomTitleIcon(string $icon): static
+    {
+        $icon = \trim($icon);
+        if ($icon !== '' && \preg_match('/^bi-[a-z0-9-]+$/i', $icon) !== 1) {
+            $icon = '';
+        }
+
+        return $this->setDataValue('custom_title_icon', $icon);
+    }
+
+    /**
+     * Clears sensitive temporaries. Empty: Symfony 7 UserInterface no longer requires it.
      */
     public function eraseCredentials(): void
     {

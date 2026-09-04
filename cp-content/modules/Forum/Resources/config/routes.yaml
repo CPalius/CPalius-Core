@@ -7,9 +7,9 @@ forum_module_front:
     type: attribute
     prefix: /{_locale}
     requirements:
-        _locale: 'tr|en'
+        _locale: '%cpalius.locales_pattern%'
     defaults:
-        _locale: 'tr'
+        _locale: '%cpalius.default_locale%'
     exclude:
         - ../../Controller/Admin/
         - ../../Controller/LegacyForumRedirectController.php

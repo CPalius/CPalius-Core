@@ -10,12 +10,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Faz 7B örnek REST API uç noktası: Blog modülünün, cp-core'a hiç
- * dokunmadan sadece #[CpApi] attribute'u ekleyerek "/api/*" altında
- * yayınladığı bir uç nokta.
- *
- * public: true -> ApiGatewayController bu uç nokta için X-CP-API-KEY
- * kontrolü YAPMAZ (herkese açık, salt-okunur bir liste uç noktasıdır).
+ * Phase 7B #[CpApi] sample endpoint under /api/*. public: true skips X-CP-API-KEY.
  */
 final class BlogApiEndpoints
 {

@@ -1,10 +1,10 @@
-{% extends '@CpaliusWebsiteTheme/layout.html.twig' %}
+{% extends '@Theme/layout.html.twig' %}
 
 {% block title %}{{ term ? 'blog.search.title_query'|trans({'term': term}) : 'blog.search.title_default'|trans }} — {{ 'blog.label.blog'|trans }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
 {% block meta_robots %}noindex, follow{% endblock %}
 
 {% block content %}
-{% include '@CpaliusWebsiteTheme/blog/partials/hero.html.twig' %}
+{% include '@Theme/blog/partials/hero.html.twig' %}
 
 <section class="section blog-archive-section" id="blog-search">
     <div class="container">
@@ -26,12 +26,12 @@
                 {% elseif posts is null or posts.isEmpty %}
                     <p class="section-desc">{{ 'blog.search.no_results'|trans({'term': term}) }}</p>
                 {% else %}
-                    {% include '@CpaliusWebsiteTheme/blog/partials/posts_feed.html.twig' with {
+                    {% include '@Theme/blog/partials/posts_feed.html.twig' with {
                         posts: posts,
                         listLayout: listLayout|default('grid'),
                     } %}
 
-                    {% include '@CpaliusWebsiteTheme/blog/partials/pagination.html.twig' with {
+                    {% include '@Theme/blog/partials/pagination.html.twig' with {
                         result: posts,
                         route: 'blog_search',
                         routeParams: {q: term},
@@ -40,9 +40,9 @@
             </div>
 
             <aside class="grid-golden-minor" id="blog-sidebar">
-                {% include '@CpaliusWebsiteTheme/blog/partials/search_widget.html.twig' %}
-                {% include '@CpaliusWebsiteTheme/blog/partials/widget_sidebar.html.twig' %}
-                {% include '@CpaliusWebsiteTheme/blog/partials/archive_sidebar.html.twig' %}
+                {% include '@Theme/blog/partials/search_widget.html.twig' %}
+                {% include '@Theme/blog/partials/widget_sidebar.html.twig' %}
+                {% include '@Theme/blog/partials/archive_sidebar.html.twig' %}
             </aside>
         </div>
     </div>

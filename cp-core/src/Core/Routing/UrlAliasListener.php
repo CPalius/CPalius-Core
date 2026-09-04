@@ -9,6 +9,7 @@ use App\Entity\UrlAlias;
 use App\Repository\CategoryRepository;
 use App\Repository\NodeRepository;
 use App\Repository\UrlAliasRepository;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -16,7 +17,6 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
-use Symfony\Contracts\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Dinamik URL alias çözümü — SafeModuleRouteLoader'ın (statik, derleme-

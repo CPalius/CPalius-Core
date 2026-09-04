@@ -10,13 +10,27 @@ services:
     Modules\Forum\Service\:
         resource: '../../Service/'
 
+    Modules\Forum\Repository\:
+        resource: '../../Repository/'
+
     Modules\Forum\Settings\:
         resource: '../../Settings/'
 
-    # ForumBanGuardListener, EventSubscriberInterface'i implemente ettiği
-    # için autoconfigure sayesinde otomatik 'kernel.event_subscriber'
-    # etiketiyle kaydedilir — bu resource taraması olmadan EventListener/
-    # dizini hiç servis konteynerine dahil edilmezdi (Blog modülündeki
-    # Hooks//Twig/ deseniyle aynı gerekçe).
+    # EventListener/ is not autoloaded otherwise (same pattern as Blog Hooks/Twig).
     Modules\Forum\EventListener\:
         resource: '../../EventListener/'
+
+    # #[CpHook] listeners — HookRegistrationPass only sees services already in the container.
+    Modules\Forum\Hooks\:
+        resource: '../../Hooks/'
+
+    Modules\Forum\Twig\:
+        resource: '../../Twig/'
+
+    Modules\Forum\Studio\:
+        resource: '../../Studio/'
+
+    Modules\Forum\Portal\:
+        resource: '../../Portal/'
+
+    Modules\Roadmap\Contract\RoadmapForumFeedProviderInterface: '@Modules\Forum\Service\RoadmapForumFeedProvider'

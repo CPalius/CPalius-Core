@@ -1,0 +1,16 @@
+{#
+    Tablo satırı: ayar adı | değer (twig:cp:table içinde).
+#}
+<tr class="{{ rowClass|default('') }}"
+    data-setting-key="{{ setting.key }}"
+    {% if captchaRow is defined and captchaRow %}data-captcha-{{ captchaRow }}-row{% endif %}>
+    <td class="align-top !text-slate-200 w-[34%] min-w-[200px] max-w-[320px]">
+        <span class="block font-medium">{{ setting.label|trans }}</span>
+        {% if setting.type == 'password' %}
+            <span class="mt-1 block text-fs-xs !text-slate-500">{{ 'aacp.system_settings.password_hint'|trans }}</span>
+        {% endif %}
+    </td>
+    <td class="align-top">
+        {% include 'aacp/partials/_system_setting_field.html.twig' with {setting: setting, value: value, compact: true} %}
+    </td>
+</tr>

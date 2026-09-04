@@ -5,18 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Database;
 
 /**
- * "Şu an aktif olan tenant kimdir?" sorusunun tek doğruluk kaynağı.
- *
- * Doctrine\ORM\Query\Filter\SQLFilter, Doctrine tarafından doğrudan
- * `new $filterClass($em)` ile instantiate edilir — DI container'dan
- * autowire EDİLEMEZ, bu yüzden TenantFilter'a mevcut tenant_id'yi
- * constructor injection ile veremeyiz. Bunun yerine: bu servis normal
- * şekilde autowire edilir (ör. bir TenantResolverListener tarafından
- * subdomain/header'dan çözülüp set() ile doldurulur), sonra
- * TenantFilterActivationListener bu context'i okuyup
- * $em->getFilters()->enable('tenant')->setParameter('tenant_id', ...)
- * çağrısıyla SQLFilter'a "enjekte eder". TenantFilter'ın kendisi sadece
- * Doctrine'in setParameter() ile doldurduğu değeri okur.
+ * Active tenant id. SQLFilter cannot be autowired; TenantFilterActivationListener copies this into the filter.
  */
 final class TenantContext
 {

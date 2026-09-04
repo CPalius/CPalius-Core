@@ -9,13 +9,7 @@ use App\Core\Aacp\SystemWidgetProviderInterface;
 use App\Repository\NodeRepository;
 
 /**
- * AACP Sistem Monitörü'ne (/aacp/system) Blog modülünün "kaç yazı yayın
- * zamanını bekliyor" bilgisini ekler. SystemWidgetProviderInterface
- * sayesinde AACPController (çekirdek) bu sınıfı hiç TANIMAZ — sadece
- * etiketlenmiş servisleri dolaşır (bkz. arayüzün docblock'u). Blog modülü
- * devre dışı bırakılırsa bu provider container'a hiç kaydedilmez ve AACP
- * geri kalan widget'larla sorunsuz çalışmaya devam eder (Manifesto Law
- * 2.1/2.3, Core Never Dies).
+ * AACP system widget: count of posts waiting to publish. Tagged only; core never hard-codes this class.
  */
 final class ScheduledPostsWidgetProvider implements SystemWidgetProviderInterface
 {

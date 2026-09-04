@@ -12,22 +12,8 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Throwable;
 
 /**
- * CronCommandWhitelist'i container derleme zamanında doldurur.
- *
- * SettingsRegistrationPass/AdminMenuRegistrationPass ile BİREBİR AYNI
- * iskelet: dosya sistemi taraması + Reflection, modül izolasyonu
- * try/catch(Throwable) ile sağlanır. #[AsCommand] attribute'u TARGET_CLASS
- * olduğu için (REPEATABLE değil) her sınıftan en fazla bir komut adı
- * toplanır.
- *
- * Taranan konumlar:
- *   1) cp-core/src/Core/Command — çekirdek uygulama komutları.
- *   2) Her modülün Command dizini (varsa) — modül izolasyonu ile.
- *
- * Sadece "cp:" önekli komut adları toplanır (bkz. CronCommandWhitelist
- * docblock'undaki güvenlik gerekçesi) — vendor/çekirdek Symfony/Doctrine
- * komutları (ör. "cache:clear", "dbal:run-sql") bu tarama tarafından hiç
- * ELE ALINMAZ, sonradan filtrelenmez; whitelist'e girmeleri imkansızdır.
+ * Compile-time fill of CronCommandWhitelist: scan Core/Command + module Command dirs for #[AsCommand].
+ * Only "cp:" names are collected; vendor/Doctrine commands never enter the list.
  */
 final class CronCommandRegistrationPass implements CompilerPassInterface
 {
@@ -35,15 +21,7 @@ final class CronCommandRegistrationPass implements CompilerPassInterface
     private const ALLOWED_PREFIX = 'cp:';
 
     /**
-     * Hibrit Otomasyon Motoru'nun kod tabanlı görevler için köprü komutu
-     * (bkz. RunVirtualCronJobCommand) BİLİNÇLİ olarak DB "Yeni Cron İşi"
-     * formunun komut dropdown'ında GÖRÜNMEZ: bu komut serbest bir "jobName"
-     * argümanı bekler ve sadece CronManager (dispatcher/AACP "Şimdi
-     * Çalıştır") tarafından, zaten bilinen bir sanal görev adıyla iç kaynak
-     * olarak tetiklenmelidir — bir yöneticinin DB'den elle rastgele bir
-     * jobName ile bu köprüyü çağırması kavramsal olarak "DB cron işi"
-     * değildir (whitelist güvenlik sınırını bypass etmez, ama kod/DB
-     * kulvarlarının birbirine karışmasını önler).
+     * Hidden from the DB cron form: internal bridge for known virtual job names only.
      */
     private const EXCLUDED_COMMAND_NAMES = ['cp:cron:run-virtual'];
 
@@ -75,8 +53,7 @@ final class CronCommandRegistrationPass implements CompilerPassInterface
                     $collected[] = $name;
                 }
             } catch (Throwable) {
-                // Modül izolasyonu: bir modülün Command dizini taranırken
-                // hata oluşursa sadece o modülün komutları kayıt olmaz.
+                // Module isolation: a scan error drops only that module's commands.
             }
         }
 
@@ -134,9 +111,7 @@ final class CronCommandRegistrationPass implements CompilerPassInterface
                     $collected[] = $commandName;
                 }
             } catch (Throwable) {
-                // Tek bir dosyanın reflection'ı başarısız olursa (namespace
-                // uyuşmazlığı, eksik parent class vb.) o dosya atlanır;
-                // tüm tarama iptal edilmez.
+                // Skip one file on reflection failure; do not abort the whole scan.
                 continue;
             }
         }

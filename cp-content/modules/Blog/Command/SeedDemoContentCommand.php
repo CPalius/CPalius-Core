@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Blog\Command;
 
+use App\Core\Localization\LocaleProvider;
 use App\Entity\Category;
 use App\Entity\Node;
 use App\Entity\User;
@@ -20,8 +21,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * Demo blog içeriği: 1 yeni kategori + 4 farklı içerik türünde uzun yazı.
- * Aynı slug varsa atlar (idempotent).
+ * Seeds one demo category and four long posts of different sub-types (idempotent by slug).
  */
 #[AsCommand(
     name: 'cp:blog:seed-demo-content',
@@ -29,7 +29,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final class SeedDemoContentCommand extends Command
 {
-    private const LOCALE = 'tr';
+
 
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -78,14 +78,14 @@ final class SeedDemoContentCommand extends Command
         $skipped = 0;
 
         foreach ($this->definitions($newCategory, $ai, $cms, $sys) as $def) {
-            $existing = $this->nodes->findOneBy(['slug' => $def['slug'], 'locale' => self::LOCALE]);
+            $existing = $this->nodes->findOneBy(['slug' => $def['slug'], 'locale' => $this->localeProvider->getDefaultCode()]);
             if ($existing !== null && !$update) {
                 $io->writeln(sprintf('  · atlandı (var): %s', $def['slug']));
                 ++$skipped;
                 continue;
             }
 
-            $node = $existing ?? new Node($def['title'], $def['slug'], 'post', self::LOCALE);
+            $node = $existing ?? new Node($def['title'], $def['slug'], 'post', $this->localeProvider->getDefaultCode());
             if ($existing === null) {
                 $node->setAuthor($author);
             } else {
@@ -137,12 +137,12 @@ final class SeedDemoContentCommand extends Command
 
     private function ensureCategory(string $name, string $slug, string $description): Category
     {
-        $existing = $this->categories->findOneBySlug($slug, self::LOCALE);
+        $existing = $this->categories->findOneBySlug($slug, $this->localeProvider->getDefaultCode());
         if ($existing !== null) {
             return $existing;
         }
 
-        $category = new Category($name, $slug, self::LOCALE);
+        $category = new Category($name, $slug, $this->localeProvider->getDefaultCode());
         $category->setDescription($description);
         $this->em->persist($category);
         $this->em->flush();
@@ -152,7 +152,7 @@ final class SeedDemoContentCommand extends Command
 
     private function requireCategory(string $slug): Category
     {
-        $category = $this->categories->findOneBySlug($slug, self::LOCALE);
+        $category = $this->categories->findOneBySlug($slug, $this->localeProvider->getDefaultCode());
         if ($category === null) {
             throw new \RuntimeException(sprintf('Kategori bulunamadı: %s', $slug));
         }
@@ -314,7 +314,7 @@ $qb = $em->createQueryBuilder()
     ->setMaxResults(12);
 
 $posts = $qb->getQuery()->getResult();
-// Kart şablonunda post.author / post.category için ek SELECT oluşmaz.
+// Avoid extra SELECTs for post.author / post.category on card templates.
 PHP;
     }
 }

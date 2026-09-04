@@ -3,12 +3,36 @@
 {% block header %}{{ tag ? 'blog.tags.form.header_edit'|trans : 'blog.tags.form.header_create'|trans }}{% endblock %}
 
 {% block body %}
-    <div class="max-w-xl">
+    <div class="max-w-xl space-y-sp-sm">
+        {# Phase 3: translation-group locale strip (same pattern as categories). #}
+        <twig:studio:translation_tabs
+            tabs="{{ translationTabs }}"
+            editRoute="admin_tags_edit"
+            createRoute="admin_tags_create"
+            sourceId="{{ tabsSourceId }}" />
+
         <twig:studio:card title="{{ 'blog.tags.form.section_info'|trans }}">
             <form method="post"
                   action="{{ tag ? path('admin_tags_edit', {id: tag.id}) : path('admin_tags_create') }}"
                   class="space-y-sp-sm">
                 <input type="hidden" name="_token" value="{{ csrf_token('admin_tag_form') }}">
+                <input type="hidden" name="locale" value="{{ locale }}">
+                {% if sourceId is not null %}
+                    <input type="hidden" name="translation_of" value="{{ sourceId }}">
+                {% endif %}
+
+                <div>
+                    <span class="form-label">{{ 'cp.form.locale'|trans }}</span>
+                    <p class="text-fs-sm font-medium text-neutral-900">
+                        <code>{{ locale }}</code>
+                        {% if sourceId is not null and not tag %}
+                            <span class="ms-1 text-fs-xs font-normal text-primary-600">
+                                {{ 'cp.form.locale_translation_of'|trans }}
+                            </span>
+                        {% endif %}
+                    </p>
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'cp.form.locale_hint'|trans }}</p>
+                </div>
 
                 <div>
                     <label for="name" class="form-label">{{ 'blog.tags.form.name'|trans }}</label>
@@ -20,7 +44,7 @@
                     <button type="submit" class="btn btn-primary">
                         {{ tag ? 'aacp.users.form.submit_edit'|trans : 'blog.tags.form.submit_create'|trans }}
                     </button>
-                    <a href="{{ path('admin_tags_index') }}" class="text-fs-sm font-medium text-neutral-500 hover:text-neutral-900">{{ 'aacp.users.form.cancel'|trans }}</a>
+                    <a href="{{ path('admin_tags_index', {locale: locale}) }}" class="text-fs-sm font-medium text-neutral-500 hover:text-neutral-900">{{ 'aacp.users.form.cancel'|trans }}</a>
                 </div>
             </form>
         </twig:studio:card>

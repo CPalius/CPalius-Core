@@ -9,9 +9,14 @@ role:
         - node.post.publish
         - forum.view
         - forum.topic.create
+        - forum.thread.create
+        - forum.post.edit
         - forum.post.edit.own
         - forum.post.delete.own
         - forum.post.report
         - forum.post.like
+        - forum.reputation.give
+        - account.profile.edit
+        - account.avatar.upload
         - media.view
         - media.upload

@@ -5,69 +5,90 @@ declare(strict_types=1);
 namespace App\Core\Localization;
 
 /**
- * Sistemdeki TÜM "messages+intl-icu.{locale}.yaml" çeviri dosyalarının
- * konumunu çözer: çekirdek (cp-content/translations) + her modülün kendi
- * Resources/translations dizini (bkz. cp-core/config/packages/translation.yaml
- * dokümanı — modüller Symfony bundle metadata'sı üzerinden otomatik taranır,
- * bu locator o taramayı dosya sistemi seviyesinde manuel tekrar eder çünkü
- * Dil Yönetimi paneli hangi dosyaya YAZACAĞINI bilmek zorundadır, sadece
- * "hangi anahtar hangi değere çözülüyor" bilgisini değil).
- *
- * Fail-Safe: modules dizini okunamazsa boş liste döner, tek bir bozuk
- * modül dizini diğerlerinin taranmasını engellemez.
+ * Resolves YAML translation file paths: core + each module Resources/translations (locales and domains are dynamic).
+ * Needed so AACP can write the right file, not only look up keys. One bad module dir does not abort the scan.
  */
 final class TranslationFileLocator
 {
-    private const DOMAIN = 'messages+intl-icu';
+    public const DEFAULT_DOMAIN = 'messages+intl-icu';
+
+    /**
+     * YAML only. XLIFF/PHP are out of scope so the panel does not rewrite foreign formats.
+     */
+    private const EXTENSION = 'yaml';
 
     public function __construct(
+        private readonly LocaleProvider $localeProvider,
         private readonly string $coreTranslationsDir,
         private readonly string $modulesDir,
-        private readonly array $locales = ['tr', 'en'],
     ) {
     }
 
     /**
-     * @return array<string, array<string, string>> domain-etiketi => [locale => mutlak dosya yolu]
-     *   domain-etiketi "core" ya da "module:<ModuleName>" biçimindedir.
+     * Active locales that become AACP table columns.
+     *
+     * @return list<string>
+     */
+    public function locales(): array
+    {
+        return $this->localeProvider->getCodes();
+    }
+
+    /**
+     * @return array<string, array<string, string>> group label ("core:<domain>" or "<Module>:<domain>") => [locale => path]
      */
     public function locateAll(): array
     {
-        $groups = [
-            'core' => $this->locateGroup($this->coreTranslationsDir),
-        ];
+        $groups = $this->locateDir('core', $this->coreTranslationsDir);
 
         foreach ($this->discoverModuleTranslationDirs() as $moduleName => $dir) {
-            $group = $this->locateGroup($dir);
-
-            if ($group !== []) {
-                $groups['module:'.$moduleName] = $group;
+            foreach ($this->locateDir($moduleName, $dir) as $group => $filesByLocale) {
+                $groups[$group] = $filesByLocale;
             }
         }
 
-        return array_filter($groups, static fn (array $group): bool => $group !== []);
+        ksort($groups);
+
+        return $groups;
     }
 
     /**
-     * @return array<string, string> locale => mutlak dosya yolu (dosya yoksa o locale için girdi olmaz)
+     * Collect domains and per-locale files in one directory.
+     *
+     * @return array<string, array<string, string>>
      */
-    private function locateGroup(string $dir): array
+    private function locateDir(string $scope, string $dir): array
     {
-        $result = [];
-
-        foreach ($this->locales as $locale) {
-            $path = rtrim($dir, '/\\').'/'.self::DOMAIN.'.'.$locale.'.yaml';
-
-            if (is_file($path)) {
-                $result[$locale] = $path;
-            }
+        if (!is_dir($dir)) {
+            return [];
         }
 
-        return $result;
+        $locales = $this->locales();
+        $groups = [];
+
+        foreach (glob(rtrim($dir, '/\\').'/*.'.self::EXTENSION) ?: [] as $path) {
+            $basename = basename($path, '.'.self::EXTENSION);
+            $separator = strrpos($basename, '.');
+
+            if ($separator === false) {
+                continue;
+            }
+
+            $domain = substr($basename, 0, $separator);
+            $locale = substr($basename, $separator + 1);
+
+            if ($domain === '' || !\in_array($locale, $locales, true)) {
+                continue;
+            }
+
+            $groups[$scope.':'.$domain][$locale] = $path;
+        }
+
+        return $groups;
     }
 
     /**
-     * @return array<string, string> ModuleName => Resources/translations mutlak yolu
+     * @return array<string, string> ModuleName => absolute Resources/translations path
      */
     private function discoverModuleTranslationDirs(): array
     {
@@ -91,14 +112,39 @@ final class TranslationFileLocator
     }
 
     /**
-     * Yeni bir anahtar eklerken hangi dosyaya yazılacağını belirlemek için
-     * kullanılır: domain-etiketi zaten biliniyorsa (mevcut anahtar
-     * düzenleniyorsa) locateAll() sonucundan doğrudan okunur; YENİ bir
-     * anahtar için varsayılan olarak "core" grubunun dosya yolu üretilir
-     * (dosya yoksa bile, çünkü Dil Yönetimi paneli onu ilk kez oluşturabilir).
+     * Path for a file that may not exist yet (first edit of a new locale). Unknown group → null, never a random write.
      */
-    public function resolveCoreFilePath(string $locale): string
+    public function resolveFilePath(string $group, string $locale): ?string
     {
-        return rtrim($this->coreTranslationsDir, '/\\').'/'.self::DOMAIN.'.'.$locale.'.yaml';
+        $separator = strpos($group, ':');
+
+        if ($separator === false) {
+            return null;
+        }
+
+        $scope = substr($group, 0, $separator);
+        $domain = substr($group, $separator + 1);
+
+        if ($domain === '') {
+            return null;
+        }
+
+        $dir = $scope === 'core'
+            ? $this->coreTranslationsDir
+            : rtrim($this->modulesDir, '/\\').'/'.$scope.'/Resources/translations';
+
+        if ($scope !== 'core' && !is_dir(rtrim($this->modulesDir, '/\\').'/'.$scope)) {
+            return null;
+        }
+
+        return rtrim($dir, '/\\').'/'.$domain.'.'.$locale.'.'.self::EXTENSION;
+    }
+
+    /**
+     * Default file group for a brand-new key: core messages+intl-icu.
+     */
+    public function defaultGroup(): string
+    {
+        return 'core:'.self::DEFAULT_DOMAIN;
     }
 }

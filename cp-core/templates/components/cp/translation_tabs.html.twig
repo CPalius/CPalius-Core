@@ -1,0 +1,60 @@
+{#
+    <twig:cp:translation_tabs
+        tabs="{{ translationTabs }}"
+        editRoute="admin_forum_sections_edit"
+        createRoute="admin_forum_sections_create"
+        sourceId="{{ section.id }}" />
+
+    FAZ 3 — Çeviri grubu dil şeridi (AACP / koyu palet).
+
+    Bir kaydın TÜM aktif dillerdeki karşılıklarını tek satırda gösterir:
+    çevirisi olan diller doğrudan o kaydın düzenleme ekranına, olmayanlar
+    ise "yeni çeviri" formuna (kaynak kayda bağlanmış olarak) götürür.
+
+    Bileşen entity tipinden BAĞIMSIZDIR — Category, Tag, MenuItem ve
+    ForumSection aynı şeridi paylaşır; tek fark verilen rota adlarıdır.
+    Veri kaynağı: TranslationGroupResolver::tabsFor().
+
+    Props:
+      tabs        (list<TranslationTab>) Zorunlu. code/nativeName/exists/id/isCurrent/label.
+      editRoute   (string)      Mevcut çeviriyi açan rota; {id} parametresi alır.
+      createRoute (string)      Yeni çeviri formunun rotası; {locale, translation_of} alır.
+      sourceId    (int|null)    Kaynak kaydın id'si. null ise (kayıt henüz
+                                kaydedilmemişse) şerit salt-okunur gösterilir.
+      extraParams (array)       Rota üretimine eklenecek ek parametreler (ör. {menuId: 3}).
+#}
+{% props tabs = [], editRoute = null, createRoute = null, sourceId = null, extraParams = {} %}
+
+{% if tabs|length > 1 %}
+    <div {{ attributes.defaults({class: 'flex flex-wrap items-center gap-1 border-b border-white/10 pb-2'}) }}>
+        <span class="me-2 text-fs-xs uppercase tracking-wider !text-slate-600">
+            {{ 'cp.translation_tabs.label'|trans }}
+        </span>
+
+        {% for tab in tabs %}
+            {% if tab.isCurrent %}
+                <span class="rounded-t-md border-b-2 border-primary-500 px-3 py-1.5 text-fs-sm font-medium text-primary-400">
+                    {{ tab.nativeName }}
+                    <span class="font-mono text-fs-xs uppercase !text-slate-600">{{ tab.code }}</span>
+                </span>
+            {% elseif tab.exists and editRoute %}
+                <a href="{{ path(editRoute, extraParams|merge({id: tab.id})) }}"
+                   title="{{ tab.label ?? tab.nativeName }}"
+                   class="rounded-t-md border-b-2 border-transparent px-3 py-1.5 text-fs-sm font-medium !text-slate-400 hover:!bg-white/5 hover:!text-slate-200">
+                    {{ tab.nativeName }}
+                    <span class="font-mono text-fs-xs uppercase !text-slate-600">{{ tab.code }}</span>
+                </a>
+            {% elseif createRoute and sourceId is not null %}
+                <a href="{{ path(createRoute, extraParams|merge({locale: tab.code, translation_of: sourceId})) }}"
+                   title="{{ 'cp.translation_tabs.add_hint'|trans({locale: tab.nativeName}) }}"
+                   class="rounded-t-md border-b-2 border-dashed border-white/20 px-3 py-1.5 text-fs-sm font-medium !text-slate-500 hover:!border-primary-500/60 hover:!text-primary-300">
+                    + {{ tab.nativeName }}
+                </a>
+            {% else %}
+                <span class="rounded-t-md border-b-2 border-transparent px-3 py-1.5 text-fs-sm !text-slate-700">
+                    {{ tab.nativeName }}
+                </span>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endif %}

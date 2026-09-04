@@ -9,21 +9,8 @@ use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\SecurityBundle\Security;
 
 /**
- * Manifesto Law 6.2 (Voter to SQL): bir liste ekranında 100 satırlık bir
- * sonuç kümesinin her öğesi için ayrı ayrı CPaliusVoter::vote() çağırmak,
- * N+1'e denk bir performans krizidir (voter'ın kendisi N+1 sorgu atmasa
- * bile, PHP tarafında yüzlerce nesneyi bellekte örnekleyip sonra elemek
- * gerekir). QueryScopeApplier bunun yerine yetki kararını sorgu ÇALIŞMADAN
- * ÖNCE, doğrudan SQL WHERE koşuluna çevirir.
- *
- * Akış CPaliusVoter'daki ".own" / ".any" sözleşmesiyle birebir aynıdır:
- *   - Kullanıcı "<capability>.any" yeteneğine sahipse kısıt eklenmez
- *     (tüm satırları görebilir).
- *   - Kullanıcı sadece "<capability>.own" yeteneğine sahipse, sorguya
- *     "AND <ownerAlias>.<ownerField> = :cpScopeCurrentUser" enjekte edilir.
- *   - Kullanıcı ne .any ne .own yeteneğine sahipse (fail-safe), sorgu
- *     hiçbir satır dönmeyecek şekilde daraltılır (1 = 0) — sessizce tüm
- *     tabloyu göstermek YERİNE açıkça boş sonuç tercih edilir.
+ * Law 6.2: push .any/.own into SQL WHERE before the query runs (no per-row voter on list screens).
+ * No .any and no .own → 1=0 (empty result), never an unfiltered table.
  */
 final class QueryScopeApplier
 {
@@ -37,10 +24,8 @@ final class QueryScopeApplier
     }
 
     /**
-     * @param string $capabilityBase Süffiks olmadan yetenek kökü
-     *   (ör. "node.post.edit" — ".any"/".own" bu metod tarafından eklenir).
-     * @param string $ownerField Sahiplik kısıtı uygulanacak entity alanı
-     *   (ör. "author"). $ownerAlias.$ownerField karşılaştırılır.
+     * @param string $capabilityBase Root without suffix (e.g. "node.post.edit"); this method adds .any/.own.
+     * @param string $ownerField     Ownership column compared as $rootAlias.$ownerField.
      */
     public function apply(
         QueryBuilder $qb,
@@ -70,10 +55,7 @@ final class QueryScopeApplier
     }
 
     /**
-     * Fail-safe: ne .any ne .own yetkisi yoksa sorguyu her zaman boş
-     * sonuç dönecek şekilde kilitler. QueryBuilder'ı iptal etmek yerine
-     * bunu tercih etmemizin sebebi, çağıran kodun her zaman aynı tip
-     * (list<Node> vb.) bir sonuç bekleyebilmesini sağlamaktır.
+     * Fail-safe empty result when the user has neither .any nor .own (caller still gets the same list type).
      */
     private function denyAll(QueryBuilder $qb): QueryBuilder
     {

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Core\Localization\LocaleDefinition;
+use App\Core\Localization\LocaleProvider;
 use App\Core\Localization\TranslationManager;
 use App\Core\Localization\TranslationManagerException;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,10 +20,16 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
 
 /**
- * AACP "Dil Yönetimi" ekranı — sistemdeki tüm messages+intl-icu.{tr,en}.yaml
- * çeviri dosyalarını (çekirdek + modüller) tek bir Translation Explorer
- * tablosunda listeler, inline AJAX düzenlemeye izin verir, tam matrisin
- * JSON/YAML dışa aktarımını ve toplu içe aktarımını sağlar.
+ * AACP "Dil Yönetimi" ekranı (/aacp/localization) — sistemdeki tüm çeviri
+ * YAML dosyalarını (çekirdek + modüller, tüm domain'ler) tek bir
+ * Translation Explorer tablosunda listeler, AJAX ile inline düzenlemeye
+ * izin verir, tam matrisin JSON/YAML dışa aktarımını ve toplu içe
+ * aktarımını sağlar.
+ *
+ * FAZ 3: sütunlar artık SABİT tr/en DEĞİLDİR — LocaleProvider'dan gelen
+ * aktif dil listesine göre üretilir. Tablo üstündeki sekmeler dil
+ * odaklıdır: bir sekme seçildiğinde o dilde ÇEVRİLMEMİŞ anahtarlar öne
+ * çıkarılabilir (bkz. aacp-localization.js).
  *
  * AACPApiKeyController ile AYNI iskelet: plain class + inject edilen
  * Twig\Environment, index() normal bir sayfa render eder, mutasyon
@@ -35,10 +43,8 @@ use Twig\Environment;
  * Ana AACP menüsünde ARTIK AYRI BİR ÖĞE DEĞİLDİR (#[CpAdminMenu] kasıtlı
  * olarak kaldırıldı) — birincil giriş noktası "Yönetim" sayfasındaki
  * (AACPPlaceholderController::advancedManagement()) Diller listesindeki
- * "Dili Yönet" linkidir. Route/controller kalıcıdır, sadece menü
- * görünürlüğü değişti; ?locale= query param'ı geldiyse Translation
- * Explorer tablosu o dile odaklı açılır (JS ile filtrelenir, bkz.
- * localization/index.html.twig).
+ * "Dili Yönet" linkidir; ?locale= query param'ı geldiyse tablo o dile
+ * odaklı açılır.
  */
 final class AACPLocalizationController
 {
@@ -46,6 +52,7 @@ final class AACPLocalizationController
         private readonly Environment $twig,
         private readonly CsrfTokenManagerInterface $csrfTokenManager,
         private readonly TranslationManager $translationManager,
+        private readonly LocaleProvider $localeProvider,
         private readonly TranslatorInterface $translator,
     ) {
     }
@@ -54,15 +61,23 @@ final class AACPLocalizationController
     #[IsGranted('system.localization.manage')]
     public function index(Request $request): Response
     {
+        $locales = $this->localeProvider->getLocales();
+        $codes = array_map(static fn (LocaleDefinition $locale): string => $locale->code, $locales);
+
         $entries = array_map(
-            static fn ($entry) => $entry->toArray(),
+            static fn ($entry): array => $entry->toArray($codes),
             $this->translationManager->listAll(),
         );
 
+        $focusLocale = (string) $request->query->get('locale', '');
+
         $html = $this->twig->render('aacp/localization/index.html.twig', [
             'entries' => $entries,
+            'locales' => $locales,
+            'groups' => $this->collectGroups($entries),
+            'incompleteCount' => \count(array_filter($entries, static fn (array $entry): bool => $entry['incomplete'])),
             'csrf_token' => $this->csrfTokenManager->getToken('aacp_localization')->getValue(),
-            'focusLocale' => $request->query->get('locale'),
+            'focusLocale' => $this->localeProvider->isSupported($focusLocale) ? $focusLocale : null,
         ]);
 
         return new Response($html);
@@ -80,7 +95,10 @@ final class AACPLocalizationController
         $value = (string) $request->request->get('value', '');
 
         if ($group === '' || $key === '' || $locale === '') {
-            return new JsonResponse(['error' => $this->translator->trans('aacp.localization.missing_params')], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(
+                ['error' => $this->translator->trans('aacp.localization.missing_params')],
+                Response::HTTP_BAD_REQUEST,
+            );
         }
 
         try {
@@ -89,7 +107,7 @@ final class AACPLocalizationController
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
 
-        return new JsonResponse(['success' => true]);
+        return new JsonResponse(['success' => true, 'value' => $value]);
     }
 
     #[Route('/aacp/localization/export/{format}', name: 'aacp_localization_export', methods: ['GET'], requirements: ['format' => 'json|yaml'])]
@@ -105,7 +123,7 @@ final class AACPLocalizationController
         }
 
         $contentType = $format === 'json' ? 'application/json' : 'application/x-yaml';
-        $filename = 'translations-export.'.$format;
+        $filename = sprintf('translations-export-%s.%s', date('Ymd-His'), $format);
 
         $response = new Response($content);
         $response->headers->set('Content-Type', $contentType.'; charset=utf-8');
@@ -123,7 +141,10 @@ final class AACPLocalizationController
         $file = $request->files->get('file');
 
         if ($file === null) {
-            return new JsonResponse(['error' => $this->translator->trans('aacp.localization.no_file_selected')], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(
+                ['error' => $this->translator->trans('aacp.localization.no_file_selected')],
+                Response::HTTP_BAD_REQUEST,
+            );
         }
 
         $extension = strtolower((string) $file->getClientOriginalExtension());
@@ -134,13 +155,19 @@ final class AACPLocalizationController
         };
 
         if ($format === null) {
-            return new JsonResponse(['error' => $this->translator->trans('aacp.localization.unsupported_file_type')], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(
+                ['error' => $this->translator->trans('aacp.localization.unsupported_file_type')],
+                Response::HTTP_BAD_REQUEST,
+            );
         }
 
         $content = @file_get_contents($file->getPathname());
 
         if ($content === false) {
-            return new JsonResponse(['error' => $this->translator->trans('aacp.localization.file_read_error')], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(
+                ['error' => $this->translator->trans('aacp.localization.file_read_error')],
+                Response::HTTP_BAD_REQUEST,
+            );
         }
 
         try {
@@ -152,9 +179,25 @@ final class AACPLocalizationController
         return new JsonResponse(['success' => true, 'updatedCount' => $updatedCount]);
     }
 
+    /**
+     * Tablonun grup (domain) filtresi için benzersiz grup etiketleri.
+     *
+     * @param list<array{group: string, key: string, values: array<string, string>, incomplete: bool}> $entries
+     *
+     * @return list<string>
+     */
+    private function collectGroups(array $entries): array
+    {
+        $groups = array_values(array_unique(array_column($entries, 'group')));
+        sort($groups);
+
+        return $groups;
+    }
+
     private function assertValidCsrfToken(Request $request): void
     {
         $submittedToken = (string) ($request->request->get('_token') ?? $request->headers->get('X-CSRF-Token'));
+
         if (!$this->csrfTokenManager->isTokenValid(new CsrfToken('aacp_localization', $submittedToken))) {
             throw new BadRequestHttpException($this->translator->trans('aacp.localization.invalid_csrf'));
         }

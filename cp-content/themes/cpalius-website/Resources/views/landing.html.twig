@@ -1,13 +1,15 @@
-{% extends '@CpaliusWebsiteTheme/layout.html.twig' %}
+{% extends '@Theme/layout.html.twig' %}
 
-{% block title %}CPalius CMF — Yeni Nesil İçerik Yönetim Framework'ü | PHP 8.2+ &amp; Symfony 7.4{% endblock %}
-{% block meta_description %}CPalius CMF: PHP 8.2+ ve Symfony 7.4 LTS üzerine inşa edilmiş, kurumsal seviyede güvenli, modüler ve genişletilebilir içerik yönetim framework'ü. Açık kaynak, topluluk destekli.{% endblock %}
+{% block title %}{{ 'meta.title'|trans({}, 'portal') }}{% endblock %}
+{% block meta_description %}{{ 'meta.description'|trans({}, 'portal') }}{% endblock %}
 
 {% block content %}
 {% for portalBlock in portalBlocks|default([]) %}
-    {% include '@CpaliusWebsiteTheme/partials/portal/' ~ portalBlock.id ~ '.html.twig' ignore missing with {
+    {% include '@Theme/partials/portal/' ~ portalBlock.id ~ '.html.twig' ignore missing with {
         portalBlock: portalBlock,
-        data: portalData[portalBlock.id]|default({})
+        data: portalData[portalBlock.id]|default({}),
+        forumAvailable: forumAvailable|default(false),
+        blogAvailable: blogAvailable|default(false)
     } only %}
 {% endfor %}
 {% endblock %}

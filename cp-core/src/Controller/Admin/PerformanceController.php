@@ -17,19 +17,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
 
 /**
- * AACP "Performans" konsolu: Redis/Memcached/Varnish/nginx PageSpeed
- * ayarlarının tek yönetim yeri. AACPController'a EKLENMEZ (o dosya zaten
- * ~830 satır) — CacheRebuildManager'ın neden ayrı bir servis olduğu
- * gerekçesiyle aynı izolasyon: bu ekranın bir hatası, kurtarma konsolunun
- * geri kalanını etkilememelidir.
- *
- * $translator SADECE JSON uçlarında (test/enable/disable) kullanılır: bu
- * yanıtlar vanilla JS tarafından tüketilir (bkz. aacp-performance.js) ve
- * JS'in Twig |trans filtresine erişimi yoktur — bu yüzden mesaj anahtarları
- * (bkz. PerformanceCheckResult) burada, sunucu tarafında, isteğin GERÇEK
- * Request::getLocale()'ine göre çevrilip JSON'a hazır metin olarak konur.
- * index() (GET, tam sayfa) bunun aksine anahtarı ham haliyle şablona
- * geçirir, çeviri orada |trans ile Twig katmanında yapılır.
+ * AACP Performance console for Redis/Memcached/Varnish/PageSpeed.
+ * JSON actions translate message keys here; the GET index leaves keys for Twig |trans.
  */
 final class PerformanceController
 {
@@ -64,7 +53,10 @@ final class PerformanceController
             'csrf_token' => $this->csrfTokenManager->getToken(self::CSRF_TOKEN_ID)->getValue(),
         ]);
 
-        return new Response($html);
+        $response = new Response($html);
+        $response->headers->set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+
+        return $response;
     }
 
     #[Route('/aacp/performance/{backend}/test', name: 'aacp_performance_test', methods: ['POST'], requirements: ['backend' => 'redis|memcached|varnish|pagespeed'])]
@@ -114,10 +106,6 @@ final class PerformanceController
     }
 
     /**
-     * PerformanceCheckResult::toArray()'in JSON çıktısını, JS tüketicisinin
-     * (aacp-performance.js) doğrudan gösterebileceği ÇEVRİLMİŞ bir 'message'
-     * alanıyla zenginleştirir — bkz. sınıf docblock'u.
-     *
      * @param array{success: bool, status: string, messageKey: string, messageParams: array<string, mixed>, latencyMs: ?float, details: array<string, mixed>} $result
      * @return array{success: bool, status: string, message: string, latencyMs: ?float, details: array<string, mixed>}
      */
@@ -135,7 +123,10 @@ final class PerformanceController
     private function isValidToken(Request $request): bool
     {
         $submitted = (string) $request->request->get('_token');
+        if ($submitted === '') {
+            $submitted = (string) $request->headers->get('X-CSRF-TOKEN', '');
+        }
 
-        return $this->csrfTokenManager->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $submitted));
+        return $submitted !== '' && $this->csrfTokenManager->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $submitted));
     }
 }

@@ -4,6 +4,9 @@ namespace Modules\Media\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Media\AssetManager;
+use App\Core\Media\Exception\InvalidUploadException;
+use App\Core\Media\Exception\UnsupportedAssetTypeException;
+use App\Core\Media\MimeTypeAllowlist;
 use App\Entity\Asset;
 use App\Repository\AssetRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -19,24 +22,18 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Asset (cp-core/src/Entity/Asset.php) ve AssetManager (cp-core/src/Core/
- * Media/AssetManager.php) çekirdeğe ait, paylaşılan temel altyapıdır — bu
- * controller SADECE onların üzerine bir yönetim arayüzü (galeri listesi,
- * yükleme ucu, diğer formlarda kullanılacak seçici modal) sağlar. Modül
- * devre dışı bırakılırsa Asset/AssetManager'a bağımlı hiçbir çekirdek
- * işlev bozulmaz (bkz. Manifesto Law 2 — Core Never Dies).
+ * Studio gallery, upload, and picker on top of core Asset/AssetManager (Law 2 — Core Never Dies).
  */
 #[Route('/admin/media', name: 'admin_media_')]
 final class MediaAdminController extends AbstractController
 {
-    private const ALLOWED_MIME_PREFIXES = ['image/', 'application/pdf', 'video/'];
-
     public function __construct(
         private readonly AssetManager $assetManager,
         private readonly AssetRepository $assetRepository,
         private readonly FilesystemOperator $cpaliusStorage,
         private readonly EntityManagerInterface $entityManager,
         private readonly TranslatorInterface $translator,
+        private readonly MimeTypeAllowlist $mimeTypeAllowlist,
     ) {
     }
 
@@ -51,6 +48,10 @@ final class MediaAdminController extends AbstractController
         ]);
     }
 
+    /**
+     * Upload endpoint. MIME checks live in AssetManager::upload() + MimeTypeAllowlist (Law 5).
+     * This action only maps core exceptions to a localized HTTP 400.
+     */
     #[Route('/upload', name: 'upload', methods: ['POST'])]
     #[IsGranted('media.upload')]
     public function upload(Request $request): JsonResponse
@@ -60,23 +61,18 @@ final class MediaAdminController extends AbstractController
             throw new BadRequestHttpException($this->translator->trans('media.admin.error.no_file'));
         }
 
-        // Manifesto Law 5.3: MIME tipi uzantı değil, dosya içeriği (finfo) ile doğrulanır.
-        $finfo = new \finfo(FILEINFO_MIME_TYPE);
-        $detectedMime = (string) $finfo->file($uploadedFile->getPathname());
-
-        $isAllowed = false;
-        foreach (self::ALLOWED_MIME_PREFIXES as $prefix) {
-            if (str_starts_with($detectedMime, $prefix)) {
-                $isAllowed = true;
-                break;
-            }
+        try {
+            $asset = $this->assetManager->upload($uploadedFile);
+        } catch (UnsupportedAssetTypeException $e) {
+            // Wrong file type is a client error (400), not 500.
+            throw new BadRequestHttpException($this->translator->trans('media.admin.error.unsupported_type', [
+                'mimeType' => $e->detectedMimeType,
+                'allowed' => implode(', ', $this->mimeTypeAllowlist->allowedExtensions()),
+            ]), $e);
+        } catch (InvalidUploadException $e) {
+            // Upload did not arrive intact (PHP/temp/content) — still 400 for the client.
+            throw new BadRequestHttpException($this->translator->trans('media.admin.error.upload_failed'), $e);
         }
-
-        if (!$isAllowed) {
-            throw new BadRequestHttpException($this->translator->trans('media.admin.error.unsupported_type', ['mimeType' => $detectedMime]));
-        }
-
-        $asset = $this->assetManager->upload($uploadedFile);
 
         return new JsonResponse($this->assetToArray($asset));
     }
@@ -85,9 +81,7 @@ final class MediaAdminController extends AbstractController
     #[IsGranted('media.view')]
     public function picker(Request $request): Response
     {
-        // Bilinçli olarak admin/layout.html.twig extend ETMEZ: bu partial bir
-        // modal/iframe içeriği olarak açılır, Studio kabuğunu tekrar render
-        // etmesi hem gereksiz hem de modal deneyimini bozar.
+        // Standalone picker fragment: do not extend admin/layout (injected into a dialog).
         return $this->render('@MediaModule/admin/media/picker.html.twig', [
             'assets' => $this->searchAssets($request),
             'query' => (string) $request->query->get('q', ''),
@@ -116,10 +110,7 @@ final class MediaAdminController extends AbstractController
         $this->entityManager->remove($asset);
         $this->entityManager->flush();
 
-        // Asset<->Node ilişkisi bilinçli olarak yok (bkz. Asset entity
-        // doc-block'u) — bu yüzden "kullanımda mı" kontrolü node_field_index
-        // üzerinden yapılamaz. Sert bir referans kontrolü kapsam dışı (YAGNI);
-        // kullanıcı bilgilendirici bir uyarı görür.
+        // No Asset↔Node FK (see Asset); usage checks are out of scope (YAGNI). Show a warning only.
         $this->addFlash('success', $this->translator->trans('media.admin.flash.deleted', ['name' => $asset->getOriginalName()]));
 
         return $this->redirectToRoute('admin_media_index');

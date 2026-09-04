@@ -14,7 +14,7 @@ use App\Repository\NodeRepository;
 use App\Repository\TagRepository;
 
 /**
- * Blog liste sayfalarının hero / vitrin / istatistik verisini tek yerde üretir.
+ * Builds hero, featured strip, and stats payloads for blog list pages.
  */
 final class BlogAppearanceService
 {
@@ -85,7 +85,7 @@ final class BlogAppearanceService
             $limit = self::DEFAULT_FEATURED_LIMIT;
         }
 
-        // Daha geniş havuz çek; is_featured=1 önce gelsin (indeks join + PHP yedek).
+        // Oversample; prefer is_featured=1 (index join + PHP fallback).
         $poolSize = max($limit * 3, 24);
 
         /** @var list<Node> $candidates */
@@ -125,7 +125,7 @@ final class BlogAppearanceService
     }
 
     /**
-     * Blog indeksindeki kategori haritası: kökler + çocuklar + yazı sayıları.
+     * Category map for the blog index: roots, children, and post counts.
      *
      * @return array{roots: list<Category>, postCounts: array<int, int>}
      */

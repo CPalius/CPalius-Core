@@ -1,0 +1,44 @@
+{% extends '@Theme/forum/layout.html.twig' %}
+
+{% set online = forum_online_presence() %}
+
+{% block title %}{{ 'stats.online.page_title'|trans({}, 'forums') }} — {{ forumHome.title|default('forum.breadcrumb.home_title'|trans) }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-crumb fade-in" aria-label="{{ 'forum.nav_aria'|trans }}">
+        <ol class="forum-crumb__list">
+            <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+            <li><a href="{{ path('forum_index') }}">{{ forumHome.title|default('forum.breadcrumb.home_title'|trans) }}</a></li>
+            <li class="is-active">{{ 'stats.online.page_title'|trans({}, 'forums') }}</li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in">
+    <div class="forum-header__top">
+        <div>
+            <h1 class="section-title">{{ 'stats.online.page_title'|trans({}, 'forums') }}</h1>
+            <p class="forum-header__desc">{{ 'stats.online.tooltip'|trans({'members': online.memberCount|number_format(0, ',', '.'), 'guests': online.guestCount|number_format(0, ',', '.')}, 'forums') }}</p>
+        </div>
+    </div>
+</div>
+
+{% if online.members is not empty %}
+    <ul class="forum-online-list fade-in">
+        {% for member in online.members %}
+            <li>
+                <a href="{{ path('forum_profile', {username: member.slug}) }}" class="forum-online-list__member">
+                    {% include '@Theme/forum/partials/_avatar.html.twig' with {name: member.name, user: member.user, size: 'sm', online: true} %}
+                    <span>{{ member.name }}</span>
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="forum-empty">
+        <i class="bi bi-people"></i>
+        {{ 'stats.online.page_empty'|trans({}, 'forums') }}
+    </div>
+{% endif %}
+{% endblock %}

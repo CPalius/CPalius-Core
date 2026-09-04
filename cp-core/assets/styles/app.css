@@ -491,4 +491,123 @@
     .studio-dash-settings {
         @apply fixed inset-y-0 right-0 z-50 w-full max-w-sm overflow-y-auto border-l border-neutral-200 bg-white p-sp-md shadow-2xl;
     }
+
+    /* --- AACP (dark admin shell) --- */
+    .aacp-shell .dashboard-main {
+        @apply bg-dark-1;
+    }
+    .aacp-main-content {
+        @apply mx-auto w-full max-w-[1400px];
+    }
+    .aacp-page {
+        @apply space-y-sp-md;
+    }
+    .aacp-page-intro {
+        @apply rounded-xl border border-white/10 bg-dark-2/80 px-sp-sm py-sp-sm;
+    }
+    .aacp-page-intro-title {
+        @apply text-fs-sm font-semibold text-slate-200;
+    }
+    .aacp-page-intro-desc {
+        @apply mt-1 text-fs-sm leading-relaxed text-slate-400;
+    }
+    .aacp-alert {
+        @apply flex items-start gap-3 rounded-lg border px-sp-sm py-3 text-fs-sm;
+    }
+    .aacp-alert-success {
+        @apply border-success-500/30 bg-success-500/10 text-success-300;
+    }
+    .aacp-alert-error {
+        @apply border-danger-500/30 bg-danger-500/10 text-danger-300;
+    }
+    .aacp-alert-warning {
+        @apply border-warning-500/30 bg-warning-500/10 text-warning-300;
+    }
+    .aacp-settings-shell {
+        @apply overflow-hidden rounded-xl border border-white/10 bg-dark-2 shadow-sm;
+    }
+    .aacp-settings-tabs {
+        @apply flex gap-1 overflow-x-auto border-b border-white/10 bg-dark-2 px-sp-xs py-sp-xs;
+        scrollbar-width: thin;
+    }
+    .aacp-settings-tab {
+        @apply inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-fs-sm font-medium text-slate-400 transition;
+    }
+    .aacp-settings-tab:hover {
+        @apply bg-white/5 text-slate-200;
+    }
+    .aacp-settings-tab.is-active {
+        @apply bg-primary-500/15 text-primary-300;
+    }
+    .aacp-settings-panel {
+        @apply p-sp-sm;
+    }
+    .aacp-settings-table {
+        @apply w-full border-separate border-spacing-0;
+    }
+    .aacp-settings-table thead th {
+        @apply border-b border-white/10 bg-white/[0.03] px-4 py-3 text-start text-fs-xs font-semibold uppercase tracking-wider text-slate-500;
+    }
+    .aacp-settings-table tbody tr {
+        @apply transition hover:bg-white/[0.02];
+    }
+    .aacp-settings-table tbody td {
+        @apply border-b border-white/10 px-4 py-3 align-top text-fs-sm;
+    }
+    .aacp-settings-table tbody tr:last-child td {
+        @apply border-b-0;
+    }
+    .aacp-settings-label-cell {
+        @apply w-[34%] min-w-[200px] max-w-[320px];
+    }
+    .aacp-settings-label {
+        @apply block font-medium text-slate-200;
+    }
+    .aacp-settings-hint {
+        @apply mt-1 block text-fs-xs leading-relaxed text-slate-500;
+    }
+    .aacp-settings-value-cell .form-control,
+    .aacp-settings-value-cell .form-select {
+        @apply max-w-xl border-white/10 bg-dark-1 text-slate-100;
+    }
+    .aacp-settings-value-cell .form-control:focus,
+    .aacp-settings-value-cell .form-select:focus {
+        @apply border-primary-500 ring-primary-500/30;
+    }
+    .aacp-settings-value-cell textarea.form-control {
+        @apply min-h-[5.5rem];
+    }
+    .aacp-settings-footer {
+        @apply mt-sp-sm flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-dark-1/60 px-sp-sm py-3;
+    }
+    .aacp-settings-footer-hint {
+        @apply text-fs-xs text-slate-500;
+    }
+    .aacp-locale-stats {
+        @apply mb-sp-sm grid grid-cols-1 gap-sp-xs sm:grid-cols-3;
+    }
+    .aacp-stat-card {
+        @apply rounded-lg border border-white/10 bg-dark-1/50 px-sp-sm py-3;
+    }
+    .aacp-stat-label {
+        @apply text-fs-xs font-medium uppercase tracking-wider text-slate-500;
+    }
+    .aacp-stat-value {
+        @apply mt-1 text-fs-lg font-semibold text-slate-100;
+    }
+    .aacp-toolbar {
+        @apply mb-sp-sm flex flex-wrap items-center justify-between gap-sp-xs;
+    }
+    .aacp-action-group {
+        @apply inline-flex items-center gap-1;
+    }
+    .aacp-action-btn {
+        @apply inline-flex items-center gap-1 rounded-md px-2 py-1 text-fs-xs font-medium text-slate-400 transition hover:bg-white/5 hover:text-primary-300;
+    }
+    .aacp-action-btn-danger:hover {
+        @apply text-danger-300;
+    }
+    .aacp-action-btn-success:hover {
+        @apply text-success-300;
+    }
 }

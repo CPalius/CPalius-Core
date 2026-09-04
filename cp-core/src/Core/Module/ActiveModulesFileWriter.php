@@ -3,14 +3,7 @@
 namespace App\Core\Module;
 
 /**
- * config/active_modules.php dosyasını programatik olarak, güvenli ve
- * öngörülebilir bir formatta yeniden yazar.
- *
- * Elle string concatenation yerine var_export() kullanılır; böylece
- * dosya içeriği her zaman geçerli PHP kalır (tırnak/escape hataları
- * oluşamaz). var_export()'un ürettiği ham 'Modules\\Blog\\BlogModule'
- * string'i, okunabilirlik ve statik analiz için Modules\Blog\BlogModule::class
- * biçimine dönüştürülür.
+ * Rewrite config/active_modules.php safely via var_export, then ::class form for readability.
  */
 final class ActiveModulesFileWriter
 {
@@ -62,9 +55,7 @@ final class ActiveModulesFileWriter
     }
 
     /**
-     * Dosyanın tüm içeriğini verilen listeyle değiştirir. Dry-run
-     * senaryolarında (geçici bir modül eklenip test edildikten sonra
-     * eski hale geri dönmek için) kullanılır.
+     * Replace the whole file with the given list (used by dry-run restore).
      *
      * @param list<class-string> $modules
      */
@@ -80,14 +71,12 @@ final class ActiveModulesFileWriter
     {
         $exported = var_export($modules, true);
 
-        // var_export() eski "array (...)" sözdizimini kullanır; modern
-        // kısa dizi sözdizimine ([...]) çeviriyoruz.
+        // var_export() emits array (...); rewrite to short array syntax.
         $exported = preg_replace('/^array \(/', '[', $exported);
         $exported = preg_replace('/\)$/', ']', $exported);
         $exported = preg_replace('/^(\s*)\d+ => /m', '$1', $exported);
 
-        // var_export() her sınıf adını 'Modules\\Blog\\BlogModule' olarak
-        // yazar; bunu Modules\Blog\BlogModule::class biçimine çeviriyoruz.
+        // Rewrite 'Modules\\Blog\\BlogModule' strings to Modules\Blog\BlogModule::class.
         $exported = preg_replace_callback(
             "/'((?:[A-Za-z0-9_]+\\\\\\\\)+[A-Za-z0-9_]+)'/",
             static fn (array $m) => str_replace('\\\\', '\\', $m[1]).'::class',
@@ -97,10 +86,7 @@ final class ActiveModulesFileWriter
         $contents = <<<PHP
         <?php
 
-        // Aktif modüllerin listesi. Bu dosya statiktir; container henüz boot
-        // olmadan (bundles.php aşamasında) okunur, bu yüzden DB'ye bağımlı değildir.
-        // Bu dosya cp:module:activate / cp:module:deactivate komutları tarafından
-        // otomatik olarak güncellenir; elle düzenlenebilir ama format bozulmamalıdır.
+        // Active modules. Static file, read before container boot (bundles.php); no DB.
 
         return {$exported};
 
@@ -111,9 +97,7 @@ final class ActiveModulesFileWriter
             @mkdir($dir, 0775, true);
         }
 
-        // Atomik yazma: önce geçici dosyaya yaz, sonra rename et. Bu sayede
-        // yazma sırasında bir kesinti olsa bile active_modules.php ya eski
-        // ya da tamamen yeni haliyle kalır, asla yarım/bozuk kalmaz.
+        // Atomic write: temp file then rename so a crash never leaves a half-written file.
         $tmpFile = $this->activeModulesFile.'.'.uniqid('tmp_', true);
         file_put_contents($tmpFile, $contents, LOCK_EX);
         rename($tmpFile, $this->activeModulesFile);

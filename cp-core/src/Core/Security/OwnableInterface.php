@@ -3,15 +3,12 @@
 namespace App\Core\Security;
 
 /**
- * CPaliusVoter'ın parametrik ".own" yeteneklerini (ör. "node.post.edit.own")
- * çözebilmesi için bir varlığın "sahibi kim" sorusuna cevap verme sözleşmesi.
- * Node gibi içerik taşıyan entity'ler bunu implement ettiğinde, Voter
- * subject'in sahibiyle mevcut kullanıcıyı otomatik olarak karşılaştırabilir.
+ * Owner id for parametric ".own" capabilities. Implemented by content entities such as Node.
  */
 interface OwnableInterface
 {
     /**
-     * Sahibi olan kullanıcının id'si, sahipsizse null.
+     * Owning user id, or null when the entity has no owner.
      */
     public function getOwnerId(): ?int;
 }

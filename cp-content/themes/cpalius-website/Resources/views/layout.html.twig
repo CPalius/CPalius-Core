@@ -6,11 +6,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
     {% block seo %}
-        <title>{% block title %}CPalius CMF{% endblock %}</title>
-        <meta name="description" content="{% block meta_description %}{{ 'website.layout.meta_description'|trans }}{% endblock %}">
-        <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
-        {% block canonical %}{% endblock %}
-        {% block schema_org %}{% endblock %}
+        {% set seo_title %}{% block title %}CPalius CMF{% endblock %}{% endset %}
+        {% set seo_description %}{% block meta_description %}{{ 'website.layout.meta_description'|trans }}{% endblock %}{% endset %}
+        {% set seo_robots %}{% block meta_robots %}index, follow{% endblock %}{% endset %}
+        {{ cp_seo_head({
+            title: seo_title,
+            description: seo_description,
+            robots: seo_robots,
+        }) }}
     {% endblock %}
 
     <link rel="icon" type="image/png" href="/CPalius.png">
@@ -24,12 +27,12 @@
 
     {% block stylesheets %}{% endblock %}
 </head>
-<body>
-    {% include '@CpaliusWebsiteTheme/partials/header.html.twig' %}
+<body class="{% block body_class %}{% endblock %}">
+    {% include '@Theme/partials/header.html.twig' %}
 
     {% block content %}{% endblock %}
 
-    {% include '@CpaliusWebsiteTheme/partials/footer.html.twig' %}
+    {% include '@Theme/partials/footer.html.twig' %}
 
     <script src="/themes/cpalius-website/dist/main.js"></script>
     {% block javascripts %}{% endblock %}

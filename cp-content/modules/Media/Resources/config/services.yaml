@@ -6,3 +6,6 @@ services:
     Modules\Media\Controller\:
         resource: '../../Controller/'
         tags: ['controller.service_arguments']
+
+    Modules\Media\Studio\:
+        resource: '../../Studio/'

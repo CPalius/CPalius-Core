@@ -1,8 +1,6 @@
 /**
- * Medya seçici köprüsü: hem "öne çıkan görsel seç" butonları hem
- * SunEditor'ın resim yükleme akışı (bkz. suneditor-init.js) AYNI
- * window.CPaliusMediaPicker global'ini kullanır — tek bir kod yolu,
- * iki farklı çağıran.
+ * Shared media-picker bridge: featured-image buttons and the editor
+ * upload flow both use window.CPaliusMediaPicker.
  */
 (function () {
     let modalEl = null;

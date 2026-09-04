@@ -7,6 +7,15 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # FAZ 3 fallback zincirinin SON halkası. LocaleProvider bu değeri
+    # yalnızca .env'de CPALIUS_LOCALES tanımlı DEĞİLSE ve veritabanı da
+    # erişilemezse kullanır — yani "hiçbir şey çalışmıyor" senaryosunda
+    # sitenin hangi dillerde ayakta kalacağını belirler.
+    #
+    # Not: rota kısıtlarında kullanılan %cpalius.locales_pattern%
+    # parametresi BURADA DEĞİL, LocalesPatternPass tarafından derleme
+    # zamanında üretilir (bkz. Kernel::build()).
+    cpalius.fallback_locales: 'tr,en'
 
 services:
     # default configuration for services in *this* file
@@ -66,23 +75,65 @@ services:
         arguments:
             $activeModulesFile: '%kernel.project_dir%/cp-core/config/active_modules.php'
 
+    # FAZ 6: module lifecycle services. Both need the modules directory and the
+    # running core version, neither of which is autowirable.
+    App\Core\Module\ModuleDependencyChecker:
+        arguments:
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+            $coreVersion: '%env(CP_APP_VERSION)%'
+
+    App\Core\Module\ModuleLifecycleManager:
+        arguments:
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+            $projectDir: '%kernel.project_dir%'
+
+    App\Core\Module\ModuleActivator:
+        arguments:
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+
+    App\Core\Theme\ThemeRegistry:
+        arguments:
+            $themesDir: '%kernel.project_dir%/cp-content/themes'
+
     App\Core\Routing\SafeModuleRouteLoader:
         tags:
             - { name: 'routing.loader' }
 
-    App\Core\EventListener\LocaleListener:
+    # FAZ 3 — Çoklu Dil Motoru'nun tek doğruluk kaynağı.
+    #
+    # $fallbackLocales / $fallbackDefaultLocale SADECE veritabanı
+    # erişilemez olduğunda (veya cp_locales henüz boşken) devreye girer.
+    # env(default:...) sözdizimi sayesinde .env'de CPALIUS_LOCALES
+    # tanımlanmamış bir kurulumda bile container derlenir: değişken yoksa
+    # sırasıyla cpalius.locales_pattern'in ürettiği liste ve
+    # kernel.default_locale kullanılır.
+    App\Core\Localization\LocaleProvider:
         arguments:
-            $defaultLocale: '%kernel.default_locale%'
-            $supportedLocales: ['tr', 'en']
+            $cache: '@cache.app'
+            $fallbackLocales: '%env(default:cpalius.fallback_locales:CPALIUS_LOCALES)%'
+            $fallbackDefaultLocale: '%env(default:kernel.default_locale:CPALIUS_DEFAULT_LOCALE)%'
+
+    App\Core\Settings\SettingsRegistry:
+        arguments:
+            $cache: '@cache.app'
+
+    # LocaleListener artık sabit bir dil listesi ALMAZ: desteklenen diller
+    # LocaleProvider üzerinden çalışma zamanında çözülür.
+    App\Core\EventListener\LocaleListener: ~
 
     App\Core\Security\RoleConfigManager:
         arguments:
             $syncDir: '%kernel.project_dir%/cp-content/config/sync'
+            $cache: '@cache.app'
 
     App\Core\Localization\TranslationFileLocator:
         arguments:
             $coreTranslationsDir: '%kernel.project_dir%/cp-content/translations'
             $modulesDir: '%kernel.project_dir%/cp-content/modules'
+
+    App\Core\Portal\PortalCopyService:
+        arguments:
+            $translationsDir: '%kernel.project_dir%/cp-content/translations'
 
     App\Controller\Admin\AACPController:
         arguments:
@@ -142,6 +193,21 @@ when@dev:
         # wildcard'ı ile her ortamda TANIMLI olsa da, hiçbir yerden
         # (middleware zinciri, event listener) çağrılmadıkları sürece
         # prod'da hiç instantiate edilmezler — sıfır çalışma zamanı maliyeti.
+        App\Core\Database\QueryCounter:
+            arguments:
+                $maxQueriesPerTable: 10
+
+        App\Core\Database\Middleware\QueryCounterMiddleware:
+            tags:
+                - { name: 'doctrine.middleware' }
+
+when@test:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        # Law 6.1 in CI: the same N+1 tripwire as dev, so a regression cannot hide in test.
         App\Core\Database\QueryCounter:
             arguments:
                 $maxQueriesPerTable: 10

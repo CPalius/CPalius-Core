@@ -7,15 +7,7 @@ namespace Modules\Blog\Settings;
 use App\Core\Annotation\CpSetting;
 
 /**
- * Modules\Blog\Plugin\BlogWidgetPlugin eklentisinin çalışma zamanı ayarları.
- * CoreSettings/BlogModuleSettings ile aynı desen: boş, salt attribute-taşıyıcı
- * final sınıf.
- *
- * "module" alanı bilinçli olarak "blog" DEĞİL, doğrudan
- * BlogWidgetPlugin::getName()'in döndürdüğü "blog_widget" değeridir —
- * AACP'nin isSettingOwnedByPlugin() kontrolü PluginRegistry'de kayıtlı bu
- * isimle eşleşip eşleşmediğine bakarak bu ayarları "Eklenti Ayarları"
- * ekranına yönlendirir (bkz. AACPController::settingsPlugins()).
+ * Runtime settings for BlogWidgetPlugin. module is "blog_widget" (plugin name), not "blog".
  */
 #[CpSetting(
     key: 'blog_widget.recent_posts_limit',

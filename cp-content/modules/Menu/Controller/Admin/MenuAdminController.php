@@ -1,13 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Modules\Menu\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
-use App\Core\Menu\Twig\FrontMenuRuntime;
-use App\Entity\Menu;
-use App\Entity\MenuItem;
-use App\Repository\MenuItemRepository;
-use App\Repository\MenuRepository;
+use App\Core\Localization\LocaleProvider;
+use App\Core\Localization\TranslationTab;
+use Modules\Menu\Twig\FrontMenuRuntime;
+use Modules\Menu\Entity\Menu;
+use Modules\Menu\Entity\MenuItem;
+use Modules\Menu\Repository\MenuItemRepository;
+use Modules\Menu\Repository\MenuRepository;
 use App\Repository\NodeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -22,10 +26,7 @@ use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Menu/MenuItem entity'leri (Asset deseniyle simetrik) çekirdekte yaşar —
- * bu controller sadece yönetim arayüzünü sağlar. menu.manage tek bir
- * capability yeterlidir (own/any ayrımı yok, menüler site-geneli
- * yapılandırmadır, kullanıcıya özel değildir).
+ * Studio CRUD for menus. Entities live in core (Asset pattern); menu.manage is site-wide, no own/any split.
  */
 #[Route('/admin/menus', name: 'admin_menus_')]
 #[IsGranted('menu.manage')]
@@ -37,6 +38,7 @@ final class MenuAdminController extends AbstractController
         private readonly MenuItemRepository $menuItemRepository,
         private readonly NodeRepository $nodeRepository,
         private readonly CacheInterface $cacheApp,
+        private readonly LocaleProvider $localeProvider,
         private readonly TranslatorInterface $translator,
     ) {
     }
@@ -101,6 +103,9 @@ final class MenuAdminController extends AbstractController
             'menu' => $menu,
             'tree' => $tree,
             'allItems' => $items,
+            'locales' => $this->localeProvider->getLocales(),
+            'defaultLocale' => $this->localeProvider->getDefaultCode(),
+            'translationMap' => $this->buildTranslationMap($items),
         ]);
     }
 
@@ -111,7 +116,7 @@ final class MenuAdminController extends AbstractController
         $this->assertValidCsrf($request, 'admin_menu_form');
 
         $label = trim((string) $request->request->get('label'));
-        $locale = trim((string) $request->request->get('locale')) ?: 'tr';
+        $locale = $this->localeProvider->resolve(trim((string) $request->request->get('locale')));
         $url = trim((string) $request->request->get('url'));
         $nodeId = $this->parseNullableInt($request->request->get('node_id'));
         $parentId = $this->parseNullableInt($request->request->get('parent_id'));
@@ -142,6 +147,145 @@ final class MenuAdminController extends AbstractController
         $this->addFlash('success', $this->translator->trans('menu.admin.flash.item_added', ['label' => $label]));
 
         return $this->redirectToRoute('admin_menus_edit', ['id' => $id]);
+    }
+
+    /**
+     * One-click copy of a menu item into another locale, linked in the same translation group.
+     * Parent is remapped in the target locale when present; otherwise the copy becomes a root.
+     */
+    #[Route('/items/{itemId}/translate/{locale}', name: 'translate_item', methods: ['POST'], requirements: ['itemId' => '\d+', 'locale' => '%cpalius.locales_pattern%'])]
+    public function translateItem(int $itemId, string $locale, Request $request): Response
+    {
+        $item = $this->findMenuItemOrFail($itemId);
+        $this->assertValidCsrf($request, 'admin_menu_form');
+
+        $menu = $item->getMenu();
+        $target = $this->localeProvider->resolve($locale);
+        $redirect = $this->redirectToRoute('admin_menus_edit', ['id' => $menu->getId()]);
+
+        if ($target === $item->getLocale()) {
+            return $redirect;
+        }
+
+        // Load all items once; sibling/parent matching stays in memory (Law 6.1).
+        $allItems = $this->menuItemRepository->findAllByMenu($menu);
+        $siblings = $this->translationSiblings($item, $allItems);
+
+        if (isset($siblings[$target])) {
+            $this->addFlash('error', $this->translator->trans('menu.admin.error.translation_exists', [
+                'label' => $item->getLabel(),
+                'locale' => $target,
+            ]));
+
+            return $redirect;
+        }
+
+        $parent = $this->mapParentToLocale($item, $target, $allItems);
+
+        $translation = new MenuItem($menu, $item->getLabel(), $target);
+        $translation->setParent($parent);
+        $translation->setUrl($item->getUrl());
+        $translation->setNodeId($item->getNodeId());
+        $translation->setOpenInNewTab($item->isOpenInNewTab());
+        $translation->setSortOrder(
+            \count($this->menuItemRepository->findByMenuParentAndLocale($menu, $parent?->getId(), $target)),
+        );
+
+        $translation->joinTranslationGroup($item->ensureTranslationGroup());
+
+        $this->entityManager->persist($translation);
+        $this->entityManager->flush();
+
+        $this->invalidateMenuCache($menu, $target);
+
+        $this->addFlash('success', $this->translator->trans('cp.translation_tabs.linked_flash', [
+            'name' => $item->getLabel(),
+            'locale' => $target,
+        ]));
+
+        return $redirect;
+    }
+
+    /**
+     * Source parent's counterpart in the target locale, or null (root).
+     *
+     * @param list<MenuItem> $allItems Preloaded menu items (no extra query).
+     */
+    private function mapParentToLocale(MenuItem $item, string $target, array $allItems): ?MenuItem
+    {
+        $parent = $item->getParent();
+
+        if (!$parent instanceof MenuItem) {
+            return null;
+        }
+
+        return $this->translationSiblings($parent, $allItems)[$target] ?? null;
+    }
+
+    /**
+     * Translation siblings from the already-loaded item list (Law 6.1, no extra query).
+     *
+     * @param list<MenuItem> $allItems
+     *
+     * @return array<string, MenuItem> locale => item (includes the source row)
+     */
+    private function translationSiblings(MenuItem $item, array $allItems): array
+    {
+        $groupId = $item->getTranslationGroupId();
+        $siblings = [$item->getLocale() => $item];
+
+        if ($groupId === null) {
+            return $siblings;
+        }
+
+        foreach ($allItems as $candidate) {
+            if ((string) $candidate->getTranslationGroupId() === (string) $groupId) {
+                $siblings[$candidate->getLocale()] = $candidate;
+            }
+        }
+
+        return $siblings;
+    }
+
+    /**
+     * Language-badge data for the edit tree: item id => TranslationTab list. Computed in memory.
+     *
+     * @param list<MenuItem> $items
+     *
+     * @return array<int, list<TranslationTab>>
+     */
+    private function buildTranslationMap(array $items): array
+    {
+        $locales = $this->localeProvider->getLocales();
+        $map = [];
+
+        foreach ($items as $item) {
+            $id = $item->getId();
+
+            if ($id === null) {
+                continue;
+            }
+
+            $siblings = $this->translationSiblings($item, $items);
+            $tabs = [];
+
+            foreach ($locales as $locale) {
+                $sibling = $siblings[$locale->code] ?? null;
+
+                $tabs[] = new TranslationTab(
+                    code: $locale->code,
+                    nativeName: $locale->nativeName,
+                    exists: $sibling instanceof MenuItem,
+                    id: $sibling?->getId(),
+                    isCurrent: $locale->code === $item->getLocale(),
+                    label: $sibling?->getLabel(),
+                );
+            }
+
+            $map[$id] = $tabs;
+        }
+
+        return $map;
     }
 
     #[Route('/items/{itemId}/update', name: 'update_item', methods: ['POST'], requirements: ['itemId' => '\d+'])]
@@ -192,8 +336,7 @@ final class MenuAdminController extends AbstractController
     }
 
     /**
-     * Basit sürükle-bırak (SortableJS) sonrası sıralama/hiyerarşi güncellemesi.
-     * JSON body: [{itemId, parentId, sortOrder}, ...]
+     * Apply SortableJS drag-and-drop order/hierarchy. JSON body: [{itemId, parentId, sortOrder}, ...]
      */
     #[Route('/{id}/reorder', name: 'reorder', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function reorder(int $id, Request $request): JsonResponse
@@ -257,9 +400,7 @@ final class MenuAdminController extends AbstractController
     }
 
     /**
-     * Request::getInt() boş string geldiğinde ("" node seçilmemiş demektir)
-     * FILTER_VALIDATE_INT başarısız olur ve exception fırlatır — bu yüzden
-     * doğrudan getInt() yerine burada elle boş kontrolü yapılır.
+     * Empty string means "no node selected"; skip Request::getInt() to avoid FILTER_VALIDATE_INT errors.
      */
     private function parseNullableInt(mixed $value): ?int
     {

@@ -8,12 +8,7 @@ use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 
 /**
- * Bir CronJob'un command_name/command_arguments alanlarından izole bir
- * "php bin/console <komut>" alt-process'i kuran tek yer. Hem otomatik
- * dispatcher (RunDueCronJobsCommand) hem de AACP'nin manuel "Şimdi
- * Çalıştır" ucu (AACPCronController::runNow()) AYNI süreç kurulumunu
- * kullanır — iki yerde ayrı ayrı Process inşa etmek (PHP binary bulma,
- * timeout, working directory) kopyala-yapıştır olurdu.
+ * Builds an isolated "php bin/console <command>" Process for dispatcher and AACP "run now".
  */
 final class CronCommandProcessFactory
 {

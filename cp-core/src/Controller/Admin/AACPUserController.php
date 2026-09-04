@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Core\Account\AccountRegistrationService;
+use App\Core\Account\UserAvatarService;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Content\RichTextSanitizer;
 use App\Core\Pagination\Paginator;
+use App\Core\Security\RoleCapabilityPresenter;
 use App\Core\Security\RoleConfigManager;
+use App\Core\Security\UserRoleGuardService;
 use App\Entity\User;
 use App\Form\DTO\ProfileFormModel;
 use App\Form\DTO\UserFormModel;
@@ -52,12 +56,44 @@ final class AACPUserController extends AbstractController
         private readonly EntityManagerInterface $entityManager,
         private readonly UserRepository $userRepository,
         private readonly RoleConfigManager $roleConfigManager,
+        private readonly UserRoleGuardService $userRoleGuard,
+        private readonly RoleCapabilityPresenter $roleCapabilityPresenter,
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly RichTextSanitizer $richTextSanitizer,
         private readonly AssetRepository $assetRepository,
         private readonly Paginator $paginator,
         private readonly TranslatorInterface $translator,
+        private readonly AccountRegistrationService $registrationService,
+        private readonly UserAvatarService $avatarService,
     ) {
+    }
+
+    #[Route('/aacp/users/pending', name: 'aacp_users_pending', methods: ['GET', 'POST'])]
+    #[CpAdminMenu(label: 'aacp.users.pending_menu', icon: 'heroicons:clock', panel: 'aacp', priority: 58, capability: 'system.users.manage', group: 'aacp.group.user', parent: 'aacp_users')]
+    #[IsGranted('system.users.manage')]
+    public function pending(Request $request): Response
+    {
+        if ($request->isMethod('POST')) {
+            $userId = $request->request->getInt('user_id');
+            if (!$this->isCsrfTokenValid('aacp_user_approve', (string) $request->request->get('_token'))) {
+                throw new BadRequestHttpException($this->translator->trans('aacp.users.invalid_csrf'));
+            }
+
+            $user = $this->userRepository->find($userId);
+            if ($user instanceof User) {
+                $this->registrationService->approveUser($user);
+                $this->addFlash('success', $this->translator->trans('aacp.users.approve_success', ['email' => $user->getEmail()]));
+            }
+        }
+
+        $pending = array_filter(
+            $this->userRepository->findPendingApproval(),
+            static fn (User $u): bool => (bool) $u->getDataValue('registration_pending_approval', false),
+        );
+
+        return $this->render('aacp/users/pending.html.twig', [
+            'users' => $pending,
+        ]);
     }
 
     /**
@@ -79,6 +115,7 @@ final class AACPUserController extends AbstractController
         return $this->render('aacp/users/index.html.twig', [
             'users' => $result,
             'search' => (string) $request->query->get('q', ''),
+            'roleLabels' => $this->userRoleGuard->roleLabelMap(),
         ]);
     }
 
@@ -100,6 +137,10 @@ final class AACPUserController extends AbstractController
                     new FormError($this->translator->trans('aacp.users.email_taken')),
                 );
             } else {
+                $draftUser = new User($dto->email);
+                if (!$this->applySecureUserRoles($dto, $draftUser, $this->getUser() instanceof User ? $this->getUser() : null, $form)) {
+                    // applySecureUserRoles forma hata ekledi.
+                } else {
                 $user = new User($dto->email);
                 $this->mapDtoToUser($dto, $user);
 
@@ -109,13 +150,11 @@ final class AACPUserController extends AbstractController
                 $this->addFlash('success', $this->translator->trans('aacp.users.create_success', ['email' => $user->getEmail()]));
 
                 return $this->redirectToRoute('aacp_users');
+                }
             }
         }
 
-        return $this->render('aacp/users/form.html.twig', [
-            'user' => null,
-            'form' => $form,
-        ]);
+        return $this->renderUserForm(null, $form, isEdit: false);
     }
 
     #[Route('/aacp/users/{id}/edit', name: 'aacp_users_edit', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
@@ -133,21 +172,29 @@ final class AACPUserController extends AbstractController
                     new FormError($this->translator->trans('aacp.users.email_taken')),
                 );
             } else {
-                $user->setEmail($dto->email);
-                $this->mapDtoToUser($dto, $user);
+                $statusError = $this->userRoleGuard->validateStatusChange(
+                    $user,
+                    $dto->status,
+                    $this->getUser() instanceof User ? $this->getUser() : null,
+                );
+                if ($statusError !== null) {
+                    $form->get('status')->addError(new FormError($this->translator->trans($statusError)));
+                } elseif (!$this->applySecureUserRoles($dto, $user, $this->getUser() instanceof User ? $this->getUser() : null, $form)) {
+                    // applySecureUserRoles forma hata ekledi.
+                } else {
+                    $user->setEmail($dto->email);
+                    $this->mapDtoToUser($dto, $user);
 
-                $this->entityManager->flush();
+                    $this->entityManager->flush();
 
-                $this->addFlash('success', $this->translator->trans('aacp.users.update_success', ['email' => $user->getEmail()]));
+                    $this->addFlash('success', $this->translator->trans('aacp.users.update_success', ['email' => $user->getEmail()]));
 
-                return $this->redirectToRoute('aacp_users');
+                    return $this->redirectToRoute('aacp_users');
+                }
             }
         }
 
-        return $this->render('aacp/users/form.html.twig', [
-            'user' => $user,
-            'form' => $form,
-        ]);
+        return $this->renderUserForm($user, $form, isEdit: true);
     }
 
     /**
@@ -219,11 +266,9 @@ final class AACPUserController extends AbstractController
             }
         }
 
-        $avatarAsset = $dto->avatarAssetId !== null ? $this->assetRepository->find($dto->avatarAssetId) : null;
-
         return $this->render('aacp/users/profile.html.twig', [
             'form' => $form,
-            'avatarUrl' => $avatarAsset?->getStorageKey() !== null ? '/uploads/'.$avatarAsset->getStorageKey() : null,
+            'avatarUrl' => $this->avatarService->resolveUrl($user),
         ]);
     }
 
@@ -286,6 +331,47 @@ final class AACPUserController extends AbstractController
         if ($plainPassword !== '') {
             $user->setPassword($this->passwordHasher->hashPassword($user, $plainPassword));
         }
+    }
+
+    /**
+     * Rol atamasını RoleConfigManager beyaz listesinden geçirir; CPaliusVoter
+     * dışında ek güvenlik kurallarını (son admin, kendi rolünü düşürme) uygular.
+     */
+    private function applySecureUserRoles(UserFormModel $dto, User $user, ?User $actor, FormInterface $form): bool
+    {
+        $sanitized = $this->userRoleGuard->sanitizeRoles($dto->roles);
+
+        if ($sanitized === [] && $user->getId() === null) {
+            $sanitized = $this->userRoleGuard->defaultRolesForNewUser();
+        }
+
+        $errorKey = $this->userRoleGuard->validateAssignment($user, $sanitized, $actor);
+        if ($errorKey !== null) {
+            $form->get('roles')->addError(new FormError($this->translator->trans($errorKey)));
+
+            return false;
+        }
+
+        $dto->roles = $sanitized;
+
+        return true;
+    }
+
+    private function renderUserForm(?User $user, FormInterface $form, bool $isEdit): Response
+    {
+        $selectedRoles = $form->get('roles')->getData();
+        if (!\is_array($selectedRoles)) {
+            $selectedRoles = [];
+        }
+
+        return $this->render('aacp/users/form.html.twig', [
+            'user' => $user,
+            'form' => $form,
+            'roleCatalog' => $this->roleCapabilityPresenter->buildRoleCatalog(),
+            'effectiveSummary' => $this->roleCapabilityPresenter->summarizeSelectedRoles($selectedRoles),
+            'roleLabels' => $this->userRoleGuard->roleLabelMap(),
+            'isEdit' => $isEdit,
+        ]);
     }
 
     /**

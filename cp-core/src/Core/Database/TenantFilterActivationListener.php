@@ -10,16 +10,8 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * TenantContext'te bir tenant kimliği varsa (bkz. TenantContext dokümanı —
- * bu context'in NASIL doldurulacağı, ör. subdomain/header çözümlemesi,
- * bu sınıfın sorumluluğu DEĞİLDİR, ayrı bir TenantResolver katmanına
- * aittir), Doctrine'in "tenant" SQLFilter'ını (bkz. TenantFilter) her
- * istek için etkinleştirir ve tenant_id parametresini doldurur.
- *
- * En yüksek öncelikle (early) çalışır: bu listener'dan SONRA çalışacak
- * her repository/query çağrısının tenant izolasyonundan faydalanabilmesi
- * gerekir — bu yüzden controller'lardan önce, mümkün olduğunca erken
- * tetiklenmelidir.
+ * Enable Doctrine's tenant SQLFilter and set tenant_id when TenantContext is filled.
+ * Runs early (priority 250) so later queries are already isolated. Does not resolve the tenant.
  */
 final class TenantFilterActivationListener implements EventSubscriberInterface
 {

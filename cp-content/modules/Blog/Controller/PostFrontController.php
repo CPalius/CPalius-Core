@@ -19,22 +19,8 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Blog'un gerçek ön yüz (frontend) render'ı — cpalius-website temasının
- * layout.html.twig sarmalayıcısını (header/footer) kullanır (bkz. Manifesto
- * Law 7, tema izolasyonu). Node::type = 'post' olan içerikleri listeler/
- * gösterir; Manifesto Law 3.1 gereği içerik hâlâ tek bir Node tablosunda
- * yaşar, bu controller sadece "post" tipine bir bakış açısı sunar.
- *
- * Route path'leri BİLİNÇLİ OLARAK "/{_locale}" prefix'i İÇERMEZ: bu prefix
- * zaten routes.yaml'daki blog_module_front yükleyicisi tarafından (Admin/
- * hariç tüm Controller/ dizinine) uygulanıyor (bkz. Resources/config/
- * routes.yaml) — burada tekrar eklemek "değişken adı _locale birden fazla
- * kez referans edilemez" derleme hatasına yol açar.
- *
- * Tüm listeleme action'ları (index/category/tag/search) App\Core\Pagination
- * \Paginator üzerinden ?page= ile sayfalanır — KnpPaginatorBundle KURULU
- * DEĞİL, bu yüzden doctrine/orm'un dahili Paginator'ını saran hafif
- * servis kullanılır (bkz. Paginator sınıfının kendi docblock'u).
+ * Front blog render using the theme layout. Lists/shows Node type "post" (Law 3.1/7).
+ * Locale prefix comes from routes.yaml only; listing uses App\Core\Pagination\Paginator.
  */
 final class PostFrontController extends AbstractController
 {
@@ -51,8 +37,7 @@ final class PostFrontController extends AbstractController
     }
 
     /**
-     * Blog ana listesi — archive.html.twig, tüm yayınlanmış yazıların
-     * kronolojik (en yeni önce) tam arşividir.
+     * Full chronological archive of published posts (newest first).
      */
     #[Route('/blog', name: 'blog_index')]
     public function index(Request $request): Response
@@ -66,7 +51,7 @@ final class PostFrontController extends AbstractController
             $this->appearanceService->postsPerPage(),
         );
 
-        return $this->render('@CpaliusWebsiteTheme/blog/archive.html.twig', [
+        return $this->render('@Theme/blog/archive.html.twig', [
             'posts' => $result,
             'category' => null,
             'heading' => $this->translator->trans('blog.front.archive.all_posts_heading'),
@@ -91,7 +76,7 @@ final class PostFrontController extends AbstractController
             $this->appearanceService->postsPerPage(),
         );
 
-        return $this->render('@CpaliusWebsiteTheme/blog/archive.html.twig', [
+        return $this->render('@Theme/blog/archive.html.twig', [
             'posts' => $result,
             'category' => $category,
             'heading' => $category->getName(),
@@ -100,9 +85,7 @@ final class PostFrontController extends AbstractController
     }
 
     /**
-     * Öncelik negatif verilir: /blog/kategori/{slug} ve /blog/ara gibi
-     * daha spesifik statik segmentli route'lar bu genel {slug} kalıbıyla
-     * ÇAKIŞMASIN diye önce onlar denenir (bkz. show() ile aynı gerekçe).
+     * priority 1 so static segments like /blog/kategori/{slug} win over /blog/{slug}.
      */
     #[Route('/blog/etiket/{slug}', name: 'blog_tag', priority: 1)]
     public function tag(Request $request, string $slug): Response
@@ -116,7 +99,7 @@ final class PostFrontController extends AbstractController
             $this->appearanceService->postsPerPage(),
         );
 
-        return $this->render('@CpaliusWebsiteTheme/blog/tag/show.html.twig', [
+        return $this->render('@Theme/blog/tag/show.html.twig', [
             'posts' => $result,
             'tagSlug' => $slug,
             'heading' => '#'.$slug,
@@ -125,12 +108,7 @@ final class PostFrontController extends AbstractController
     }
 
     /**
-     * Serbest metin arama — Node::title (sabit SQL kolonu) üzerinden
-     * çalışır (bkz. NodeRepository::createSearchQueryBuilder docblock'u:
-     * JSON içi excerpt/body alanları bilinçli olarak taranmaz, performans
-     * bütçesi gereği). Boş arama terimi boş sonuç kümesi döner — sıfır
-     * koşullu bir sorgu "tüm yazıları getir" anlamına gelip kullanıcıyı
-     * yanıltmamalı.
+     * Title-only search; empty term returns no rows (does not list all posts).
      */
     #[Route('/blog/ara', name: 'blog_search')]
     public function search(Request $request): Response
@@ -146,7 +124,7 @@ final class PostFrontController extends AbstractController
             )
             : null;
 
-        return $this->render('@CpaliusWebsiteTheme/blog/search.html.twig', [
+        return $this->render('@Theme/blog/search.html.twig', [
             'posts' => $result,
             'term' => $term,
             'heading' => $term !== ''
@@ -157,16 +135,7 @@ final class PostFrontController extends AbstractController
     }
 
     /**
-     * Modules\Blog\Plugin\BlogArchivePlugin'in ürettiği yıl/ay linklerinin
-     * hedefi — sidebar'daki arşiv widget'ı salt dekoratif kalmasın diye
-     * gerçek bir filtrelenmiş liste sayfası açar. archive.html.twig'i
-     * (Faz 1/2'den beri var olan aynı şablon) sadece heading ve veri
-     * kaynağı farklı olacak şekilde yeniden kullanır.
-     *
-     * Öncelik diğer statik segmentli route'larla (blog_category, blog_tag,
-     * blog_search) aynı gerekçeyle 1 verilir: /blog/{slug} (priority: -1)
-     * bu kalıpla asla çakışmaz çünkü {slug} tek segmenttir, ama tutarlılık
-     * için aynı öncelik deseni korunur.
+     * Month archive page for BlogArchivePlugin links; reuses archive.html.twig.
      */
     #[Route('/blog/arsiv/{year}/{month}', name: 'blog_archive_month', requirements: ['year' => '\d{4}', 'month' => '\d{1,2}'], priority: 1)]
     public function archiveMonth(Request $request, int $year, int $month): Response
@@ -180,7 +149,7 @@ final class PostFrontController extends AbstractController
             $this->appearanceService->postsPerPage(),
         );
 
-        return $this->render('@CpaliusWebsiteTheme/blog/archive.html.twig', [
+        return $this->render('@Theme/blog/archive.html.twig', [
             'posts' => $result,
             'category' => null,
             'heading' => $this->translator->trans('blog.front.archive.month_heading', [
@@ -202,23 +171,81 @@ final class PostFrontController extends AbstractController
     }
 
     /**
-     * Öncelik negatif verilir: /blog/kategori/{slug}, /blog/etiket/{slug}
-     * ve /blog/ara route'ları bu genel {slug} kalıbıyla ÇAKIŞMASIN diye
-     * önce onlar denenir.
+     * Negative priority so static blog_* routes win over this catch-all slug.
+     * Missing locale sibling: redirect to the published translation when present,
+     * otherwise a theme page (never the Symfony exception screen).
      */
     #[Route('/blog/{slug}', name: 'blog_show', priority: -1)]
     public function show(Request $request, string $slug): Response
     {
-        $node = $this->nodeRepository->findOnePublishedBySlugAndLocale($slug, $request->getLocale());
+        $locale = $request->getLocale();
+        $node = $this->nodeRepository->findOnePublishedBySlugAndLocale($slug, $locale);
+
         if (!$node instanceof Node || $node->getType() !== self::NODE_TYPE) {
-            throw new NotFoundHttpException($this->translator->trans('blog.posts.error.not_found'));
+            return $this->resolveCrossLocalePost($request, $slug, $locale);
         }
 
-        return $this->render('@CpaliusWebsiteTheme/blog/show.html.twig', [
+        // LocaleSwitchService reads TranslatableInterface from request attributes.
+        $request->attributes->set('blog_post', $node);
+
+        return $this->render('@Theme/blog/show.html.twig', [
             'post' => $node,
             'relatedPosts' => $this->nodeRepository->findRelatedPosts($node),
             'featuredImageUrl' => $this->presentationService->resolveFeaturedImageUrl($node),
         ]);
+    }
+
+    /**
+     * Same slug in another locale → redirect to published sibling, or soft unavailable page.
+     */
+    private function resolveCrossLocalePost(Request $request, string $slug, string $locale): Response
+    {
+        $source = $this->nodeRepository->findOnePublishedBySlug($slug, self::NODE_TYPE);
+        if (!$source instanceof Node) {
+            return $this->renderBlogUnavailable(
+                source: null,
+                requestedSlug: $slug,
+                locale: $locale,
+            );
+        }
+
+        $groupId = $source->getTranslationGroupId();
+        if ($groupId !== null) {
+            $translation = $this->nodeRepository->findTranslation($groupId, $locale);
+            if (
+                $translation instanceof Node
+                && $translation->getType() === self::NODE_TYPE
+                && $translation->getStatus() === Node::STATUS_PUBLISHED
+                && $translation->getDeletedAt() === null
+            ) {
+                return $this->redirectToRoute('blog_show', [
+                    '_locale' => $locale,
+                    'slug' => $translation->getSlug(),
+                ]);
+            }
+        }
+
+        return $this->renderBlogUnavailable(
+            source: $source,
+            requestedSlug: $slug,
+            locale: $locale,
+        );
+    }
+
+    private function renderBlogUnavailable(?Node $source, string $requestedSlug, string $locale): Response
+    {
+        return $this->render(
+            '@Theme/blog/unavailable.html.twig',
+            [
+                'sourcePost' => $source,
+                'requestedSlug' => $requestedSlug,
+                'locale' => $locale,
+                'heading' => $source instanceof Node
+                    ? $this->translator->trans('blog.front.unavailable.translation_heading')
+                    : $this->translator->trans('blog.front.unavailable.not_found_heading'),
+            ],
+            new Response('', Response::HTTP_NOT_FOUND),
+        );
     }
 
     /**

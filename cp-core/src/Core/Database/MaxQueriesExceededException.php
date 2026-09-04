@@ -5,11 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Database;
 
 /**
- * Manifesto Law 6.1 (Dev-Mode N+1 Exception Guard): tek bir HTTP isteğinde
- * aynı tabloya karşı QueryCounter::MAX_QUERIES_PER_TABLE'ı aşan sayıda
- * sorgu atıldığında fırlatılır. Sadece dev ortamında etkindir (bkz.
- * services.yaml'daki when@dev bloğu) — prod'da bu guard hiç register
- * edilmez, dolayısıyla prod performansına sıfır maliyeti vardır.
+ * Law 6.1: thrown in dev when one HTTP request exceeds the per-table SELECT limit. Not registered in prod.
  */
 final class MaxQueriesExceededException extends \RuntimeException
 {

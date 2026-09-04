@@ -7,11 +7,16 @@ use App\Core\Cron\DependencyInjection\Compiler\CronCommandRegistrationPass;
 use App\Core\Cron\DependencyInjection\Compiler\CronRegistrationPass;
 use App\Core\DependencyInjection\Compiler\TailwindVarDirPass;
 use App\Core\Hook\DependencyInjection\Compiler\HookRegistrationPass;
+use App\Core\Localization\DependencyInjection\Compiler\LocalesPatternPass;
 use App\Core\Menu\DependencyInjection\Compiler\AdminMenuRegistrationPass;
+use App\Core\Module\ModuleEntityMappingResolver;
+use App\Core\Module\DependencyInjection\Compiler\ModuleMigrationsPass;
+use App\Core\Theme\DependencyInjection\Compiler\ThemeTwigPathPass;
 use App\Core\Module\ModuleRegistry;
 use App\Core\Resource\DependencyInjection\Compiler\ResourceRegistrationPass;
 use App\Core\Security\DependencyInjection\Compiler\CapabilityRegistrationPass;
 use App\Core\Settings\DependencyInjection\Compiler\SettingsRegistrationPass;
+use Doctrine\Bundle\DoctrineBundle\DependencyInjection\Compiler\DoctrineOrmMappingsPass;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -151,7 +156,20 @@ class Kernel extends BaseKernel
     {
         parent::build($container);
 
+        $this->registerActiveModuleDoctrineMappings($container);
+
         $container->addCompilerPass(new TailwindVarDirPass());
+
+        // FAZ 3: %cpalius.locales_pattern% (ve kardeş parametreleri) diğer
+        // TÜM pass'lerden ÖNCE üretilmelidir — modül rota tanımları ve
+        // #[Route] requirements'ları bu parametreye referans verir, dolayısıyla
+        // container'da her şeyden önce var olmak zorundadır.
+        $container->addCompilerPass(new LocalesPatternPass(), priority: 100);
+
+        // FAZ 6: theme Twig namespaces and module migration directories are both
+        // compile-time concerns, resolved before the registration passes below.
+        $container->addCompilerPass(new ThemeTwigPathPass(), priority: 90);
+        $container->addCompilerPass(new ModuleMigrationsPass(), priority: 90);
 
         // Sıralama kritik: ResourceRegistrationPass önce çalışıp
         // #[CpResource] taramasını ResourceRegistrationPass::CONTAINER_PARAMETER
@@ -205,6 +223,32 @@ class Kernel extends BaseKernel
     {
         $loader = new YamlFileLoader($container, new FileLocator(\dirname($servicesFile)));
         $loader->load(\basename($servicesFile));
+    }
+
+    /**
+     * Yalnızca active_modules.php'de sağlıklı olan ve Entity/ dizini
+     * taşıyan modüller için Doctrine attribute mapping kaydeder.
+     * Modül devre dışıysa ne mapping ne servis yüklenir.
+     */
+    private function registerActiveModuleDoctrineMappings(ContainerBuilder $container): void
+    {
+        $moduleRegistry = new ModuleRegistry(
+            activeModulesFile: $this->getConfigDir().'/active_modules.php',
+            quarantineLogFile: $this->getProjectDir().'/cp-core/var/log/module_quarantine.log',
+            modulesDir: $this->getProjectDir().'/cp-content/modules',
+        );
+
+        foreach (ModuleEntityMappingResolver::resolveMany($moduleRegistry->getHealthyModuleBundles()) as $mapping) {
+            $container->addCompilerPass(
+                DoctrineOrmMappingsPass::createAttributeMappingDriver(
+                    [$mapping['namespace']],
+                    [$mapping['dir']],
+                    [],
+                    false,
+                    [$mapping['alias'] => $mapping['namespace']],
+                ),
+            );
+        }
     }
 
     private function quarantineModuleAtRuntime(string $bundleClass, Throwable $e): void

@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
-use App\Entity\ForumBan;
+use Modules\Forum\Entity\ForumBan;
 use App\Entity\User;
-use App\Repository\ForumBanRepository;
+use Modules\Forum\Repository\ForumBanRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Forum-özel yasaklama (BAN: forumu göremez) ve susturma (MUTE: okuyabilir,
- * gönderemez). Kullanıcının site geneli hesabını/rollerini ETKİLEMEZ.
+ * Forum-only BAN (cannot see the board) and MUTE (read-only). Does not change site-wide account or roles.
  */
 final class ForumBanService
 {
@@ -51,6 +50,37 @@ final class ForumBanService
     public function isMuted(User $user): bool
     {
         return $this->activeMuteFor($user) !== null;
+    }
+
+    /**
+     * Ban/mute lookup for a member list without per-user queries.
+     *
+     * @param list<int> $userIds
+     *
+     * @return array<int, array{ban: ?ForumBan, mute: ?ForumBan}>
+     */
+    public function activeRestrictionsByUserIds(array $userIds): array
+    {
+        $map = [];
+        foreach ($userIds as $userId) {
+            $map[$userId] = ['ban' => null, 'mute' => null];
+        }
+
+        foreach ($this->banRepository->findActiveForUserIds($userIds) as $ban) {
+            $userId = $ban->getUser()->getId();
+            if ($userId === null || !isset($map[$userId])) {
+                continue;
+            }
+
+            if ($ban->isBan() && $map[$userId]['ban'] === null) {
+                $map[$userId]['ban'] = $ban;
+            }
+            if ($ban->isMute() && $map[$userId]['mute'] === null) {
+                $map[$userId]['mute'] = $ban;
+            }
+        }
+
+        return $map;
     }
 
     public function ban(User $user, int $type, string $reason, ?User $moderator, ?\DateTimeImmutable $expiresAt): ForumBan

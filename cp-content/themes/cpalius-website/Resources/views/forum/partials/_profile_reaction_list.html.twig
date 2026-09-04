@@ -1,0 +1,22 @@
+{# Profil: üyenin beğendiği / beğenmediği mesajlar #}
+<div class="forum-search-posts fade-in">
+    {% for reaction in items %}
+        {% set post = reaction.post %}
+        <div class="forum-search-post">
+            <div class="forum-search-post__header">
+                {% include '@Theme/forum/partials/_avatar.html.twig' with {name: post.posterName, user: post.author} %}
+                <div>
+                    <strong>{{ post.posterName }}</strong>
+                    <span>{{ reaction.createdAt|date('d.m.Y H:i') }}</span>
+                </div>
+                <a href="{{ path('forum_topic', {topicId: post.topic.id, slug: post.topic.slug}) }}#post{{ post.id }}" class="forum-search-post__topic">
+                    <i class="bi {{ reaction_icon }}"></i> {{ post.topic.title }}
+                </a>
+            </div>
+            <div class="forum-search-post__body">{{ post.body|striptags|slice(0, 250) }}{% if post.body|striptags|length > 250 %}...{% endif %}</div>
+        </div>
+    {% else %}
+        <div class="forum-empty"><i class="bi {{ empty_icon }}"></i> {{ empty_key|trans }}</div>
+    {% endfor %}
+</div>
+{% include '@Theme/forum/partials/pagination.html.twig' with {result: items, route: 'forum_profile', routeParams: {username: profileUser.profileSlug, tab: tab}} %}

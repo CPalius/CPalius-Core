@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
+use App\Core\Mail\CpMailerService;
 use App\Core\Settings\SettingsRegistry;
-use App\Entity\Setting;
+use App\Core\Settings\SystemSettingsService;
 use App\Repository\LocaleRepository;
 use App\Repository\SettingRepository;
 use App\Repository\UserRepository;
@@ -41,6 +42,8 @@ final class AACPPlaceholderController
     public function __construct(
         private readonly Environment $twig,
         private readonly SettingsRegistry $settingsRegistry,
+        private readonly SystemSettingsService $systemSettingsService,
+        private readonly CpMailerService $mailerService,
         private readonly SettingRepository $settingRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly CsrfTokenManagerInterface $csrfTokenManager,
@@ -77,22 +80,6 @@ final class AACPPlaceholderController
         return $this->renderPlaceholder('İzolasyon', 'Kullanıcı ve rol bazlı yetki (permission) seçeneklerinin yönetildiği ekran.');
     }
 
-    #[Route('/aacp/themes', name: 'aacp_themes', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.themes', icon: 'heroicons:swatch', panel: 'aacp', priority: 70, capability: 'system.aacp.access', group: 'aacp.group.appearance')]
-    #[IsGranted('system.aacp.access')]
-    public function themes(): Response
-    {
-        return $this->renderPlaceholder('Temalar');
-    }
-
-    #[Route('/aacp/themes/options', name: 'aacp_theme_options', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.theme_options', icon: 'heroicons:adjustments-horizontal', panel: 'aacp', priority: 71, capability: 'system.aacp.access', parent: 'aacp_themes')]
-    #[IsGranted('system.aacp.access')]
-    public function themeOptions(): Response
-    {
-        return $this->renderPlaceholder('Tema Seçenekleri');
-    }
-
     #[Route('/aacp/themes/editor', name: 'aacp_theme_editor', methods: ['GET'])]
     #[CpAdminMenu(label: 'aacp.menu.theme_editor', icon: 'heroicons:code-bracket', panel: 'aacp', priority: 72, capability: 'system.aacp.access', parent: 'aacp_themes')]
     #[IsGranted('system.aacp.access')]
@@ -119,81 +106,98 @@ final class AACPPlaceholderController
     #[Route('/aacp/advanced/management', name: 'aacp_advanced_management', methods: ['GET'])]
     #[CpAdminMenu(label: 'aacp.menu.system_management', icon: 'heroicons:wrench-screwdriver', panel: 'aacp', priority: 80, capability: 'system.aacp.access', group: 'aacp.group.genadset')]
     #[IsGranted('system.aacp.access')]
-    public function advancedManagement(): Response
+    public function advancedManagement(Request $request): Response
     {
-        $settingGroups = [];
-        $currentValues = [];
+        $activeTab = (string) $request->query->get('tab', 'general');
+        if (!array_key_exists($activeTab, $this->systemSettingsService->tabs())) {
+            $activeTab = 'general';
+        }
 
-        foreach ($this->settingsRegistry->all() as $definition) {
-            if ($definition->module !== 'core') {
+        $tabDefinitions = [];
+        $tabValues = [];
+        foreach ($this->systemSettingsService->tabs() as $tabId => $tabMeta) {
+            if (($tabMeta['isLocales'] ?? false) === true) {
                 continue;
             }
-
-            $settingGroups[$definition->group][] = $definition;
-            $currentValues[$definition->key] = $this->settingsRegistry->get($definition->key);
+            $definitions = $this->systemSettingsService->definitionsForTab($tabId, $this->settingsRegistry);
+            $tabDefinitions[$tabId] = $definitions;
+            $tabValues[$tabId] = $this->systemSettingsService->currentValuesForDefinitions($definitions, $this->settingsRegistry);
         }
 
         $html = $this->twig->render('aacp/management.html.twig', [
-            'settingGroups' => $settingGroups,
-            'currentValues' => $currentValues,
+            'tabs' => $this->systemSettingsService->tabs(),
+            'activeTab' => $activeTab,
+            'tabDefinitions' => $tabDefinitions,
+            'tabValues' => $tabValues,
             'locales' => $this->localeRepository->findBy([], ['sortOrder' => 'ASC']),
-            'csrf_token' => $this->csrfTokenManager->getToken('aacp_core_settings')->getValue(),
+            'csrf_token' => $this->csrfTokenManager->getToken(SystemSettingsService::CSRF_TOKEN_ID)->getValue(),
             'locales_csrf_token' => $this->csrfTokenManager->getToken('aacp_locales')->getValue(),
+            'mailConfigured' => $this->mailerService->canSend(),
         ]);
 
         return new Response($html);
     }
 
-    /**
-     * AACPController::updateSettings() ile AYNI mantık, ama sadece
-     * module==='core' ayarlarına daraltılmış — "Genel Ayarlar" bölümünün
-     * kendi POST ucu (CSRF token id'si de ayrı: 'aacp_core_settings').
-     */
     #[Route('/aacp/advanced/management/update', name: 'aacp_advanced_management_update', methods: ['POST'])]
     #[IsGranted('system.aacp.access')]
     public function updateCoreSettings(Request $request): RedirectResponse
     {
         $submittedToken = (string) $request->request->get('_token');
-        if (!$this->csrfTokenManager->isTokenValid(new CsrfToken('aacp_core_settings', $submittedToken))) {
+        if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(SystemSettingsService::CSRF_TOKEN_ID, $submittedToken))) {
             throw new BadRequestHttpException($this->translator->trans('aacp.system.invalid_csrf'));
         }
 
-        /** @var array<string, string> $submitted */
-        $submitted = $request->request->all('settings');
-
-        $coreDefinitions = array_values(array_filter(
-            $this->settingsRegistry->all(),
-            static fn ($definition) => $definition->module === 'core',
-        ));
-
-        $keys = array_map(static fn ($definition) => $definition->key, $coreDefinitions);
-        $existing = $this->settingRepository->findIndexedByKeys($keys);
-
-        foreach ($coreDefinitions as $definition) {
-            $raw = $submitted[$definition->key] ?? null;
-
-            $value = match ($definition->type) {
-                'checkbox' => $raw !== null ? '1' : '0',
-                default => $raw !== null ? trim($raw) : null,
-            };
-
-            if ($value === null) {
-                continue;
-            }
-
-            $setting = $existing[$definition->key] ?? null;
-            if (!$setting instanceof Setting) {
-                $setting = new Setting($definition->key, $definition->module);
-                $this->entityManager->persist($setting);
-            }
-
-            $setting->setSettingValue($value);
+        $tab = (string) $request->request->get('_tab', 'general');
+        if (!array_key_exists($tab, $this->systemSettingsService->tabs())) {
+            $tab = 'general';
         }
 
-        $this->entityManager->flush();
-        $this->settingsRegistry->clearCache();
+        /** @var array<string, string|null> $submitted */
+        $submitted = $request->request->all('settings');
 
-        return new RedirectResponse('/aacp/advanced/management');
+        $invalidKey = $this->systemSettingsService->updateTab(
+            $tab,
+            $submitted,
+            $this->settingsRegistry,
+            $this->settingRepository,
+            $this->entityManager,
+        );
+
+        $redirect = '/aacp/advanced/management?tab='.$tab;
+        if ($invalidKey !== null) {
+            return new RedirectResponse($redirect.'&invalid_setting='.urlencode($invalidKey));
+        }
+
+        return new RedirectResponse($redirect.'&saved=1');
+    }
+
+    #[Route('/aacp/advanced/management/test-email', name: 'aacp_advanced_management_test_email', methods: ['POST'])]
+    #[IsGranted('system.aacp.access')]
+    public function testEmail(Request $request): RedirectResponse
+    {
+        $submittedToken = (string) $request->request->get('_token');
+        if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(SystemSettingsService::CSRF_TOKEN_ID, $submittedToken))) {
+            throw new BadRequestHttpException($this->translator->trans('aacp.system.invalid_csrf'));
+        }
+
+        $to = trim((string) $request->request->get('test_email'));
+        $tab = 'email';
+
+        if ($to === '' || !filter_var($to, \FILTER_VALIDATE_EMAIL)) {
+            return new RedirectResponse('/aacp/advanced/management?tab='.$tab.'&mail_error=invalid');
+        }
+
+        if (!$this->mailerService->canSend()) {
+            return new RedirectResponse('/aacp/advanced/management?tab='.$tab.'&mail_error=not_configured');
+        }
+
+        try {
+            $this->mailerService->sendTestEmail($to);
+        } catch (\Throwable) {
+            return new RedirectResponse('/aacp/advanced/management?tab='.$tab.'&mail_error=send_failed');
+        }
+
+        return new RedirectResponse('/aacp/advanced/management?tab='.$tab.'&mail_sent=1');
     }
 
     private function renderPlaceholder(string $title, ?string $description = null): Response

@@ -7,6 +7,7 @@
 {% endblock %}
 
 {% block body %}
+    <h2 class="text-fs-lg font-semibold mb-3">{{ 'studio.forum.moderation.reports.header'|trans({}, 'forums') }}</h2>
     <twig:studio:card padded="{{ false }}">
         <twig:studio:table headers="{{ [
             'studio.forum.moderation.column.post'|trans,
@@ -55,4 +56,101 @@
             </twig:block>
         </twig:studio:table>
     </twig:studio:card>
+
+    <div class="mt-8">
+        <h2 class="text-fs-lg font-semibold mb-3">{{ 'studio.forum.moderation.trash.header'|trans({}, 'forums') }}</h2>
+        <form method="post" action="{{ path('admin_forum_moderation_bulk') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_moderation') }}">
+            <twig:studio:card padded="{{ false }}">
+                <twig:studio:table headers="{{ [
+                    '',
+                    'studio.forum.topics.index.column.topic'|trans,
+                    'studio.forum.topics.index.column.section'|trans,
+                    'studio.forum.topics.index.column.status'|trans,
+                ] }}" empty="{{ deletedTopics is empty }}" emptyText="{{ 'studio.forum.moderation.deleted.empty'|trans }}">
+                    <twig:block name="rows">
+                        {% for topic in deletedTopics %}
+                            <tr>
+                                <td><input type="checkbox" name="topic_ids[]" value="{{ topic.id }}"></td>
+                                <td>
+                                    <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug, _locale: topic.section.locale}) }}" class="font-medium text-neutral-900 hover:text-primary-600" target="_blank">{{ topic.title }}</a>
+                                </td>
+                                <td>{{ topic.section.title }}</td>
+                                <td class="text-fs-xs">{{ 'studio.forum.moderation.deleted.badge'|trans }}</td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:studio:table>
+            </twig:studio:card>
+
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+                <select name="bulk_action" class="form-select" style="max-width: 220px;">
+                    <option value="restore">{{ 'studio.forum.moderation.bulk.restore'|trans }}</option>
+                    <option value="hard_delete">{{ 'studio.forum.moderation.bulk.hard_delete'|trans({}, 'forums') }}</option>
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary">{{ 'studio.forum.moderation.bulk.apply'|trans }}</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="mt-8">
+        <h2 class="text-fs-lg font-semibold mb-3">{{ 'studio.forum.moderation.bulk.header'|trans }}</h2>
+        <form method="post" action="{{ path('admin_forum_moderation_bulk') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_moderation') }}">
+            <twig:studio:card padded="{{ false }}">
+                <twig:studio:table headers="{{ [
+                    '',
+                    'studio.forum.topics.index.column.topic'|trans,
+                    'studio.forum.topics.index.column.section'|trans,
+                    'studio.forum.topics.index.column.status'|trans,
+                ] }}" empty="{{ bulkTopics is empty }}" emptyText="{{ 'studio.forum.moderation.bulk.empty'|trans({}, 'forums') }}">
+                    <twig:block name="rows">
+                        {% for topic in bulkTopics %}
+                            <tr>
+                                <td><input type="checkbox" name="topic_ids[]" value="{{ topic.id }}"></td>
+                                <td>
+                                    <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug, _locale: topic.section.locale}) }}" class="font-medium text-neutral-900 hover:text-primary-600" target="_blank">{{ topic.title }}</a>
+                                    <div class="text-fs-xs text-neutral-500">#{{ topic.id }}</div>
+                                </td>
+                                <td>{{ topic.section.title }}</td>
+                                <td class="text-fs-xs">
+                                    {% if topic.sticky %}{{ 'studio.forum.moderation.badge.sticky'|trans({}, 'forums') }} · {% endif %}
+                                    {% if topic.locked %}{{ 'studio.forum.moderation.badge.locked'|trans({}, 'forums') }}{% else %}{{ 'studio.forum.moderation.badge.open'|trans({}, 'forums') }}{% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:studio:table>
+            </twig:studio:card>
+
+            <div class="mt-4 flex flex-wrap items-end gap-2">
+                <div>
+                    <label class="form-label">{{ 'studio.forum.moderation.bulk.action_label'|trans({}, 'forums') }}</label>
+                    <select name="bulk_action" class="form-select" style="max-width: 220px;">
+                        <option value="lock">{{ 'studio.forum.moderation.bulk.lock'|trans }}</option>
+                        <option value="unlock">{{ 'studio.forum.moderation.bulk.unlock'|trans }}</option>
+                        <option value="sticky">{{ 'studio.forum.moderation.bulk.sticky'|trans }}</option>
+                        <option value="unsticky">{{ 'studio.forum.moderation.bulk.unsticky'|trans }}</option>
+                        <option value="move">{{ 'studio.forum.moderation.bulk.move'|trans }}</option>
+                        <option value="merge">{{ 'studio.forum.moderation.bulk.merge'|trans({}, 'forums') }}</option>
+                        <option value="delete">{{ 'studio.forum.moderation.bulk.delete'|trans }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.moderation.bulk.target_forum'|trans({}, 'forums') }}</label>
+                    <select name="target_section_id" class="form-select" style="max-width: 260px;">
+                        {% for target in moveTargets %}
+                            <option value="{{ target.id }}">{{ target.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.moderation.bulk.merge_target'|trans({}, 'forums') }}</label>
+                    <input type="number" name="merge_target_topic_id" class="form-control" style="max-width: 160px;" placeholder="#ID" min="1">
+                </div>
+                <label class="text-fs-sm pb-2"><input type="checkbox" name="keep_redirect" value="1"> {{ 'studio.forum.moderation.bulk.keep_redirect'|trans }}</label>
+                <button type="submit" class="btn btn-sm btn-primary mb-0.5">{{ 'studio.forum.moderation.bulk.apply'|trans }}</button>
+            </div>
+        </form>
+    </div>
 {% endblock %}

@@ -1,4 +1,4 @@
-{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+{% extends '@Theme/forum/layout.html.twig' %}
 
 {% block title %}{{ 'forum.search.title_prefix'|trans }}: {{ query }} — {{ 'forum.breadcrumb.home_title'|trans }}{% endblock %}
 {% block meta_description %}{{ 'forum.search.meta_description'|trans({'query': query}) }}{% endblock %}
@@ -73,7 +73,7 @@
                         </div>
                         <div class="forum-topic-activity">
                             {% if topic.lastPosterName %}
-                                {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: topic.lastPosterName} %}
+                                {% include '@Theme/forum/partials/_avatar.html.twig' with {name: topic.lastPosterName} %}
                                 <div class="forum-topic__activity-text">
                                     <span>{{ topic.lastPosterName }}</span>
                                     <time>{{ topic.updatedAt|date('d.m.Y H:i') }}</time>
@@ -93,7 +93,7 @@
                 {% for post in postResults %}
                     <div class="forum-search-post">
                         <div class="forum-search-post__header">
-                            {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: post.posterName} %}
+                            {% include '@Theme/forum/partials/_avatar.html.twig' with {name: post.posterName} %}
                             <div>
                                 <strong>{{ post.posterName }}</strong>
                                 <span>{{ post.createdAt|date('d.m.Y H:i') }}</span>

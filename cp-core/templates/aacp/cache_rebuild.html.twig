@@ -3,8 +3,7 @@
 {% block header %}{{ 'aacp.cache_rebuild.header'|trans }}{% endblock %}
 
 {% block javascripts %}
-    {{ parent() }}
-    {{ importmap('aacp-cache-rebuild') }}
+    {{ importmap(['app', 'aacp-cache-rebuild']) }}
 {% endblock %}
 
 {% block body %}

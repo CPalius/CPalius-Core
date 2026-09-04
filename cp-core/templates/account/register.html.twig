@@ -24,38 +24,76 @@
 
 <div class="forum-form fade-in" style="max-width: 460px; margin: 0 auto;">
     <form method="post">
-        <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 var(--sp-sm);">
-            <div class="forum-field">
-                <label for="reg-first-name">{{ 'account.register.first_name_label'|trans }}</label>
-                <input type="text" id="reg-first-name" name="first_name" value="{{ formValues.firstName }}" maxlength="100">
+        {% if registrationConfig.firstNameMode != '0' or registrationConfig.lastNameMode != '0' %}
+            <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 var(--sp-sm);">
+                {% if registrationConfig.firstNameMode != '0' %}
+                    <div class="forum-field">
+                        <label for="reg-first-name">{{ 'account.register.first_name_label'|trans }}{% if registrationConfig.firstNameMode == '2' %} *{% endif %}</label>
+                        <input type="text" id="reg-first-name" name="first_name" value="{{ formValues.firstName }}" maxlength="100" {% if registrationConfig.firstNameMode == '2' %}required{% endif %}>
+                    </div>
+                {% endif %}
+                {% if registrationConfig.lastNameMode != '0' %}
+                    <div class="forum-field">
+                        <label for="reg-last-name">{{ 'account.register.last_name_label'|trans }}{% if registrationConfig.lastNameMode == '2' %} *{% endif %}</label>
+                        <input type="text" id="reg-last-name" name="last_name" value="{{ formValues.lastName }}" maxlength="100" {% if registrationConfig.lastNameMode == '2' %}required{% endif %}>
+                    </div>
+                {% endif %}
             </div>
-            <div class="forum-field">
-                <label for="reg-last-name">{{ 'account.register.last_name_label'|trans }}</label>
-                <input type="text" id="reg-last-name" name="last_name" value="{{ formValues.lastName }}" maxlength="100">
-            </div>
-        </div>
+        {% endif %}
 
         <div class="forum-field">
-            <label for="reg-email">{{ 'account.register.email_label'|trans }}</label>
+            <label for="reg-email">{{ 'account.register.email_label'|trans }} *</label>
             <input type="email" id="reg-email" name="email" value="{{ formValues.email }}" required autofocus autocomplete="email">
         </div>
 
         <div class="forum-field">
-            <label for="reg-username">{{ 'account.register.username_label'|trans }} <span style="text-transform:none; font-weight:400;">{{ 'account.register.optional'|trans }}</span></label>
-            <input type="text" id="reg-username" name="username" value="{{ formValues.username }}" maxlength="180" autocomplete="username">
+            <label for="reg-username">
+                {{ 'account.register.username_label'|trans }}
+                {% if not registrationConfig.usernameRequired %}
+                    <span style="text-transform:none; font-weight:400;">{{ 'account.register.optional'|trans }}</span>
+                {% else %} *{% endif %}
+            </label>
+            <input type="text" id="reg-username" name="username" value="{{ formValues.username }}" maxlength="50" pattern="[a-zA-Z0-9_]{3,50}" autocomplete="username" {% if registrationConfig.usernameRequired %}required{% endif %}>
+            <p class="forum-field-hint">{{ 'account.register.username_hint'|trans }}</p>
+        </div>
+
+        <div class="forum-field">
+            <label for="reg-locale">{{ 'account.register.locale_label'|trans }}</label>
+            <select id="reg-locale" name="locale">
+                <option value="tr" {{ formValues.locale == 'tr' ? 'selected' : '' }}>{{ 'account.register.locale_tr'|trans }}</option>
+                <option value="en" {{ formValues.locale == 'en' ? 'selected' : '' }}>{{ 'account.register.locale_en'|trans }}</option>
+            </select>
         </div>
 
         <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 var(--sp-sm);">
             <div class="forum-field">
-                <label for="reg-password">{{ 'account.register.password_label'|trans }}</label>
+                <label for="reg-password">{{ 'account.register.password_label'|trans }} *</label>
                 <input type="password" id="reg-password" name="password" required minlength="8" autocomplete="new-password">
             </div>
             <div class="forum-field">
-                <label for="reg-password-confirm">{{ 'account.register.password_confirm_label'|trans }}</label>
+                <label for="reg-password-confirm">{{ 'account.register.password_confirm_label'|trans }} *</label>
                 <input type="password" id="reg-password-confirm" name="password_confirm" required minlength="8" autocomplete="new-password">
             </div>
         </div>
         <p class="forum-field-hint" style="margin-top:-8px;">{{ 'account.register.password_hint'|trans }}</p>
+
+        {% if registrationConfig.termsRequired %}
+            <div class="forum-field">
+                <label class="forum-checkbox">
+                    <input type="checkbox" name="terms" value="1" required>
+                    {{ 'account.register.terms_label'|trans }}
+                </label>
+            </div>
+        {% endif %}
+
+        {% include 'account/partials/_captcha_widget.html.twig' with {
+            captchaEnabled: captchaEnabled|default(false),
+            captchaConfig: captchaConfig|default({provider: 'none', site_key: '', recaptcha_version: 'v2'}),
+        } %}
+
+        {% if registrationConfig.emailVerification or registrationConfig.adminApproval %}
+            <p class="forum-field-hint">{{ 'account.register.notice_after_submit'|trans }}</p>
+        {% endif %}
 
         <div class="forum-form__actions">
             <input type="hidden" name="_token" value="{{ csrf_token('account_register') }}">
@@ -67,4 +105,12 @@
         {{ 'account.register.have_account'|trans }} <a href="{{ path('account_login') }}" style="color: var(--cp-accent); text-decoration: underline;">{{ 'account.register.login_link'|trans }}</a>
     </p>
 </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {% include 'account/partials/_captcha_scripts.html.twig' with {
+        captchaEnabled: captchaEnabled|default(false),
+        captchaConfig: captchaConfig|default({provider: 'none', site_key: '', recaptcha_version: 'v2'}),
+    } %}
 {% endblock %}

@@ -9,25 +9,8 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Query\Filter\SQLFilter;
 
 /**
- * Manifesto Law 5.1 (Tenant Isolation by Default): #[CpResource(multiTenant:
- * true)] ile işaretlenmiş HER entity'nin sorgularına, geliştiricinin bunu
- * unutma ihtimali SIFIRA inecek şekilde otomatik "AND tenant_id = :tenant_id"
- * kısıtı enjekte eder.
- *
- * Doctrine SQLFilter'lar container'dan DEĞİL, doğrudan Doctrine tarafından
- * `new $filterClass($em)` ile instantiate edilir (bkz. final __construct
- * üst sınıfta) — bu yüzden ResourceRegistry servisini buraya autowire
- * EDEMEYİZ. Bunun yerine $targetEntity->getReflectionClass() üzerinden
- * #[CpResource] attribute'unu doğrudan okuyoruz; bu, ResourceRegistry'nin
- * derleme-zamanı taramasıyla aynı kaynağı (attribute'un kendisi) okur,
- * sadece runtime'da tekrar reflection yapar.
- *
- * Filtre TenantFilterActivationListener tarafından enable edilip
- * "tenant_id" parametresi setParameter() ile doldurulmadığı sürece
- * (ör. tenant çözülemeyen bir kernel.request anında) Doctrine bu filtreyi
- * hiç çağırmaz; parametre eksikse addFilterConstraint çağrılmadan önce
- * Doctrine zaten hata verir — yani "parametre unutuldu, filtre sessizce
- * devre dışı kaldı" durumu OLUŞAMAZ.
+ * Law 5.1: inject AND tenant_id = :tenant_id on #[CpResource(multiTenant: true)] queries.
+ * SQLFilter is not a container service; #[CpResource] is read via reflection. Disabled until enabled + parameterized.
  */
 final class TenantFilter extends SQLFilter
 {

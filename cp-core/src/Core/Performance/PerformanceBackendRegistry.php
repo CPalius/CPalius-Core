@@ -12,34 +12,19 @@ use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * PerformanceController'ın tek servis kaynağı: dört backend'in config
- * kaydını, bağlantı testini ve aktivasyon gating'ini tek bir yerde
- * orkestre eder (CacheRebuildManager'ın "controller ince, iş mantığı
- * serviste" ilkesiyle aynı).
- *
- * Gating KURALI (bu sınıfın var oluş sebebi): enable() bir backend'i
- * yalnızca en son kaydedilmiş PerformanceBackendStatus::isLastTestSuccess()
- * true İSE etkinleştirebilir. Bu kontrol İSTEMCİ TARAFI değil, sunucu
- * tarafıdır — PerformanceController bu DomainException'ı yakalayıp 422
- * döner, böylece "sunucuda Redis yoksa aktif edilemez" kuralı sadece
- * UI'da buton gizleme ile değil, gerçek bir sunucu tarafı zorunlulukla
- * sağlanır.
- *
- * Checker'lar bir #[TaggedIterator] İLE DEĞİL, 4 somut ve adı bilinen
- * servis olarak doğrudan enjekte edilir — CacheRebuildManager'ın
- * "cache.app" için yaptığı tercihle aynı gerekçe: set kapalı/sabit (sadece
- * bu 4 backend var, bir modülün yeni bir tane eklemesi beklenmiyor), bu
- * yüzden açık ve statik analiz dostu somut bağımlılık, soyut bir
- * tagged_iterator'dan daha basittir (YAGNI).
+ * Orchestrates performance-backend config, live connection tests, and enable gating.
+ * enable() is allowed only when the last recorded test succeeded.
  */
 final class PerformanceBackendRegistry
 {
     private const CONFIG_KEYS = [
         'redis' => ['host', 'port', 'password', 'timeout'],
         'memcached' => ['host', 'port', 'timeout'],
-        'varnish' => ['backend_url', 'timeout'],
+        'varnish' => ['backend_url', 'port', 'ttl', 'excludes', 'timeout'],
         'pagespeed' => ['check_url', 'timeout'],
     ];
+
+    private const URL_FIELDS = ['backend_url', 'check_url'];
 
     /** @var list<PerformanceBackendCheckerInterface> */
     private readonly array $checkers;
@@ -94,23 +79,30 @@ final class PerformanceBackendRegistry
     }
 
     /**
-     * Gönderilen config alanlarını kaydeder, ardından ilgili checker ile
-     * bağlantıyı test eder ve sonucu PerformanceBackendStatus'a yazar.
-     * "Test = kaydet + dene" tek bir adımdır (bkz. plan) — ayrı bir "kaydet"
-     * butonu yoktur.
+     * Persist submitted fields, then probe with that payload (no separate Save button).
+     * SettingsRegistry is cleared so the test never re-reads a stale cache.app snapshot.
      *
      * @param array<string, string> $submittedConfig
      */
     public function saveConfigAndTest(string $backendId, array $submittedConfig): PerformanceCheckResult
     {
         if (!$this->isKnownBackend($backendId)) {
-            throw new \InvalidArgumentException(\sprintf('Bilinmeyen performans backend\'i: %s', $backendId));
+            throw new \InvalidArgumentException(\sprintf('Unknown performance backend: %s', $backendId));
         }
+
+        $merged = $this->getConfig($backendId);
 
         foreach (self::CONFIG_KEYS[$backendId] as $field) {
             if (!\array_key_exists($field, $submittedConfig)) {
                 continue;
             }
+
+            $value = \trim((string) $submittedConfig[$field]);
+            if (\in_array($field, self::URL_FIELDS, true)) {
+                $value = HttpHeaderProbe::normalizeUrl($value);
+            }
+
+            $merged[$field] = $value;
 
             $key = 'performance.'.$backendId.'.'.$field;
             $setting = $this->settingRepository->findOneBy(['settingKey' => $key]);
@@ -119,13 +111,14 @@ final class PerformanceBackendRegistry
                 $this->entityManager->persist($setting);
             }
 
-            $setting->setSettingValue(\trim((string) $submittedConfig[$field]));
+            $setting->setSettingValue($value);
         }
 
         $this->entityManager->flush();
+        $this->settingsRegistry->clearCache();
 
         $checker = $this->findChecker($backendId);
-        $result = $checker->testConnection($this->getConfig($backendId));
+        $result = $checker->testConnection($merged);
 
         $status = $this->statusRepository->findOneByBackendId($backendId);
         if (!$status instanceof PerformanceBackendStatus) {
@@ -140,13 +133,7 @@ final class PerformanceBackendRegistry
     }
 
     /**
-     * Yalnızca en son test BAŞARILIYSA etkinleştirir. Sunucuda backend
-     * yoksa veya bağlantı testi hiç yapılmadıysa DomainException fırlatır.
-     *
-     * İstisna mesajı BİLİNÇLİ OLARAK hazır bir metin değil, bir çeviri
-     * anahtarıdır ('aacp.performance.enable_requires_success_test') —
-     * PerformanceController bunu yakalayıp TranslatorInterface ile
-     * isteğin diline göre çevirir (bkz. PerformanceController::enable()).
+     * Enable only after a successful test. Throws a translation key, not a display string.
      */
     public function enable(string $backendId): void
     {
@@ -179,6 +166,6 @@ final class PerformanceBackendRegistry
             }
         }
 
-        throw new \InvalidArgumentException(\sprintf('Bilinmeyen performans backend\'i: %s', $backendId));
+        throw new \InvalidArgumentException(\sprintf('Unknown performance backend: %s', $backendId));
     }
 }

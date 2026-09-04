@@ -1,0 +1,51 @@
+{#
+    <twig:studio:translation_tabs
+        tabs="{{ translationTabs }}"
+        editRoute="admin_categories_edit"
+        createRoute="admin_categories_create"
+        sourceId="{{ category.id }}" />
+
+    <twig:cp:translation_tabs>'ın Studio (aydınlık tema) karşılığı.
+
+    cp/card.html.twig ↔ studio/card.html.twig ikilisiyle AYNI gerekçeyle
+    ayrı bir dosyadır: AACP'nin koyu paleti Studio'ya sızmamalı, Studio'nun
+    tema değişiklikleri de AACP izolasyonuna dokunmamalıdır. Davranış ve
+    prop sözleşmesi birebir aynıdır.
+
+    Props: bkz. components/cp/translation_tabs.html.twig
+#}
+{% props tabs = [], editRoute = null, createRoute = null, sourceId = null, extraParams = {} %}
+
+{% if tabs|length > 1 %}
+    <div {{ attributes.defaults({class: 'flex flex-wrap items-center gap-1 border-b border-neutral-200 pb-2'}) }}>
+        <span class="me-2 text-fs-xs uppercase tracking-wider text-neutral-400">
+            {{ 'cp.translation_tabs.label'|trans }}
+        </span>
+
+        {% for tab in tabs %}
+            {% if tab.isCurrent %}
+                <span class="rounded-t-md border-b-2 border-primary-600 px-3 py-1.5 text-fs-sm font-medium text-primary-700">
+                    {{ tab.nativeName }}
+                    <span class="font-mono text-fs-xs uppercase text-neutral-400">{{ tab.code }}</span>
+                </span>
+            {% elseif tab.exists and editRoute %}
+                <a href="{{ path(editRoute, extraParams|merge({id: tab.id})) }}"
+                   title="{{ tab.label ?? tab.nativeName }}"
+                   class="rounded-t-md border-b-2 border-transparent px-3 py-1.5 text-fs-sm font-medium text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900">
+                    {{ tab.nativeName }}
+                    <span class="font-mono text-fs-xs uppercase text-neutral-400">{{ tab.code }}</span>
+                </a>
+            {% elseif createRoute and sourceId is not null %}
+                <a href="{{ path(createRoute, extraParams|merge({locale: tab.code, translation_of: sourceId})) }}"
+                   title="{{ 'cp.translation_tabs.add_hint'|trans({locale: tab.nativeName}) }}"
+                   class="rounded-t-md border-b-2 border-dashed border-neutral-300 px-3 py-1.5 text-fs-sm font-medium text-neutral-400 hover:border-primary-500 hover:text-primary-600">
+                    + {{ tab.nativeName }}
+                </a>
+            {% else %}
+                <span class="rounded-t-md border-b-2 border-transparent px-3 py-1.5 text-fs-sm text-neutral-300">
+                    {{ tab.nativeName }}
+                </span>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endif %}

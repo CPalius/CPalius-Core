@@ -24,3 +24,46 @@ framework:
             cache.fragments:
                 adapter: cache.adapter.memcached
                 provider: '%env(MEMCACHED_DSN)%'
+
+# Laragon/local: Redis & Memcached çoğu kurulumda KAPALI. Her istekte
+# default TCP timeout birikip 30–60 sn "donma" yaratır. Dev'de dosya
+# tabanlı adapter kullan; prod/canlı Redis URL'ini korur.
+when@dev:
+    framework:
+        cache:
+            app: cache.adapter.filesystem
+            system: cache.adapter.system
+            pools:
+                doctrine.result_cache_pool:
+                    adapter: cache.adapter.filesystem
+                doctrine.system_cache_pool:
+                    adapter: cache.adapter.filesystem
+                cache.fragments:
+                    adapter: cache.adapter.filesystem
+
+# FAZ 2: test ortamı, dev ile AYNI gerekçeyle harici servislerden tamamen
+# koparılır — ama burada gerekçe rahatlık değil, DOĞRULUK.
+#
+# Bu blok olmadan test ortamı kök yapılandırmayı miras alır ve Redis
+# (cache.adapter.redis) ile Memcached (cache.fragments) bağlantısı
+# denemeye çalışır. CI koşucusunda bu servisler YOKTUR: sonuç, gerçek bir
+# regresyonu değil yalnızca ortamın eksikliğini raporlayan, üstelik TCP
+# zaman aşımı süresince asılı kalan bir test paketi olurdu.
+#
+# "array" adapter, "filesystem"e TERCİH EDİLİR: her test kendi süreç
+# belleğinde tamamen boş bir önbellekle başlar, testler arasında disk
+# üzerinden sızıntı olmaz ve temizlik gerektirmez. Testin ölçtüğü şey
+# önbellek davranışının kendisiyse (ileride) o test kendi pool'unu açıkça
+# kurmalıdır.
+when@test:
+    framework:
+        cache:
+            app: cache.adapter.array
+            system: cache.adapter.array
+            pools:
+                doctrine.result_cache_pool:
+                    adapter: cache.adapter.array
+                doctrine.system_cache_pool:
+                    adapter: cache.adapter.array
+                cache.fragments:
+                    adapter: cache.adapter.array

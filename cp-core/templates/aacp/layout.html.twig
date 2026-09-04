@@ -1,22 +1,18 @@
 <!DOCTYPE html>
-<html lang="tr" class="h-full">
+<html lang="{{ app.request.locale }}" class="h-full">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{% block title %}{{ 'aacp.layout.title.default'|trans }}{% endblock %}</title>
+        <meta name="robots" content="noindex, nofollow">
 
-        {#
-            AACP kabuğu bilinçli olarak modüllerden ve temalardan izole
-            tutulur: burada SADECE çekirdek AssetMapper girişi (Tailwind
-            derlemesi dahil app.css) kullanılır. Bir modül veya temanın
-            asset'i bozulsa bile bu ekran ayakta kalmalıdır.
-        #}
+        {# AACP shell uses only the app entrypoint; extra importmap() calls break the browser. #}
         {% block stylesheets %}{% endblock %}
         {% block javascripts %}
             {{ importmap('app') }}
         {% endblock %}
     </head>
-    <body class="h-full bg-dark-1 text-slate-100 antialiased text-fs-base font-sans">
+    <body class="aacp-shell h-full bg-dark-1 text-slate-100 antialiased text-fs-base font-sans">
         <div class="flex h-full">
             <div data-sidebar-overlay class="sidebar-overlay"></div>
 
@@ -42,17 +38,18 @@
                                 {% set currentGroup = item.group %}
                             {% endif %}
 
-                            {% set itemActive = app.request.attributes.get('_route') starts with item.routePrefix %}
+                            {% set currentRoute = app.request.attributes.get('_route') %}
+                            {% set itemActive = currentRoute == item.routeName or (item.routePrefix != item.routeName and currentRoute starts with item.routePrefix) %}
                             {% set childActive = false %}
                             {% for child in item.children %}
-                                {% if app.request.attributes.get('_route') starts with child.routePrefix %}
+                                {% if currentRoute == child.routeName or (child.routePrefix != child.routeName and currentRoute starts with child.routePrefix) %}
                                     {% set childActive = true %}
                                 {% endif %}
                             {% endfor %}
 
                             <li{% if item.children is not empty %} class="dropdown{{ (itemActive or childActive) ? ' open' : '' }}"{% endif %}>
                                 <a href="{{ path(item.routeName) }}"
-                                   class="{{ (itemActive or childActive) ? 'active-page' : '!text-slate-400 hover:!bg-white/5 hover:!text-slate-200' }}{{ item.children is not empty ? ' has-submenu-trigger' : '' }}">
+                                   class="{{ itemActive ? 'active-page' : '!text-slate-400 hover:!bg-white/5 hover:!text-slate-200' }}{{ item.children is not empty ? ' has-submenu-trigger' : '' }}">
                                     <twig:ux:icon name="{{ item.icon }}" class="menu-icon shrink-0" />
                                     <span>{{ item.label|trans }}</span>
                                     {% if item.children is not empty %}
@@ -65,9 +62,10 @@
                                 {% if item.children is not empty %}
                                     <ul class="sidebar-submenu{{ (itemActive or childActive) ? ' open' : '' }}">
                                         {% for child in item.children %}
-                                            <li{% if app.request.attributes.get('_route') starts with child.routePrefix %} class="active-page"{% endif %}>
+                                            {% set isChildActive = currentRoute == child.routeName or (child.routePrefix != child.routeName and currentRoute starts with child.routePrefix) %}
+                                            <li{% if isChildActive %} class="active-page"{% endif %}>
                                                 <a href="{{ path(child.routeName) }}"
-                                                   class="{{ app.request.attributes.get('_route') starts with child.routePrefix ? '!bg-primary-500/10 !text-primary-300' : '!text-slate-500 hover:!text-slate-300' }}">
+                                                   class="{{ isChildActive ? '!bg-primary-500/10 !text-primary-300' : '!text-slate-500 hover:!text-slate-300' }}">
                                                     <twig:ux:icon name="{{ child.icon }}" class="h-3.5 w-3.5 shrink-0" />
                                                     <span>{{ child.label|trans }}</span>
                                                 </a>
@@ -114,7 +112,9 @@
                 </div>
 
                 <div class="p-sp-md">
-                    {% block body %}{% endblock %}
+                    <div class="aacp-main-content">
+                        {% block body %}{% endblock %}
+                    </div>
                 </div>
             </main>
         </div>

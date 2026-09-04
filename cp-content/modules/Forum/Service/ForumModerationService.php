@@ -4,19 +4,21 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
-use App\Entity\ForumPost;
-use App\Entity\ForumPostReport;
+use Modules\Forum\Entity\ForumPost;
+use Modules\Forum\Entity\ForumPostReport;
+use Modules\Forum\Entity\ForumSection;
+use Modules\Forum\Entity\ForumTopic;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Mesaj raporlama / AACP moderasyon kuyruğu — Cotonti forums modülünde
- * doğrudan karşılığı olmayan, bu projeye özgü bir moderasyon eklentisi.
+ * Post reports and bulk topic moderation.
  */
 final class ForumModerationService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        private readonly ForumTopicService $topicService,
     ) {
     }
 
@@ -45,5 +47,93 @@ final class ForumModerationService
     {
         $report->dismiss($moderator);
         $this->entityManager->flush();
+    }
+
+    /**
+     * @param list<ForumTopic> $topics
+     */
+    public function bulkLock(array $topics, bool $locked): void
+    {
+        foreach ($topics as $topic) {
+            $topic->setLocked($locked);
+            $topic->touch();
+        }
+
+        $this->entityManager->flush();
+    }
+
+    /**
+     * @param list<ForumTopic> $topics
+     */
+    public function bulkSticky(array $topics, bool $sticky): void
+    {
+        foreach ($topics as $topic) {
+            $topic->setSticky($sticky);
+            $topic->touch();
+        }
+
+        $this->entityManager->flush();
+    }
+
+    /**
+     * @param list<ForumTopic> $topics
+     */
+    public function bulkMove(array $topics, ForumSection $target, bool $keepRedirect = false): void
+    {
+        foreach ($topics as $topic) {
+            if ($topic->getSection()->getId() === $target->getId()) {
+                continue;
+            }
+
+            $this->topicService->moveTopic($topic, $target, $keepRedirect);
+        }
+    }
+
+    /**
+     * @param list<ForumTopic> $topics
+     */
+    public function bulkSoftDelete(array $topics): void
+    {
+        foreach ($topics as $topic) {
+            if (!$topic->isDeleted()) {
+                $this->topicService->deleteTopic($topic, false);
+            }
+        }
+    }
+
+    /**
+     * @param list<ForumTopic> $topics
+     */
+    public function bulkRestore(array $topics): void
+    {
+        foreach ($topics as $topic) {
+            if ($topic->isDeleted()) {
+                $this->topicService->restoreTopic($topic);
+            }
+        }
+    }
+
+    /**
+     * @param list<ForumTopic> $topics
+     */
+    public function bulkHardDelete(array $topics): void
+    {
+        foreach ($topics as $topic) {
+            $this->topicService->deleteTopic($topic, true);
+        }
+    }
+
+    /**
+     * @param list<ForumTopic> $sources
+     */
+    public function mergeInto(array $sources, ForumTopic $target): void
+    {
+        foreach ($sources as $source) {
+            if ($source->getId() === $target->getId()) {
+                continue;
+            }
+
+            $this->topicService->mergeTopics($source, $target);
+        }
     }
 }

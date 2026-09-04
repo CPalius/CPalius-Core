@@ -18,13 +18,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Forum ayarları — AACP'nin genel "Modül Ayarları" tarayıcısıyla (bkz.
- * AACPController::settingsModules/updateSettings) AYNI depoyu (cp_settings
- * tablosu, App\Entity\Setting) kullanır; burada sadece "forum" modülüne
- * ait tanımlar, Studio içinde daha kullanışlı, ayrık bir ekranda sunulur.
- * AACP'nin genel ekranı kasıtlı olarak dokunulmadan bırakıldı — o, "Core
- * Never Dies" kurtarma senaryosunda modülsüz de çalışması gereken bir
- * çekirdek/kurtarma yüzeyi (Manifesto Law 2.3), forum'a özel bir UI değil.
+ * Studio screen for forum settings; same cp_settings store as AACP module settings.
+ * The generic AACP screen stays as the Core Never Dies recovery surface (Law 2.3).
  */
 #[Route('/admin/forum/settings', name: 'admin_forum_settings_')]
 #[IsGranted('forum.section.manage')]

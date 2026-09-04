@@ -10,15 +10,8 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
 /**
- * CPalius'ta TÜM yetki kararları tek bu merkezden geçer. Kod içinde
- * hiçbir yerde $this->isGranted('ROLE_ADMIN') gibi sabit rol kontrolü
- * YAPILMAZ; her zaman is_granted('node.post.edit.own', $node) gibi
- * dinamik bir yetenek (capability) sorgulanır ve buraya düşer.
- *
- * Akış: capability geçerli mi (CapabilityRegistry, fail-safe) ->
- * kullanıcının rollerinin bu capability'ye sahip olup olmadığı
- * (RoleConfigManager) -> ".own" ile bitiyorsa subject'in sahibi
- * kullanıcıyla eşleşiyor mu (OwnableInterface).
+ * Single gate for authorization: is_granted('capability', $subject) — never ROLE_* checks.
+ * Flow: registry (abstain if unknown) → role capabilities → ".own" vs OwnableInterface.
  */
 final class CPaliusVoter extends Voter
 {
@@ -32,9 +25,7 @@ final class CPaliusVoter extends Voter
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        // Fail-Safe: registry'de kayıtlı olmayan bir "yetenek" bu voter
-        // tarafından hiç ele alınmaz (abstain) — başka bir voter'a
-        // (varsa) bırakılır, ama asla burada true varsayılmaz.
+        // Unknown attributes abstain; never treat an unregistered capability as granted.
         return $this->capabilityRegistry->has($attribute);
     }
 
@@ -64,9 +55,7 @@ final class CPaliusVoter extends Voter
     }
 
     /**
-     * ".own" ekli bir yetenek için subject'in gerçekten mevcut kullanıcıya
-     * ait olduğunu doğrular. Subject OwnableInterface uygulamıyorsa ya da
-     * sahibi belirsizse, fail-safe gereği izin VERİLMEZ.
+     * ".own" requires OwnableInterface with a matching owner id; otherwise deny.
      */
     private function isOwnedBy(mixed $subject, User $user): bool
     {

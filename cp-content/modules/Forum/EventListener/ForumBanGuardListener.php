@@ -13,15 +13,8 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
- * Forum-özel BAN (site geneli değil) uygulanan kullanıcıyı tüm ön yüz
- * forum rotalarından (ForumFrontController, ForumProfileController, ileride
- * eklenecek her yeni ön yüz controller'ı) merkezi olarak dışlar — her
- * action'a ayrı ayrı kontrol eklemek yerine, namespace'e göre TEK noktadan.
- * "Modules\Forum\Controller\Admin\" altındaki Studio controller'ları
- * bilinçli olarak HARİÇ tutulur (bir moderatör kendi kendini yasaklamış
- * olsa bile yönetim erişimini kaybetmemeli). MUTE, daha ince taneli olduğu
- * için burada değil, ilgili yazma action'larında (newTopic/reply/likePost)
- * ayrıca kontrol edilir.
+ * Blocks forum-banned users from all front controllers by namespace.
+ * Studio Admin controllers are excluded so a banned moderator keeps ACP access; MUTE is checked on write actions.
  */
 final class ForumBanGuardListener implements EventSubscriberInterface
 {

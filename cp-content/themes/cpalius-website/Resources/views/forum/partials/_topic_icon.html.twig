@@ -1,9 +1,8 @@
 {#
-    Konu durum ikonu — Cotonti forums_icon_topic mantığının (taşınmış >
-    popüler > sabit > kilitli > duyuru > özel öncelik sırası) modern rozet
-    karşılığı.
+    CPalius Forum Engine konu durum ikonu
+    (tasinmis > okunmadi > sabit+kilitli > sabit > kilitli > populer > ozel).
 
-    Beklenen değişkenler: topic, hotThreshold (int)
+    Beklenen degiskenler: topic, hotThreshold (int), unread (bool, opsiyonel)
 #}
 {% set icon = 'bi-chat-square-text' %}
 {% set extraClass = '' %}
@@ -11,6 +10,9 @@
 {% if topic.movedToTopic %}
     {% set icon = 'bi-arrow-right-circle' %}
     {% set extraClass = 'is-moved' %}
+{% elseif unread|default(false) %}
+    {% set icon = 'bi-flag-fill' %}
+    {% set extraClass = 'is-unread' %}
 {% elseif topic.isLocked and topic.sticky %}
     {% set icon = 'bi-megaphone-fill' %}
     {% set extraClass = 'is-sticky' %}

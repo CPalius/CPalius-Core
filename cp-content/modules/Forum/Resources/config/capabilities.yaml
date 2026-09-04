@@ -1,12 +1,23 @@
 capabilities:
     - forum.view
     - forum.section.manage
+    - forum.nodes.manage
+    - forum.prefixes.manage
+    - forum.moderation.manage
+    - forum.ranks.manage
+    - forum.permissions.manage
     - forum.topic.create
+    - forum.thread.create
+    - forum.thread.lock
+    - forum.thread.sticky
+    - forum.thread.move
+    - forum.post.edit
     - forum.post.edit.own
     - forum.post.edit.any
     - forum.post.delete.own
     - forum.post.delete.any
     - forum.post.report
     - forum.post.like
+    - forum.reputation.give
     - forum.topic.moderate
     - forum.user.manage

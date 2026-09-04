@@ -38,6 +38,11 @@
             <input type="password" id="account-password" name="_password" required autocomplete="current-password">
         </div>
 
+        {% include 'account/partials/_captcha_widget.html.twig' with {
+            captchaEnabled: captchaEnabled|default(false),
+            captchaConfig: captchaConfig|default({provider: 'none', site_key: '', recaptcha_version: 'v2'}),
+        } %}
+
         <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
         <div class="forum-form__actions">
@@ -49,4 +54,12 @@
         {{ 'account.login.no_account'|trans }} <a href="{{ path('account_register') }}" style="color: var(--cp-accent); text-decoration: underline;">{{ 'account.login.register_link'|trans }}</a>
     </p>
 </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {% include 'account/partials/_captcha_scripts.html.twig' with {
+        captchaEnabled: captchaEnabled|default(false),
+        captchaConfig: captchaConfig|default({provider: 'none', site_key: '', recaptcha_version: 'v2'}),
+    } %}
 {% endblock %}

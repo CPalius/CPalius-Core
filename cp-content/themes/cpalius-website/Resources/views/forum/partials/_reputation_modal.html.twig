@@ -1,0 +1,54 @@
+<dialog class="forum-rep-modal" data-rep-modal>
+    <form method="post" action="{{ path('forum_give_reputation', {username: targetUser.profileSlug}) }}" class="forum-rep-modal__form">
+        <header class="forum-rep-modal__header">
+            <h2>{{ 'forum.rep.modal_title'|trans({'name': targetUser.fullName}) }}</h2>
+            <button type="button" class="forum-tool-btn" data-rep-close aria-label="{{ 'forum.action.cancel'|trans }}"><i class="bi bi-x-lg"></i></button>
+        </header>
+
+        <div class="forum-field">
+            <label>{{ 'forum.rep.value'|trans }}</label>
+            <div class="forum-rep-modal__values">
+                <label><input type="radio" name="value" value="1" checked> +1</label>
+                <label><input type="radio" name="value" value="-1"> −1</label>
+            </div>
+        </div>
+
+        <div class="forum-field">
+            <label for="forum-rep-reason">{{ 'forum.rep.reason_label'|trans }}</label>
+            <select name="reason" id="forum-rep-reason" required>
+                {% for reason in repReasons %}
+                    <option value="{{ reason }}">{{ ('forum.rep.reason.' ~ reason)|trans }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {% if fixedTopicId %}
+            <input type="hidden" name="topic_id" value="{{ fixedTopicId }}">
+        {% else %}
+            <div class="forum-field">
+                <label for="forum-rep-topic">{{ 'forum.rep.topic_label'|trans }}</label>
+                <select name="topic_id" id="forum-rep-topic" required>
+                    <option value="">{{ 'forum.rep.topic_placeholder'|trans }}</option>
+                    {% for topic in selectableTopics %}
+                        <option value="{{ topic.id }}">{{ topic.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        {% endif %}
+
+        {% if fixedPostId %}
+            <input type="hidden" name="post_id" value="{{ fixedPostId }}">
+        {% endif %}
+
+        <div class="forum-field">
+            <label for="forum-rep-comment">{{ 'forum.rep.comment_label'|trans }}</label>
+            <textarea name="comment" id="forum-rep-comment" rows="3" maxlength="500" placeholder="{{ 'forum.rep.comment_placeholder'|trans }}"></textarea>
+        </div>
+
+        <div class="forum-form__actions">
+            <input type="hidden" name="_token" value="{{ csrf_token('forum_give_reputation') }}">
+            <button type="button" class="btn btn-sm btn-outline" data-rep-close>{{ 'forum.action.cancel'|trans }}</button>
+            <button type="submit" class="btn btn-primary btn-sm">{{ 'forum.action.give_rep'|trans }}</button>
+        </div>
+    </form>
+</dialog>

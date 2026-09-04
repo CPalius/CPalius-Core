@@ -9,25 +9,8 @@ use App\Repository\NodeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * CPalius'un Birleşik Otomasyon Motoru'nun İLK Attribute Kulvarı kod cron
- * görevi. Eskiden cp-core'da sabit kodlu, ayrı bir #[AsCommand] olan
- * "cp:posts:publish-scheduled" komutunun (bkz. git geçmişi) yerini alır:
- * artık DB'de bir cp_cron_jobs satırı GEREKTİRMEDEN, doğrudan koddan
- * keşfedilen bir sanal görevdir (bkz. CronRegistrationPass, CronManager).
- *
- * cp-core'a değil Blog modülüne taşınmasının nedeni SADECE organizasyoneldir
- * — Node/STATUS_SCHEDULED çekirdek bir kavram olmaya devam eder (Manifesto
- * Law 3.1), ancak "zamanlanmış İÇERİĞİ yayınlama" iş akışının somut cron
- * tetikleyicisi, ilk kullanım örneği burada olduğu için Blog modülünde
- * yaşar. Sayfalar veya başka Node type'ları için ayrı bir zamanlama görevi
- * gerekirse, aynı NodeRepository::findDueScheduledNodes() sorgusu başka bir
- * modülden de kendi #[CpCronJob] görevini tanımlayarak kullanılabilir.
- *
- * Node::publish() üzerinden TEK TEK işlenir (toplu bir DQL UPDATE değil):
- * NodeIndexListener SADECE Doctrine'in postPersist/postUpdate event'lerini
- * dinler — bir DQL bulk UPDATE bu event'leri hiç tetiklemez ve
- * NodeFieldIndex ile Node.data senkronsuz kalırdı. Entity-bazlı işleme,
- * event'lerin tetiklenmesini garanti eder.
+ * #[CpCronJob] that publishes due scheduled posts via Node::publish() (not bulk DQL).
+ * Lives in Blog for organization; other modules can reuse findDueScheduledNodes() the same way.
  */
 final class PublishScheduledPostsTask
 {

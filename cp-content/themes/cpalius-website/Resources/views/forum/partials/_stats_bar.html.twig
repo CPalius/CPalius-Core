@@ -1,0 +1,51 @@
+{% set forumStats = forum_board_stats() %}
+{% set online = forum_online_presence() %}
+{% set newest = forum_newest_member() %}
+{% set onlineTotal = online.memberCount + online.guestCount %}
+<aside class="forum-stats fade-in" aria-label="{{ 'stats.bar.title'|trans({}, 'forums') }}">
+    <div class="forum-stats__inner">
+        <div class="forum-stats__left">
+            <div class="forum-stats__online">
+                <span class="forum-stats__count">
+                    <span><i class="bi bi-heart"></i></span>
+                    <span title="{{ 'stats.online.tooltip'|trans({'members': online.memberCount|number_format(0, ',', '.'), 'guests': online.guestCount|number_format(0, ',', '.')}, 'forums') }}">
+                        {{ 'stats.online.now'|trans({}, 'forums') }}<br>
+                        <b>{{ 'stats.online.active'|trans({'count': onlineTotal|number_format(0, ',', '.')}, 'forums') }}</b>
+                        <i class="bi bi-info-circle"></i>
+                    </span>
+                </span>
+                <span class="forum-stats__link">
+                    <a href="{{ forum_online_url() }}" title="{{ 'stats.online.members_link'|trans({}, 'forums') }}">
+                        <i class="bi bi-list-check"></i>
+                        <span>{{ 'stats.online.members_link'|trans({}, 'forums') }}</span>
+                    </a>
+                </span>
+            </div>
+            <div class="forum-stats__vb">
+                <div class="forum-stats__threads">
+                    <span><i class="bi bi-pen"></i></span>
+                    <span>{{ 'stats.threads'|trans({}, 'forums') }}<br><b>{{ forumStats.topics|number_format(0, ',', '.') }}</b></span>
+                </div>
+                <div class="forum-stats__posts">
+                    <span><i class="bi bi-chat-dots"></i></span>
+                    <span>{{ 'stats.posts'|trans({}, 'forums') }}<br><b>{{ forumStats.posts|number_format(0, ',', '.') }}</b></span>
+                </div>
+                <div class="forum-stats__users">
+                    <span><i class="bi bi-person"></i></span>
+                    <span>{{ 'stats.users'|trans({}, 'forums') }}<br><b>{{ forumStats.users|number_format(0, ',', '.') }}</b></span>
+                </div>
+            </div>
+        </div>
+        <div class="forum-stats__right">
+            <span><i class="bi bi-person-plus"></i></span>
+            <span>
+                {{ 'stats.newest'|trans({}, 'forums') }}<br>
+                {% if newest %}
+                    <a href="{{ path('forum_profile', {username: newest.slug}) }}">{{ newest.name }}</a>
+                {% else %}
+                    <b>{{ 'stats.newest.empty'|trans({}, 'forums') }}</b>
+                {% endif %}
+            </span>
+        </div>
+    </div>
+</aside>

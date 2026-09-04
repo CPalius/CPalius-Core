@@ -5,12 +5,8 @@ declare(strict_types=1);
 namespace App\Core\Database;
 
 /**
- * #[CpResource(multiTenant: true)] ile işaretlenmiş bir entity'nin,
- * TenantStampListener'ın prePersist sırasında tenant_id'yi yazabilmesi
- * için uyması gereken sözleşme. TenantFilter (okuma tarafı) ham SQL/
- * ClassMetadata ile çalıştığı için bu arayüze ihtiyaç duymaz; bu arayüz
- * sadece YAZMA tarafı (Manifesto Law 5.1: "Writes must be intercepted by
- * a prePersist listener") için gereklidir.
+ * Write-side contract so TenantStampListener can set tenant_id on prePersist (Law 5.1).
+ * TenantFilter (reads) uses ClassMetadata and does not need this interface.
  */
 interface TenantAwareInterface
 {

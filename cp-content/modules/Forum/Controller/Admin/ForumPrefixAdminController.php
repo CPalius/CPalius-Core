@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Modules\Forum\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
-use App\Entity\ForumTopicPrefix;
-use App\Repository\ForumTopicPrefixRepository;
+use App\Core\Localization\LocaleProvider;
+use Modules\Forum\Entity\ForumSection;
+use Modules\Forum\Entity\ForumTopicPrefix;
+use Modules\Forum\Repository\ForumSectionRepository;
+use Modules\Forum\Repository\ForumTopicPrefixRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Modules\Forum\Service\ForumSectionHierarchyService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,18 +22,21 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/admin/forum/prefixes', name: 'admin_forum_prefixes_')]
-#[IsGranted('forum.section.manage')]
+#[IsGranted('forum.prefixes.manage')]
 final class ForumPrefixAdminController extends AbstractController
 {
     public function __construct(
         private readonly ForumTopicPrefixRepository $prefixRepository,
+        private readonly ForumSectionRepository $sectionRepository,
+        private readonly ForumSectionHierarchyService $hierarchyService,
         private readonly EntityManagerInterface $entityManager,
         private readonly TranslatorInterface $translator,
+        private readonly LocaleProvider $localeProvider,
     ) {
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Konu Ön Ekleri', icon: 'heroicons:tag', panel: 'studio', priority: 27, capability: 'forum.section.manage', group: 'İçerik', parent: 'admin_forum_dashboard')]
+    #[CpAdminMenu(label: 'Konu Ön Ekleri', icon: 'heroicons:tag', panel: 'studio', priority: 27, capability: 'forum.prefixes.manage', group: 'İçerik', parent: 'admin_forum_dashboard')]
     public function index(): Response
     {
         return $this->render('@ForumModule/admin/prefixes/index.html.twig', [
@@ -48,6 +55,8 @@ final class ForumPrefixAdminController extends AbstractController
                 (string) $request->request->get('color', '#4AADE4'),
             );
             $prefix->setSortOrder($request->request->getInt('sort_order'));
+            $prefix->setCssClass(trim((string) $request->request->get('css_class')));
+            $this->syncPrefixSections($prefix, $request);
 
             if ($prefix->getLabel() === '') {
                 throw new BadRequestHttpException($this->translator->trans('studio.forum.prefixes.label_required'));
@@ -62,7 +71,9 @@ final class ForumPrefixAdminController extends AbstractController
 
         return $this->render('@ForumModule/admin/prefixes/form.html.twig', [
             'prefix' => null,
-            'formValues' => ['label' => '', 'color' => '#4AADE4', 'sortOrder' => 0],
+            'boards' => $this->hierarchyService->getTopicBoards($this->localeProvider->getDefaultCode()),
+            'selectedSectionIds' => [],
+            'formValues' => ['label' => '', 'color' => '#4AADE4', 'sortOrder' => 0, 'cssClass' => ''],
         ]);
     }
 
@@ -82,18 +93,28 @@ final class ForumPrefixAdminController extends AbstractController
             $prefix->setLabel($label);
             $prefix->setColor((string) $request->request->get('color', $prefix->getColor()));
             $prefix->setSortOrder($request->request->getInt('sort_order'));
+            $prefix->setCssClass(trim((string) $request->request->get('css_class')));
+            $this->syncPrefixSections($prefix, $request);
             $this->entityManager->flush();
             $this->addFlash('success', $this->translator->trans('studio.forum.prefixes.updated'));
 
             return $this->redirectToRoute('admin_forum_prefixes_index');
         }
 
+        $selected = [];
+        foreach ($prefix->getSections() as $section) {
+            $selected[] = $section->getId();
+        }
+
         return $this->render('@ForumModule/admin/prefixes/form.html.twig', [
             'prefix' => $prefix,
+            'boards' => $this->hierarchyService->getTopicBoards($this->localeProvider->getDefaultCode()),
+            'selectedSectionIds' => $selected,
             'formValues' => [
                 'label' => $prefix->getLabel(),
                 'color' => $prefix->getColor(),
                 'sortOrder' => $prefix->getSortOrder(),
+                'cssClass' => $prefix->getCssClass() ?? '',
             ],
         ]);
     }
@@ -109,6 +130,22 @@ final class ForumPrefixAdminController extends AbstractController
         $this->addFlash('success', $this->translator->trans('studio.forum.prefixes.deleted'));
 
         return $this->redirectToRoute('admin_forum_prefixes_index');
+    }
+
+    private function syncPrefixSections(ForumTopicPrefix $prefix, Request $request): void
+    {
+        $prefix->clearSections();
+        $ids = array_values(array_filter(
+            array_map('intval', (array) $request->request->all('section_ids')),
+            static fn (int $id): bool => $id > 0,
+        ));
+
+        foreach ($ids as $id) {
+            $section = $this->sectionRepository->find($id);
+            if ($section instanceof ForumSection && $section->allowsTopics()) {
+                $prefix->addSection($section);
+            }
+        }
     }
 
     private function findOrFail(int $id): ForumTopicPrefix

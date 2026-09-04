@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Core\Localization\LocaleProvider;
+use App\Core\Localization\TranslationManager;
+use App\Core\Localization\TranslationManagerException;
 use App\Entity\Locale;
 use App\Repository\LocaleRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -42,6 +45,8 @@ final class LocaleAdminController
         private readonly CsrfTokenManagerInterface $csrfTokenManager,
         private readonly EntityManagerInterface $entityManager,
         private readonly LocaleRepository $localeRepository,
+        private readonly LocaleProvider $localeProvider,
+        private readonly TranslationManager $translationManager,
         private readonly TranslatorInterface $translator,
     ) {
     }
@@ -71,6 +76,14 @@ final class LocaleAdminController
 
             $this->entityManager->persist($locale);
             $this->entityManager->flush();
+            $this->localeProvider->invalidate();
+
+            try {
+                $this->translationManager->seedLocale($code);
+            } catch (TranslationManagerException) {
+                // Tohumlama başarısız olsa bile dil kaydı durur — panel
+                // ilk inline düzenlemede dosyayı yine oluşturur.
+            }
 
             return new Response('', Response::HTTP_FOUND, ['Location' => '/aacp/advanced/management']);
         }
@@ -109,6 +122,7 @@ final class LocaleAdminController
             $locale->setNativeName($nativeName);
 
             $this->entityManager->flush();
+            $this->localeProvider->invalidate();
 
             return new Response('', Response::HTTP_FOUND, ['Location' => '/aacp/advanced/management']);
         }
@@ -140,6 +154,8 @@ final class LocaleAdminController
             $this->entityManager->flush();
         });
 
+        $this->localeProvider->invalidate();
+
         return new JsonResponse(['success' => true]);
     }
 
@@ -156,6 +172,7 @@ final class LocaleAdminController
 
         $locale->setIsActive(!$locale->isActive());
         $this->entityManager->flush();
+        $this->localeProvider->invalidate();
 
         return new JsonResponse(['success' => true, 'isActive' => $locale->isActive()]);
     }

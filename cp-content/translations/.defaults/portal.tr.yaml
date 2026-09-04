@@ -1,0 +1,546 @@
+# CPalius CMF — Portal / showcase strings (non-ICU domain: braces are literal).
+# Restored verbatim from the original cpalius-website marketing site and
+# extended with architecture features shipped after the whitepaper.
+
+meta:
+  title: "CPalius CMF — Yeni Nesil İçerik Yönetim Framework'ü | PHP 8.2+ & Symfony 7.4"
+  description: "CPalius CMF: PHP 8.2+ ve Symfony 7.4 LTS üzerine inşa edilmiş, kurumsal seviyede güvenli, modüler ve genişletilebilir içerik yönetim framework'ü. Açık kaynak, topluluk destekli."
+
+nav:
+  about: "Hakkında"
+  architecture: "Mimari"
+  core: "Çekirdek"
+  features: "Özellikler"
+  entity: "Varlık Modeli"
+  audit: "Audit Log"
+  platform: "Genişletilebilirlik"
+  aacp: "AACP"
+  modules: "Modüller"
+  forum: "Forum Motoru"
+  media: "Medya Pipeline"
+  localization: "Deep-Localization"
+  security: "Güvenlik"
+  manifesto: "Manifesto"
+  roadmap: "Yol Haritası"
+  whitepaper: "Whitepaper"
+  community: "Topluluk"
+  group_about: "Hakkında"
+  group_architecture: "Mimari"
+  group_platform: "Platform"
+  github: "GitHub"
+
+hero:
+  label: "NEXT-GEN CONTENT MANAGEMENT FRAMEWORK"
+  subtitle_line1: "Bir İçerik Yönetim Sisteminden"
+  subtitle_em: "\"Kurşun Geçirmez\""
+  subtitle_line2: "Kurumsal Uygulama Framework'üne"
+  desc: "Modern web ekosisteminde hazır eklenti sistemleriyle donatılmış ama hantal CMS'ler ile her şeye sıfırdan başlamayı gerektiren saf framework'ler arasındaki köprüyü kuran, dünya standartlarında optimize, güvenli ve genişletilebilir altyapı."
+  cta_whitepaper: "Whitepaper'ı İncele"
+  cta_architecture: "Mimariyi Keşfet"
+  badge_opensource: "Açık Kaynak"
+
+about:
+  label: "Neden CPalius?"
+  title: "Teori, Pratik ve \"Tekerleği Yeniden İcat Etme\" Sancısı"
+  desc: "Modern web geliştirmede her yeni proje, iki ucu keskin bir bıçağın üzerinde başlar. CPalius bu iki dünya arasındaki boşluğu doldurmak için doğdu."
+  problems_title: "Mevcut Sorunlar"
+  problem_cms_title: "Klasik CMS'ler (WordPress, Drupal)"
+  problem_cms_text: "Hazır eklenti ve tema sistemleriyle donatılmış ancak hantal veritabanı şemaları, teknik borç dağları ve güvenlik zaafiyetleriyle boğuşan yapılar."
+  problem_fw_title: "Saf Framework'ler (Symfony, Laravel)"
+  problem_fw_text: "Her projede auth, ACL, dosya yönetimi ve admin paneli gibi temel bileşenleri sıfırdan yazarak zaman kaybettiren yaklaşım."
+  problem_mvc_title: "Sıfırdan MVC Romantizmi"
+  problem_mvc_text: "Kendi framework'ünü yazmak kulağa romantik gelse de güvenlik (CSRF, XSS, SQLi), DI Container ve HTTP katmanı gibi devasa bir \"görünmez buzdağı\" barındırır."
+  solution_title: "CPalius Çözümü"
+  sol_infra_title: "Dünya Standartlarında Altyapı"
+  sol_infra_text: "Symfony 7.4 LTS'nin kanıtlanmış güvenlik ve performans altyapısı üzerine inşa edilmiş, teknik borçtan arınmış mimari."
+  sol_components_title: "Hazır Kurumsal Bileşenler"
+  sol_components_text: "Auth, ACL, dosya yönetimi, çok dilli yapı ve admin paneli gibi temel bileşenler ilk günden çekirdekte. Tekerleği yeniden icat etmeye son."
+  sol_modular_title: "Modüler ve Genişletilebilir"
+  sol_modular_text: "CMS'ten öte bir uygulama platformu: Oto Galeri, Turizm Acentası, CRM/ERP — hepsi aynı altyapı üzerinde çalışır."
+  sol_core_title: "Çökmeyen Çekirdek"
+  sol_core_text: "Kullanıcı modüllerinden gelen hatalar sistemi asla çökertmez. 4 kademeli aktif savunma ve karantina hattı."
+
+architecture:
+  label: "Bölüm 1"
+  title: "\"Pristine Root\" ve Klasör Mimarisi"
+  desc: "Standart bir Symfony projesinde üçüncü parti paketler ve tarifler yüklendikçe ana dizin dosya çöplüğüne döner. CPalius, \"Tertemiz Ana Dizin\" politikasını benimsedi."
+  tree_kernel: "# KERNEL & SYSTEM SPACE"
+  tree_bin: "# Konsol komut aracı"
+  tree_config: "# Core konfigürasyonları"
+  tree_migrations: "# Veritabanı göç dosyaları"
+  tree_src: "# PHP sınıfları (App\\)"
+  tree_var: "# Cache, log, SQLite"
+  tree_deps: "# DEPENDENCIES SPACE"
+  tree_vendor: "# Composer paketleri"
+  tree_user: "# USER & DEVELOPER SPACE"
+  tree_config_sync: "# Config Sync alanı"
+  tree_modules: "# Bağımsız modüller"
+  tree_themes: "# UI temaları"
+  tree_translations: "# Çeviriler (tr, en)"
+  tree_web: "# WEB ROOT"
+  tree_index: "# Front Controller"
+  tree_assets: "# Frontend varlıkları"
+  card_core_title: "Kernel & System Space"
+  card_core_text: "Çekirdek PHP sınıfları, konfigürasyonlar, konsol araçları ve veritabanı göç dosyaları. Symfony Flex tariflerinin doğrudan bu alana kurulması garanti altındadır."
+  card_includes_title: "Dependencies Space"
+  card_includes_html: "Composer paketleri ve Symfony kütüphaneleri bu izole alanda tutulur. <code>vendor-dir</code> yeniden yapılandırılmıştır."
+  card_content_title: "User & Developer Space"
+  card_content_text: "Modüller, temalar, çeviriler ve Config Sync alanı. Geliştiricinin kendi kodları ile framework sistem dosyaları asla birbirine karışmaz."
+  card_public_title: "Web Root"
+  card_public_text: "Dışarıya açık tek klasör. Front Controller (index.php) ve derlenmiş frontend varlıkları burada yer alır. Güvenlik sınırı."
+
+core:
+  label: "Bölüm 2"
+  title: "\"Core Never Dies\" — Çökmeyen Çekirdek Mimarisi"
+  desc: "Kullanıcı alanından gelebilecek kötü yazılmış veya bozuk kodların tüm sistemi kilitlemesini engelleyen Dört Kademeli Aktif Savunma ve Karantina Hattı."
+  line1_label: "1. Savunma Hattı"
+  line1_title: "Tavuk-Yumurta Probleminin Çözümü"
+  line1_p1_html: "Symfony boot edilirken <strong>config/bundles.php</strong> dosyası okunur. Bu aşamada henüz veritabanı bağlantısı, servis konteyneri veya autoloader tam olarak ayağa kalkmamıştır. Modüllerin aktiflik durumunu doğrudan veritabanından okumaya çalışırsak, sistem daha boot edilemeden kilitlenir."
+  line1_p2_html: "<strong>Çözüm:</strong> CPalius, bir modül aktif/pasif edildiğinde <code>active_modules.php</code> adında statik, PHP opcache dostu bir dizi dosyası üretir. <code>bundles.php</code> sadece bu dosyayı okur — veritabanına hiç dokunmaz."
+  code_file: "cp-core/config/bundles.php"
+  code_comment_core: "// Çekirdek her zaman ayakta"
+  code_comment_modules: "// Aktif modülleri dosyadan oku"
+  line2_label: "2. Savunma Hattı"
+  line2_title: "Çalışma Zamanı İzolasyonu"
+  line2_p1_html: "Sınıfın fiziksel olarak var olması (<code>class_exists</code>), o modülün kodunun hatasız çalıştığı anlamına gelmez. Modülün <code>boot()</code> metodu içinde fırlatacağı bir <strong>TypeError</strong> veya <strong>RuntimeException</strong> tüm sistemi çökertebilir."
+  line2_p2_html: "<strong>Çözüm:</strong> <code>Kernel::boot()</code> metodu override edilerek modül seviyesindeki tüm boot süreçleri <code>try/catch (\\Throwable)</code> zırhıyla kuşatıldı. Hatalı modül otomatik karantinaya alınır, çekirdek çalışmaya devam eder."
+  line3_label: "3. Savunma Hattı"
+  line3_title: "Compile-Time Kilitlenme Koruması & Dry-Run"
+  line3_p1: "Eklentideki geçersiz bir YAML sözdizimi veya yanlış bir DI tanımı, Symfony container'ı derlenemez hale getirir. Bu durumda terminalde komut bile çalıştırılamaz."
+  line3_p2_html: "<strong>Çözüm:</strong> Modül aktive edilmeden önce <code>symfony/process</code> ile izole bir alt süreç başlatılır. Bu süreçte <code>cache:clear</code> → <code>lint:yaml</code> → <code>lint:container</code> komutları koşturulur. Hata varsa aktivasyon iptal edilir ve modül kalıcı olarak karantinaya alınır. Dosya asla bozuk haliyle kaydedilmez."
+  line4_label: "Yeni — 4. Savunma Hattı"
+  line4_title: "İzole Route Yükleyicisi"
+  line4_p1_html: "Standart Symfony'de bir modülün <code>routes.yaml</code> dosyasındaki syntax hatası tüm sistemi çökertir."
+  line4_p2_html: "<strong>Çözüm:</strong> <code>SafeModuleRouteLoader</code> her modülün rotasını izole bir try/catch bloğunda yükler. Hatalı modül atlanır ancak sistemin geri kalanı %100 ayakta kalır."
+  line4_code_header: "cp-core/src/Core/Routing/SafeModuleRouteLoader.php"
+  line4_code: |
+    foreach ($this->moduleRegistry->getHealthyModuleBundles() as $moduleClass) {
+        try {
+            $imported = $this->import($routesFile, 'yaml');
+            $collection->addCollection($imported);
+        } catch (\Throwable $e) {
+            // One broken routes.yaml never takes down the kernel.
+            $this->logger?->error('Skipping broken module routes', [
+                'module' => $moduleClass,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+features:
+  label: "Bölüm 3 — 4"
+  title: "Veri Modeli ve Platform Yetenekleri"
+  desc: "Hibrit veri modeli, yüksek performanslı indeksleme ve çok dilli yapı — tümü ilk günden çekirdeğin hücrelerine işlenmiştir."
+  hybrid_title: "Hibrit Veri Modeli"
+  hybrid_text: "Sık sorgulanan temel alanlar (ID, Başlık, Slug, Durum) gerçek sütunlarda; dinamik, esnek alanlar (gövde, SEO, galeri) tek bir JSON sütununda. EAV'ın JOIN cehenneminden ve WordPress'in meta karmaşasından kurtulun."
+  index_title: "Flat Field Index Motoru"
+  index_text: "JSON verilerini veritabanı bağımsız sorgulayın. NodeFieldIndex tablosu ve Doctrine Event Listener ile tip-uygun kolonlara sahip indeks tablosu. SQLite, MySQL ve Postgres'te aynı DQL çalışır."
+  i18n_title: "Çok Dilli Yapı (i18n)"
+  i18n_text: "Çoklu dil ilk günden çekirdeğe işlendi. Kompozit benzersizlik kısıtları ile UNIQUE(slug, locale) ve UNIQUE(translation_group_id, locale) güvencesi. Dil sonradan eklenen bir cila değildir."
+  config_title: "Config Sync Sistemi"
+  config_text: "Drupal'ın config sync yaklaşımı, Symfony TreeBuilder ile birleştirildi. Roller ve yetenek matrisleri YAML dosyalarında tutulur, Git ile taşınır. Kullanıcı verileri ise veritabanında kalır."
+  bundle_title: "Modüler Bundle Mimarisi"
+  bundle_text: "Her modül bağımsız bir Symfony Bundle olarak çalışır. Kendi routes, services, templates ve migrations dosyalarına sahiptir. Modules\\ namespace'i ile tam izolasyon."
+  zero_title: "Zero Node.js Politikası"
+  zero_text: "Geliştirici ve admin panelinde AssetMapper + Standalone Tailwind CSS kullanılır. Node.js bağımlılığı sıfır. Derleme adımı yok, doğrudan geliştirme — doğrudan deploy."
+  xss_title: "Core-Level XSS Sanitization"
+  xss_text_html: "Manifesto Law 5.3 gereği, <code>RichTextSanitizer</code> ile veritabanına kaydedilecek her zengin metin çekirdek seviyesinde sterilize edilir."
+  seo_title: "Dinamik Semantic SEO"
+  seo_text_html: "Hibrit JSON tabanlı verilerden <code>SchemaOrgBuilder</code> aracılığıyla otomatik olarak JSON-LD (Schema.org) üretimi (BlogPosting, WebPage)."
+  event_title: "Otonom Event-Driven Topoloji"
+  event_text: "YAGNI prensibini çiğnemeden inşa edilen, asenkron ve decoupling odaklı reaktif haberleşme omurgası. Katmanlar arası bağımlılıklar ve hook tetikleyicileri (event subscribers), \"Golden Ratio\" hassasiyetinde orantılanarak minimize edilmiştir."
+
+tech:
+  label: "Teknoloji Yığını"
+  title: "Kanıtlanmış Temeller Üzerine İnşa"
+  php_role: "Çekirdek Dil"
+  symfony_role: "Framework Temeli"
+  doctrine_role: "Veritabanı Katmanı"
+  asset_role: "Frontend Varlıkları"
+  tailwind_role: "Standalone Binary"
+
+entity:
+  label: "Bölüm 5"
+  title: "İki Sınıf Varlık: Content vs Business"
+  desc: "CPalius sadece bir CMS değildir; arkasında Oto Galeri, Turizm Acentası, Personel Yönetimi veya CRM/ERP sistemlerinin çalışabileceği esnek bir uygulama platformudur."
+  col_feature: "Özellik"
+  col_content: "Content Entities (Node)"
+  col_business: "Business Records (Resource)"
+  row_concept: "Kavramsal Karşılık"
+  row_concept_content: "Sayfa, Yazı, İlan Vitrini, Blog"
+  row_concept_business: "Araç, Fatura, Rezervasyon, Personel"
+  row_slug: "Slug"
+  row_slug_content: "Var — SEO dostu URL üretimi"
+  row_slug_business: "Yok — İç yönetim kaydı"
+  row_i18n: "Çoklu Dil"
+  row_i18n_content: "Var — translation_group_id ile"
+  row_i18n_business: "Yok — Tek dilli kayıt"
+  row_status: "Yayın Durumu"
+  row_status_content: "Var — draft / published / archived"
+  row_status_business: "Yok — Durum makinesi (workflow)"
+  row_seo: "SEO"
+  row_seo_content: "Var — Meta bilgileri JSON data içinde"
+  row_seo_business: "Yok — Herkese açık değil"
+  row_common: "Ortak Payda"
+  row_common_value: "Aynı Capability modeli, aynı Twig bileşenleri, aynı CLI yönetimi, aynı Config Sync"
+  attr_title_html: "#[CpResource] <span class=\"text-accent\">Devrimi</span>"
+  attr_p1: "Geliştiricinin iş süreçlerini kodlamasını saniyeler seviyesine indirmek için özel bir PHP Attribute yapısı tasarlandı. Tek bir anotasyon ile veritabanındaki ham bir Doctrine sınıfını platformun tüm güçleriyle birleştiriyoruz."
+  attr_thanks: "Bu tek nitelik sayesinde:"
+  attr_cap_html: "Rol ve yetenek matrisine dinamik yetenekler <strong>otomatik kaydolur</strong>"
+  attr_crud_html: "Otomatik CRUD formları ve liste ekranları <strong>dinamik türetilir</strong>"
+  attr_tenant_html: "SaaS çoklu kiracı izolasyonu <strong>otomatik uygulanır</strong>"
+  attr_audit_html: "Tüm değişiklikler <strong>sürüm geçmişine</strong> (audit log) kaydedilir"
+  code_header: "Örnek: Vehicle Entity"
+
+audit:
+  label: "Tamamlandı — Manifesto Law 4.1"
+  title: "#[CpResource] Audit Log — Kim, Ne Zaman, Neyi Değiştirdi"
+  desc: "#[CpResource(auditable: true)] veya #[Auditable] ile işaretlenmiş bir entity'nin her ekleme, güncelleme ve silme işlemi, denetlenen entity'ye asla dokunmayan tamamen izole bir Doctrine dinleyicisi tarafından otomatik olarak cp_audit_logs tablosuna yazılır."
+  flow_label: "onFlush / postFlush Dinleyicisi"
+  flow_title: "İzole Değişiklik Yakalama"
+  flow_p1_html: "Güncelleme ve silmeler <code class=\"code-inline\">onFlush</code> içinde yakalanır — kimlikler zaten bilinir — ve <code class=\"code-inline\">UnitOfWork::computeChangeSet()</code> ile aynı flush'a eklenir. Oluşturmalar, üretilen birincil anahtarın kaydedilebilmesi için <code class=\"code-inline\">postFlush</code>'a kadar bekletilir, ardından tek bir korumalı yeniden flush ile kalıcı hale getirilir."
+  flow_p2_html: "Aktif kullanıcı <code class=\"code-inline\">TokenStorageInterface</code>'ten gelir; fark <code class=\"code-inline\">{field: [eskiDeğer, yeniDeğer]}</code> JSON olarak saklanır. Oluşturmalar <code class=\"code-inline\">[null, yeniDeğer]</code>, silmeler <code class=\"code-inline\">[eskiDeğer, null]</code> kullanır."
+  schema_label: "cp_audit_logs"
+  schema_title: "Yalnızca-Ekleme Geçmiş Tablosu"
+  schema_p1_html: "Kolonlar: <code class=\"code-inline\">resource_name</code>, <code class=\"code-inline\">resource_id</code> (VARCHAR — kompozit ve UUID anahtarlar da sığar), <code class=\"code-inline\">user_id</code>, <code class=\"code-inline\">action</code> (create/update/delete), <code class=\"code-inline\">changes</code> (JSON) ve <code class=\"code-inline\">created_at</code>."
+  schema_p2_html: "<code class=\"code-inline\">AuditLogRepository</code>; <code class=\"code-inline\">findForResource()</code>, <code class=\"code-inline\">findRecent()</code> ve <code class=\"code-inline\">findByUser()</code> metotlarını sunar. Kayıtlar uygulama üzerinden asla düzenlenmez veya silinmez — tasarım gereği yalnızca eklemedir."
+  code_header: "cp-core/src/Core/Audit/EventListener/AuditLogListener.php"
+
+platform:
+  label: "Bölüm 8"
+  title: "Platform Genişletilebilirlik Katmanı"
+  desc: "Whitepaper'ın ilk sürümünden bu yana çekirdeğe dört yeni genişletme omurgası eklendi: REST API Gateway, izole Hook Sistemi, birleşik Cron/Otomasyon Motoru ve Modülden bağımsız Plugin katmanı. Her biri aynı \"Core Never Dies\" zırhını taşır."
+  api_label: "#[CpApi] Gateway"
+  api_title: "Kriptografik REST API Gateway"
+  api_text_html: "Tek bir <code class=\"code-inline\">/api/{path}</code> joker route'u, <code class=\"code-inline\">#[CpApi]</code> attribute'lu servis metotlarını derleme zamanında (<code class=\"code-inline\">ApiRegistrationPass</code>) eşleştirir. Kimlik doğrulama <code class=\"code-inline\">X-CP-API-KEY</code> header'ı ile, SHA-256 hashing ve zamanlama-saldırısı korumalı <code class=\"code-inline\">hash_equals()</code> kullanılarak, fail-closed çalışır — anahtar geçersizse hedef metot hiç çağrılmaz. Her endpoint kendi try/catch zırhında izole edilir; çöken bir uç yalnızca kendini etkiler."
+  api_code_header: "ApiKeyService::isValid()"
+  api_code: |
+    $providedHash = hash('sha256', $providedKey);
+    foreach ($this->loadAll() as $apiKey) {
+        if (!$apiKey->active) {
+            continue;
+        }
+        // Timing-attack safe compare — never early-return on length alone.
+        if (hash_equals($apiKey->hash, $providedHash)) {
+            return true;
+        }
+    }
+    return false;
+  hook_label: "Çift Kulvar"
+  hook_title: "Çift Kulvarlı İzole Hook Motoru"
+  hook_text_html: "Cotonti tarzı flat-file <code class=\"code-inline\">Hooks/{hook_point}.php</code> dosyaları izole bir Closure scope içinde çalışır — dış scope'a değişken sızıntısı imkansızdır. Symfony tarzı <code class=\"code-inline\">#[CpHook]</code> attribute'lu servisler ise <code class=\"code-inline\">HookRegistrationPass</code> ile toplanır. Çöken hook sayfayı asla 500'e düşürmez, karantina günlüğüne yazılır."
+  hook_code_header: "HookManager — flat-file Closure scope"
+  hook_code: |
+    // Cotonti-style: include inside a bound Closure — no $this leak.
+    $runner = static function (array $context) use ($file): void {
+        include $file;
+    };
+    try {
+        $runner($context);
+    } catch (\Throwable $e) {
+        $this->quarantineHook($file, $e);
+    }
+
+    // Attribute lane: #[CpHook('blog.render.sidebar')] on a service method
+  cron_label: "Hibrit Motor"
+  cron_title: "Birleşik Hibrit Cron / Otomasyon Motoru"
+  cron_text_html: "<code class=\"code-inline\">CronManager</code> üç paralel kaynağı — veritabanındaki <code class=\"code-inline\">cp_cron_jobs</code>, <code class=\"code-inline\">#[CpCronJob]</code> işaretli servisler ve flat-file <code class=\"code-inline\">Hooks/cron.{job}.php</code> dosyalarını — tek listede birleştirir. Görevler <code class=\"code-inline\">CronCommandWhitelist</code> ile yalnızca <code class=\"code-inline\">cp:*</code> önekli komutlara izin veren izole alt-süreçlerde çalıştırılır."
+  cron_code_header: "CronManager — unified sources"
+  cron_code: |
+    // 1) DB rows in cp_cron_jobs
+    // 2) #[CpCronJob] attribute methods
+    // 3) Hooks/cron.{name}.php flat files
+    foreach ($this->collectJobs() as $job) {
+        $this->processFactory->runIsolated($job);
+    }
+  plugin_title: "Modülden Bağımsız Plugin Katmanı"
+  plugin_text_html: "Modüllerden ayrı ikinci bir genişletme noktası: <code class=\"code-inline\">PluginInterface</code> işaretli servisler <code class=\"code-inline\">PluginRegistry</code> tarafından toplanır, aktiflik durumu <code class=\"code-inline\">PluginToggleRepository</code> ile veritabanında tutulur. Bir modül kendi içinde widget/sidebar gibi opsiyonel alt-özellikleri, modülün kendisinden bağımsız açıp kapatabilir."
+  n1_title: "DBAL Middleware Seviyesinde N+1 Muhafızı"
+  n1_text_html: "Whitepaper'da kavram olarak duyurulan N+1 koruması artık gerçek bir Doctrine DBAL Middleware zincirinde çalışıyor: <code class=\"code-inline\">QueryCounterConnection</code>, <code class=\"code-inline\">Driver</code>, <code class=\"code-inline\">Statement</code> ve <code class=\"code-inline\">TableParser</code> birlikte, tablo bazlı sorgu sayacı tutar ve limiti aşınca <code class=\"code-inline\">MaxQueriesExceededException</code> fırlatır."
+  messenger_title: "Async Kuyruk Altyapısı (Hazırlık)"
+  messenger_text_html: "<code class=\"code-inline\">symfony/messenger</code> paketi kurulu ve AACP Sistem Monitörü'nde durumu görünür durumda. Gelecekteki e-posta, bildirim ve toplu işlem kuyrukları için temel şimdiden atıldı; henüz aktif bir transport bağlanmadı."
+  settings_title: "Lazy-Load Ayar Motoru"
+  settings_text_html: "<code class=\"code-inline\">#[CpSetting]</code> ile yönetilen ve veritabanından <strong>sadece talep edildiğinde</strong> tek bir sorguyla çekilen ayar altyapısı (<code class=\"code-inline\">SettingsRegistry</code>). Performans bütçesine sadıktır."
+
+aacp:
+  label: "Bölüm 9"
+  title: "AACP — Admin Kontrol Paneli & Recovery Mode"
+  desc: "Whitepaper'ın roadmap bölümünde vaat edilen Safe Mode / Kurtarma Konsolu artık gerçek: veritabanı tamamen çökse dahi ayakta kalan, token tabanlı bir kurtarma arayüzü dahil, AACP tam bir sistem yönetim merkezine dönüştü."
+  safe_label: "Tamamlandı — Manifesto Law 2.3"
+  safe_title: "Safe Mode & Kurtarma Konsolu (/aacp/recovery)"
+  safe_text_html: "<code class=\"code-inline\">/aacp/recovery</code> ucu <code class=\"code-inline\">security.yaml</code>'da bilinçli olarak herkese açık (<code class=\"code-inline\">PUBLIC_ACCESS</code>) bırakılmıştır; yetkilendirmeyi kendisi <code class=\"code-inline\">.env</code>'deki <code class=\"code-inline\">AACP_RECOVERY_TOKEN</code> ile <code class=\"code-inline\">hash_equals()</code> (timing-safe) karşılaştırması yapar. Hiç Doctrine sorgusu çalıştırmaz — veritabanı tamamen çökmüşken bile devrededir. Token boşsa kapı tamamen kapalıdır (fail-safe)."
+  monitor_label: "Yeni"
+  monitor_title: "Canlı Sistem Monitörü (htop tarzı)"
+  monitor_text_html: "<code class=\"code-inline\">/aacp/system</code> ve <code class=\"code-inline\">/aacp/system/metrics</code> JSON ucu; load average, memory, OPcache hit-rate, veritabanı bağlantı durumu ve Messenger kuyruk durumunu htop tarzı canlı olarak raporlar. Kurulu olmayan bileşenler için dürüstçe \"kurulu değil\" bilgisi döner."
+  quarantine_label: "Yeni"
+  quarantine_title: "Karantina Ekranı & Cache Rebuild Konsolu"
+  quarantine_text_html: "<code class=\"code-inline\">/aacp/quarantine</code> — <code class=\"code-inline\">module_quarantine.log</code> dosyasını okuyup listeleyen salt-okunur panel. <code class=\"code-inline\">/aacp/system/cache-rebuild/*</code> ise Symfony cache, OPcache reset ve Tailwind asset rebuild işlemlerini aynı CSRF token'ı paylaşan üç ayrı AJAX ucu üzerinden tetikler."
+  locale_label: "Yeni"
+  locale_title: "Lokalizasyon Paneli & Performans Yönetimi"
+  locale_text_html: "<code class=\"code-inline\">TranslationManager</code>, çekirdek ve tüm modüllerin <code class=\"code-inline\">messages+intl-icu.{tr,en}.yaml</code> dosyalarını web üzerinden düzenlemeyi, atomik dosya yazma garantisiyle (<code class=\"code-inline\">.tmp</code> + <code class=\"code-inline\">rename()</code>) sağlar. Ayrı bir Performans Yönetimi ekranı ise Redis, Memcached, Varnish ve Nginx PageSpeed için canlı bağlantı testleri çalıştırır — \"aktif\" bayrağı yalnızca test başarılıysa set edilir."
+  card_api_title: "API Anahtarı Yönetimi"
+  card_api_text: "REST Gateway için anahtar üretimi ve yaşam döngüsü yönetimi."
+  card_cron_title: "Cron Yönetimi"
+  card_cron_text: "DB + attribute + flat-file kaynaklı görevlerin birleşik listesi."
+  card_hook_title: "Hook Gezgini"
+  card_hook_text: "Tüm kanca noktalarını ve bağlı dinleyicileri keşfeden panel."
+  card_locale_title: "Dil (Locale) Yönetimi"
+  card_locale_text: "Aktif/pasif/varsayılan dil ayarları, tek doğruluk kaynağı."
+
+modules:
+  label: "Referans Modüller"
+  title: "İlk Parti Modüller: Platformun Kanıtı"
+  desc: "Blog, Medya ve Menü modülleri, platformun her genişletme noktasını (API, Hook, Cron, Plugin, Settings) uçtan uca kullanan referans implementasyonlardır."
+  blog_title: "Blog Modülü"
+  blog_text_html: "<code class=\"code-inline\">Node::type='post'</code> üzerine kurulu tam blog sistemi. Kategori/etiket yönetimi, zamanlanmış yayınlama (<code class=\"code-inline\">PublishScheduledPostsTask</code>), <code class=\"code-inline\">GET /api/blog/posts</code> REST ucu, sidebar hook'u ve Schema.org (BlogPosting) JSON-LD üretimi bir arada."
+  media_title: "Media Modülü"
+  media_text_html: "<code class=\"code-inline\">AssetManager</code> ve bağımsız <code class=\"code-inline\">Asset</code> entity'si üzerine kurulu medya kütüphanesi + görsel seçici (picker) admin arayüzü. Flysystem depolama katmanı üzerinde sha256 tabanlı deduplikasyon."
+  menu_title: "Menu Modülü"
+  menu_text_html: "WordPress tarzı sürükle-bırak frontend menü yönetimi. <code class=\"code-inline\">Menu</code>/<code class=\"code-inline\">MenuItem</code> entity'leri, soft-delete uyumu için Node'a gevşek referansla (FK değil) bağlanır."
+
+forum:
+  label: "XenForo / IPS Seviyesinde Motor"
+  title: "CPalius Forum Engine"
+  desc: "Forum modülü, platformun tam bir topluluk paketini — hiyerarşik panolar, konu önekleri, moderasyon kuyruğu ve rütbe/rozet sistemi — CPalius'un geri kalanıyla aynı Node ağacı ve Capability modeli üzerinde taşıyabildiğini kanıtlar."
+  tree_title: "Hiyerarşik Node Ağacı"
+  tree_text: "Panolar, içerik için kullanılan aynı Node ağacında istenen derinlikte iç içe geçer. Alt forumlar, kategoriler ve özel bölümler izinlerini üst öğeden devralır; her pano tek sorguluk indeks render'ı için kendi son-ileti önbelleğini tutar."
+  prefix_title: "Konu Önekleri"
+  prefix_text_html: "Pano bazında <code class=\"code-inline\">[Duyuru]</code>, <code class=\"code-inline\">[Çözüldü]</code> ve <code class=\"code-inline\">[Soru]</code> gibi kendi rengi, izinleri ve filtreleri olan önekler — konuda saklanır, başlığa ve liste çiplerine işlenir."
+  moderation_title: "Rapor & Moderasyon Kuyruğu"
+  moderation_text: "Üyeler iletileri bir gerekçeyle raporlar; raporlar, moderatörlerin taşıdığı, birleştirdiği, kilitlediği, yumuşak-sildiği veya reddettiği özel bir kuyruğa düşer. Her işlem bir Capability kontrolüdür ve tüm akış CSRF korumalıdır."
+  ranks_title: "Rütbeler & Rozetler"
+  ranks_text: "İleti sayısı ve itibar eşikleri üyeleri yapılandırılabilir rütbeler arasında terfi ettirir; manuel rozetler ve kullanıcı bazlı bir itibar defteri (gerekçeleriyle) profil kartını ve aktivite panelini besler."
+  layout_title: "Altın Oranlı Akışkan Görünüm"
+  layout_text: "İleti görünümü %20 yazar kartı / %80 ileti gövdesi olarak bölünür — CPalius genelinde kullanılan Altın Oran — böylece uzun konular sabit bir sidebar genişliği olmadan her ekranda okunabilir kalır."
+  cta_title: "Canlı Forum"
+  cta_text: "Hiyerarşik panolar, konu önekleri ve moderasyon kuyruğu üretimde çalışır — vitrinden doğrudan Forum Engine'e geçin."
+  layout_code_header: "Postbit — %20 / %80 Golden Ratio"
+  layout_code: |
+    .forum-postbit { display: grid; grid-template-columns: 20% 80%; gap: var(--sp-md); }
+    .forum-postbit__author { /* rank, badges, reputation */ }
+    .forum-postbit__body { /* message + reactions */ }
+
+media:
+  label: "Tamamlandı — Manifesto Law 3.3"
+  title: "Medya & Görsel İşleme Pipeline"
+  desc: "GD tabanlı bir servis, yüklenen görselleri istenen her boyuta anında yeniden boyutlandırıp kırpar, her türevi public/uploads/cache/ altında önbelleğe alır ve tek bir Twig filtresiyle şablonlara sunar."
+  processor_title: "ImageProcessor (GD)"
+  processor_text_html: "<code class=\"code-inline\">ImageProcessor::thumbnail($source, $width, $height, $mode)</code>; bir <code class=\"code-inline\">crop</code> (kapla + ortadan kırp) veya <code class=\"code-inline\">fit</code> (sığdır, büyütme yok) türevi üretir, PNG/GIF/WebP için şeffaflığı korur ve fail-soft'tur — işlenemeyen tek bir görsel sayfayı kırmak yerine orijinal URL'i döner."
+  cache_title: "Kalıcı Disk Önbelleği"
+  cache_text_html: "Türevler <code class=\"code-inline\">public/uploads/cache/&lt;g&gt;x&lt;y&gt;-&lt;mod&gt;/</code> altına yazılır ve sonraki her istekte doğrudan web sunucusu tarafından servis edilir. Önbellek isabeti, kaynağa karşı tek bir <code class=\"code-inline\">filemtime()</code> karşılaştırmasıdır; <code class=\"code-inline\">purge()</code> bir asset değiştiğinde onun tüm boyutlarını temizler."
+  filter_title: "{{ asset|cp_thumb(300, 200) }}"
+  filter_text_html: "<code class=\"code-inline\">cp_thumb</code> Twig filtresi bir <code class=\"code-inline\">Asset</code>, bir asset id'si, bir depolama anahtarı veya bir <code class=\"code-inline\">/uploads/...</code> URL'i kabul eder ve yeniden boyutlandırılmış türev URL'ini döner — örneğin <code class=\"code-inline\">{{ asset|cp_thumb(300, 200) }}</code> veya <code class=\"code-inline\">{{ url|cp_thumb(800, 600, 'fit') }}</code>."
+
+localization:
+  label: "Deep-Localization"
+  title: "Atomik Çeviri Güvencesi & Akıllı Dil Değişimi"
+  desc: "İçerikler translation_group_id UUID'si ile dikey bağlanır; LocaleSwitchService kardeş kayıt yoksa bile 404 vermez; dil dosyaları elektrik kesilse bile bozulmayan atomik .tmp + rename() yazma ile diske işlenir."
+  group_title: "translation_group_id UUID"
+  group_text_html: "Her içerik satırı kendi dilinde dikey yaşar ve <code class=\"code-inline\">translation_group_id</code> UUID'si ile kardeşlerine bağlanır. DB katmanında <code class=\"code-inline\">UNIQUE(translation_group_id, locale)</code> kuralı eşzamanlı isteklerde bile 'bir grupta her dilden en fazla bir kayıt' garantisini zorlar."
+  switch_title: "LocaleSwitchService — 404'süz Dil Değişimi"
+  switch_text_html: "Dil değiştirici mevcut sayfanın karşı dildeki URL'ini üretir. Kardeş slug yoksa veya rota üretimi başarısızsa hedef dilin ana sayfasına düşer — asla 404. AACP yolu öneksizdir; panel dili <code class=\"code-inline\">cp_locale</code> çereziyle yönetilir."
+  atomic_title: "Atomik .tmp + rename() Yazma"
+  atomic_text_html: "<code class=\"code-inline\">TranslationManager</code> YAML'i önce <code class=\"code-inline\">.tmp-*</code> dosyasına yazar, ardından işletim sistemi seviyesinde <code class=\"code-inline\">rename()</code> ile hedefi atomik olarak ezer. Elektrik kesilse bile çeviri dosyası yarım/bozuk kalamaz."
+  switch_code_header: "LocaleSwitchService::urlFor()"
+  switch_code: |
+    try {
+        $params = $this->withTranslatedParams($request, $params, $targetLocale);
+        $params['_locale'] = $targetLocale;
+        return $this->urlGenerator->generate($route, $params);
+    } catch (RoutingException|Throwable) {
+        // Missing sibling or broken route → locale home, never 404.
+        return $this->homeUrl($targetLocale);
+    }
+  atomic_code_header: "TranslationManager — atomic write"
+  atomic_code: |
+    $tmpPath = $filePath . '.tmp-' . bin2hex(random_bytes(4));
+    $this->filesystem->dumpFile($tmpPath, $yaml);
+    // OS-level rename is atomic on the same filesystem.
+    $this->filesystem->rename($tmpPath, $filePath, true);
+
+security:
+  label: "Bölüm 6"
+  title: "Güvenlik ve Performans Anayasası"
+  desc: "Güvenlik ve performans, projenin son aşamasında \"üzerine eklenen\" bir cila değildir; sistemin en temel yapı taşlarıdır."
+  cbac_title: "Yetenek Tabanlı Erişim Kontrolü (CBAC)"
+  cbac_p1: "Standart ROLE_ADMIN yaklaşımı yerine dinamik olarak üretilen yetenekler kontrol edilir. Kodun hiçbir yerinde rol ismi kontrol edilmez."
+  cbac_roles_html: "<strong>Roller = Config (YAML):</strong> Git ile taşınır.<br><strong>Kullanıcılar = Content (DB):</strong> Asla dışa aktarılmaz."
+  tenant_title: "SaaS Tenant Sızıntı Koruması"
+  tenant_p1_html: "Çok kiracılı (SaaS) sistemlerde en büyük güvenlik açığı: yazılımcının <code class=\"code-inline\">WHERE tenant_id = ?</code> yazmayı unutması."
+  tenant_p2_html: "CPalius'ta bu ihtimal <strong>platform seviyesinde yok edilmiştir</strong>. Doctrine SQLFilter otomatik olarak her sorguya tenant kısıtını enjekte eder. Geliştiricinin müdahalesine gerek kalmaz."
+  n1_title: "N+1 Sorgu Muhafızı"
+  n1_p1: "Veritabanı yavaşlıklarının en yaygın sebebi olan N+1 sorgu hatalarını engelleyen Doctrine Listener. Dev ortamında tetiklenir."
+  n1_p2_html: "Tek HTTP isteğinde aynı tabloya atılan sorgu sayısı limiti aşarsa <code class=\"code-inline\">MaxQueriesExceededException</code> fırlatılır. Geliştirici bu hatayı lokalde çözmeden kodu canlıya alamaz."
+  voter_title: "Voter-to-SQL Dönüşümü"
+  voter_p1_html: "Liste ekranlarındaki PHP tabanlı Voter kontrollerini (N+1 bellek krizini) ortadan kaldıran <code class=\"code-inline\">QueryScopeApplier</code>."
+  voter_p2_html: "Kullanıcının <code>.own</code> veya <code>.any</code> yetenekleri, sorgu veritabanına gitmeden önce doğrudan Doctrine QueryBuilder üzerinden SQL <code>WHERE</code> koşuluna çevrilir."
+  zerotrust_title: "Zero-Trust Payload Validasyonu"
+  zerotrust_p1: "Dış dünyadan gelen hiçbir HTTP yüküne (payload) güvenmeyen strict-type DTO (Data Transfer Object) mimarisi. Veriler denetleyicilere (controllers) ulaşmadan önce Symfony Validator ile otonom olarak sterilize edilir."
+  zerotrust_p2: "Kötü niyetli manipülasyon girişimleri anında reddedilerek çekirdeğin bütünlüğü \"Golden Ratio\" kusursuzluğunda korunur."
+  lockfree_title: "Lock-Free Yüksek Eşzamanlılık"
+  lockfree_p1: "Geleneksel sistemlerdeki tablo kilitleme (table-lock) krizlerini tarihe gömen Optimistic Locking omurgası. Aynı anda gerçekleşen binlerce veri mutasyonu, atomik transaksiyonlarla deadlock olmadan izole edilir."
+  lockfree_p2: "YAGNI felsefesiyle karmaşadan arındırılan bu altyapı, sunucu darboğazlarını (bottleneck) saf donanımsal limitlere kadar erteler."
+
+manifesto:
+  label: "Mimari Derinlik"
+  title: "Teknik Manifesto"
+  desc: "CPalius CMF'in kurumsal omurgasını oluşturan 5 temel mimari prensip ve kod seviyesindeki derin özellikleri."
+  block1_title: "Blok 1: Hibrit Veri Mimarisi ve Flat-Field Index Motoru"
+  block1_p1_html: "<strong>Two-Class Entity ve JSON-Relational Hibrit Yapı:</strong> Geleneksel CMS'lerdeki hantal EAV (Entity-Attribute-Value) yapısını tamamen reddeden CPalius, alanları iki ayrı sınıfta yönetir. İş kayıtları (<code>#[CpResource]</code>) kesin strict-tip SQL kolonlarında tutulurken, içerik kayıtları (Node) esnekliği sağlamak adına tüm dinamik verilerini tek bir JSON kolonunda saklar."
+  block1_p2_html: "<strong>Performans Dehası (Flat-Field Index Motoru):</strong> JSON kolonlarında WHERE koşulu ile arama yapmak yavaş olduğu için, CPalius Doctrine Event Listener tabanlı otonom bir düzleştirme (flattening) motoru kullanır. <code>queryable: true</code> işaretli alanlar <code>node_field_index</code> tablosuna yansıtılır. ProcessWire'dan ilham alan <code>findNodesBySelector</code> API'si ile karmaşık sorgular basitleşir."
+  block2_title: "Blok 2: Askeri Düzeyde İzolasyon ve Sandbox Katmanı"
+  block2_p1_html: "<strong>Core Never Dies (Çökmeyen Çekirdek):</strong> Kullanıcı alanı (<code>cp-content/modules</code>) ile çekirdek (<code>cp-core</code>) arasına devasa bir izolasyon katmanı örülmüştür. Üçüncü parti hatalı bir modül tüm uygulamayı çökertemez."
+  block2_p2_html: "<strong>Karantina Zırhı ve Acil Durum Vanası:</strong> Modül aktif edilirken <code>symfony/process</code> üzerinden izole bir alt süreçte <code>lint:container</code> ve <code>lint:yaml</code> testleri koşturulur. Çalışma anında ise giriş kapıları <code>try/catch</code> kalkanıyla donatılmıştır. Çöken modül anında yoksayılıp <code>module_quarantine.log</code> dosyasına yazılır."
+  block3_title: "Blok 3: Deep-Localization ve Dinamik Compiler-Pass"
+  block3_p1_html: "<strong>Kurumsal Çoklu Dil Topolojisi:</strong> Dil desteği çekirdeğin parçasıdır. Her içerik dikey bir tablo satırı (Node) olarak üretilir ve <code>translationGroupId</code> UUID'si ile birbirine bağlanır. DB katmanında fiziksel olarak korunur."
+  block3_p2_html: "<strong>Plug-and-Play Çeviri Derlemesi:</strong> Modüller kendi çevirilerini kendi dizinlerinde barındırır. <code>TranslationFileLocator</code> bunları bulur ve Symfony Compiler Pass ile <code>framework.translator.paths</code> dizisine enjekte eder. Çeviriler atomik yazma algoritmasıyla diske işlenir."
+  block4_title: "Blok 4: Hibrit Otomasyon ve Cron Motoru"
+  block4_p1_html: "<strong>Birleşik Cron Altyapısı:</strong> Eski tip veritabanı cronları ile modern mimari birleşmiştir. <code>#[CpCronJob]</code> özniteliği ile sanal görevler veya <code>Hooks/cron.*.php</code> dosyaları oluşturulabilir."
+  block4_p2_html: "<strong>İzole Tetikleme ve Sistem Gözetimi:</strong> <code>CronManager</code> görevleri izole alt süreçler halinde (Process) çalıştırarak memory leak'leri önler. Yöneticiler <code>/aacp/cron</code> siber-konsolu üzerinden görevleri canlı izleyebilir ve \"Şimdi Çalıştır\" AJAX sinyalleriyle tetikleyebilir."
+  block5_title: "Blok 5: Modüler REST API ve Güvenlik Geçidi (Gateway)"
+  block5_p1_html: "<strong>Routing Karmaşasına Son:</strong> Modül geliştiricileri routing dosyaları yerine metodun üzerine <code>#[CpApi]</code> özniteliğini koyarak uç nokta açar. <code>ApiGatewayController</code> üzerinden merkezi olarak yönetilir."
+  block5_p2_html: "<strong>Kriptografik Güvenlik Omurgası:</strong> <code>X-CP-API-KEY</code> başlığı <code>cp_settings</code> üzerinden kontrol edilir. <code>ApiKeyService</code>, zamanlama saldırısı (timing attack) korumalı <code>hash_equals</code> fonksiyonuyla SHA-256 doğrulamasını yapar."
+  block1_code: |
+    // Süper akıcı (fluent) Selector API kullanımı
+    $nodes = $nodeRepository->findNodesBySelector(
+        'type=post, status=published, is_featured=1, limit=5, sort=createdAt:desc'
+    );
+
+    // Arka planda çalışan Flat-Field motoru kesiti
+    // JSON'daki dinamik 'is_featured' alanı, indeks tablosundaki
+    // 'value_int' üzerinden çok yüksek hızda JOIN'lenir.
+  block2_code: |
+    // ApiGatewayController'daki gerçek zamanlı karantina izolasyonu
+    try {
+        $service = $this->serviceLocator->get($serviceId);
+        $result = $service->$methodName($request, ...$endpoint['pathParameters']);
+
+        return $result instanceof JsonResponse ? $result : new JsonResponse($result);
+    } catch (\Throwable $e) {
+        // Çöken modül tüm sistemi 500'e düşürmez.
+        // İzole edilip loglanır, Gateway ayakta kalmaya devam eder.
+        $this->quarantineApiFailure($serviceId, $methodName, $e);
+
+        return new JsonResponse(['error' => 'Internal API Error'], 500);
+    }
+  block3_code: |
+    // TranslationManager içerisindeki atomik dosya yazma garantisi
+    $dir = dirname($filePath);
+    if (!is_dir($dir)) {
+        $this->filesystem->mkdir($dir);
+    }
+
+    // 1. Önce .tmp uzantılı geçici bir dosyaya güvenlice yazılır
+    $yaml = Yaml::dump($data, 2, 2);
+    $tmpPath = $filePath . '.tmp-' . bin2hex(random_bytes(4));
+    $this->filesystem->dumpFile($tmpPath, $yaml);
+
+    // 2. İşletim sistemi seviyesindeki rename() ile hedef dosya anında ezilir.
+    // Elektrik dahi kesilse dosya asla yarım/bozuk kalamaz (Atomicity).
+    $this->filesystem->rename($tmpPath, $filePath, true);
+  block4_code: |
+    // cp-content/modules/Blog/Cron/PublishScheduledPostsTask.php
+    final class PublishScheduledPostsTask
+    {
+        public function __construct(
+            private readonly EntityManagerInterface $entityManager,
+            private readonly NodeRepository $nodeRepository,
+        ) {}
+
+        // Hiçbir DB kaydına ihtiyaç duymadan, saf öznitelik tabanlı cron kaydı
+        #[CpCronJob(schedule: '*/5 * * * *', name: 'blog.publish_scheduled')]
+        public function execute(): string
+        {
+            $dueNodes = $this->nodeRepository->findDueScheduledNodes();
+
+            if ($dueNodes === []) {
+                return 'Yayin zamani gelmis icerik yok.';
+            }
+
+            foreach ($dueNodes as $node) {
+                $node->publish($node->getPublishedAt());
+            }
+            $this->entityManager->flush();
+
+            return sprintf('%d icerik yayina alindi.', count($dueNodes));
+        }
+    }
+  block5_code: |
+    // 1. Modül içerisindeki tertemiz uç nokta
+    #[CpApi(path: '/blog/posts', methods: ['GET'], public: false)]
+    public function getPosts(Request $request): JsonResponse
+    {
+        // Is mantigi...
+    }
+
+    // 2. ApiGatewayController'daki fail-closed zırhı
+    // public:false olan rotalarda API anahtari eksikse hedef metot
+    // KESINLIKLE çagrilmaz.
+    if (!$endpoint['definition']['public'] && !$this->hasValidApiKey($request)) {
+        return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+    }
+  audit_code: |
+    #[AsDoctrineListener(event: Events::onFlush)]
+    #[AsDoctrineListener(event: Events::postFlush)]
+    final class AuditLogListener
+    {
+        public function onFlush(OnFlushEventArgs $args): void
+        {
+            $unitOfWork = $args->getObjectManager()->getUnitOfWork();
+            $auditable = $this->resourceRegistry->getAuditableEntityClasses();
+
+            foreach ($unitOfWork->getScheduledEntityUpdates() as $entity) {
+                if (!$this->isAuditable($entity, $auditable)) {
+                    continue;
+                }
+                // {field: [eskiDeger, yeniDeger]} — ayni flush'a hesaplanir
+                $changes = $this->buildUpdateChanges($unitOfWork, $entity);
+            }
+        }
+    }
+  thumb_code: |
+    {# Herhangi bir Asset, asset id, depolama anahtari veya /uploads/... URL #}
+    <img src="{{ asset|cp_thumb(300, 200) }}" alt="{{ asset.originalName }}">
+
+    {# 'fit' goruntunun tamamini buyutmeden kutuya sigdirir #}
+    <img src="{{ featuredImageUrl|cp_thumb(800, 600, 'fit') }}" alt="">
+
+stats:
+  defense: "Savunma Hattı"
+  n1: "N+1 Sorgu Toleransı"
+  layers: "Genişletme Katmanı"
+  modules: "Modül Kapasitesi"
+  opensource: "Açık Kaynak"
+
+roadmap:
+  label: "Bölüm 10"
+  title: "Gelecek Yol Haritası"
+  desc: "İlk whitepaper'da vaat edilen maddelerden Safe Mode, anlık görsel pipeline'ı ve audit log tamamlandı. Sıradaki geliştirme sprintlerinde aşağıdaki sistemler inşa edilecek."
+  sprint1: "Sprint 1"
+  sprint1_title: "Workflow & State Machine"
+  sprint1_text_html: "Fatura, araç, rezervasyon gibi iş kayıtlarının geçiş süreçlerini (draft → preparation → sold) YAML tanımlarıyla yöneten ve her geçişi otomatik audit log'a bağlayan mekanizma. <code class=\"code-inline\">CpResource::$workflow</code> alanı zaten deklare edilmiş durumda — sıradaki adım gerçek transition/guard motorunu bağlamak."
+  sprint2: "Sprint 2 — Bitti"
+  sprint2_title: "Anlık Görsel Pipeline"
+  sprint2_text_html: "Teslim edildi. <code class=\"code-inline\">ImageProcessor</code> (GD) anlık olarak yeniden boyutlandırır/kırpar ve <code class=\"code-inline\">public/uploads/cache/</code> altında önbelleğe alır; <code class=\"code-inline\">cp_thumb</code> Twig filtresi bunu her temaya açar."
+  sprint3: "Sprint 3 — Bitti"
+  sprint3_title: "#[CpResource] Audit Log"
+  sprint3_text_html: "Teslim edildi. <code class=\"code-inline\">cp_audit_logs</code> tablosu ve izole bir <code class=\"code-inline\">onFlush</code>/<code class=\"code-inline\">postFlush</code> dinleyicisi, denetlenebilir bir entity'nin her create/update/delete işlemini kaydeder. Herhangi bir entity'ye <code class=\"code-inline\">#[Auditable]</code> eklemek onu devreye alır."
+  sprint4: "Sprint 4"
+  sprint4_title: "Messenger Async Kuyruk"
+  sprint4_text_html: "<code class=\"code-inline\">symfony/messenger</code> kurulu ve AACP Sistem Monitörü'nde izlenebiliyor; sıradaki adım gerçek bir transport (Doctrine/Redis) bağlayıp e-posta ve bildirim işlemlerini asenkron kuyruğa taşımak."
+
+community:
+  label: "Topluluk"
+  title: "Mimariyi Birlikte Kusursuzlaştıralım"
+  desc: "CPalius, topluluğun gücüyle en sağlam uygulama framework'üne dönüşecek. Fikirlerinizi, eleştirilerinizi ve mimari önerilerinizi heyecanla bekliyoruz."
+  cta_github: "GitHub'da Katıl"
+  cta_discuss: "Tartışmalara Göz At"
+
+whitepaper:
+  meta_title: "CPalius CMF Whitepaper — Teknik İnceleme & Mimari Yol Haritası"
+  meta_description: "CPalius CMF teknik whitepaper: Pristine Root, Core Never Dies, hibrit veri modeli, i18n, CBAC, SaaS tenant koruması ve yol haritası."
+  back: "Ana sayfaya dön"
+  badge: "Teknik İnceleme (Whitepaper) & Mimari Yol Haritası (RFC)"
+  version: "Sürüm: v1.0.0-draft"
+  toc_title: "İçindekiler"
+  cta: "Whitepaper'ı İncele"

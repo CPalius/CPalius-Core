@@ -7,9 +7,7 @@ namespace App\Core\Settings\Definitions;
 use App\Core\Annotation\CpSetting;
 
 /**
- * Sitenin ana sayfasını (kök "/" route'u) ve portal blok layout'unu
- * belirleyen ayarlar. Layout JSON'u Studio > Ana Sayfa ekranından
- * sürükle-bırak ile yönetilir (bkz. PortalLayoutService).
+ * Homepage mode and portal-block layout JSON (edited via Studio drag-and-drop).
  */
 #[CpSetting(key: 'homepage.mode', label: 'Ana Sayfa Modu', type: 'select', default: 'portal', variants: [
     'portal' => 'Portal (blok vitrin)',

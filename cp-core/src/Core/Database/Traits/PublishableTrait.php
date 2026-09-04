@@ -7,16 +7,7 @@ namespace App\Core\Database\Traits;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * #[Publishable] davranışının somut uygulaması. Node entity'sindeki
- * status/publishedAt alan çiftiyle BİREBİR aynı sözleşmeyi taşır — bu
- * trait aslında Node'un zaten elle yazdığı deseni, başka entity'lerin
- * (ör. bir modülün kendi içerik benzeri kaynağı) kod tekrarı yapmadan
- * yeniden kullanabilmesi için çıkarır.
- *
- * Bilinçli olarak Node::STATUS_* sabitlerini yeniden TANIMLAMAZ: bu
- * trait'i kullanan sınıf, kendi durum sabitlerini (ör. "draft",
- * "published", "archived") kendi bağlamına göre tanımlar — trait sadece
- * alan/erişimci iskeletini sağlar, durum kelime dağarcığını dayatmaz.
+ * status/publishedAt pair matching Node. The using class owns its status vocabulary; this trait does not.
  */
 trait PublishableTrait
 {
@@ -44,9 +35,7 @@ trait PublishableTrait
     }
 
     /**
-     * Durumu "published" yapar ve yayın tarihini damgalar. Tarih
-     * verilmezse şimdiki zaman kullanılır — Node::publish() ile aynı
-     * davranış.
+     * Set status to published and stamp publishedAt (now if omitted), same as Node::publish().
      */
     public function publish(?\DateTimeImmutable $at = null): static
     {

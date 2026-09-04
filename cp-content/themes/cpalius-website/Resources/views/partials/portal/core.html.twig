@@ -1,40 +1,24 @@
-<section class="portal-zone" id="core">
+{% set t = 'portal' %}
+<section class="section" id="core">
     <div class="container">
-        <div class="portal-module fade-in">
-            <div class="portal-module__head">
-                <h2 class="portal-module__title">
-                    <i class="bi bi-shield-check"></i>
-                    <span>"Core Never Dies" — Çökmeyen Çekirdek Mimarisi</span>
-                </h2>
-                <span class="portal-module__eyebrow">Bölüm 2</span>
-            </div>
-            <div class="portal-module__body portal-module__body--padded portal-marketing">
-                <p class="portal-module__intro">
-                    Kullanıcı alanından gelebilecek kötü yazılmış veya bozuk kodların tüm sistemi kilitlemesini
-                    engelleyen Üç Kademeli Aktif Savunma ve Karantina Hattı.
-                </p>
+        <div class="section-header fade-in">
+            <span class="section-label">{{ 'core.label'|trans({}, t) }}</span>
+            <h2 class="section-title">{{ 'core.title'|trans({}, t) }}</h2>
+            <p class="section-desc">{{ 'core.desc'|trans({}, t) }}</p>
+        </div>
 
-                <div class="defense-timeline">
-                    <div class="defense-item">
-                        <div class="defense-number">1</div>
-                        <span class="defense-label">1. Savunma Hattı</span>
-                        <h3 class="defense-title">Tavuk-Yumurta Probleminin Çözümü</h3>
-                        <p class="defense-text">
-                            Symfony boot edilirken <strong>config/bundles.php</strong> dosyası okunur. Bu aşamada henüz
-                            veritabanı bağlantısı, servis konteyneri veya autoloader tam olarak ayağa kalkmamıştır.
-                            Modüllerin aktiflik durumunu doğrudan veritabanından okumaya çalışırsak, sistem daha
-                            boot edilemeden kilitlenir.
-                        </p>
-                        <p class="defense-text">
-                            <strong>Çözüm:</strong> CPalius, bir modül aktif/pasif edildiğinde
-                            <code>active_modules.php</code> adında statik, PHP opcache dostu bir dizi dosyası üretir.
-                            <code>bundles.php</code> sadece bu dosyayı okur — veritabanına hiç dokunmaz.
-                        </p>
-                        <div class="code-block">
-                            <div class="code-block-header">
-                                <i class="bi bi-file-code"></i> cp-core/config/bundles.php
-                            </div>
-                            <pre><span class="comment">// Çekirdek her zaman ayakta</span>
+        <div class="defense-timeline fade-in">
+            <div class="defense-item">
+                <div class="defense-number">1</div>
+                <span class="defense-label">{{ 'core.line1_label'|trans({}, t) }}</span>
+                <h3 class="defense-title">{{ 'core.line1_title'|trans({}, t) }}</h3>
+                <p class="defense-text">{{ 'core.line1_p1_html'|trans({}, t)|raw }}</p>
+                <p class="defense-text">{{ 'core.line1_p2_html'|trans({}, t)|raw }}</p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <i class="bi bi-file-code"></i> {{ 'core.code_file'|trans({}, t) }}
+                    </div>
+                    <pre><span class="comment">{{ 'core.code_comment_core'|trans({}, t) }}</span>
 $bundles = [
     FrameworkBundle::<span class="keyword">class</span> => [<span class="string">'all'</span> => <span class="keyword">true</span>],
     TwigBundle::<span class="keyword">class</span>      => [<span class="string">'all'</span> => <span class="keyword">true</span>],
@@ -42,49 +26,46 @@ $bundles = [
     CoreBundle::<span class="keyword">class</span>      => [<span class="string">'all'</span> => <span class="keyword">true</span>],
 ];
 
-<span class="comment">// Aktif modülleri dosyadan oku</span>
+<span class="comment">{{ 'core.code_comment_modules'|trans({}, t) }}</span>
 $activeModules = <span class="keyword">require</span> <span class="string">'active_modules.php'</span>;
 <span class="keyword">foreach</span> ($activeModules <span class="keyword">as</span> $moduleClass) {
     <span class="keyword">if</span> (<span class="function">class_exists</span>($moduleClass)) {
         $bundles[$moduleClass] = [<span class="string">'all'</span> => <span class="keyword">true</span>];
     }
 }</pre>
-                        </div>
-                    </div>
+                </div>
+            </div>
 
-                    <div class="defense-item">
-                        <div class="defense-number">2</div>
-                        <span class="defense-label">2. Savunma Hattı</span>
-                        <h3 class="defense-title">Çalışma Zamanı İzolasyonu</h3>
-                        <p class="defense-text">
-                            Sınıfın fiziksel olarak var olması (<code>class_exists</code>), o modülün kodunun hatasız
-                            çalıştığı anlamına gelmez. Modülün <code>boot()</code> metodu içinde fırlatacağı bir
-                            <strong>TypeError</strong> veya <strong>RuntimeException</strong> tüm sistemi çökertebilir.
-                        </p>
-                        <p class="defense-text">
-                            <strong>Çözüm:</strong> <code>Kernel::boot()</code> metodu override edilerek modül seviyesindeki
-                            tüm boot süreçleri <code>try/catch (\Throwable)</code> zırhıyla kuşatıldı. Hatalı modül
-                            otomatik karantinaya alınır, çekirdek çalışmaya devam eder.
-                        </p>
-                    </div>
+            <div class="defense-item">
+                <div class="defense-number">2</div>
+                <span class="defense-label">{{ 'core.line2_label'|trans({}, t) }}</span>
+                <h3 class="defense-title">{{ 'core.line2_title'|trans({}, t) }}</h3>
+                <p class="defense-text">{{ 'core.line2_p1_html'|trans({}, t)|raw }}</p>
+                <p class="defense-text">{{ 'core.line2_p2_html'|trans({}, t)|raw }}</p>
+            </div>
 
-                    <div class="defense-item">
-                        <div class="defense-number">3</div>
-                        <span class="defense-label">3. Savunma Hattı</span>
-                        <h3 class="defense-title">Compile-Time Kilitlenme Koruması &amp; Dry-Run</h3>
-                        <p class="defense-text">
-                            Eklentideki geçersiz bir YAML sözdizimi veya yanlış bir DI tanımı, Symfony container'ı
-                            derlenemez hale getirir. Bu durumda terminalde komut bile çalıştırılamaz.
-                        </p>
-                        <p class="defense-text">
-                            <strong>Çözüm:</strong> Modül aktive edilmeden önce <code>symfony/process</code> ile izole bir
-                            alt süreç başlatılır. Bu süreçte <code>cache:clear</code> → <code>lint:yaml</code> →
-                            <code>lint:container</code> komutları koşturulur. Hata varsa aktivasyon iptal edilir ve modül
-                            kalıcı olarak karantinaya alınır. Dosya asla bozuk haliyle kaydedilmez.
-                        </p>
+            <div class="defense-item">
+                <div class="defense-number">3</div>
+                <span class="defense-label">{{ 'core.line3_label'|trans({}, t) }}</span>
+                <h3 class="defense-title">{{ 'core.line3_title'|trans({}, t) }}</h3>
+                <p class="defense-text">{{ 'core.line3_p1'|trans({}, t) }}</p>
+                <p class="defense-text">{{ 'core.line3_p2_html'|trans({}, t)|raw }}</p>
+            </div>
+
+            <div class="defense-item">
+                <div class="defense-number">4</div>
+                <span class="defense-label">{{ 'core.line4_label'|trans({}, t) }}</span>
+                <h3 class="defense-title">{{ 'core.line4_title'|trans({}, t) }}</h3>
+                <p class="defense-text">{{ 'core.line4_p1_html'|trans({}, t)|raw }}</p>
+                <p class="defense-text">{{ 'core.line4_p2_html'|trans({}, t)|raw }}</p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <i class="bi bi-file-code"></i> {{ 'core.line4_code_header'|trans({}, t) }}
                     </div>
+                    <pre>{{ 'core.line4_code'|trans({}, t) }}</pre>
                 </div>
             </div>
         </div>
     </div>
 </section>
+

@@ -10,12 +10,7 @@ use Doctrine\DBAL\Driver\Result;
 use Doctrine\DBAL\Driver\Statement;
 
 /**
- * Hazırlanmış bir (prepared) statement'ın execute() çağrısını sarmalar.
- * NodeIndexListener/NodeRepository gibi Doctrine ORM üzerinden atılan
- * TÜM sorgular (SELECT/INSERT/UPDATE/DELETE), DBAL seviyesinde bu
- * statement'lardan geçer — bu yüzden ORM'e özel bir hook (postLoad vb.)
- * yerine DBAL Driver seviyesinde ölçüm yapmak, hem native SQL hem de
- * QueryBuilder ile atılan sorguları TEK noktadan yakalar.
+ * Wrap statement execute() so ORM and native SQL are counted at the DBAL driver layer.
  */
 final class QueryCounterStatement extends AbstractStatementMiddleware
 {

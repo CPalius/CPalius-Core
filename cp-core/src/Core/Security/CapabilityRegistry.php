@@ -3,27 +3,16 @@
 namespace App\Core\Security;
 
 /**
- * Sistemdeki TÜM geçerli yeteneklerin (capability) tek doğruluk kaynağı.
- *
- * CPalius'ta ROLE_* sabit kontrolü yasaktır (bkz. CPaliusVoter); bunun
- * yerine her yetki kararı "system.module.manage", "node.post.edit.own"
- * gibi serbest metin yeteneklere karşı verilir. Bu registry olmadan bir
- * rol config'inde yazım hatası ("nod.post.create" gibi) sessizce hiçbir
- * şey yapmayan, güvenlik açısından tehlikeli bir izin üretebilirdi.
- *
- * Fail-Safe kuralı: register() edilmemiş bir yetenek sorgulandığında
- * (has() ile) false dönülür — "bilinmeyen yetenek = izin yok" varsayılan
- * tutumu benimsenir, asla "bilinmeyen yetenek = izin ver" olmaz.
+ * Source of truth for valid capability names. Unknown capability = deny (never grant).
+ * Authorization uses these strings, not ROLE_* constants.
  */
 final class CapabilityRegistry
 {
-    /** @var array<string, string> yetenek adı => tanımlayan kaynak (ör. "core", "Modules\Blog\BlogModule") */
+    /** @var array<string, string> capability name => source (e.g. "core", "Modules\\Blog\\BlogModule") */
     private array $capabilities = [];
 
     /**
-     * Çekirdek veya bir modül, kendi yeteneklerini burada bildirir.
-     * Aynı isim birden çok kez register edilirse (ör. cache warmup sırasında
-     * tekrar çalışma), idempotent olarak üzerine yazılır — hata fırlatmaz.
+     * Idempotent register from core or a module; duplicate names overwrite, they do not throw.
      */
     public function register(string $capability, string $source = 'core'): void
     {
@@ -41,10 +30,7 @@ final class CapabilityRegistry
     }
 
     /**
-     * Fail-Safe: registry'de kayıtlı olmayan bir yetenek için her zaman
-     * false döner. CPaliusVoter, bir rolün bu yeteneğe sahip olup olmadığını
-     * kontrol etmeden ÖNCE bu metotla yeteneğin gerçekten var olduğunu
-     * doğrulamalıdır.
+     * False for unregistered names. CPaliusVoter must call this before treating a capability as real.
      */
     public function has(string $capability): bool
     {

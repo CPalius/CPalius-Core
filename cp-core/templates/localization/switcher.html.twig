@@ -1,0 +1,59 @@
+{#
+    FAZ 4 — Ön yüz dil değiştirici.
+
+    style = 'buttons'  → düz buton grubu
+    style = 'dropdown' → dil ikonu; tıklayınca bayrak listesi
+
+    Beklenen değişkenler:
+      style       ('buttons'|'dropdown')
+      current     (string)  aktif dil kodu
+      currentLink (array)   aktif dilin link kaydı
+      links       (list)    {code, url, isCurrent, isDefault, nativeName}
+#}
+{% if style == 'dropdown' %}
+    <details class="locale-switcher locale-switcher--dropdown" id="navLocale">
+        <summary class="locale-switcher__toggle" aria-label="{{ 'website.locale.switcher_aria'|trans }}">
+            <i class="bi bi-translate" aria-hidden="true"></i>
+        </summary>
+
+        <ul class="locale-switcher__menu" role="list">
+            {% for link in links %}
+                <li>
+                    {% if link.isCurrent %}
+                        <span class="locale-switcher__link is-active" aria-current="true" lang="{{ link.code }}">
+                            <img src="/themes/cpalius-website/img/flags/{{ link.code }}.png" alt="" class="locale-switcher__flag" width="22" height="16">
+                            <span>{{ link.nativeName }}</span>
+                        </span>
+                    {% else %}
+                        <a href="{{ link.url }}"
+                           hreflang="{{ link.code }}"
+                           lang="{{ link.code }}"
+                           rel="alternate"
+                           class="locale-switcher__link">
+                            <img src="/themes/cpalius-website/img/flags/{{ link.code }}.png" alt="" class="locale-switcher__flag" width="22" height="16">
+                            <span>{{ link.nativeName }}</span>
+                        </a>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </details>
+{% else %}
+    <nav class="locale-switcher locale-switcher--buttons" aria-label="{{ 'website.locale.switcher_aria'|trans }}">
+        {% for link in links %}
+            {% if link.isCurrent %}
+                <span class="locale-switcher__link is-active" aria-current="true" lang="{{ link.code }}">
+                    {{ link.nativeName }}
+                </span>
+            {% else %}
+                <a href="{{ link.url }}"
+                   hreflang="{{ link.code }}"
+                   lang="{{ link.code }}"
+                   rel="alternate"
+                   class="locale-switcher__link">
+                    {{ link.nativeName }}
+                </a>
+            {% endif %}
+        {% endfor %}
+    </nav>
+{% endif %}

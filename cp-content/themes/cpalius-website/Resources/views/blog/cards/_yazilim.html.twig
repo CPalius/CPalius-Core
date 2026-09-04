@@ -19,7 +19,7 @@
         <h4 class="slw-feed-card__title">
             <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
         </h4>
-        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+        {% include '@Theme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
 
         <div class="blog-card-yazilim__footer">
             {% if typeFields.download_url is defined and typeFields.download_url %}

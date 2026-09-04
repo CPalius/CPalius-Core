@@ -4,13 +4,9 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{% block title %}{{ 'studio.layout.title.default'|trans }}{% endblock %}</title>
+        <meta name="robots" content="noindex, nofollow">
 
-        {#
-            Studio, AACP'nin aksine "normal" bir Symfony ekranıdır: temaların
-            veya modüllerin yanında yaşar, ama kendi çekirdek AssetMapper
-            girişini (app.css/app.js) kullanır — editör deneyimi bir modül
-            asset hatasından etkilenmemelidir.
-        #}
+        {# Studio uses core AssetMapper (app.css/app.js), not theme/module assets. #}
         {% block stylesheets %}{% endblock %}
         {% block javascripts %}
             {{ importmap(['app', 'studio-quick-cache-clear']) }}
@@ -41,12 +37,42 @@
                                 <li class="sidebar-menu-group-title">{{ item.group|trans }}</li>
                                 {% set currentGroup = item.group %}
                             {% endif %}
-                            <li>
+
+                            {% set currentRoute = app.request.attributes.get('_route') %}
+                            {% set itemActive = currentRoute == item.routeName or (item.routePrefix != item.routeName and currentRoute starts with item.routePrefix) %}
+                            {% set childActive = false %}
+                            {% for child in item.children %}
+                                {% if currentRoute == child.routeName or (child.routePrefix != child.routeName and currentRoute starts with child.routePrefix) %}
+                                    {% set childActive = true %}
+                                {% endif %}
+                            {% endfor %}
+
+                            <li{% if item.children is not empty %} class="dropdown{{ (itemActive or childActive) ? ' open' : '' }}"{% endif %}>
                                 <a href="{{ path(item.routeName) }}"
-                                   class="{{ app.request.attributes.get('_route') starts with item.routePrefix ? 'active-page' : '' }}">
+                                   class="{{ itemActive ? 'active-page' : '' }}{{ item.children is not empty ? ' has-submenu-trigger' : '' }}">
                                     <twig:ux:icon name="{{ item.icon }}" class="menu-icon shrink-0" />
                                     <span>{{ item.label|trans }}</span>
+                                    {% if item.children is not empty %}
+                                        <span data-sidebar-dropdown-trigger class="submenu-caret ms-auto">
+                                            <twig:ux:icon name="tabler:chevron-down" class="h-3.5 w-3.5 shrink-0" />
+                                        </span>
+                                    {% endif %}
                                 </a>
+
+                                {% if item.children is not empty %}
+                                    <ul class="sidebar-submenu{{ (itemActive or childActive) ? ' open' : '' }}">
+                                        {% for child in item.children %}
+                                            {% set isChildActive = currentRoute == child.routeName or (child.routePrefix != child.routeName and currentRoute starts with child.routePrefix) %}
+                                            <li{% if isChildActive %} class="active-page"{% endif %}>
+                                                <a href="{{ path(child.routeName) }}"
+                                                   class="{{ isChildActive ? 'active-page' : '' }}">
+                                                    <twig:ux:icon name="{{ child.icon }}" class="h-3.5 w-3.5 shrink-0" />
+                                                    <span>{{ child.label|trans }}</span>
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
                             </li>
                         {% endfor %}
                     </ul>

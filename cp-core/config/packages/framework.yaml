@@ -30,8 +30,31 @@ framework:
         enabled: false
         terminate_on_cache_hit: true
 
+# Redis kapalı local kurulumlarda Failover handler her session
+# read/write'ta önce Redis'e bağlanmayı dener → saniyelerce bekler.
+# Dev'de doğrudan native dosya session kullan.
+when@dev:
+    framework:
+        session:
+            handler_id: null
+
 when@test:
     framework:
         test: true
         session:
             storage_factory_id: session.storage.factory.mock_file
+            # handler_id: null ZORUNLUDUR (FAZ 2'de tespit edildi).
+            #
+            # storage_factory_id'yi mock_file yapmak YETMİYOR: kök
+            # yapılandırmadaki "handler_id: session.handler.redis" hâlâ
+            # geçerli kalıyor ve FailoverRedisSessionHandler -> Redis
+            # servisi container'da tanımlı olmayı sürdürüyor. Doctrine'in
+            # PdoSessionHandlerSchemaListener'ı, şema işlemleri sırasında
+            # session handler servisini ÇÖZÜMLÜYOR ve o anda Redis
+            # bağlantısı kurulmaya çalışılıyor.
+            #
+            # Redis PHP eklentisi kurulu olmayan bir CI koşucusunda bu,
+            # testlerle hiç ilgisi olmayan bir CacheException'a dönüşür:
+            # "Cannot find the redis extension nor the relay extension".
+            # when@dev bloğu aynı sorunu aynı satırla çözüyor.
+            handler_id: null

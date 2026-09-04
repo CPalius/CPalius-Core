@@ -1,12 +1,6 @@
 /**
- * AACP "Performans" konsolu: her backend kartı (Redis/Memcached/Varnish/
- * PageSpeed) için Test/Enable/Disable AJAX aksiyonlarını yönetir.
- *
- * Bilinçli olarak vanilla JS — aacp-cache-rebuild.js ile aynı "sıfır
- * bağımlılık" ruhu. Etkinleştir butonu yalnızca en son testin başarılı
- * olduğu durumda tıklanabilir hale getirilir; bu istemci tarafı bir UX
- * kolaylığıdır, gerçek zorlama PerformanceController/PerformanceBackendRegistry
- * tarafında (sunucu tarafında) yapılır.
+ * AACP Performance console: Test/Enable/Disable AJAX for each backend card.
+ * Enable stays gated on the last test result; the server enforces the same rule.
  */
 function initPerformanceCard(root) {
     const backend = root.dataset.performanceBackend;
@@ -38,11 +32,7 @@ function initPerformanceCard(root) {
         logEl.scrollTop = logEl.scrollHeight;
     }
 
-    // Test/Disable butonları her aksiyon sırasında geçici olarak kilitlenir.
-    // Enable butonunun durumu BUNUN DIŞINDA tutulur: o yalnızca en son test
-    // sonucuna göre (applyTestResult içinde) açılır/kapanır — setBusy(false)
-    // enable'ı körü körüne geri açarsa, başarısız bir testten sonra bile
-    // tıklanabilir kalır (sunucu zaten reddeder ama UI yanıltıcı olur).
+    // Keep Enable independent of setBusy: a failed test must not re-enable the button.
     function setBusy(busy) {
         [buttons.test, buttons.disable].forEach((button) => {
             if (button) {
@@ -78,7 +68,13 @@ function initPerformanceCard(root) {
                 formData.append(`config[${input.dataset.performanceField}]`, input.value);
             });
 
-            const response = await fetch(urls.test, { method: 'POST', body: formData });
+            const response = await fetch(urls.test, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: { 'X-CSRF-TOKEN': csrfToken },
+            });
             const data = await response.json();
             applyTestResult(data);
         } catch (error) {
@@ -99,7 +95,13 @@ function initPerformanceCard(root) {
             const formData = new FormData();
             formData.append('_token', csrfToken);
 
-            const response = await fetch(url, { method: 'POST', body: formData });
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: { 'X-CSRF-TOKEN': csrfToken },
+            });
             const data = await response.json();
 
             if (!data.success) {

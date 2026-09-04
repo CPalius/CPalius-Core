@@ -1,0 +1,32 @@
+{#
+    <twig:cp:locale_filter locales="{{ locales }}" current="{{ currentLocale }}" route="admin_forum_sections_index" />
+
+    <twig:studio:locale_filter>'in AACP (koyu palet) karşılığı — aynı prop
+    sözleşmesi, aynı davranış. Ayrı dosya olma gerekçesi için bkz.
+    components/studio/card.html.twig.
+
+    Props:
+      locales     (list<LocaleDefinition>) Aktif diller (LocaleProvider::getLocales()).
+      current     (string)                 Şu an listelenen dil kodu.
+      route       (string)                 Filtre linklerinin rotası.
+      extraParams (array)                  Rota üretimine eklenecek ek parametreler.
+#}
+{% props locales = [], current = null, route = null, extraParams = {} %}
+
+{% if locales|length > 1 and route %}
+    <div {{ attributes.defaults({class: 'mb-sp-sm flex flex-wrap items-center gap-1'}) }}>
+        <span class="me-2 text-fs-xs uppercase tracking-wider !text-slate-600">
+            {{ 'cp.form.locale'|trans }}
+        </span>
+
+        {% for locale in locales %}
+            <a href="{{ path(route, extraParams|merge({locale: locale.code})) }}"
+               class="rounded-md px-3 py-1.5 text-fs-sm font-medium {{ locale.code == current
+                   ? 'bg-primary-500/10 text-primary-400'
+                   : '!text-slate-400 hover:!bg-white/5 hover:!text-slate-200' }}">
+                {{ locale.nativeName }}
+                <span class="font-mono text-fs-xs uppercase !text-slate-600">{{ locale.code }}</span>
+            </a>
+        {% endfor %}
+    </div>
+{% endif %}

@@ -1,0 +1,59 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    _instanceof:
+        Modules\Seo\Contract\SeoSitemapSourceInterface:
+            tags: ['cpalius.seo.sitemap_source']
+        Modules\Seo\Contract\SeoPageProviderInterface:
+            tags: ['cpalius.seo.page_provider']
+
+    Modules\Seo\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    Modules\Seo\Engine\:
+        resource: '../../Engine/'
+
+    Modules\Seo\Provider\:
+        resource: '../../Provider/'
+
+    Modules\Seo\Sitemap\:
+        resource: '../../Sitemap/'
+        exclude:
+            - '../../Sitemap/SitemapUrl.php'
+            - '../../Sitemap/Source/'
+
+    Modules\Seo\Sitemap\Source\:
+        resource: '../../Sitemap/Source/'
+
+    Modules\Seo\Cron\:
+        resource: '../../Cron/'
+
+    Modules\Seo\Studio\:
+        resource: '../../Studio/'
+
+    Modules\Seo\Command\:
+        resource: '../../Command/'
+
+    Modules\Seo\EventSubscriber\:
+        resource: '../../EventSubscriber/'
+
+    Modules\Seo\Provider\ForumSeoProvider:
+        arguments:
+            $sectionRepository: '@?Modules\Forum\Repository\ForumSectionRepository'
+            $topicRepository: '@?Modules\Forum\Repository\ForumTopicRepository'
+
+    Modules\Seo\Sitemap\Source\ForumSitemapSource:
+        arguments:
+            $sectionRepository: '@?Modules\Forum\Repository\ForumSectionRepository'
+            $topicRepository: '@?Modules\Forum\Repository\ForumTopicRepository'
+
+    Modules\Seo\Provider\RoadmapSeoProvider:
+        arguments:
+            $entryRepository: '@?Modules\Roadmap\Repository\RoadmapEntryRepository'
+
+    Modules\Seo\Sitemap\Source\RoadmapSitemapSource:
+        arguments:
+            $entryRepository: '@?Modules\Roadmap\Repository\RoadmapEntryRepository'

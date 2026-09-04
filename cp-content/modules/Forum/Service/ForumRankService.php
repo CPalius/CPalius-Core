@@ -4,17 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
-use App\Entity\ForumUserRank;
+use Modules\Forum\Entity\ForumUserRank;
 use App\Entity\User;
-use App\Repository\ForumPostRepository;
-use App\Repository\ForumUserRankRepository;
+use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumUserRankRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Bir kullanıcının forum rütbesini çözer: önce User::$data['forum_rank_id']
- * içindeki elle atanmış rütbeye bakılır (ör. "Moderatör"), yoksa mesaj
- * sayısına göre en yüksek otomatik rütbe seçilir (bkz. ForumUserRank
- * docblock'u).
+ * Resolves a member's forum rank: manual User::$data['forum_rank_id'] first, else highest auto rank by post count.
  */
 final class ForumRankService
 {
@@ -38,14 +35,9 @@ final class ForumRankService
     }
 
     /**
-     * Toplu (thread/postbit) render için — tek sorgu ile önceden çekilmiş
-     * $preloadedRanks (ForumUserRankRepository::findAllOrdered()) ve $postCount
-     * üzerinden, DB'ye gitmeden PHP'de rütbeyi hesaplar. Law 6.1 (N+1 muhafızı)
-     * gereği: bir thread sayfasındaki her yazar için ayrı rütbe sorgusu
-     * atmamak için ForumFrontController bu metodu kullanır (bkz.
-     * buildPostbitStats()).
+     * Rank for postbit/thread render using preloaded ranks and post counts — no per-author query (Law 6.1).
      *
-     * @param ForumUserRank[] $preloadedRanks sortOrder/minPosts'a göre sıralı tam liste
+     * @param ForumUserRank[] $preloadedRanks Full list ordered by sortOrder/minPosts
      */
     public function resolveRankFromPreloaded(User $user, int $postCount, array $preloadedRanks): ?ForumUserRank
     {

@@ -22,6 +22,16 @@ doctrine:
                 dir: '%kernel.project_dir%/cp-core/src/Entity'
                 prefix: 'App\Entity'
                 alias: App
+            # #[CpResource] Audit Log entity lives outside src/Entity (its own
+            # Core\Audit slice) so it needs its own explicit mapping entry.
+            CpAudit:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Audit/Entity'
+                prefix: 'App\Core\Audit\Entity'
+                alias: CpAudit
+            # Modül entity mapping'leri Kernel::registerActiveModuleDoctrineMappings()
+            # ile yalnızca active_modules.php'deki sağlıklı modüller için eklenir.
         # Manifesto Law 5.1: #[CpResource(multiTenant: true)] işaretli
         # entity'lerin sorgularına otomatik tenant_id kısıtı enjekte eder.
         # Etkinleştirme/parametre doldurma TenantFilterActivationListener'da.

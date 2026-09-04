@@ -1,0 +1,13 @@
+{
+    "name": "Widget",
+    "version": "1.0.0",
+    "description": "Sidebar and footer widget areas.",
+    "author": "CPalius",
+    "bundle": "Modules\\Widget\\WidgetModule",
+    "core_version": "^1.0",
+    "requires": {},
+    "conflicts": {},
+    "provides": [
+        "widget"
+    ]
+}

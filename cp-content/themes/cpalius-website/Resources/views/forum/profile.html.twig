@@ -1,4 +1,4 @@
-{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+{% extends '@Theme/forum/layout.html.twig' %}
 
 {% block title %}{{ profileUser.fullName }} — {{ 'forum.profile.title_suffix'|trans }}{% endblock %}
 
@@ -14,9 +14,10 @@
 
 {% block forum_content %}
 <div class="forum-profile-card fade-in">
-    {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: profileUser.fullName, size: 'lg'} %}
+    {% include '@Theme/forum/partials/_avatar.html.twig' with {name: profileUser.fullName, user: profileUser, size: 'lg'} %}
     <div class="forum-profile-card__body">
         <h1 class="forum-profile-card__name">{{ profileUser.fullName }}</h1>
+        {% include '@Theme/forum/partials/_custom_title.html.twig' with {user: profileUser} %}
         {% if rank %}
             <span class="forum-badge" style="background: color-mix(in srgb, {{ rank.color }} 15%, white); color: {{ rank.color }};">
                 {% if rank.icon %}<i class="bi {{ rank.icon }}"></i>{% endif %} {{ rank.label }}
@@ -25,25 +26,89 @@
         <div class="forum-profile-card__meta">
             <span><i class="bi bi-calendar3"></i> {{ 'forum.meta.joined'|trans({'date': profileUser.createdAt|date('d.m.Y')}) }}</span>
         </div>
+        {% if canGiveRep %}
+            <button type="button" class="btn btn-sm btn-outline" data-rep-open data-rep-user="{{ profileUser.profileSlug }}" data-rep-name="{{ profileUser.fullName }}">
+                <i class="bi bi-award"></i> {{ 'forum.action.give_rep'|trans }}
+            </button>
+        {% endif %}
+        {% if cp_user() and cp_user().id == profileUser.id %}
+            <a href="{{ path('account_profile') }}" class="btn btn-sm btn-primary">
+                <i class="bi bi-gear"></i> {{ 'account.profile.edit_link'|trans }}
+            </a>
+        {% endif %}
     </div>
-    <div class="forum-profile-card__stats">
-        <div><strong>{{ topicCount }}</strong><span>{{ 'forum.stat.topic'|trans }}</span></div>
-        <div><strong>{{ postCount }}</strong><span>{{ 'forum.stat.post'|trans }}</span></div>
+    <div class="forum-profile-card__stats forum-profile-card__stats--grid">
+        <div><strong>{{ stats.topic_count }}</strong><span>{{ 'forum.stat.topic'|trans }}</span></div>
+        <div><strong>{{ stats.post_count }}</strong><span>{{ 'forum.stat.post'|trans }}</span></div>
+        <div><strong>{{ stats.likes_received }}</strong><span>{{ 'forum.stat.like'|trans }}</span></div>
+        {% if reputationEnabled %}
+            <div><strong>{{ stats.reputation_net }}</strong><span>{{ 'forum.stat.reputation'|trans }}</span></div>
+            <div><strong>{{ stats.reputation_avg }}</strong><span>{{ 'forum.stat.reputation_avg'|trans }}</span></div>
+            <div><strong>{{ stats.popularity }}</strong><span>{{ 'forum.stat.popularity'|trans }}</span></div>
+        {% endif %}
     </div>
 </div>
+
+{% if reputationEnabled %}
+<div class="forum-profile-metrics fade-in">
+    <div class="forum-profile-metric">
+        <span class="forum-profile-metric__label">{{ 'forum.stat.reputation_pos'|trans }}</span>
+        <strong class="forum-profile-metric__value forum-profile-metric__value--pos">+{{ stats.reputation_positive }}</strong>
+    </div>
+    <div class="forum-profile-metric">
+        <span class="forum-profile-metric__label">{{ 'forum.stat.reputation_neg'|trans }}</span>
+        <strong class="forum-profile-metric__value forum-profile-metric__value--neg">−{{ stats.reputation_negative }}</strong>
+    </div>
+    <div class="forum-profile-metric">
+        <span class="forum-profile-metric__label">{{ 'forum.stat.rep_given'|trans }}</span>
+        <strong class="forum-profile-metric__value">+{{ stats.rep_given_positive }} / −{{ stats.rep_given_negative }}</strong>
+    </div>
+    <div class="forum-profile-metric">
+        <span class="forum-profile-metric__label">{{ 'forum.stat.reply'|trans }}</span>
+        <strong class="forum-profile-metric__value">{{ stats.reply_count }}</strong>
+    </div>
+</div>
+{% endif %}
 
 <div class="forum-toolbar fade-in" style="border-bottom: 2px solid var(--slw-border); margin-bottom: var(--sp-md);">
     <div class="forum-profile-tabs">
-        <a href="{{ path('forum_profile', {userId: profileUser.id, tab: 'topics'}) }}" class="{{ tab == 'topics' ? 'is-active' : '' }}">{{ 'forum.tab.topics'|trans }}</a>
-        <a href="{{ path('forum_profile', {userId: profileUser.id, tab: 'posts'}) }}" class="{{ tab == 'posts' ? 'is-active' : '' }}">{{ 'forum.tab.posts'|trans }}</a>
+        <a href="{{ path('forum_profile', {username: profileUser.profileSlug, tab: 'topics'}) }}" class="{{ tab == 'topics' ? 'is-active' : '' }}">{{ 'forum.tab.topics'|trans }}</a>
+        <a href="{{ path('forum_profile', {username: profileUser.profileSlug, tab: 'posts'}) }}" class="{{ tab == 'posts' ? 'is-active' : '' }}">{{ 'forum.tab.posts'|trans }}</a>
+        <a href="{{ path('forum_profile', {username: profileUser.profileSlug, tab: 'liked'}) }}" class="{{ tab == 'liked' ? 'is-active' : '' }}">{{ 'forum.tab.liked'|trans }}</a>
+        <a href="{{ path('forum_profile', {username: profileUser.profileSlug, tab: 'disliked'}) }}" class="{{ tab == 'disliked' ? 'is-active' : '' }}">{{ 'forum.tab.disliked'|trans }}</a>
+        {% if reputationEnabled %}
+            <a href="{{ path('forum_profile', {username: profileUser.profileSlug, tab: 'reputation'}) }}" class="{{ tab == 'reputation' ? 'is-active' : '' }}">{{ 'forum.tab.reputation'|trans }}</a>
+        {% endif %}
     </div>
 </div>
 
-{% if tab == 'topics' %}
+{% if tab == 'reputation' and reputationEnabled %}
+    <div class="forum-rep-list fade-in">
+        {% for rep in reputations %}
+            <div class="forum-rep-item">
+                <div class="forum-rep-item__value {{ rep.positive ? 'is-pos' : 'is-neg' }}">{{ rep.positive ? '+' : '−' }}1</div>
+                <div class="forum-rep-item__body">
+                    <div class="forum-rep-item__meta">
+                        <a href="{{ path('forum_profile', {username: rep.fromUser.profileSlug}) }}">{{ rep.fromUser.fullName }}</a>
+                        · {{ ('forum.rep.reason.' ~ rep.reason)|trans }}
+                        · {{ rep.createdAt|date('d.m.Y H:i') }}
+                    </div>
+                    {% if rep.topic %}
+                        <a class="forum-rep-item__topic" href="{{ path('forum_topic', {topicId: rep.topic.id, slug: rep.topic.slug}) }}{% if rep.post %}#post{{ rep.post.id }}{% endif %}">{{ rep.topic.title }}</a>
+                    {% endif %}
+                    {% if rep.comment %}<p class="forum-rep-item__comment">{{ rep.comment }}</p>{% endif %}
+                </div>
+            </div>
+        {% else %}
+            <div class="forum-empty"><i class="bi bi-award"></i> {{ 'forum.empty.no_reputation'|trans }}</div>
+        {% endfor %}
+    </div>
+    {% include '@Theme/forum/partials/pagination.html.twig' with {result: reputations, route: 'forum_profile', routeParams: {username: profileUser.profileSlug, tab: 'reputation'}} %}
+{% elseif tab == 'topics' %}
     <div class="forum-topics fade-in">
         {% for topic in items %}
             <div class="forum-topic">
-                {% include '@CpaliusWebsiteTheme/forum/partials/_topic_icon.html.twig' with {topic: topic, hotThreshold: 20} %}
+                {% include '@Theme/forum/partials/_topic_icon.html.twig' with {topic: topic, hotThreshold: 20} %}
                 <div>
                     <div class="forum-topic__title">
                         <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}">{{ topic.title }}</a>
@@ -58,12 +123,28 @@
             <div class="forum-empty"><i class="bi bi-chat-square-dots"></i> {{ 'forum.empty.no_topics_started'|trans }}</div>
         {% endfor %}
     </div>
-    {% include '@CpaliusWebsiteTheme/forum/partials/pagination.html.twig' with {result: items, route: 'forum_profile', routeParams: {userId: profileUser.id, tab: 'topics'}} %}
+    {% include '@Theme/forum/partials/pagination.html.twig' with {result: items, route: 'forum_profile', routeParams: {username: profileUser.profileSlug, tab: 'topics'}} %}
+{% elseif tab == 'liked' %}
+    {% include '@Theme/forum/partials/_profile_reaction_list.html.twig' with {
+        items: items,
+        tab: 'liked',
+        reaction_icon: 'bi-heart-fill',
+        empty_icon: 'bi-heart',
+        empty_key: 'forum.empty.no_liked_posts',
+    } %}
+{% elseif tab == 'disliked' %}
+    {% include '@Theme/forum/partials/_profile_reaction_list.html.twig' with {
+        items: items,
+        tab: 'disliked',
+        reaction_icon: 'bi-hand-thumbs-down-fill',
+        empty_icon: 'bi-hand-thumbs-down',
+        empty_key: 'forum.empty.no_disliked_posts',
+    } %}
 {% else %}
     <div class="forum-topics fade-in">
         {% for topic in items %}
             <div class="forum-topic">
-                {% include '@CpaliusWebsiteTheme/forum/partials/_topic_icon.html.twig' with {topic: topic, hotThreshold: 20} %}
+                {% include '@Theme/forum/partials/_topic_icon.html.twig' with {topic: topic, hotThreshold: 20} %}
                 <div>
                     <div class="forum-topic__title">
                         <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}">{{ topic.title }}</a>
@@ -78,6 +159,16 @@
             <div class="forum-empty"><i class="bi bi-chat-square-dots"></i> {{ 'forum.empty.no_topics_replied'|trans }}</div>
         {% endfor %}
     </div>
-    {% include '@CpaliusWebsiteTheme/forum/partials/pagination.html.twig' with {result: items, route: 'forum_profile', routeParams: {userId: profileUser.id, tab: 'posts'}} %}
+    {% include '@Theme/forum/partials/pagination.html.twig' with {result: items, route: 'forum_profile', routeParams: {username: profileUser.profileSlug, tab: 'posts'}} %}
+{% endif %}
+
+{% if canGiveRep %}
+    {% include '@Theme/forum/partials/_reputation_modal.html.twig' with {
+        targetUser: profileUser,
+        selectableTopics: selectableTopics,
+        repReasons: repReasons,
+        fixedPostId: null,
+        fixedTopicId: null
+    } %}
 {% endif %}
 {% endblock %}

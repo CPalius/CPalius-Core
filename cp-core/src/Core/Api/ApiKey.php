@@ -5,11 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Api;
 
 /**
- * Tek bir API anahtarının çalışma zamanı (in-memory) temsili. ApiKeyService
- * tarafından cp_settings.setting_value (JSON) alanından hydrate edilir/
- * dehydrate edilir — bu sınıfın KENDİSİ Doctrine entity'si DEĞİLDİR,
- * ekstra tablo şişkinliği yaratmamak için bilinçli olarak salt bir DTO'dur
- * (bkz. ApiKeyService docblock'u).
+ * In-memory API-key DTO hydrated from cp_settings JSON — not a Doctrine entity.
  */
 final class ApiKey
 {

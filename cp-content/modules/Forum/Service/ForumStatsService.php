@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
-use App\Entity\ForumSection;
-use App\Entity\ForumTopic;
-use App\Repository\ForumPostRepository;
-use App\Repository\ForumTopicRepository;
+use Modules\Forum\Entity\ForumSection;
+use Modules\Forum\Entity\ForumTopic;
+use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumTopicRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Modules\Forum\ForumDiscussionState;
 
 /**
- * Bölüm istatistiklerini (konu/mesaj sayısı, son mesaj) senkronize eder —
- * Cotonti cot_forum_stats + forums.functions.php resync mantığının
- * CPalius karşılığı.
+ * Sync section stats (topic/post counts, last post) — denormalized node counters.
  */
 final class ForumStatsService
 {
@@ -30,18 +29,27 @@ final class ForumStatsService
 
         $postCount = (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(p.id)')
-            ->from('App\Entity\ForumPost', 'p')
+            ->from('Modules\Forum\Entity\ForumPost', 'p')
+            ->innerJoin('p.topic', 't')
             ->andWhere('p.section = :section')
+            ->andWhere('t.discussionState = :visible')
+            ->andWhere('t.movedToTopic IS NULL')
             ->setParameter('section', $section)
+            ->setParameter('visible', ForumDiscussionState::Visible)
             ->getQuery()
             ->getSingleScalarResult();
 
         $lastPost = $this->entityManager->createQueryBuilder()
             ->select('p')
-            ->from('App\Entity\ForumPost', 'p')
+            ->from('Modules\Forum\Entity\ForumPost', 'p')
+            ->innerJoin('p.topic', 't')
             ->andWhere('p.section = :section')
+            ->andWhere('t.discussionState = :visible')
+            ->andWhere('t.movedToTopic IS NULL')
             ->setParameter('section', $section)
+            ->setParameter('visible', ForumDiscussionState::Visible)
             ->orderBy('p.createdAt', 'DESC')
+            ->addOrderBy('p.id', 'DESC')
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -53,12 +61,16 @@ final class ForumStatsService
             $topic = $lastPost->getTopic();
             $section->setLastTopicId($topic->getId());
             $section->setLastTopicTitle($topic->getTitle());
+            $section->setLastPostId($lastPost->getId());
             $section->setLastPostAt($lastPost->getCreatedAt());
+            $section->setLastPoster($lastPost->getAuthor());
             $section->setLastPosterName($lastPost->getPosterName());
         } else {
             $section->setLastTopicId(null);
             $section->setLastTopicTitle(null);
+            $section->setLastPostId(null);
             $section->setLastPostAt(null);
+            $section->setLastPoster(null);
             $section->setLastPosterName(null);
         }
 
@@ -75,11 +87,14 @@ final class ForumStatsService
         if ($lastPost !== null) {
             $topic->setLastPoster($lastPost->getAuthor());
             $topic->setLastPosterName($lastPost->getPosterName());
+            $topic->setLastPostId($lastPost->getId());
+            $topic->setLastPostDate($lastPost->getCreatedAt());
             $topic->touch();
         }
 
         $firstPost = $this->postRepository->findFirstByTopic($topic);
         if ($firstPost !== null) {
+            $topic->setFirstPostId($firstPost->getId());
             $preview = strip_tags($firstPost->getBody());
             $topic->setPreview(mb_substr($preview, 0, 128));
         }

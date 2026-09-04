@@ -1,0 +1,49 @@
+{% extends '@Theme/layout.html.twig' %}
+
+{% set t = 'portal' %}
+
+{% block title %}{{ 'whitepaper.meta_title'|trans({}, t) }}{% endblock %}
+{% block meta_description %}{{ 'whitepaper.meta_description'|trans({}, t) }}{% endblock %}
+{% block body_class %}page-whitepaper{% endblock %}
+
+{% block content %}
+    <header class="whitepaper-hero">
+        <div class="container">
+            <a href="{{ path('theme_cpalius_website_home', {_locale: app.request.locale}) }}" class="whitepaper-back">
+                <i class="bi bi-arrow-left"></i>
+                <span>{{ 'whitepaper.back'|trans({}, t) }}</span>
+            </a>
+            <p class="section-label">{{ 'whitepaper.badge'|trans({}, t) }}</p>
+            <h1>{{ doc.title }}</h1>
+            <p class="whitepaper-meta">{{ 'whitepaper.version'|trans({}, t) }}</p>
+        </div>
+    </header>
+
+    <main class="whitepaper-main">
+        <div class="container whitepaper-layout">
+            <aside class="whitepaper-toc">
+                <h2>{{ 'whitepaper.toc_title'|trans({}, t) }}</h2>
+                <ol>
+                    {% for section in doc.sections %}
+                        <li><a href="#{{ section.id }}">{{ section.title }}</a></li>
+                    {% endfor %}
+                </ol>
+            </aside>
+
+            <article class="whitepaper-article">
+                <div class="whitepaper-intro">
+                    {{ doc.intro_html|raw }}
+                </div>
+
+                {% for section in doc.sections %}
+                    <section class="whitepaper-section" id="{{ section.id }}">
+                        <h2>{{ section.title }}</h2>
+                        <div class="whitepaper-body">
+                            {{ section.html|raw }}
+                        </div>
+                    </section>
+                {% endfor %}
+            </article>
+        </div>
+    </main>
+{% endblock %}

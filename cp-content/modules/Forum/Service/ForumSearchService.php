@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
-use App\Entity\ForumPost;
-use App\Entity\ForumTopic;
-use App\Repository\ForumPostRepository;
-use App\Repository\ForumTopicRepository;
+use Modules\Forum\Entity\ForumPost;
+use Modules\Forum\Entity\ForumTopic;
+use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumTopicRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Modules\Forum\ForumDiscussionState;
 
 final class ForumSearchService
 {
@@ -40,8 +41,10 @@ final class ForumSearchService
                 ->andWhere('t.title LIKE :q')
                 ->andWhere('t.movedToTopic IS NULL')
                 ->andWhere('t.mode = :normal')
+                ->andWhere('t.discussionState = :visible')
                 ->setParameter('q', $likePattern)
                 ->setParameter('normal', ForumTopic::MODE_NORMAL)
+                ->setParameter('visible', ForumDiscussionState::Visible)
                 ->orderBy('t.updatedAt', 'DESC')
                 ->setMaxResults($limit);
 
@@ -59,8 +62,10 @@ final class ForumSearchService
                     ->andWhere('t.title LIKE :q')
                     ->andWhere('t.movedToTopic IS NULL')
                     ->andWhere('t.mode = :normal')
+                    ->andWhere('t.discussionState = :visible')
                     ->setParameter('q', $likePattern)
-                    ->setParameter('normal', ForumTopic::MODE_NORMAL);
+                    ->setParameter('normal', ForumTopic::MODE_NORMAL)
+                    ->setParameter('visible', ForumDiscussionState::Visible);
 
                 if ($sectionId !== null) {
                     $countQb->andWhere('t.section = :section')
@@ -77,8 +82,10 @@ final class ForumSearchService
                 ->addSelect('t')
                 ->andWhere('p.body LIKE :q')
                 ->andWhere('t.mode = :normal')
+                ->andWhere('t.discussionState = :visible')
                 ->setParameter('q', $likePattern)
                 ->setParameter('normal', ForumTopic::MODE_NORMAL)
+                ->setParameter('visible', ForumDiscussionState::Visible)
                 ->orderBy('p.createdAt', 'DESC')
                 ->setMaxResults($limit);
 
@@ -96,8 +103,10 @@ final class ForumSearchService
                     ->innerJoin('p.topic', 't')
                     ->andWhere('p.body LIKE :q')
                     ->andWhere('t.mode = :normal')
+                    ->andWhere('t.discussionState = :visible')
                     ->setParameter('q', $likePattern)
-                    ->setParameter('normal', ForumTopic::MODE_NORMAL);
+                    ->setParameter('normal', ForumTopic::MODE_NORMAL)
+                    ->setParameter('visible', ForumDiscussionState::Visible);
 
                 if ($sectionId !== null) {
                     $countQb->andWhere('t.section = :section')

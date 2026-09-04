@@ -18,9 +18,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Blog görünüm / hero ayarları — AACP Modül Ayarları ile aynı cp_settings
- * deposunu kullanır; Studio içinde editöre yakın bir yüzey sunar (Forum
- * ayarları deseniyle simetrik).
+ * Studio screen for blog appearance/hero settings; same cp_settings store as AACP.
  */
 #[Route('/admin/blog/settings', name: 'admin_blog_settings_')]
 #[IsGranted('blog.category.manage')]
@@ -35,7 +33,7 @@ final class BlogSettingsAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'studio.blog.settings.menu', icon: 'heroicons:paint-brush', panel: 'studio', priority: 23, capability: 'blog.category.manage', group: 'İçerik')]
+    #[CpAdminMenu(label: 'studio.blog.settings.menu', icon: 'heroicons:paint-brush', panel: 'studio', priority: 23, capability: 'blog.category.manage', parent: 'admin_posts_index')]
     public function index(): Response
     {
         $definitions = $this->blogDefinitions();

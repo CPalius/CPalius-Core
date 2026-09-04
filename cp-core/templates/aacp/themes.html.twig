@@ -1,0 +1,83 @@
+{#
+    Installed themes and the one-click activation switch.
+    Data source: App\Core\Theme\ThemeRegistry (theme.json per directory).
+#}
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.themes.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('aacp_theme_options') }}" class="btn btn-sm btn-neutral">
+        {{ 'aacp.menu.theme_options'|trans }}
+    </a>
+{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        {% if activated %}
+            <div class="toast toast-success">{{ 'aacp.themes.activated'|trans }}</div>
+        {% endif %}
+
+        {% if error %}
+            <div class="toast toast-error">{{ error }}</div>
+        {% endif %}
+
+        <div class="rounded-lg border border-primary-500/40 bg-primary-500/5 px-3 py-2 text-fs-sm !text-primary-300">
+            {{ 'aacp.themes.rebuild_hint'|trans }}
+        </div>
+
+        {% if themes is empty %}
+            <twig:cp:card>
+                <p class="text-fs-sm !text-slate-500">{{ 'aacp.themes.empty'|trans }}</p>
+            </twig:cp:card>
+        {% else %}
+            <div class="grid gap-sp-sm md:grid-cols-2 xl:grid-cols-3">
+                {% for dirName, theme in themes %}
+                    {% set isActive = dirName == activeDirName %}
+                    <twig:cp:card variant="{{ isActive ? 'default' : 'default' }}">
+                        <div class="space-y-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <p class="text-fs-sm font-semibold !text-slate-100">{{ theme.name }}</p>
+                                    <p class="font-mono text-fs-xs !text-slate-500">{{ dirName }} · v{{ theme.version }}</p>
+                                </div>
+                                {% if isActive %}
+                                    <twig:cp:badge status="active" label="{{ 'aacp.themes.active_badge'|trans }}" />
+                                {% endif %}
+                            </div>
+
+                            {% if theme.description %}
+                                <p class="text-fs-xs !text-slate-400">{{ theme.description }}</p>
+                            {% endif %}
+
+                            {% if theme.author %}
+                                <p class="text-fs-xs !text-slate-600">{{ 'aacp.themes.author'|trans }}: {{ theme.author }}</p>
+                            {% endif %}
+
+                            {% if theme.supports is not empty %}
+                                <div class="flex flex-wrap gap-1">
+                                    {% for tag in theme.supports %}
+                                        <span class="badge badge-neutral font-mono">{{ tag }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            <div class="border-t border-white/10 pt-3">
+                                {% if isActive %}
+                                    <span class="text-fs-xs !text-slate-500">{{ 'aacp.themes.already_active'|trans }}</span>
+                                {% else %}
+                                    <form method="post" action="{{ path('aacp_themes_activate', {dirName: dirName}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                        <button type="submit" class="btn btn-sm btn-primary">
+                                            {{ 'aacp.themes.activate'|trans }}
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </twig:cp:card>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

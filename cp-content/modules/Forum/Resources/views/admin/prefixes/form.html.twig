@@ -20,6 +20,36 @@
                     <label class="form-label">{{ 'studio.forum.prefixes.form.sort_order'|trans }}</label>
                     <input type="number" name="sort_order" value="{{ formValues.sortOrder }}" class="form-control">
                 </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.prefixes.form.css_class'|trans }}</label>
+                    <select name="css_class" class="form-select">
+                        <option value="">{{ 'studio.forum.prefixes.form.css_class_none'|trans }}</option>
+                        {% for className, classLabel in {
+                            'forum-prefix--announcement': 'Duyuru',
+                            'forum-prefix--solved': 'Çözüldü',
+                            'forum-prefix--guide': 'Rehber',
+                            'forum-prefix--question': 'Soru',
+                            'forum-prefix--warning': 'Uyarı'
+                        } %}
+                            <option value="{{ className }}" {{ formValues.cssClass|default('') == className ? 'selected' : '' }}>{{ classLabel }} ({{ className }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <h3 class="text-fs-md font-semibold mb-2">{{ 'studio.forum.prefixes.form.matrix_header'|trans({}, 'forums') }}</h3>
+                <p class="text-fs-xs text-neutral-500 mb-3">{{ 'studio.forum.prefixes.form.matrix_hint'|trans({}, 'forums') }}</p>
+                <div class="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                    {% for board in boards %}
+                        <label class="inline-flex items-center gap-2 text-fs-sm">
+                            <input type="checkbox" name="section_ids[]" value="{{ board.id }}" {{ board.id in selectedSectionIds ? 'checked' : '' }}>
+                            {{ board.title }}
+                        </label>
+                    {% else %}
+                        <p class="text-fs-sm text-neutral-500">{{ 'studio.forum.prefixes.form.matrix_empty'|trans({}, 'forums') }}</p>
+                    {% endfor %}
+                </div>
             </div>
 
             <div class="mt-6 flex gap-2">

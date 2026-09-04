@@ -1,0 +1,98 @@
+{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+
+{% form_theme form 'form/forum_theme.html.twig' %}
+
+{% block title %}{{ 'account.profile.title'|trans }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-crumb fade-in" aria-label="{{ 'account.nav_aria'|trans }}">
+        <ol class="forum-crumb__list">
+            <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+            <li><a href="{{ path('forum_index') }}">{{ 'forum.breadcrumb.home_title'|trans }}</a></li>
+            <li class="is-active">{{ 'account.profile.title'|trans }}</li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in">
+    <h1 class="section-title" style="font-size: var(--fs-2xl);">{{ 'account.profile.title'|trans }}</h1>
+    <p class="forum-header__desc">{{ 'account.profile.desc'|trans }}</p>
+</div>
+
+<div class="forum-profile-settings fade-in">
+    <div class="forum-profile-settings__avatar forum-form">
+        <h2 class="forum-profile-settings__heading">{{ 'account.profile.avatar_heading'|trans }}</h2>
+        <div class="forum-profile-settings__avatar-preview" data-account-avatar-preview>
+            {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {
+                name: app.user.fullName,
+                user: app.user,
+                avatarUrl: avatarUrl,
+                size: 'xl',
+                square: true,
+            } %}
+        </div>
+        <form method="post" action="{{ path('account_avatar_upload') }}" enctype="multipart/form-data" class="forum-profile-settings__avatar-form">
+            <input type="hidden" name="_token" value="{{ csrf_token('account_avatar_upload') }}">
+            <label class="btn btn-sm btn-outline">
+                {{ 'account.profile.avatar_upload'|trans }}
+                <input type="file" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" hidden data-account-avatar-input>
+            </label>
+        </form>
+        {% if avatarUrl %}
+            <form method="post" action="{{ path('account_avatar_remove') }}" class="forum-profile-settings__avatar-remove">
+                <input type="hidden" name="_token" value="{{ csrf_token('account_avatar_remove') }}">
+                <button type="submit" class="btn btn-sm btn-ghost">{{ 'account.profile.avatar_remove'|trans }}</button>
+            </form>
+        {% endif %}
+        <p class="forum-profile-settings__hint">{{ 'account.profile.avatar_hint'|trans }}</p>
+    </div>
+
+    <div class="forum-profile-settings__form">
+        {{ form_start(form, {action: path('account_profile'), attr: {class: 'forum-form'}}) }}
+            <fieldset class="forum-form__section">
+                <legend>{{ 'account.profile.section_account'|trans }}</legend>
+                {{ form_row(form.email) }}
+                {{ form_row(form.username) }}
+                {{ form_row(form.firstName) }}
+                {{ form_row(form.lastName) }}
+            </fieldset>
+
+            <fieldset class="forum-form__section">
+                <legend>{{ 'account.profile.section_password'|trans }}</legend>
+                {{ form_row(form.currentPassword) }}
+                {{ form_row(form.newPassword) }}
+            </fieldset>
+
+            <fieldset class="forum-form__section">
+                <legend>{{ 'account.profile.section_notifications'|trans }}</legend>
+                <p class="forum-profile-settings__hint">{{ 'account.profile.notifications_hint'|trans }}</p>
+                {{ form_row(form.forumNotifReply) }}
+                {{ form_row(form.forumNotifThread) }}
+                {{ form_row(form.forumNotifQuote) }}
+                {{ form_row(form.forumNotifReaction) }}
+                {{ form_row(form.forumNotifDislike) }}
+                {{ form_row(form.forumNotifMention) }}
+            </fieldset>
+
+            <div class="forum-form__actions">
+                <button type="submit" class="btn btn-primary">{{ 'account.profile.save'|trans }}</button>
+            </div>
+        {{ form_end(form) }}
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+    (function () {
+        var input = document.querySelector('[data-account-avatar-input]');
+        var form = input && input.closest('form');
+        if (!input || !form) return;
+        input.addEventListener('change', function () {
+            if (input.files && input.files.length > 0) form.submit();
+        });
+    })();
+    </script>
+{% endblock %}

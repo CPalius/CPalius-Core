@@ -1,7 +1,4 @@
-{#
-    Tek satır — kompakt tablo satırı (thread veya user).
-    Beklenen: item
-#}
+{# Compact activity row (thread or user). Expects: item #}
 {% set layout = item.layout|default('thread') %}
 <li class="forum-activity-thread" data-activity-row>
     {% if layout == 'thread' %}
@@ -12,7 +9,7 @@
         <ol class="forum-activity-thread__cols">
             <li class="forum-activity-thread__topic">
                 <a href="{{ topicHref }}" class="forum-activity-thread__link">
-                    {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: item.author|default('?')} %}
+                    {% include '@Theme/forum/partials/_avatar.html.twig' with {name: item.author|default('?')} %}
                     <span class="forum-activity-thread__title-text">{{ item.title }}</span>
                 </a>
             </li>
@@ -23,7 +20,7 @@
             </li>
             <li class="forum-activity-thread__last">
                 {% if item.lastPosterId %}
-                    <a href="{{ path('forum_profile', {userId: item.lastPosterId}) }}">{{ item.lastPoster|default('—') }}</a>
+                    <a href="{{ path('forum_profile', {username: item.lastPosterSlug|default(item.lastPosterId)}) }}">{{ item.lastPoster|default('—') }}</a>
                 {% else %}
                     <span>{{ item.lastPoster|default('—') }}</span>
                 {% endif %}
@@ -43,13 +40,13 @@
         <ol class="forum-activity-thread__cols forum-activity-thread__cols--user">
             <li class="forum-activity-thread__topic">
                 {% if item.authorId %}
-                    <a href="{{ path('forum_profile', {userId: item.authorId}) }}" class="forum-activity-thread__link">
-                        {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: item.title|default('?')} %}
+                    <a href="{{ path('forum_profile', {username: item.profileSlug|default(item.authorId)}) }}" class="forum-activity-thread__link">
+                        {% include '@Theme/forum/partials/_avatar.html.twig' with {name: item.title|default('?')} %}
                         <span class="forum-activity-thread__title-text">{{ item.title }}</span>
                     </a>
                 {% else %}
                     <span class="forum-activity-thread__link">
-                        {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: item.title|default('?')} %}
+                        {% include '@Theme/forum/partials/_avatar.html.twig' with {name: item.title|default('?')} %}
                         <span class="forum-activity-thread__title-text">{{ item.title }}</span>
                     </span>
                 {% endif %}

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Modules\Forum;
 
 /**
- * Forum hiyerarşisi: Forum (sanal kök) → Bölüm → Kategori → Alt kategori.
- * Konular yalnızca alt kategoride açılır.
+ * Forum hierarchy: Forum (virtual root) → Division → Category → Subcategory.
+ * Topics may be created only in a subcategory.
  */
 enum ForumSectionType: string
 {

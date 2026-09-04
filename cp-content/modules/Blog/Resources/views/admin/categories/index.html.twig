@@ -3,12 +3,15 @@
 {% block header %}{{ 'blog.categories.header'|trans }}{% endblock %}
 
 {% block header_actions %}
-    <a href="{{ path('admin_categories_create') }}" class="btn btn-sm btn-primary">
+    <a href="{{ path('admin_categories_create', {locale: currentLocale}) }}" class="btn btn-sm btn-primary">
         {{ 'blog.categories.create_action'|trans }}
     </a>
 {% endblock %}
 
 {% block body %}
+    {# Phase 3: categories are per-locale; strip hidden on single-locale installs. #}
+    <twig:studio:locale_filter locales="{{ locales }}" current="{{ currentLocale }}" route="admin_categories_index" />
+
     <twig:studio:card padded="{{ false }}">
         <twig:studio:table headers="{{ [
             'blog.categories.column.name'|trans,

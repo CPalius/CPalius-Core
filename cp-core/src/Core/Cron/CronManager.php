@@ -12,37 +12,13 @@ use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * CPalius'un Birleşik Otomasyon Motoru: DB-tabanlı (cp_cron_jobs), Attribute
- * Kulvarı (#[CpCronJob]) ve Flat-File Kulvarı (Hooks/cron.{job_name}.php)
- * cron görevlerini TEK bir hibrit "görev sağlayıcı" altında toplayan servis.
- *
- * Bu sınıf İKİ paralel cron altyapısını (biri DB'ye kayıtlı manuel görevler
- * için, biri modül geliştiricilerinin koda gömdüğü görevler için) birleştirme
- * ihtiyacından doğdu — CPalius'un "Sıfır Şişkinlik" anayasasına aykırı olan
- * şey iki ayrı dispatcher/AACP ekranı/whitelist mekanizması işletmekti, iki
- * FARKLI görev KAYNAĞI olması değil. getTasks() bu iki kaynağı okur, geri
- * kalan HER ŞEY (zamanlama kontrolü, subprocess izolasyonu, AACP listesi)
- * kaynak farkını bilmeden tek bir listeye bakar.
- *
- * Kod tabanlı görevler DB'YE HİÇ YAZILMAZ: CronRegistrationPass tarafından
- * derleme zamanında toplanan tanımlardan burada BELLEKTE (in-memory)
- * VirtualCronJob nesneleri üretilir (bkz. runTasks()/getTasks() içindeki
- * $this->cronDefinitions döngüsü) — Manifesto Law 3.1 ruhu: kodun kendisi
- * tek gerçek kaynaktır, DB'de "gölge" bir kayıt YOKTUR.
- *
- * "Son çalıştırma zamanı" kod tabanlı görevler için KALICI OLARAK
- * saklanmaz (VirtualCronJob DTO'su bir request/CLI çalıştırması boyunca
- * yaşar, sonraki çalıştırmada sıfırdan üretilir) — bu bilinçli bir
- * sadeleştirmedir: DB tarafındaki CronJob.lastRunAt'in aksine, kod
- * görevleri için ayrı bir kalıcılık tablosu açmak "Sıfır Şişkinlik"
- * ilkesine aykırı olurdu. AACP panelinde kod görevlerinin "Son Çalıştırma"
- * kolonu bu yüzden her zaman "İzlenmiyor" gösterir.
+ * Hybrid task provider: DB (cp_cron_jobs), #[CpCronJob], and Hooks/cron.{job_name}.php.
+ * Code jobs stay in-memory (Law 3.1); last-run is not persisted for the code track.
  */
 final class CronManager
 {
     /**
-     * @param ContainerInterface $serviceLocator #[CpCronJob] taşıyan servisleri
-     *   id'leriyle lazy çözen bir ServiceLocator (bkz. CronRegistrationPass).
+     * @param ContainerInterface $serviceLocator Lazy locator for #[CpCronJob] services.
      * @param list<array{jobName: string, schedule: string, description: string, sourceType: 'attribute'|'flat-file', serviceId: ?string, method: ?string, file: ?string}> $cronDefinitions
      */
     public function __construct(
@@ -55,10 +31,7 @@ final class CronManager
     }
 
     /**
-     * Sistemdeki TÜM cron görevlerini (DB + kod tabanlı) tek bir listede
-     * döner. AACP "Cron Yönetimi" ekranı ve RunDueCronJobsCommand dispatcher'ı
-     * BU metodu kullanır — hiçbiri CronJobRepository'yi veya cronDefinitions'ı
-     * doğrudan okumaz (tek gerçek kaynak burasıdır).
+     * Unified DB + code task list; AACP and the dispatcher read only this.
      *
      * @return list<CronJob|VirtualCronJob>
      */
@@ -86,9 +59,7 @@ final class CronManager
     }
 
     /**
-     * jobName'e karşılık gelen sanal (kod tabanlı) görevin ham tanımını
-     * döner — RunVirtualCronJobCommand (izole subprocess köprüsü) BU metotla
-     * hangi kulvarı (attribute/flat-file) çalıştıracağını bulur.
+     * Raw virtual-job definition for RunVirtualCronJobCommand (attribute vs flat-file).
      *
      * @return array{jobName: string, schedule: string, description: string, sourceType: 'attribute'|'flat-file', serviceId: ?string, method: ?string, file: ?string}|null
      */
@@ -104,16 +75,9 @@ final class CronManager
     }
 
     /**
-     * jobName'e karşılık gelen sanal görevi SENKRON olarak, ÇAĞIRANIN kendi
-     * process'i içinde çalıştırır ve çıktısını (string) döner.
+     * Run one virtual job in the current process (isolation is the outer cp:cron:run-virtual subprocess).
      *
-     * BİLİNÇLİ olarak subprocess AÇMAZ: izolasyon (bkz. Manifesto Law 2.1)
-     * RunVirtualCronJobCommand'in KENDİSİNİN ayrı bir "php bin/console
-     * cp:cron:run-virtual <jobName>" alt-process'i olarak tetiklenmesiyle
-     * sağlanır (bkz. CronCommandProcessFactory kullanımı) — bu metot o
-     * alt-process'in İÇİNDE, tek bir görevi çalıştırmak için çağrılır.
-     *
-     * @throws \RuntimeException jobName tanınmıyorsa veya görev çalışırken hata verirse.
+     * @throws \RuntimeException When the job name is unknown or the task throws.
      */
     public function runVirtualTask(string $jobName): string
     {
@@ -153,13 +117,7 @@ final class CronManager
     }
 
     /**
-     * Flat-file cron dosyasını, HookManager::includeIsolated() ile AYNI
-     * izolasyon prensibiyle (dış scope'a erişimi olmayan kapatılmış bir
-     * Closure içinde) çalıştırır. Dosya, 'run' anahtarında bir Closure
-     * TAŞIYAN bir dizi döndürmelidir (bkz. örnek dosya
-     * cron.publish_scheduled_example.php) — CronRegistrationPass derleme
-     * zamanında sadece 'schedule'/'description' anahtarlarını okur, 'run'
-     * closure'ı İSE SADECE burada, gerçek çalıştırma anında invoke edilir.
+     * Include the cron file in an isolated Closure and invoke its 'run' key (same idea as HookManager).
      *
      * @param array{jobName: string, schedule: string, description: string, sourceType: 'flat-file', serviceId: ?string, method: ?string, file: ?string} $definition
      */

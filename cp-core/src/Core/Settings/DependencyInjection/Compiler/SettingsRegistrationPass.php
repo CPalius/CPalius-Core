@@ -13,24 +13,8 @@ use Symfony\Component\DependencyInjection\Definition;
 use Throwable;
 
 /**
- * SettingsRegistry'yi container derleme zamanında doldurur.
- *
- * ResourceRegistrationPass/AdminMenuRegistrationPass ile aynı iskelet:
- * dosya sistemi taraması + Reflection, Doctrine'den bağımsız, modül
- * izolasyonu try/catch(Throwable) ile sağlanır.
- *
- * Taranan konumlar:
- *   1) cp-core/src/Core/Settings/Definitions — çekirdek ayar taşıyıcıları.
- *   2) Her modülün Settings dizini (varsa) — modül izolasyonu ile.
- *
- * NOT: Bu dizin modül kökünün DOĞRUDAN altındadır ("<module>/Settings"),
- * "<module>/src/Settings" DEĞİL — composer.json'daki PSR-4 haritası
- * ("Modules\\": "cp-content/modules/") ve modüllerin mevcut Controller/,
- * Plugin/, Form/, Twig/ dizin konvansiyonuyla (hiçbiri src/ altında değil)
- * birebir örtüşmesi için bilinçli olarak böyle seçildi.
- *
- * #[CpSetting] REPEATABLE olduğu için bir sınıf üzerinde birden fazla
- * instance bulunabilir; hepsi tek tek toplanır.
+ * Fills SettingsRegistry at compile time by scanning core and module setting carriers.
+ * Filesystem + reflection only, with per-module isolation; Doctrine is never touched.
  */
 final class SettingsRegistrationPass implements CompilerPassInterface
 {
@@ -42,20 +26,24 @@ final class SettingsRegistrationPass implements CompilerPassInterface
     {
         $projectDir = (string) $container->getParameter('kernel.project_dir');
 
-        /** @var list<array{key: string, label: string, type: string, default: mixed, variants: array<string, string>, module: string, group: string}> $collected */
+        /** @var list<array{key: string, label: string, type: string, default: mixed, variants: array<string, string>, module: string, group: string, translatable: bool, scope: ?string}> $collected */
         $collected = [];
 
         $coreSettingsDir = $projectDir.'/cp-core/src/Core/Settings/Definitions';
+
         foreach ($this->scanDirectory($coreSettingsDir, 'App\\Core\\Settings\\Definitions\\', $container) as $setting) {
             $collected[] = $setting;
         }
 
         foreach ($container->getParameter('kernel.bundles_metadata') as $bundleName => $bundleMeta) {
             $bundleClass = $bundleMeta['namespace'].'\\'.$bundleName;
+
             if (!str_starts_with($bundleClass, self::MODULE_NAMESPACE_PREFIX)) {
                 continue;
             }
 
+            // Convention: "<module>/Settings", not "<module>/src/Settings", matching the
+            // PSR-4 map in composer.json and the other module directories.
             $moduleSettingsDir = rtrim((string) $bundleMeta['path'], '/').'/Settings';
             $moduleSettingsNamespace = $bundleMeta['namespace'].'\\Settings\\';
 
@@ -64,8 +52,7 @@ final class SettingsRegistrationPass implements CompilerPassInterface
                     $collected[] = $setting;
                 }
             } catch (Throwable) {
-                // Modül izolasyonu: bir modülün Settings dizini taranırken
-                // hata oluşursa sadece o modülün ayarları kayıt olmaz.
+                // Module isolation: one broken Settings directory must not abort the scan.
             }
         }
 
@@ -83,13 +70,15 @@ final class SettingsRegistrationPass implements CompilerPassInterface
                     $setting['variants'],
                     $setting['module'],
                     $setting['group'],
+                    $setting['translatable'],
+                    $setting['scope'],
                 ])]);
             }
         }
     }
 
     /**
-     * @return list<array{key: string, label: string, type: string, default: mixed, variants: array<string, string>, module: string, group: string}>
+     * @return list<array{key: string, label: string, type: string, default: mixed, variants: array<string, string>, module: string, group: string, translatable: bool, scope: ?string}>
      */
     private function scanDirectory(string $dir, string $namespacePrefix, ContainerBuilder $container): array
     {
@@ -107,7 +96,7 @@ final class SettingsRegistrationPass implements CompilerPassInterface
         );
 
         foreach ($files as $file) {
-            $relativePath = ltrim(substr((string) $file->getPathname(), strlen($dir)), '/\\');
+            $relativePath = ltrim(substr((string) $file->getPathname(), \strlen($dir)), '/\\');
             $className = $namespacePrefix.str_replace(['/', '\\'], '\\', substr($relativePath, 0, -4));
 
             try {
@@ -117,6 +106,7 @@ final class SettingsRegistrationPass implements CompilerPassInterface
 
                 $reflection = new \ReflectionClass($className);
 
+                // #[CpSetting] is repeatable, so one carrier class may hold many.
                 foreach ($reflection->getAttributes(CpSetting::class) as $attribute) {
                     /** @var CpSetting $setting */
                     $setting = $attribute->newInstance();
@@ -129,12 +119,12 @@ final class SettingsRegistrationPass implements CompilerPassInterface
                         'variants' => $setting->variants,
                         'module' => $setting->module,
                         'group' => $setting->group,
+                        'translatable' => $setting->translatable,
+                        'scope' => $setting->scope,
                     ];
                 }
             } catch (Throwable) {
-                // Tek bir dosyanın reflection'ı başarısız olursa (namespace
-                // uyuşmazlığı, eksik parent class vb.) o dosya atlanır;
-                // tüm tarama iptal edilmez.
+                // A single unreadable file is skipped; the whole scan is not aborted.
                 continue;
             }
         }

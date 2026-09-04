@@ -23,12 +23,12 @@
 
             <aside class="grid-golden-minor">
                 {% if post.author %}
-                    {% include '@CpaliusWebsiteTheme/blog/partials/author_card.html.twig' with { author: post.author } %}
+                    {% include '@Theme/blog/partials/author_card.html.twig' with { author: post.author } %}
                 {% endif %}
 
-                {% include '@CpaliusWebsiteTheme/blog/partials/search_widget.html.twig' %}
-                {% include '@CpaliusWebsiteTheme/blog/partials/widget_sidebar.html.twig' %}
-                {% include '@CpaliusWebsiteTheme/blog/partials/archive_sidebar.html.twig' %}
+                {% include '@Theme/blog/partials/search_widget.html.twig' %}
+                {% include '@Theme/blog/partials/widget_sidebar.html.twig' %}
+                {% include '@Theme/blog/partials/archive_sidebar.html.twig' %}
 
                 {% if relatedPosts is not empty %}
                     <div class="blog-sidebar-widget">

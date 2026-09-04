@@ -7,30 +7,6 @@ namespace Modules\Forum\Settings;
 use App\Core\Annotation\CpSetting;
 
 #[CpSetting(
-    key: 'forum.topics_per_page',
-    label: 'Sayfa Başına Konu Sayısı',
-    type: 'integer',
-    default: 30,
-    module: 'forum',
-    group: 'forum',
-)]
-#[CpSetting(
-    key: 'forum.posts_per_page',
-    label: 'Sayfa Başına Mesaj Sayısı',
-    type: 'integer',
-    default: 15,
-    module: 'forum',
-    group: 'forum',
-)]
-#[CpSetting(
-    key: 'forum.edit_timeout_minutes',
-    label: 'Mesaj Düzenleme Süresi (dakika)',
-    type: 'integer',
-    default: 15,
-    module: 'forum',
-    group: 'forum',
-)]
-#[CpSetting(
     key: 'forum.hot_topic_threshold',
     label: 'Popüler Konu Eşiği (mesaj sayısı)',
     type: 'integer',
@@ -133,6 +109,22 @@ use App\Core\Annotation\CpSetting;
     default: 5,
     module: 'forum',
     group: 'forum.activity',
+)]
+#[CpSetting(
+    key: 'forum.reputation_enabled',
+    label: 'Reputation Sistemini Aç',
+    type: 'checkbox',
+    default: true,
+    module: 'forum',
+    group: 'forum.reputation',
+)]
+#[CpSetting(
+    key: 'forum.notifications_enabled',
+    label: 'Forum Bildirimlerini Aç',
+    type: 'checkbox',
+    default: true,
+    module: 'forum',
+    group: 'forum.notifications',
 )]
 final class ForumModuleSettings
 {

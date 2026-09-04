@@ -3,6 +3,8 @@
 {% block header %}{{ 'studio.forum.dashboard.header'|trans }}{% endblock %}
 
 {% block header_actions %}
+    <a href="{{ path('admin_forum_permissions_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.permissions.short'|trans({}, 'forums') }}</a>
+    <a href="{{ path('admin_forum_stats_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.stats.header'|trans({}, 'forums') }}</a>
     <a href="{{ path('admin_forum_moderation_index') }}" class="btn btn-sm {{ openReportCount > 0 ? 'btn-outline-danger' : 'btn-neutral' }}">
         {{ 'studio.forum.dashboard.action.moderation'|trans }}{% if openReportCount > 0 %} <span class="ml-1">({{ openReportCount }})</span>{% endif %}
     </a>
@@ -17,7 +19,7 @@
 
 {% block javascripts %}
     {{ parent() }}
-    {{ importmap(['forum-dashboard']) }}
+    {{ importmap(['app', 'forum-dashboard']) }}
 {% endblock %}
 
 {% block body %}
@@ -121,7 +123,7 @@
                 {% for member in latestMembers %}
                     <tr>
                         <td>
-                            <a href="{{ path('forum_profile', {userId: member.id, _locale: 'tr'}) }}" class="font-medium text-neutral-900 hover:text-primary-600" target="_blank">{{ member.fullName }}</a>
+                            <a href="{{ path('forum_profile', {username: member.profileSlug, _locale: 'tr'}) }}" class="font-medium text-neutral-900 hover:text-primary-600" target="_blank">{{ member.fullName }}</a>
                         </td>
                         <td class="text-fs-xs text-neutral-500">{{ member.email }}</td>
                         <td class="text-fs-xs text-neutral-500">{{ member.createdAt|date('d.m.Y') }}</td>

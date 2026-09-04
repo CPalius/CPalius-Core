@@ -2,7 +2,7 @@
 {% if items is not empty %}
 {% set title = portalBlock.title|default('website.landing.portal.blog_title'|trans) %}
 {% set layout = portalBlock.layout|default('cards') %}
-{% embed '@CpaliusWebsiteTheme/partials/portal/_rail.html.twig' with {
+{% embed '@Theme/partials/portal/_rail.html.twig' with {
     blockId: 'latest_blog_posts',
     title: title,
     moreHref: path('blog_index'),

@@ -7,6 +7,7 @@ namespace Modules\Blog\Controller\Admin;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Content\RichTextSanitizer;
 use App\Core\Content\SlugGenerator;
+use App\Core\Localization\LocaleProvider;
 use App\Core\Pagination\Paginator;
 use App\Core\Security\QueryScopeApplier;
 use App\Entity\Node;
@@ -30,33 +31,14 @@ use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Studio'nun blog/post CRUD ekranları. Node::$type = 'post' olan içerikler
- * için özelleşmiş bir yönetim ekranıdır — Manifesto Law 3.1 gereği içerik
- * hâlâ tek bir Node tablosunda yaşar, bu controller sadece "post" tipine
- * bir bakış açısı (görünüm) sunar.
- *
- * Blog modülüne aittir (Modules\Blog): modül devre dışı bırakılırsa bu
- * controller ve route'ları hiç yüklenmez, Studio menüsünden de kaybolur
- * (bkz. SafeModuleRouteLoader, AdminMenuRuntime).
- *
- * Yetkilendirme her zaman CPaliusVoter üzerinden dinamik capability ile
- * yapılır (ROLE_* YASAK, bkz. Manifesto Law 4 ve CPaliusVoter docblock'u):
- *   - Listeleme: kaba "own veya any" kapı kontrolü + QueryScopeApplier'ın
- *     SQL seviyesinde satır bazlı daraltması (bkz. index() içindeki not)
- *   - Oluşturma: node.post.create
- *   - Düzenleme/Silme: assertOwnOrAny() — önce ".any", olmazsa subject
- *     (Node) ile ".own" (CPaliusVoter + OwnableInterface)
- *
- * create()/edit(): Ham Request::request->get() okuma tamamen kaldırıldı;
- * form katmanı artık Modules\Blog\Form\PostType (PostFormModel DTO'suna
- * map edilir) üzerinden akar. Node'a yazım tek, denetlenebilir bir
- * yardımcı metotta toplanır: mapDtoToNode().
+ * Studio CRUD for Node type "post" (Law 3.1). Auth via CPaliusVoter capabilities + QueryScopeApplier.
+ * Forms use PostType/PostFormModel; persistence goes through mapDtoToNode().
  */
 #[Route('/admin/posts', name: 'admin_posts_')]
 final class PostAdminController extends AbstractController
 {
     private const NODE_TYPE = 'post';
-    private const DEFAULT_LOCALE = 'tr';
+
     private const ADMIN_PER_PAGE = 20;
 
     public function __construct(
@@ -70,30 +52,19 @@ final class PostAdminController extends AbstractController
         private readonly AssetRepository $assetRepository,
         private readonly Paginator $paginator,
         private readonly LocaleRepository $localeRepository,
+        private readonly LocaleProvider $localeProvider,
         private readonly TranslatorInterface $translator,
     ) {
     }
 
     /**
-     * Listeleme: QueryScopeApplier, "node.post.view.any" yetkisi olmayan
-     * (yalnızca ".own" yetkisine sahip) bir kullanıcının sorgusuna SQL
-     * seviyesinde "AND author = :me" kısıtı ekler — Manifesto Law 6.2
-     * (Voter to SQL): 100 satırlık bir listede her satır için ayrı ayrı
-     * CPaliusVoter::vote() çağırmak yerine, kısıt sorgu ÇALIŞMADAN ÖNCE
-     * WHERE koşuluna gömülür.
+     * List posts; QueryScopeApplier adds author=:me for .own-only users (Law 6.2).
      */
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Blog Yazıları', icon: 'heroicons:document-text', panel: 'studio', priority: 20, capability: 'node.post.view.own|node.post.view.any', group: 'İçerik')]
+    #[CpAdminMenu(label: 'Blog', icon: 'heroicons:document-text', panel: 'studio', priority: 20, capability: 'node.post.view.own|node.post.view.any', group: 'İçerik')]
     public function index(Request $request): Response
     {
-        // Kapı kontrolü kasıtlı olarak KABADIR (own/any ayrımı yapmaz):
-        // #[IsGranted('...own', subject: null)] burada YANLIŞ olurdu, çünkü
-        // CPaliusVoter subject'siz bir ".own" kontrolünü OwnableInterface
-        // sağlayamadığı için her zaman reddeder (fail-safe) — "own" yetkili
-        // bir kullanıcı hiç listeye giremezdi. İnce taneli own/any ayrımı
-        // zaten satır bazında QueryScopeApplier::apply() tarafından SQL
-        // seviyesinde uygulanıyor (Manifesto Law 6.2); burada sadece
-        // kullanıcının ikisinden BİRİNE sahip olduğunu doğruluyoruz.
+        // Coarse gate: own OR any. Per-row own/any is applied by QueryScopeApplier (Law 6.2).
         if (!$this->isGranted('node.post.view.own') && !$this->isGranted('node.post.view.any')) {
             throw $this->createAccessDeniedException($this->translator->trans('blog.posts.error.view_denied'));
         }
@@ -114,11 +85,7 @@ final class PostAdminController extends AbstractController
     }
 
     /**
-     * ?translation_group={uuid}&locale={code} query param'ları geldiyse
-     * (dil sekmelerinden "henüz çevrilmedi" rozetine tıklanmışsa), yeni
-     * Node bu koda ve mevcut çeviri grubuna joinTranslationGroup() ile
-     * bağlanır. Aksi halde mevcut davranış (translationGroupId = null)
-     * korunur — Node çekirdek olarak grupsuz içeriği destekler.
+     * Create may join an existing translation_group via query params; otherwise ungrouped.
      */
     #[Route('/create', name: 'create', methods: ['GET', 'POST'])]
     public function create(Request $request): Response
@@ -126,7 +93,7 @@ final class PostAdminController extends AbstractController
         $this->denyAccessUnlessGranted('node.post.create', null, $this->translator->trans('blog.posts.error.create_denied'));
 
         $translationGroupId = $this->parseTranslationGroupId($request->query->get('translation_group'));
-        $targetLocale = trim((string) $request->query->get('locale')) ?: self::DEFAULT_LOCALE;
+        $targetLocale = $this->localeProvider->resolve(trim((string) $request->query->get('locale')));
 
         $dto = new PostFormModel();
         $form = $this->createPostForm($dto);
@@ -205,11 +172,7 @@ final class PostAdminController extends AbstractController
     }
 
     /**
-     * Bu Node henüz hiçbir çeviri grubuna dahil değilse (translationGroupId
-     * null), onu yeni ve boş bir gruba atar ve edit ekranına geri döner —
-     * bu sayede form.html.twig'deki dil rozetleri artık diğer dillerde
-     * "henüz çevrilmedi, oluştur" linkini translation_group query param'ı
-     * ile üretebilir (bkz. Node::assignToNewTranslationGroup()).
+     * Assign an ungrouped Node to a new translation group so locale badges can deep-link.
      */
     #[Route('/{id}/assign-translation-group', name: 'assign_translation_group', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function assignTranslationGroup(int $id, Request $request): Response
@@ -227,15 +190,11 @@ final class PostAdminController extends AbstractController
     }
 
     /**
-     * PostType formunu, mevcut yayınlanmış kategorilerin (DEFAULT_LOCALE)
-     * choice listesiyle inşa eder — EntityType'ın kendi query_builder'ı
-     * yerine burada tek merkezden geçirilir, çünkü CategoryRepository
-     * çağrısı zaten controller seviyesinde locale'e duyarlı yapılıyordu
-     * (eski kod ile davranış paritesini korur).
+     * Build PostType with locale-aware category choices injected by the controller.
      */
     private function createPostForm(PostFormModel $dto): FormInterface
     {
-        $categories = $this->categoryRepository->findBy(['locale' => self::DEFAULT_LOCALE]);
+        $categories = $this->categoryRepository->findBy(['locale' => $this->localeProvider->getDefaultCode()]);
         $categoryChoices = [];
         foreach ($categories as $category) {
             $categoryChoices[$category->getName()] = $category;
@@ -256,10 +215,7 @@ final class PostAdminController extends AbstractController
     }
 
     /**
-     * Node'un translationGroupId'si varsa, aynı gruptaki diğer dillerdeki
-     * Node'ları locale => Node map'ine çevirir — form.html.twig'deki dil
-     * rozetlerinin "bu dilde zaten bir çeviri var mı" sorusuna cevap
-     * vermesi için (bkz. NodeRepository::findTranslations()).
+     * Sibling translations keyed by locale for the edit form language badges.
      *
      * @return array<string, Node>
      */
@@ -289,14 +245,7 @@ final class PostAdminController extends AbstractController
     }
 
     /**
-     * PostFormModel DTO'sundaki doğrulanmış veriyi Node entity'sine ve onun
-     * dinamik JSON data alanına güvenli biçimde aktarır; kategori/etiket
-     * many-to-many ilişkilerini senkronlar. create()/edit() arasında
-     * paylaşılan TEK yazma yolu — Manifesto Law 5.3 (mass assignment
-     * allowlist + XSS sanitizasyonu) burada uygulanır:
-     * - 'body' RichTextSanitizer'dan GEÇMEDEN asla Node::data'ya yazılmaz.
-     * - Yazılan anahtarlar DTO'nun tanımladığı sabit bir allowlisttir,
-     *   request'ten keyfi bir alan asla doğrudan JSON'a sızamaz.
+     * Map validated DTO onto Node + JSON data (Law 5.3 allowlist; body via RichTextSanitizer).
      */
     private function mapDtoToNode(PostFormModel $dto, Node $node): void
     {
@@ -304,15 +253,9 @@ final class PostAdminController extends AbstractController
 
         $node->setDataValue('excerpt', trim((string) $dto->excerpt));
         $node->setDataValue('body', $this->richTextSanitizer->sanitize($dto->body));
-        // is_featured, QueryableFieldsRegistry'de 'post' tipi için
-        // indekslenmesi tanımlı bir alan (TYPE_INT) — persist sonrası
-        // NodeIndexListener::postPersist bunu otomatik olarak
-        // NodeFieldIndex tablosuna "düz" bir satır olarak senkronlar
-        // (bkz. Manifesto Law 6.3, NodeIndexListener docblock'u).
+        // is_featured / post_sub_type are indexed via NodeIndexListener (Law 6.3).
         $node->setDataValue('is_featured', $dto->isFeatured ? 1 : 0);
 
-        // post_sub_type de aynı şekilde QueryableFieldsRegistry'de
-        // TYPE_STRING olarak tanımlı ve otomatik indekslenir.
         $node->setDataValue('post_sub_type', $dto->postSubType);
         $node->setDataValue('type_fields', $this->buildTypeFields($dto));
 
@@ -330,34 +273,8 @@ final class PostAdminController extends AbstractController
     }
 
     /**
-     * "Akıllı Zamanlama Motoru": Studio'da seçilen ham $dto->status,
-     * $dto->publishedAt ile çapraz kontrol edilmeden Node'a asla
-     * doğrudan yazılmaz. Üç kural, bu sırayla ve BİRBİRİNİ EZMEDEN
-     * uygulanır:
-     *
-     *   1. status === draft  → tarih ne olursa olsun Node taslak kalır.
-     *      (Bir taslağın "gelecekte yayınlanacak" bir publishedAt'i olması
-     *      zararsızdır — durum draft olduğu sürece hiçbir zamanlama
-     *      komutu/ön yüz sorgusu bu Node'u yayında saymaz.)
-     *   2. status === published VE publishedAt gelecekte bir zaman →
-     *      Node otomatik olarak "scheduled" durumuna düşürülür. Kullanıcı
-     *      "Yayınlandı"yı seçmiş olsa bile, ileri tarihli bir Node asla
-     *      published olarak persist edilmez — aksi halde ön yüz
-     *      (createPublishedByTypeAndLocaleQueryBuilder vb.) status='published'
-     *      filtresine güvendiği için içerik "sızıp" zamanından ÖNCE
-     *      yayında görünürdü.
-     *   3. status === published VE publishedAt geçmiş/şimdi (veya boş,
-     *      "şimdi" varsayılır) → gerçek anlamda published, Node::publish()
-     *      ile publishedAt damgalanır.
-     *   4. status === scheduled → publishedAt her zaman saklanır (boşsa
-     *      "şimdi" ile doldurulur, "blog.publish_scheduled" cron görevi
-     *      zaten bir sonraki çalışmasında bunu hemen yayına alır —
-     *      kullanıcı "Zamanlandı" seçip tarihi boş bırakırsa sistem donmaz).
-     *
-     * Bu metod "blog.publish_scheduled" cron görevinin (bkz.
-     * Modules\Blog\Cron\PublishScheduledPostsTask) ve NodeRepository'nin
-     * published/scheduled sorgularının varsayımlarıyla (status kolonu HER
-     * ZAMAN gerçek yayın durumunu yansıtır) tutarlılığı garanti eder.
+     * Coerce Studio status+publishedAt into draft/scheduled/published without leaking early.
+     * published+future becomes scheduled; empty dates fall back to now for publish/schedule.
      */
     private function applyPublicationSchedule(PostFormModel $dto, Node $node): void
     {
@@ -380,9 +297,7 @@ final class PostAdminController extends AbstractController
         $now = new \DateTimeImmutable();
 
         if ($requestedAt !== null && $requestedAt > $now) {
-            // Kullanıcı "Yayınlandı" dedi ama tarih gelecekte: sessizce
-            // "scheduled"a düşürülür — Node::publish() ÇAĞRILMAZ, çünkü
-            // o metod status'ü doğrudan 'published' yapar.
+            // published + future date => schedule without calling Node::publish().
             $node->setStatus(Node::STATUS_SCHEDULED);
             $node->setDataValue('scheduled_for', $requestedAt->format(DATE_ATOM));
 
@@ -393,12 +308,7 @@ final class PostAdminController extends AbstractController
     }
 
     /**
-     * postSubType'a göre YALNIZCA o türe ait alanları içeren düz bir
-     * dizi üretir — diğer türlerin form alanları (JS ile gizli olsa da
-     * request'te gelmiş olabilir) sessizce yok sayılır. Bu, Manifesto
-     * Law 5.3 (mass assignment allowlist) ilkesinin post_sub_type'a özel
-     * uygulamasıdır: Node::data['type_fields'] asla "proje" alanlarıyla
-     * "yazılım" alanlarının karışık halini içermez.
+     * Allowlist type_fields for the active postSubType only (Law 5.3).
      *
      * @return array<string, string|null>
      */
@@ -414,10 +324,7 @@ final class PostAdminController extends AbstractController
                 'download_url' => trim((string) $dto->softwareDownloadUrl) ?: null,
             ],
             PostSubType::NOTE => [
-                // Bilinçli olarak RichTextSanitizer'dan GEÇMEZ: bu alan
-                // hiçbir zaman HTML olarak yorumlanmayacak, düz metin
-                // olarak <pre><code> içinde auto-escape ile basılacak
-                // (bkz. PostFormModel sınıf üstü doküman notu).
+                // Plain text only — never sanitized as HTML / never |raw.
                 'code_snippet' => $dto->noteCodeSnippet !== null ? trim($dto->noteCodeSnippet) : null,
             ],
             default => [],
@@ -425,9 +332,7 @@ final class PostAdminController extends AbstractController
     }
 
     /**
-     * Node::$categories (çoklu kategori) ve Node::$category (birincil
-     * kategori — breadcrumb/URL için) ilişkilerini DTO'daki categoryIds ile,
-     * Node::$tags ilişkisini de serbest metin 'tags' girişiyle senkronlar.
+     * Sync categories/tags from the DTO; first category becomes the primary.
      */
     private function syncTaxonomy(PostFormModel $dto, Node $node): void
     {
@@ -454,12 +359,7 @@ final class PostAdminController extends AbstractController
     }
 
     /**
-     * Var olan bir Node'dan (edit ekranının GET aşaması) PostFormModel
-     * DTO'sunu doldurur — formun POST_SET_DATA'sı burada Symfony Form
-     * bileşeninin kendi property-access mekanizmasıyla değil, açıkça
-     * elle yapılır çünkü kaynak Node::data (JSON) iken hedef DTO düz
-     * property'lerdir; iki model arasında otomatik map edilebilecek
-     * birebir bir şema yoktur.
+     * Hydrate PostFormModel from an existing Node for the edit GET (manual JSON→DTO map).
      */
     private function buildDtoFromNode(Node $node): PostFormModel
     {
@@ -499,11 +399,7 @@ final class PostAdminController extends AbstractController
     }
 
     /**
-     * "Zamanlandı" durumundaki bir Node'un Node::$publishedAt'i henüz
-     * NULL'dur ("blog.publish_scheduled" cron görevi onu gerçek yayına
-     * aldığında damgalanır, bkz. PublishScheduledPostsTask) — bu yüzden edit ekranının
-     * "Yayınlanma Tarihi" alanı boş görünmesin diye applyPublicationSchedule()
-     * tarafından yazılan Node::data['scheduled_for'] buradan geri okunur.
+     * For scheduled posts, read scheduled_for from JSON when publishedAt is still null.
      */
     private function resolveScheduledForAsDate(Node $node): ?\DateTimeImmutable
     {
@@ -553,8 +449,7 @@ final class PostAdminController extends AbstractController
         $this->assertOwnOrAny('node.post.delete', $node, $this->translator->trans('blog.posts.error.delete_denied'));
         $this->assertValidCsrf($request, 'admin_post_form');
 
-        // Manifesto'nun #[SoftDeletable] davranışı: gerçek DELETE yerine
-        // deletedAt damgalanır (Çöp Kutusu desteği, bkz. SoftDeletableTrait).
+        // Soft-delete stamps deletedAt (trash) instead of a hard DELETE.
         $node->softDelete();
         $this->entityManager->flush();
 
@@ -583,16 +478,7 @@ final class PostAdminController extends AbstractController
     }
 
     /**
-     * "<base>.own"/"<base>.any" ikilisini doğru sırayla dener: ÖNCE ".any"
-     * (subject'siz — sahiplik kontrolüne hiç girmez, herkesin içeriğine
-     * izin verir), o başarısız olursa ".own" (subject İLE — CPaliusVoter
-     * burada OwnableInterface üzerinden gerçek sahiplik eşleşmesi arar).
-     *
-     * Sıra ÖNEMLİDİR: sadece ".own" denenseydi, "*.any" yetkisine sahip
-     * (ör. admin) ama subject'in SAHİBİ OLMAYAN bir kullanıcı, subject
-     * sahiplik eşleşmesi tutmadığı için yanlışlıkla reddedilirdi — "*"
-     * joker rolü zaten hem ".own" hem ".any" yetkisini genişlettiği için
-     * bu hata sessizce (fail-safe reddiyle) ortaya çıkardı.
+     * Try .any first (subject-less), then .own with subject — order matters for admins.
      */
     private function assertOwnOrAny(string $capabilityBase, Node $subject, string $message): void
     {

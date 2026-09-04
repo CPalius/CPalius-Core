@@ -9,7 +9,7 @@
         </button>
 
         <div class="navbar-collapse" id="navCollapse">
-            {# Menü modülünden gelen dinamik öğeler #}
+            {# Dynamic items from the Menu module #}
             <ul class="navbar-menu" id="navMenu">
                 {% for item in cp_menu('header') %}
                     <li class="{{ item.children is not empty ? 'navbar-menu__item--dropdown' : '' }}">
@@ -23,20 +23,21 @@
                         {% endif %}
                     </li>
                 {% else %}
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#about">{{ 'website.nav.about'|trans }}</a></li>
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#architecture">{{ 'website.nav.architecture'|trans }}</a></li>
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#core">{{ 'website.nav.core'|trans }}</a></li>
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#features">{{ 'website.nav.features'|trans }}</a></li>
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#entity">{{ 'website.nav.entity'|trans }}</a></li>
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#security">{{ 'website.nav.security'|trans }}</a></li>
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#roadmap">{{ 'website.nav.roadmap'|trans }}</a></li>
-                    <li><a href="{{ path('blog_index') }}">{{ 'website.nav.blog'|trans }}</a></li>
-                    <li><a href="{{ path('forum_index') }}">{{ 'website.nav.forum'|trans }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#about">{{ 'nav.about'|trans({}, 'portal') }}</a></li>
+                    <li><a href="{{ path('theme_whitepaper', {_locale: app.request.locale}) }}">{{ 'nav.whitepaper'|trans({}, 'portal') }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#architecture">{{ 'nav.architecture'|trans({}, 'portal') }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#core">{{ 'nav.core'|trans({}, 'portal') }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#platform">{{ 'nav.platform'|trans({}, 'portal') }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#aacp">{{ 'nav.aacp'|trans({}, 'portal') }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#forum-engine">{{ 'nav.forum'|trans({}, 'portal') }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#security">{{ 'nav.security'|trans({}, 'portal') }}</a></li>
+                    <li><a href="{{ path('roadmap_index') }}">{{ 'nav.roadmap'|trans({}, 'portal') }}</a></li>
                 {% endfor %}
             </ul>
 
-            {# Sabit öğeler: arama, giriş/kayıt ya da kullanıcı menüsü #}
+            {# Fixed items: locale, search, auth or user menu #}
             <div class="navbar-actions">
+                {{ cp_locale_switcher('dropdown') }}
                 <div class="navbar-search" id="navSearch">
                     <button type="button" class="navbar-search__toggle" id="navSearchToggle" aria-label="{{ 'website.nav.search_toggle_aria'|trans }}" aria-expanded="false" aria-controls="navSearchForm">
                         <i class="bi bi-search"></i>
@@ -46,18 +47,74 @@
                     </form>
                 </div>
 
-                {% if app.user %}
+                {% set currentUser = cp_user() %}
+                {% if currentUser %}
+                    {% set navUnread = forum_unread_notification_count() %}
+                    {% set navNotifs = forum_recent_notifications(6) %}
                     <div class="navbar-user" id="navUser">
                         <button type="button" class="navbar-user__trigger" id="navUserTrigger" aria-expanded="false" aria-controls="navUserDropdown">
-                            <span class="navbar-avatar">{{ app.user.fullName|default('?')|trim|first|upper }}</span>
-                            <span class="navbar-user__name">{{ app.user.fullName }}</span>
+                            {% set navAvatarUrl = forum_user_avatar_url(currentUser) %}
+                            {% if navAvatarUrl %}
+                                <img src="{{ navAvatarUrl }}" alt="" class="navbar-avatar navbar-avatar--image" loading="lazy">
+                            {% else %}
+                                <span class="navbar-avatar">{{ currentUser.fullName|default('?')|trim|first|upper }}</span>
+                            {% endif %}
+                            <span class="navbar-user__name">{{ currentUser.fullName }}</span>
+                            {% if navUnread > 0 %}
+                                <span class="navbar-user__trigger-badge" aria-label="{{ 'forum.notifications.unread'|trans({'count': navUnread}) }}">{{ navUnread }}</span>
+                            {% endif %}
                             <i class="bi bi-chevron-down navbar-user__caret"></i>
                         </button>
+                        <div class="navbar-notif-box" id="navNotifBox" role="dialog" aria-label="{{ 'forum.notifications.title'|trans }}">
+                            <div class="navbar-notif-box__head">
+                                <strong>{{ 'forum.notifications.title'|trans }}</strong>
+                                {% if navUnread > 0 %}
+                                    <span>{{ 'forum.notifications.unread'|trans({'count': navUnread}) }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="navbar-notif-box__list">
+                                {% for n in navNotifs %}
+                                    <a href="{{ path('forum_notification_go', {id: n.id}) }}" class="navbar-notif-box__item {{ n.read ? '' : 'is-unread' }}">
+                                        <span class="navbar-notif-box__icon">
+                                            {% if n.type == 'reply' %}<i class="bi bi-reply"></i>
+                                            {% elseif n.type == 'thread_reply' %}<i class="bi bi-chat-dots"></i>
+                                            {% elseif n.type == 'quote' %}<i class="bi bi-chat-quote"></i>
+                                            {% elseif n.type == 'mention' %}<i class="bi bi-at"></i>
+                                            {% elseif n.type == 'reaction' %}<i class="bi bi-heart"></i>
+                                            {% elseif n.type == 'dislike' %}<i class="bi bi-hand-thumbs-down"></i>
+                                            {% else %}<i class="bi bi-award"></i>{% endif %}
+                                        </span>
+                                        <span class="navbar-notif-box__text">
+                                            {% include '@Theme/forum/partials/_notification_message.html.twig' with {n: n} %}
+                                            <time datetime="{{ n.createdAt|date('c') }}">{{ n.createdAt|forum_relative_time }}</time>
+                                        </span>
+                                    </a>
+                                {% else %}
+                                    <p class="navbar-notif-box__empty">{{ 'forum.notifications.empty'|trans }}</p>
+                                {% endfor %}
+                            </div>
+                            <div class="navbar-notif-box__foot">
+                                {% if navUnread > 0 %}
+                                    <form method="post" action="{{ path('forum_notifications_mark_read') }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('forum_notifications_mark_read') }}">
+                                        <button type="submit">{{ 'forum.notifications.mark_all_read'|trans }}</button>
+                                    </form>
+                                {% endif %}
+                                <a href="{{ path('forum_notifications') }}">{{ 'forum.notifications.view_all'|trans }}</a>
+                            </div>
+                        </div>
                         <div class="navbar-user__dropdown" id="navUserDropdown">
-                            <a href="{{ path('forum_profile', {userId: app.user.id}) }}" class="navbar-user__link">
+                            <button type="button" class="navbar-user__link navbar-user__link--notif" id="navNotifToggle" aria-expanded="false" aria-controls="navNotifBox">
+                                <i class="bi bi-bell"></i> {{ 'forum.notifications.title'|trans }}
+                                {% if navUnread > 0 %}<span class="navbar-user__badge">{{ navUnread }}</span>{% endif %}
+                            </button>
+                            <a href="{{ path('forum_profile', {username: currentUser.profileSlug}) }}" class="navbar-user__link">
                                 <i class="bi bi-person-circle"></i> {{ 'website.nav.profile'|trans }}
                             </a>
-                            {% if is_granted('system.aacp.access') %}
+                            <a href="{{ path('account_profile') }}" class="navbar-user__link">
+                                <i class="bi bi-gear"></i> {{ 'website.nav.account_settings'|trans }}
+                            </a>
+                            {% if cp_is_granted('system.aacp.access') %}
                                 <a href="{{ path('admin_forum_dashboard') }}" target="_blank" rel="noopener" class="navbar-user__link">
                                     <i class="bi bi-grid-1x2"></i> {{ 'website.nav.studio'|trans }}
                                 </a>

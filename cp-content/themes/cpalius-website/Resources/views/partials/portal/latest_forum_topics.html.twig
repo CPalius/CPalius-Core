@@ -2,7 +2,7 @@
 {% if items is not empty %}
 {% set title = portalBlock.title|default('website.landing.portal.forum_title'|trans) %}
 {% set layout = portalBlock.layout|default('list') %}
-{% embed '@CpaliusWebsiteTheme/partials/portal/_rail.html.twig' with {
+{% embed '@Theme/partials/portal/_rail.html.twig' with {
     blockId: 'latest_forum_topics',
     title: title,
     moreHref: path('forum_index'),

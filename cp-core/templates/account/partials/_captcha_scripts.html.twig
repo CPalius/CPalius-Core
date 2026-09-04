@@ -1,0 +1,25 @@
+{% if captchaEnabled and captchaConfig.site_key %}
+    {% if captchaConfig.provider == 'recaptcha' and captchaConfig.recaptcha_version == 'v2' %}
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    {% elseif captchaConfig.provider == 'recaptcha' %}
+        <script src="https://www.google.com/recaptcha/api.js?render={{ captchaConfig.site_key }}"></script>
+        <script>
+            (function () {
+                const form = document.querySelector('form[method="post"]');
+                if (!form || typeof grecaptcha === 'undefined') return;
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    grecaptcha.ready(function () {
+                        grecaptcha.execute('{{ captchaConfig.site_key }}', { action: 'submit' }).then(function (token) {
+                            const input = document.getElementById('g-recaptcha-response');
+                            if (input) input.value = token;
+                            form.submit();
+                        });
+                    });
+                });
+            })();
+        </script>
+    {% elseif captchaConfig.provider == 'turnstile' %}
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    {% endif %}
+{% endif %}

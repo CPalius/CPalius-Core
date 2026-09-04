@@ -6,27 +6,14 @@ namespace Modules\Blog\Plugin;
 
 use App\Core\Plugin\PluginInterface;
 use App\Core\Settings\SettingsRegistry;
+use App\Core\Localization\LocaleProvider;
 use App\Repository\NodeRepository;
 use App\Repository\TagRepository;
 use Twig\Environment;
 
 /**
- * Kullanıcının Faz 3 talebindeki "Widget" eklentisi — Slawman'ın
- * SidebarWidget'ından ilham alır ama CPalius'un PluginInterface
- * sözleşmesine (Twig şablonuna kendi render() ile HTML üreten, DB
- * entity'si OLMAYAN) uyarlanır: son N yayınlanmış yazı + en çok
- * kullanılan N etiket.
- *
- * Faz 5: RECENT_POSTS_LIMIT / POPULAR_TAGS_LIMIT sabitleri kaldırıldı —
- * bu limitler artık Modules\Blog\Settings\BlogWidgetSettings üzerinden
- * #[CpSetting] ile tanımlanıp AACP > Eklenti Ayarları ekranından
- * yönetiliyor (bkz. SettingsRegistry). DB'de override yoksa
- * SettingsRegistry->get() zaten tanımın default'unu (5 / 10) döner —
- * bu yüzden bu sınıf hiçbir "sabit" değer taşımaz.
- *
- * {{ cp_plugin('blog_widget', {locale: app.request.locale}) }} ile
- * çağrılır — locale context'ten alınır, verilmezse 'tr'ye düşer
- * (fail-safe: hiçbir zaman locale eksikliğinden patlamaz).
+ * Sidebar widget: recent posts + popular tags. Limits come from BlogWidgetSettings.
+ * Invoke via {{ cp_plugin('blog_widget', {locale: ...}) }}; locale falls back safely.
  */
 final class BlogWidgetPlugin implements PluginInterface
 {
@@ -37,6 +24,7 @@ final class BlogWidgetPlugin implements PluginInterface
         private readonly TagRepository $tagRepository,
         private readonly SettingsRegistry $settingsRegistry,
         private readonly Environment $twig,
+        private readonly LocaleProvider $localeProvider,
     ) {
     }
 
@@ -60,7 +48,7 @@ final class BlogWidgetPlugin implements PluginInterface
      */
     public function render(array $context = []): string
     {
-        $locale = is_string($context['locale'] ?? null) ? $context['locale'] : 'tr';
+        $locale = $this->localeProvider->resolve(is_string($context['locale'] ?? null) ? $context['locale'] : null);
 
         $recentPostsLimit = (int) $this->settingsRegistry->get('blog_widget.recent_posts_limit');
         $popularTagsLimit = (int) $this->settingsRegistry->get('blog_widget.popular_tags_limit');

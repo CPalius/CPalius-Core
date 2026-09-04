@@ -1,0 +1,155 @@
+# ==============================================================================
+# CPalius CMF — Yükleme Dizini Sertleştirmesi (Denetim bulgusu SEC-01)
+# ==============================================================================
+#
+# Manifesto Law 5.3: "Uploaded assets must be hashed and saved in a
+# non-executable directory." Hash'leme AssetManager tarafından yapılıyordu,
+# ancak dizinin ÇALIŞTIRILAMAZ olması hiçbir zaman zorunlu kılınmamıştı:
+# public/.htaccess yalnızca rewrite kuralları içeriyor ve "istenen dosya
+# diskte varsa doğrudan oku" kuralı (RewriteCond %{REQUEST_FILENAME} -f)
+# yüzünden buradaki dosyalar Symfony'ye HİÇ UĞRAMADAN sunuluyor.
+#
+# Bu dosya o boşluğu kapatır. Savunma tek bir kurala dayanmaz; birbirinden
+# bağımsız DÖRT katman vardır, çünkü hangi PHP SAPI'sinin (mod_php,
+# PHP-FPM/proxy_fcgi, CGI, LiteSpeed) devrede olduğunu .htaccess bilemez
+# ve her katman farklı bir SAPI'yi yakalar:
+#
+#   1) FilesMatch + Require all denied  -> dosyaya HTTP erişimini keser
+#   2) SetHandler / RemoveHandler       -> FPM/CGI yönlendirmesini kırar
+#   3) php_flag engine off              -> yalnızca mod_php'yi kapatır
+#   4) Options -ExecCGI                 -> CGI çalıştırmayı kapatır
+#
+# Katman 3, mod_php YÜKLÜ DEĞİLKEN "Invalid command 'php_flag'" hatası
+# verip TÜM dizini 500'e düşürür. Bu yüzden <IfModule> ile sarılmıştır —
+# koruma eklerken siteyi kırmak kabul edilebilir bir sonuç değildir.
+#
+# NOT: Nginx bu dosyayı OKUMAZ. Nginx kurulumları için eşdeğer yapılandırma
+# cp-core/docs/security/uploads-hardening.md içinde verilmiştir ve
+# uygulanması ZORUNLUDUR.
+# ==============================================================================
+
+
+# ------------------------------------------------------------------------------
+# Katman 1 — Çalıştırılabilir uzantılara HTTP erişimini tamamen kes
+# ------------------------------------------------------------------------------
+# AssetManager doğrulanmış MIME tipinden uzantı türetmeye başladıktan sonra
+# (bkz. FAZ 1 / SEC-02) buraya bir .php dosyasının düşmesi teorik olarak
+# imkânsız olacak. Bu blok yine de kalır: derinlemesine savunma, "bir üst
+# katman zaten hallediyor" varsayımı üzerine kurulmaz.
+#
+# Apache 2.4 ve 2.2 sözdizimleri ayrı <IfVersion>/<IfModule> blokları
+# gerektirmesin diye ikisi de yazılır; her sürüm kendi anladığını uygular.
+
+<FilesMatch "(?i)\.(php|php[0-9]*|phtml|phps|phar|pht|inc|hphp|ctp|module|install|profile|theme|engine)$">
+    <IfModule mod_authz_core.c>
+        # Apache 2.4+
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        # Apache 2.2
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Sunucu tarafı include ve CGI script'leri de aynı sınıfa girer.
+<FilesMatch "(?i)\.(cgi|pl|py|rb|sh|bash|jsp|asp|aspx|shtml|shtm)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Yapılandırma dosyalarının kendisi de asla sunulmamalıdır.
+<FilesMatch "(?i)^\.(htaccess|htpasswd|env|git.*)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+
+# ------------------------------------------------------------------------------
+# Katman 2 — Handler eşlemelerini kaldır (PHP-FPM / proxy_fcgi / CGI)
+# ------------------------------------------------------------------------------
+# Katman 1 erişimi keser; bu katman, erişim bir şekilde açılsa bile (ör.
+# vhost'ta daha geniş bir <Directory> bloğu) dosyanın PHP olarak
+# YORUMLANMASINI engeller. FPM kurulumlarında asıl işi yapan katman budur.
+
+<IfModule mod_mime.c>
+    RemoveHandler .php .php3 .php4 .php5 .php7 .php8 .phtml .phps .phar .pht
+    RemoveType    .php .php3 .php4 .php5 .php7 .php8 .phtml .phps .phar .pht
+</IfModule>
+
+# SetHandler'ı bir FilesMatch içinde vermek, dizin genelinde statik dosya
+# sunumunu bozmadan yalnızca hedef uzantıları etkisizleştirir.
+<FilesMatch "(?i)\.(php|php[0-9]*|phtml|phps|phar|pht)$">
+    SetHandler none
+    SetHandler default-handler
+</FilesMatch>
+
+
+# ------------------------------------------------------------------------------
+# Katman 3 — mod_php motorunu kapat (YALNIZCA mod_php varsa)
+# ------------------------------------------------------------------------------
+# <IfModule> sarmalaması ZORUNLUDUR: php_flag, mod_php yüklü değilken
+# tanınmayan bir direktiftir ve Apache tüm dizin için 500 döndürür.
+# Modül adı Apache/PHP sürümüne göre değiştiği için üçü de denenir.
+
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php5.c>
+    php_flag engine off
+</IfModule>
+
+
+# ------------------------------------------------------------------------------
+# Katman 4 — CGI çalıştırmayı ve dizin listelemeyi kapat
+# ------------------------------------------------------------------------------
+# Options satırı, vhost'ta "AllowOverride Options" verilmemişse yok
+# sayılır; bu yüzden tek başına yeterli DEĞİLDİR, yalnızca destekleyici
+# bir katmandır.
+
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>
+Options -ExecCGI -Includes
+
+
+# ------------------------------------------------------------------------------
+# Katman 5 — Tarayıcı tarafı sertleştirme (SVG/HTML kaynaklı XSS'e karşı)
+# ------------------------------------------------------------------------------
+# SEC-02'nin ikinci yarısı: "image/" ön eki image/svg+xml'i de kabul
+# ettiği için bu dizine script taşıyan bir SVG düşebilir. FAZ 1'de SVG
+# varsayılan izin listesinden çıkarılacak, ancak bu başlıklar geçmişte
+# yüklenmiş dosyalar ve gelecekteki izin listesi hataları için kalıcı bir
+# ikinci savunma hattı oluşturur.
+
+<IfModule mod_headers.c>
+    # Tarayıcı, sunulan Content-Type'ı "tahmin ederek" değiştirmesin —
+    # bir .jpg'nin içindeki HTML'in HTML olarak yorumlanmasını engeller.
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Bu dizinden sunulan hiçbir belge script/plugin çalıştıramaz ve
+    # başka bir siteye gömülemez. sandbox, SVG içindeki <script> ve
+    # onload= gibi vektörleri tarayıcı seviyesinde etkisizleştirir.
+    Header always set Content-Security-Policy "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox; frame-ancestors 'self'"
+
+    # Referrer sızıntısını kısıtla.
+    Header always set Referrer-Policy "same-origin"
+
+    # SVG ve HTML benzeri içerik tarayıcıda AÇILMAK yerine indirilsin.
+    <FilesMatch "(?i)\.(svg|svgz|xml|xhtml|html?|xht)$">
+        Header always set Content-Disposition "attachment"
+    </FilesMatch>
+</IfModule>

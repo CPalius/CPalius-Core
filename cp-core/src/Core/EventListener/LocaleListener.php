@@ -1,50 +1,50 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core\EventListener;
 
-use Symfony\Component\HttpKernel\Event\RequestEvent;
-use Symfony\Component\HttpKernel\KernelEvents;
+use App\Core\Localization\LocaleProvider;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\Cookie;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Event\RequestEvent;
+use Symfony\Component\HttpKernel\Event\ResponseEvent;
+use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * URL'nin ilk segmentindeki dil kodunu (/tr/... veya /en/...) yakalayıp
- * Request'in locale'ini set eder.
- *
- * Symfony'nin RouterListener'ı zaten bir route "_locale" parametresi
- * tanımlıyorsa bunu otomatik Request::setLocale() ile işler (bkz.
- * routing.yaml'daki {_locale} prefix'i + Blog modülünün route'ları).
- * Bu listener'ın asıl işi, RouterListener'dan ÖNCE (daha yüksek
- * öncelikte) çalışıp desteklenmeyen/eksik bir dil kodu durumunda
- * varsayılan dile (tr) sessizce düşmeyi garanti etmektir — böylece
- * "/xx/blog-test" gibi tanımsız bir dil kodu 404 yerine varsayılan
- * dile düşer.
- *
- * AACP (/aacp/...) için URL prefix stratejisi UYGULANAMAZ (rotalar sabit
- * "/aacp/..." öneki taşır, "/tr/aacp/..." biçiminde değildir). Bu yüzden
- * admin arayüz dili için ayrıca session'da "_aacp_locale" anahtarı
- * kullanılır (bkz. AacpLocaleController::switch()); bu anahtar varsa ve
- * desteklenen bir dile işaret ediyorsa, URL prefix kontrolünden ÖNCE
- * (AACP path'leri için) uygulanır.
+ * Resolve interface locale without starting a session (Law 6.4). Cookie is written only on an explicit choice.
+ * Order: URL prefix → ?_locale= → cookie → Accept-Language → default. AACP uses the same cookie (no URL prefix).
  */
 final class LocaleListener implements EventSubscriberInterface
 {
-    private const URL_LOCALE_PATTERN = '#^/(?P<locale>[a-z]{2})(?:/|$)#';
+    public const COOKIE_NAME = 'cp_locale';
+    public const COOKIE_LIFETIME = 31536000; // 1 year
     public const AACP_PATH_PREFIX = '/aacp';
+
+    /**
+     * @deprecated Cookie-based now; read only on an already-open session for backward compatibility.
+     */
     public const SESSION_KEY = '_aacp_locale';
 
+    /**
+     * Request flag so onKernelResponse can set the cookie. Stateless: no instance field (worker reuse).
+     */
+    private const WRITE_COOKIE_ATTRIBUTE = '_cp_locale_write';
+
+    private const URL_LOCALE_PATTERN = '#^/(?P<locale>[a-z]{2,5})(?:/|$)#';
+
     public function __construct(
-        private readonly string $defaultLocale,
-        private readonly array $supportedLocales,
+        private readonly LocaleProvider $localeProvider,
     ) {
     }
 
     public static function getSubscribedEvents(): array
     {
         return [
-            // RouterListener (öncelik 32) çalışmadan önce devreye girmeli
-            // ki _locale route parametresi bizim belirlediğimiz locale'i
-            // ezip geçebilsin (route eşleşirse route her zaman kazanır).
+            // Before RouterListener (32) so an unsupported prefix becomes the default, not 404.
             KernelEvents::REQUEST => [['onKernelRequest', 40]],
+            KernelEvents::RESPONSE => [['onKernelResponse', 0]],
         ];
     }
 
@@ -55,29 +55,93 @@ final class LocaleListener implements EventSubscriberInterface
         }
 
         $request = $event->getRequest();
-        $path = $request->getPathInfo();
 
-        if (str_starts_with($path, self::AACP_PATH_PREFIX) && $request->hasPreviousSession()) {
-            $sessionLocale = $request->getSession()->get(self::SESSION_KEY);
+        [$locale, $isExplicitChoice] = $this->resolveLocale($request);
 
-            if (\is_string($sessionLocale) && \in_array($sessionLocale, $this->supportedLocales, true)) {
-                $request->setLocale($sessionLocale);
+        $request->setLocale($locale);
+        $request->attributes->set('_cp_locale', $locale);
 
-                return;
-            }
+        // Cookie only on an explicit choice that differs from the current cookie (avoid breaking HTTP cache).
+        if ($isExplicitChoice && $request->cookies->get(self::COOKIE_NAME) !== $locale) {
+            $request->attributes->set(self::WRITE_COOKIE_ATTRIBUTE, $locale);
         }
+    }
 
-        if (preg_match(self::URL_LOCALE_PATTERN, $path, $matches) && \in_array($matches['locale'], $this->supportedLocales, true)) {
-            $request->setLocale($matches['locale']);
-
+    public function onKernelResponse(ResponseEvent $event): void
+    {
+        if (!$event->isMainRequest()) {
             return;
         }
 
-        // URL'de desteklenen bir dil kodu yok: varsayılan dili kullan.
-        // (Bilinçli tasarım kararı: burada bir Redirect yapmıyoruz çünkü
-        // "/blog-test" gibi henüz {_locale} prefix'i olmayan route'lar da
-        // olabilir — bu durumda sadece Request::locale set edilir, route
-        // eşleşmesi kendi akışında devam eder.)
-        $request->setLocale($this->defaultLocale);
+        $locale = $event->getRequest()->attributes->get(self::WRITE_COOKIE_ATTRIBUTE);
+
+        if (!\is_string($locale) || $locale === '') {
+            return;
+        }
+
+        $event->getResponse()->headers->setCookie($this->buildCookie($locale, $event->getRequest()));
+    }
+
+    /**
+     * Shared cookie factory for explicit locale-switch endpoints (same lifetime/path/samesite).
+     */
+    public function buildCookie(string $locale, Request $request): Cookie
+    {
+        return Cookie::create(self::COOKIE_NAME)
+            ->withValue($locale)
+            ->withExpires(time() + self::COOKIE_LIFETIME)
+            ->withPath('/')
+            ->withSecure($request->isSecure())
+            // Not httpOnly: theme JS may read the locale. Cookie holds no identity, so XSS risk is low.
+            ->withHttpOnly(false)
+            ->withSameSite(Cookie::SAMESITE_LAX);
+    }
+
+    /**
+     * @return array{string, bool} [resolved code, whether the user chose it explicitly]
+     */
+    private function resolveLocale(Request $request): array
+    {
+        $path = $request->getPathInfo();
+
+        // 1) URL prefix — /tr/blog, /en/forum ...
+        if (preg_match(self::URL_LOCALE_PATTERN, $path, $matches) === 1
+            && $this->localeProvider->isSupported($matches['locale'])
+        ) {
+            return [$matches['locale'], true];
+        }
+
+        // 2) Query _locale on unprefixed routes. Counts as an explicit choice (writes cookie).
+        $queryLocale = $request->query->get('_locale');
+
+        if (\is_string($queryLocale) && $this->localeProvider->isSupported($queryLocale)) {
+            return [$queryLocale, true];
+        }
+
+        // 2b) AACP has no prefix. Honor a legacy session key only if a session is already open.
+        if (str_starts_with($path, self::AACP_PATH_PREFIX) && $request->hasPreviousSession()) {
+            $sessionLocale = $request->getSession()->get(self::SESSION_KEY);
+
+            if (\is_string($sessionLocale) && $this->localeProvider->isSupported($sessionLocale)) {
+                return [$sessionLocale, false];
+            }
+        }
+
+        // 3) Cookie — previous explicit choice.
+        $cookieLocale = $request->cookies->get(self::COOKIE_NAME);
+
+        if (\is_string($cookieLocale) && $this->localeProvider->isSupported($cookieLocale)) {
+            return [$cookieLocale, false];
+        }
+
+        // 4) Accept-Language intersected with supported codes.
+        $preferred = $request->getPreferredLanguage($this->localeProvider->getCodes());
+
+        if (\is_string($preferred) && $this->localeProvider->isSupported($preferred)) {
+            return [$preferred, false];
+        }
+
+        // 5) Site default.
+        return [$this->localeProvider->getDefaultCode(), false];
     }
 }

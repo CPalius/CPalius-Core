@@ -9,8 +9,7 @@ use App\Entity\Node;
 use App\Repository\AssetRepository;
 
 /**
- * Blog yazılarının ön yüz listeleme/sunum ihtiyaçlarını tek yerde toplar:
- * kapak görseli URL çözümlemesi ve liste özeti kısaltması.
+ * Front list presentation: cover image URL resolution and excerpt truncation.
  */
 final class BlogPostPresentationService
 {

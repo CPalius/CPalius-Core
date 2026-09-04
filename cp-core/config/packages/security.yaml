@@ -30,6 +30,7 @@ security:
         main:
             lazy: true
             provider: cpalius_users_by_login
+            user_checker: App\Core\Security\AccountUserChecker
 
             form_login:
                 login_path: admin_login

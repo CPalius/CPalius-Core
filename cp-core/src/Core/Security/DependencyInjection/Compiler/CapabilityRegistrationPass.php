@@ -11,22 +11,8 @@ use Symfony\Component\Yaml\Yaml;
 use Throwable;
 
 /**
- * CapabilityRegistry'yi container derleme zamanında doldurur.
- *
- * Kaynaklar:
- *   1) cp-core/config/capabilities.yaml — çekirdek yetenekleri.
- *   2) Her bundle'ın (modülün) kendi Resources/config/capabilities.yaml'ı.
- *   3) #[CpResource] attribute'u taşıyan entity'lerin otomatik ürettiği
- *      yetenekler (Manifesto Law 4.2) — ResourceRegistrationPass zaten
- *      AYNI derleme geçişinde çalışıp bunları
- *      ResourceRegistrationPass::CONTAINER_PARAMETER altına yazmış olur;
- *      bu pass'in ondan SONRA çalışması gerekir (bkz. Kernel::build()'de
- *      eklenme sırası).
- *
- * Modüller Modules\ namespace'i altında olduğu için (Kernel.php'deki
- * boot()/build() izolasyonuyla aynı felsefe), bozuk bir capabilities.yaml
- * sadece o modülün yeteneklerinin kayıt olmamasına yol açar — container
- * derlemesi veya diğer modüller etkilenmez.
+ * Compile-time fill of CapabilityRegistry: core YAML, per-module YAML, then #[CpResource] expansions.
+ * A broken module YAML drops only that module's capabilities; compile continues.
  */
 final class CapabilityRegistrationPass implements CompilerPassInterface
 {
@@ -54,8 +40,7 @@ final class CapabilityRegistrationPass implements CompilerPassInterface
             try {
                 $this->registerFromFile($definition, $moduleFile, $bundleClass, $container);
             } catch (Throwable) {
-                // Modül izolasyonu: bir modülün capabilities.yaml'ı bozuksa
-                // sadece o modülün yetenekleri kayıt olmaz, derleme durmaz.
+                // Module isolation: a broken capabilities.yaml drops only that module.
             }
         }
 
@@ -63,10 +48,7 @@ final class CapabilityRegistrationPass implements CompilerPassInterface
     }
 
     /**
-     * Manifesto Law 4.2: #[CpResource(capabilities: ['create', 'edit'])]
-     * ile işaretlenmiş her entity için "name.capability" biçiminde
-     * (ör. "vehicle.create") yetenekleri otomatik üretir. Geliştirici bu
-     * yetenekleri capabilities.yaml'a elle eklemek ZORUNDA değildir.
+     * Law 4.2: expand #[CpResource] short actions (e.g. "create") to "name.capability" (e.g. "vehicle.create").
      */
     private function registerFromResources(\Symfony\Component\DependencyInjection\Definition $definition, ContainerBuilder $container): void
     {

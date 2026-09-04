@@ -9,15 +9,7 @@ use Doctrine\ORM\Event\PrePersistEventArgs;
 use Doctrine\ORM\Events;
 
 /**
- * Manifesto Law 5.1'in yazma tarafı: TenantFilter sadece SELECT'leri
- * kısıtlar (Doctrine SQLFilter'lar INSERT/UPDATE'e uygulanmaz). Yeni bir
- * multi-tenant entity persist edildiğinde tenant_id'nin unutulmaması için
- * bu listener, TenantAwareInterface uygulayan her yeni entity'ye aktif
- * tenant'ı otomatik damgalar.
- *
- * Zaten bir tenant_id taşıyan (ör. yönetici panelinden bilinçli olarak
- * başka bir tenant'a atanan) entity'lerin üzerine YAZMAZ — sadece henüz
- * hiç set edilmemiş (null) olanı doldurur.
+ * Law 5.1 write side: stamp tenant_id on persist. Does not overwrite an already-set tenant.
  */
 #[AsDoctrineListener(event: Events::prePersist)]
 final class TenantStampListener

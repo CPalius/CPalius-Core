@@ -1,0 +1,105 @@
+{#
+    Tek bir #[CpSetting] alanı.
+    compact=true → tablo hücresinde yalnızca kontrol (etiket ayrı sütunda).
+#}
+{% set fieldId = 'setting-' ~ setting.key|replace({'.': '-'}) %}
+
+{% if compact is not defined or not compact %}
+    <div class="system-setting-field" data-setting-key="{{ setting.key }}">
+        <label class="form-label !text-slate-400" for="{{ fieldId }}">
+            {{ setting.label|trans }}
+        </label>
+{% endif %}
+
+{% if setting.isTranslatable %}
+    {#
+        FAZ 4 — Çevrilebilir ayar: TEK bir input yerine AKTİF DİL BAŞINA
+        bir input. Alan adı iki boyutludur (settings[key][dil]) ve
+        SystemSettingsService::encodeTranslationMap() bunu tek bir JSON
+        dil haritasına çevirip cp_settings'e yazar.
+
+        Dil listesi cp_locales() ile doğrudan LocaleProvider'dan alınır —
+        böylece bu partial'ı include eden her ekran (Yönetim, Modül
+        Ayarları, Eklenti Ayarları) ekstra bir değişken geçirmek zorunda
+        kalmaz ve AACP'den yeni bir dil eklendiğinde satır kendiliğinden
+        çoğalır.
+
+        "value" burada bir METİN DEĞİL, dil => değer haritasıdır
+        (bkz. SystemSettingsService::currentValuesForDefinitions).
+    #}
+    <div class="space-y-1.5" data-translatable-setting="{{ setting.key }}">
+        {% for locale in cp_locales() %}
+            {% set localeValue = (value is iterable ? value[locale.code]|default('') : value)|default('') %}
+            <div class="flex items-start gap-2">
+                <span class="mt-2 w-10 shrink-0 font-mono text-fs-xs uppercase !text-slate-500"
+                      title="{{ locale.nativeName }}">{{ locale.code }}</span>
+
+                {% if setting.type == 'textarea' %}
+                    <textarea id="{{ fieldId }}-{{ locale.code }}"
+                              name="settings[{{ setting.key }}][{{ locale.code }}]"
+                              rows="3"
+                              lang="{{ locale.code }}"
+                              class="form-control w-full max-w-xl !border-white/10 !bg-dark-1 !text-slate-100">{{ localeValue }}</textarea>
+                {% else %}
+                    <input type="text"
+                           id="{{ fieldId }}-{{ locale.code }}"
+                           name="settings[{{ setting.key }}][{{ locale.code }}]"
+                           value="{{ localeValue }}"
+                           lang="{{ locale.code }}"
+                           class="form-control w-full max-w-xl !border-white/10 !bg-dark-1 !text-slate-100">
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+{% elseif setting.type == 'checkbox' %}
+    <label class="inline-flex items-center gap-2.5 text-fs-sm !text-slate-300">
+        <input type="checkbox"
+               id="{{ fieldId }}"
+               name="settings[{{ setting.key }}]"
+               value="1"
+               {{ value ? 'checked' : '' }}
+               class="form-check-input h-4 w-4 !border-white/10 !bg-dark-1 text-primary-500 focus:ring-primary-500/40">
+        <span>{{ 'aacp.system_settings.enabled'|trans }}</span>
+    </label>
+{% elseif setting.type == 'select' %}
+    <select id="{{ fieldId }}"
+            name="settings[{{ setting.key }}]"
+            class="form-select w-full max-w-xl !border-white/10 !bg-dark-1 !text-slate-100">
+        {% for optionValue, optionLabel in setting.variants %}
+            <option value="{{ optionValue }}" {{ value == optionValue ? 'selected' : '' }}>{{ optionLabel|trans }}</option>
+        {% endfor %}
+    </select>
+{% elseif setting.type == 'textarea' %}
+    <textarea id="{{ fieldId }}"
+              name="settings[{{ setting.key }}]"
+              rows="3"
+              class="form-control w-full max-w-xl !border-white/10 !bg-dark-1 !text-slate-100">{{ value }}</textarea>
+{% elseif setting.type == 'integer' %}
+    <input type="number"
+           step="1"
+           id="{{ fieldId }}"
+           name="settings[{{ setting.key }}]"
+           value="{{ value }}"
+           class="form-control w-full max-w-xs !border-white/10 !bg-dark-1 !text-slate-100">
+{% elseif setting.type == 'password' %}
+    <input type="password"
+           id="{{ fieldId }}"
+           name="settings[{{ setting.key }}]"
+           value=""
+           autocomplete="new-password"
+           placeholder="{{ 'aacp.system_settings.password_placeholder'|trans }}"
+           class="form-control w-full max-w-xl !border-white/10 !bg-dark-1 !text-slate-100">
+    {% if compact is not defined or not compact %}
+        <p class="mt-1.5 text-fs-xs text-slate-500">{{ 'aacp.system_settings.password_hint'|trans }}</p>
+    {% endif %}
+{% else %}
+    <input type="text"
+           id="{{ fieldId }}"
+           name="settings[{{ setting.key }}]"
+           value="{{ value }}"
+           class="form-control w-full max-w-xl !border-white/10 !bg-dark-1 !text-slate-100">
+{% endif %}
+
+{% if compact is not defined or not compact %}
+    </div>
+{% endif %}

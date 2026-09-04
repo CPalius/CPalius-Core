@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Core\Account\AccountRegistrationService;
+use App\Core\Localization\LocaleProvider;
+use App\Core\Mail\CpMailerService;
+use App\Core\Security\CaptchaService;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -12,6 +16,7 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
@@ -54,6 +59,10 @@ final class AccountController extends AbstractController
         private readonly EntityManagerInterface $entityManager,
         private readonly Security $security,
         private readonly TranslatorInterface $translator,
+        private readonly AccountRegistrationService $registrationService,
+        private readonly CaptchaService $captchaService,
+        private readonly CpMailerService $mailerService,
+        private readonly LocaleProvider $localeProvider,
     ) {
     }
 
@@ -80,6 +89,8 @@ final class AccountController extends AbstractController
         return $this->render('account/login.html.twig', [
             'last_username' => $authenticationUtils->getLastUsername(),
             'error' => $authenticationUtils->getLastAuthenticationError(),
+            'captchaEnabled' => $this->captchaService->enabledOnLogin(),
+            'captchaConfig' => $this->captchaService->getWidgetConfig(),
         ]);
     }
 
@@ -90,7 +101,11 @@ final class AccountController extends AbstractController
             return $this->redirectToRoute('theme_cpalius_website_home');
         }
 
-        $formValues = ['email' => '', 'username' => '', 'firstName' => '', 'lastName' => ''];
+        if (!$this->registrationService->isRegistrationEnabled()) {
+            throw new NotFoundHttpException($this->translator->trans('account.register.disabled'));
+        }
+
+        $formValues = $this->registrationService->defaultFormValues();
 
         if ($request->isMethod('POST')) {
             $this->assertValidCsrf($request);
@@ -101,26 +116,63 @@ final class AccountController extends AbstractController
             $lastName = trim((string) $request->request->get('last_name'));
             $password = (string) $request->request->get('password');
             $passwordConfirm = (string) $request->request->get('password_confirm');
+            $locale = (string) $request->request->get('locale', '');
+            $termsAccepted = $request->request->getBoolean('terms');
 
-            $formValues = compact('email', 'username', 'firstName', 'lastName');
+            $formValues = [
+                'email' => $email,
+                'username' => $username,
+                'firstName' => $firstName,
+                'lastName' => $lastName,
+                // FAZ 3: kayit dili aktif diller icinden secilir; gecersiz bir
+                // deger sessizce varsayilana duser (bkz. LocaleProvider::resolve).
+                'locale' => $this->localeProvider->resolve($locale),
+            ];
 
-            $errors = $this->validateRegistration($email, $username, $password, $passwordConfirm);
+            $errors = $this->registrationService->validate([
+                'email' => $email,
+                'username' => $username,
+                'firstName' => $firstName,
+                'lastName' => $lastName,
+                'password' => $password,
+                'passwordConfirm' => $passwordConfirm,
+                'termsAccepted' => $termsAccepted,
+                'locale' => $formValues['locale'],
+            ]);
+
+            if ($this->captchaService->enabledOnRegister() && !$this->captchaService->verifyRequest($request)) {
+                $errors[] = $this->translator->trans('account.captcha.failed');
+            }
 
             if ($errors === []) {
                 $user = new User($email);
                 $user->setUsername($username !== '' ? $username : null);
-                $user->setFirstName($firstName);
-                $user->setLastName($lastName);
+                if ($this->registrationService->firstNameMode() !== AccountRegistrationService::FIELD_HIDDEN) {
+                    $user->setFirstName($firstName);
+                }
+                if ($this->registrationService->lastNameMode() !== AccountRegistrationService::FIELD_HIDDEN) {
+                    $user->setLastName($lastName);
+                }
                 $user->setPassword($this->passwordHasher->hashPassword($user, $password));
-                // "member": forum kullanımı için gereken kayıtlı-üye
-                // yeteneklerini taşır (bkz. user.role.member.yaml), ancak
-                // "editor" rolünün aksine node.post.* (blog yazısı
-                // oluşturma/düzenleme/yayınlama) İÇERMEZ — sıradan bir kayıt
-                // kullanıcıya içerik yönetimi yetkisi vermemelidir.
                 $user->setCpaliusRoles([self::DEFAULT_ROLE]);
+                $user->setDataValue('locale', $formValues['locale']);
 
                 $this->entityManager->persist($user);
                 $this->entityManager->flush();
+
+                $deferLogin = $this->registrationService->applyPostRegistrationState($user);
+
+                if ($deferLogin) {
+                    $emailSent = $this->registrationService->sendVerificationEmail($user);
+                    if (!$emailSent && $this->registrationService->isEmailVerificationRequired()) {
+                        $verifyUrl = $this->registrationService->buildVerificationUrl($user);
+                        if ($verifyUrl !== null && !$this->mailerService->canSend()) {
+                            $this->addFlash('info', $this->translator->trans('account.register.verify_link_dev', ['url' => $verifyUrl]));
+                        }
+                    }
+
+                    return $this->redirectToRoute('account_register_pending');
+                }
 
                 $this->security->login($user, null, 'main');
                 $this->addFlash('success', $this->translator->trans('account.register.welcome', ['fullName' => $user->getFullName()]));
@@ -135,31 +187,45 @@ final class AccountController extends AbstractController
 
         return $this->render('account/register.html.twig', [
             'formValues' => $formValues,
+            'registrationConfig' => [
+                'usernameRequired' => $this->registrationService->isUsernameRequired(),
+                'termsRequired' => $this->registrationService->isTermsRequired(),
+                'firstNameMode' => $this->registrationService->firstNameMode(),
+                'lastNameMode' => $this->registrationService->lastNameMode(),
+                'emailVerification' => $this->registrationService->isEmailVerificationRequired(),
+                'adminApproval' => $this->registrationService->isAdminApprovalRequired(),
+            ],
+            'captchaEnabled' => $this->captchaService->enabledOnRegister(),
+            'captchaConfig' => $this->captchaService->getWidgetConfig(),
         ]);
     }
 
-    /** @return string[] */
-    private function validateRegistration(string $email, string $username, string $password, string $passwordConfirm): array
+    #[Route('/hesap/kayit/beklemede', name: 'account_register_pending', methods: ['GET'])]
+    public function registerPending(): Response
     {
-        $errors = [];
+        return $this->render('account/register_pending.html.twig', [
+            'emailVerification' => $this->registrationService->isEmailVerificationRequired(),
+            'adminApproval' => $this->registrationService->isAdminApprovalRequired(),
+        ]);
+    }
 
-        if ($email === '' || !filter_var($email, \FILTER_VALIDATE_EMAIL)) {
-            $errors[] = $this->translator->trans('account.register.invalid_email');
-        } elseif ($this->userRepository->isEmailTakenByAnotherUser($email, null)) {
-            $errors[] = $this->translator->trans('account.register.email_taken');
+    #[Route('/hesap/dogrula/{token}', name: 'account_verify_email', methods: ['GET'])]
+    public function verifyEmail(string $token): Response
+    {
+        $user = $this->registrationService->verifyEmailByToken($token);
+        if ($user === null) {
+            $this->addFlash('error', $this->translator->trans('account.verify.invalid_token'));
+
+            return $this->redirectToRoute('account_login');
         }
 
-        if ($username !== '' && $this->userRepository->findOneByUsername($username) !== null) {
-            $errors[] = $this->translator->trans('account.register.username_taken');
+        $this->addFlash('success', $this->translator->trans('account.verify.success'));
+
+        if ($user->getStatus() === User::STATUS_INACTIVE) {
+            return $this->redirectToRoute('account_register_pending');
         }
 
-        if (mb_strlen($password) < 8) {
-            $errors[] = $this->translator->trans('account.register.password_too_short');
-        } elseif ($password !== $passwordConfirm) {
-            $errors[] = $this->translator->trans('account.register.password_mismatch');
-        }
-
-        return $errors;
+        return $this->redirectToRoute('account_login');
     }
 
     private function assertValidCsrf(Request $request): void

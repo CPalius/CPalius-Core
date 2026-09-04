@@ -5,17 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Hook;
 
 /**
- * Bir kanca (hook) noktasına gönderilen ve o noktadan geri alınan verinin
- * tek taşıyıcısı. Cotonti'nin klasik "$extra" değişken çantası ile aynı
- * ruhta: hook'u tetikleyen taraf istediği anahtarları set() eder, dinleyen
- * her hook (flat-file veya attribute) aynı $context üzerinde okuma/yazma
- * yapar, HookManager::trigger() zincirin sonunda güncellenmiş context'i
- * çağıran tarafa geri döner.
- *
- * Fluent interface BİLİNÇLİ olarak tercih edildi: hem çekirdek içinde
- * (`(new HookContext())->set('node', $node)->set('request', $request)`)
- * hem de flat-file hook dosyaları içinde ($context->set(...)->get(...))
- * zincirleme çağrı okunabilirliği artırır.
+ * Bag passed into a hook point and returned after the chain (set/get, fluent).
  */
 final class HookContext
 {
@@ -63,12 +53,7 @@ final class HookContext
     }
 
     /**
-     * Twig kanca noktalarının (cp_hook()) konvansiyonu: her dinleyici,
-     * ürettiği HTML parçasını doğrudan return ETMEK yerine bu metotla
-     * context'e "ekler". Birden fazla dinleyici aynı noktaya bağlıysa
-     * (ör. hem flat-file hem attribute kulvarından), çıktılar sırayla
-     * BİRİKTİRİLİR — sonraki bir dinleyici öncekinin çıktısını asla
-     * ezmez. HookRuntime::render() son halini burada okur.
+     * Append HTML for {{ cp_hook() }}; later listeners accumulate, they do not overwrite.
      */
     public function appendHtml(string $html): self
     {

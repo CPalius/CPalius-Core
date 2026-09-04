@@ -1,8 +1,4 @@
-{#
-    Hem tam galeri sayfası (index.html.twig) hem seçici modal (picker.html.twig)
-    tarafından paylaşılan grid partial'i — tek bir görsel kaynağı, iki farklı
-    sarmalayıcı (tam sayfa Studio kabuğu vs. bağımsız modal içeriği).
-#}
+{# Shared grid for the full gallery page and the picker modal. #}
 {% if assets is empty %}
     <p class="p-sp-md text-center text-fs-sm text-neutral-500">{{ 'media.grid.empty'|trans }}</p>
 {% else %}

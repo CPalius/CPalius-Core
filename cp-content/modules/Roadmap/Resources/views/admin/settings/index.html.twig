@@ -1,0 +1,48 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.roadmap.settings.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_roadmap_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.roadmap.menu.entries'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <form method="post" action="{{ path('admin_roadmap_settings_update') }}" class="space-y-sp-sm">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_roadmap_settings') }}">
+
+        {% for groupKey, groupDefs in grouped %}
+            <twig:studio:card title="{{ (groupLabels[groupKey]|default(groupKey))|trans }}">
+                <div class="grid gap-4 md:grid-cols-2">
+                    {% for definition in groupDefs %}
+                        <div class="{{ definition.type == 'textarea' ? 'md:col-span-2' : '' }}">
+                            <label class="form-label">{{ definition.label }}</label>
+
+                            {% if definition.type in ['checkbox', 'boolean'] %}
+                                <label class="mt-1 flex items-center gap-2">
+                                    <input type="checkbox" name="settings[{{ definition.key }}]" value="1" {{ values[definition.key] ? 'checked' : '' }}>
+                                    <span class="text-fs-sm text-neutral-600">{{ 'studio.roadmap.settings.enabled'|trans }}</span>
+                                </label>
+                            {% elseif definition.type == 'textarea' %}
+                                <textarea name="settings[{{ definition.key }}]" class="form-control" rows="3">{{ values[definition.key] }}</textarea>
+                            {% elseif definition.type == 'integer' %}
+                                <input type="number" name="settings[{{ definition.key }}]" value="{{ values[definition.key] }}" class="form-control">
+                            {% else %}
+                                <input type="text" name="settings[{{ definition.key }}]" value="{{ values[definition.key] }}" class="form-control">
+                            {% endif %}
+
+                            <code class="text-fs-xs text-neutral-400">{{ definition.key }}</code>
+                        </div>
+                    {% endfor %}
+                </div>
+            </twig:studio:card>
+        {% else %}
+            <twig:studio:card>
+                <p class="text-neutral-500">{{ 'studio.roadmap.settings.none'|trans }}</p>
+            </twig:studio:card>
+        {% endfor %}
+
+        <div>
+            <button type="submit" class="btn btn-primary">{{ 'studio.roadmap.settings.save'|trans }}</button>
+        </div>
+    </form>
+{% endblock %}

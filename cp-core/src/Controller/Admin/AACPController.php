@@ -7,6 +7,7 @@ namespace App\Controller\Admin;
 use App\Core\Aacp\SystemWidgetData;
 use App\Core\Aacp\SystemWidgetProviderInterface;
 use App\Core\Annotation\CpAdminMenu;
+use App\Core\Annotation\CpSetting;
 use App\Core\Api\ApiKeyService;
 use App\Core\Cache\CacheRebuildManager;
 use App\Core\Cron\CronManager;
@@ -18,6 +19,7 @@ use App\Core\Plugin\PluginInterface;
 use App\Core\Plugin\PluginRegistry;
 use App\Core\Plugin\PluginToggleRepository;
 use App\Core\Settings\SettingsRegistry;
+use App\Core\Settings\SystemSettingsService;
 use App\Entity\CronJob;
 use App\Entity\Setting;
 use App\Entity\User;
@@ -68,6 +70,7 @@ final class AACPController
         private readonly string $projectDir,
         private readonly string $recoveryToken,
         private readonly SettingsRegistry $settingsRegistry,
+        private readonly SystemSettingsService $systemSettingsService,
         private readonly SettingRepository $settingRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
@@ -322,100 +325,20 @@ final class AACPController
         return new Response($html);
     }
 
-    /**
-     * #[CpSetting] ile tanımlanmış TÜM ayarları tarayıp, "module" alanı
-     * PluginRegistry'de kayıtlı bir eklenti adıyla EŞLEŞMEYENLERİ (yani
-     * çekirdeğe veya bir modüle ait olanları) grup başlıklarına göre
-     * gruplayıp otomatik bir form olarak render eder (Cotonti tarzı
-     * Settings Engine, bkz. SettingsRegistry docblock'u).
-     *
-     * Faz 5: eskiden tek bir "/aacp/settings" ekranında birleşik olan
-     * ayarlar, "Modül Ayarları" (bu action) ve "Eklenti Ayarları"
-     * (settingsPlugins()) olarak ikiye ayrıldı — ayrım kriteri
-     * isSettingOwnedByPlugin() içinde tek bir yerde toplanır.
-     *
-     * NOT: çekirdeğe (module: 'core') ait ayarlar burada DA görünür (henüz
-     * bir eklentiye ait değiller), ama bunların birincil yönetim yeri artık
-     * AACPPlaceholderController::advancedManagement() içindeki "Genel
-     * Ayarlar" bölümüdür (bkz. o metodun docblock'u) — burası (Modül
-     * Ayarları) modül-spesifik ayarlar (BlogModuleSettings, MenuSettings
-     * vb.) için birincil ekran olmaya devam eder.
-     */
+    /** Legacy route: module settings are now the "Modules" tab of /aacp/settings. */
     #[Route('/aacp/settings/modules', name: 'aacp_settings_modules', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.module_settings', icon: 'heroicons:cog-6-tooth', panel: 'aacp', priority: 31, capability: 'system.settings.manage', parent: 'aacp_modules')]
     #[IsGranted('system.settings.manage')]
-    public function settingsModules(): Response
+    public function settingsModules(): RedirectResponse
     {
-        return $this->renderSettingsPage(
-            template: 'aacp/settings_modules.html.twig',
-            includePluginOwned: false,
-        );
+        return new RedirectResponse('/aacp/settings?tab='.CpSetting::SCOPE_MODULE);
     }
 
-    /**
-     * "Modül Ayarları" ekranının aynası: bu kez SADECE "module" alanı
-     * PluginRegistry'de kayıtlı bir eklenti adıyla eşleşen ayar tanımları
-     * listelenir (ör. BlogWidgetSettings, "blog_widget" eklentisine ait).
-     */
+    /** Legacy route: plugin settings are now the "Plugins" tab of /aacp/settings. */
     #[Route('/aacp/settings/plugins', name: 'aacp_settings_plugins', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.plugin_settings', icon: 'heroicons:puzzle-piece', panel: 'aacp', priority: 36, capability: 'system.settings.manage', parent: 'aacp_plugins')]
     #[IsGranted('system.settings.manage')]
-    public function settingsPlugins(): Response
+    public function settingsPlugins(): RedirectResponse
     {
-        return $this->renderSettingsPage(
-            template: 'aacp/settings_plugins.html.twig',
-            includePluginOwned: true,
-        );
-    }
-
-    private function renderSettingsPage(string $template, bool $includePluginOwned): Response
-    {
-        $settingGroups = [];
-        $currentValues = [];
-
-        foreach ($this->settingsRegistry->all() as $definition) {
-            // module==='core' ayarları burada HİÇBİR ZAMAN gösterilmez —
-            // bunların birincil (ve tek) yönetim yeri artık "Yönetim"
-            // sayfasındaki Genel Ayarlar bölümüdür (bkz.
-            // AACPPlaceholderController::advancedManagement()). Bu ekran
-            // (Modül Ayarları) sadece gerçek modüllere ait ayarları
-            // (BlogModuleSettings, MenuSettings vb.) gösterir.
-            //
-            // module==='studio_homepage' de aynı sebeple hariç tutulur:
-            // bu ayarların TEK yönetim yeri Studio > Ana Sayfa ekranıdır
-            // (bkz. HomepageSettingsController) — içerik yönetimiyle
-            // ilgili oldukları için AACP'de TEKRAR gösterilmemeliler.
-            if ($definition->module === 'core' || $definition->module === 'studio_homepage') {
-                continue;
-            }
-
-            if ($this->isSettingOwnedByPlugin($definition->module) !== $includePluginOwned) {
-                continue;
-            }
-
-            $settingGroups[$definition->group][] = $definition;
-            $currentValues[$definition->key] = $this->settingsRegistry->get($definition->key);
-        }
-
-        $html = $this->twig->render($template, [
-            'settingGroups' => $settingGroups,
-            'currentValues' => $currentValues,
-            'csrf_token' => $this->csrfTokenManager->getToken('aacp_settings')->getValue(),
-        ]);
-
-        return new Response($html);
-    }
-
-    /**
-     * Bir #[CpSetting]->module değerinin bir "modül"e mi yoksa bir
-     * "eklenti"ye mi ait olduğunu belirler. PluginRegistry zaten TÜM
-     * kayıtlı eklentilerin isimlerini (PluginInterface::getName()) tek
-     * doğruluk kaynağı olarak tutuyor — bu yüzden CpSetting/SettingDefinition'a
-     * ayrı bir "scope" alanı eklemek yerine bu tek karşılaştırmaya dayanılır.
-     */
-    private function isSettingOwnedByPlugin(string $module): bool
-    {
-        return $this->pluginRegistry->getPlugin($module) !== null;
+        return new RedirectResponse('/aacp/settings?tab='.CpSetting::SCOPE_PLUGIN);
     }
 
     #[Route('/aacp/settings/update', name: 'aacp_settings_update', methods: ['POST'])]
@@ -427,7 +350,7 @@ final class AACPController
             throw new BadRequestHttpException($this->translator->trans('aacp.system.invalid_csrf'));
         }
 
-        /** @var array<string, string> $submitted */
+        /** @var array<string, string|array<string, string>> $submitted */
         $submitted = $request->request->all('settings');
 
         $definitions = $this->settingsRegistry->all();
@@ -437,28 +360,47 @@ final class AACPController
         foreach ($definitions as $definition) {
             $raw = $submitted[$definition->key] ?? null;
 
+            // FAZ 4: çevrilebilir ayar iki boyutlu gelir (settings[key][dil])
+            // ve tek bir JSON dil haritası olarak saklanır. Kodlama
+            // mantığı SystemSettingsService ile PAYLAŞILIR — iki ayar
+            // ekranının aynı veriyi farklı biçimlerde yazması, sessiz bir
+            // veri bozulması kaynağı olurdu.
+            if ($definition->isTranslatable()) {
+                $encoded = $this->systemSettingsService->encodeTranslationMap($raw);
+
+                if ($encoded !== null) {
+                    $keysToTouch[] = $definition->key;
+                    $pendingValues[$definition->key] = [$definition, $encoded];
+                }
+
+                continue;
+            }
+
             $value = match ($definition->type) {
                 // HTML formlarında işaretsiz bir checkbox HİÇ gönderilmez;
                 // bu yüzden "anahtar yok" burada "false" anlamına gelir.
                 'checkbox' => $raw !== null ? '1' : '0',
-                default => $raw !== null ? trim($raw) : null,
+                default => \is_string($raw) ? trim($raw) : null,
             };
 
             if ($value === null) {
                 continue;
             }
 
-            // Temel form-seviyesi validasyon: "integer" tipi için sayısal
-            // olmayan bir giriş sessizce yutulmaz — kullanıcı hangi ekrandan
-            // geldiyse (modül/eklenti ayarları) oraya, mevcut (geçersiz
-            // girişten ÖNCEKİ) değerler korunarak, hatayla birlikte geri
-            // yönlendirilir.
+            // A non-numeric "integer" input is never swallowed: bounce back to the
+            // originating tab with the pre-submit values still in place.
             if ($definition->type === 'integer' && !$this->isValidInteger($value)) {
-                $redirectTarget = $this->isSettingOwnedByPlugin($definition->module)
-                    ? '/aacp/settings/plugins'
-                    : '/aacp/settings/modules';
+                $target = $this->safeRedirectTarget((string) $request->request->get('_redirect', ''));
+                $separator = str_contains($target, '?') ? '&' : '?';
 
-                return new RedirectResponse($redirectTarget.'?invalid_setting='.urlencode($definition->key));
+                return new RedirectResponse($target.$separator.'invalid_setting='.urlencode($definition->key));
+            }
+
+            if ($definition->type === 'select' && $definition->variants !== [] && !array_key_exists($value, $definition->variants)) {
+                $target = $this->safeRedirectTarget((string) $request->request->get('_redirect', ''));
+                $separator = str_contains($target, '?') ? '&' : '?';
+
+                return new RedirectResponse($target.$separator.'invalid_setting='.urlencode($definition->key));
             }
 
             $keysToTouch[] = $definition->key;
@@ -480,9 +422,13 @@ final class AACPController
         $this->entityManager->flush();
         $this->settingsRegistry->clearCache();
 
-        $redirectTo = (string) $request->request->get('_redirect', '/aacp/settings/modules');
+        return new RedirectResponse($this->safeRedirectTarget((string) $request->request->get('_redirect', '')));
+    }
 
-        return new RedirectResponse(str_starts_with($redirectTo, '/aacp/settings') ? $redirectTo : '/aacp/settings/modules');
+    /** Open-redirect guard: only in-app settings paths are accepted. */
+    private function safeRedirectTarget(string $candidate): string
+    {
+        return str_starts_with($candidate, '/aacp/settings') ? $candidate : '/aacp/settings';
     }
 
     /**
@@ -612,16 +558,20 @@ final class AACPController
             throw new BadRequestHttpException($this->translator->trans('aacp.system.invalid_csrf'));
         }
 
-        foreach ($this->moduleRegistry->discoverAllModules() as $module) {
-            if ($module['dirName'] === $dirName && $module['class'] !== null) {
-                $this->activeModulesFileWriter->remove($module['class']);
-                break;
-            }
-        }
+        // Goes through ModuleActivator so dependents are checked and, when the
+        // caller asks for it, the module's uninstall() hook runs first.
+        $result = $this->moduleActivator->deactivate($dirName, $request->request->getBoolean('purge'));
 
         $redirectTo = (string) $request->request->get('_redirect', '/aacp');
+        $target = str_starts_with($redirectTo, '/aacp') ? $redirectTo : '/aacp';
 
-        return new RedirectResponse(str_starts_with($redirectTo, '/aacp') ? $redirectTo : '/aacp');
+        if (!$result['success']) {
+            $separator = str_contains($target, '?') ? '&' : '?';
+
+            return new RedirectResponse($target.$separator.'module_error='.urlencode($result['message']));
+        }
+
+        return new RedirectResponse($target);
     }
 
     /**

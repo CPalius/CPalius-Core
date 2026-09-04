@@ -1,15 +1,6 @@
 {#
-    Dört performans backend'inin (Redis/Memcached/Varnish/PageSpeed) hepsinin
-    paylaştığı ortak kart partial'ı — bkz. _settings_form.html.twig'in tip
-    bazlı if/elseif deseni, burada 4 kez kopyalanmak yerine tek yerde tutulur.
-
-    Beklenen değişkenler:
-      backendId   (string) 'redis'|'memcached'|'varnish'|'pagespeed'
-      title       (string) Kart başlığı.
-      fields      (array<string, array{key: string, label: string}>) Ayar alanları.
-      config      (array<string, mixed>) Alanların mevcut değerleri.
-      status      (App\Entity\PerformanceBackendStatus|null)
-      csrf_token  (string)
+    Shared card for Redis/Memcached/Varnish/PageSpeed.
+    fields: list of {key, label, type?, hint?, wide?}
 #}
 {% set enabled = status and status.enabled %}
 {% set lastTestSuccess = status and status.lastTestSuccess %}
@@ -37,13 +28,23 @@
 
         <div class="grid grid-cols-1 gap-sp-sm sm:grid-cols-2">
             {% for field in fields %}
-                <div>
+                <div class="{{ field.wide|default(false) ? 'sm:col-span-2' : '' }}">
                     <label class="form-label !text-slate-400">{{ field.label }}</label>
-                    <input type="{{ field.key starts with 'password' ? 'password' : 'text' }}"
-                           name="{{ field.key }}"
-                           value="{{ config[field.key] }}"
-                           data-performance-field="{{ field.key }}"
-                           class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                    {% if field.type|default('text') == 'textarea' %}
+                        <textarea name="{{ field.key }}"
+                                  rows="5"
+                                  data-performance-field="{{ field.key }}"
+                                  class="form-control !border-white/10 !bg-dark-1 !text-slate-100">{{ config[field.key] }}</textarea>
+                    {% else %}
+                        <input type="{{ field.key starts with 'password' ? 'password' : 'text' }}"
+                               name="{{ field.key }}"
+                               value="{{ config[field.key] }}"
+                               data-performance-field="{{ field.key }}"
+                               class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                    {% endif %}
+                    {% if field.hint is defined and field.hint %}
+                        <p class="mt-1 text-fs-xs text-slate-500">{{ field.hint }}</p>
+                    {% endif %}
                 </div>
             {% endfor %}
         </div>

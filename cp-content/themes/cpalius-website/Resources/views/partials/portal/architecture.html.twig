@@ -1,84 +1,78 @@
-<section class="portal-zone" id="architecture">
+{% set t = 'portal' %}
+<section class="section section-darker" id="architecture">
     <div class="container">
-        <div class="portal-module fade-in">
-            <div class="portal-module__head">
-                <h2 class="portal-module__title">
-                    <i class="bi bi-folder2-open"></i>
-                    <span>"Pristine Root" ve Klasör Mimarisi</span>
-                </h2>
-                <span class="portal-module__eyebrow">Bölüm 1</span>
-            </div>
-            <div class="portal-module__body portal-module__body--padded portal-marketing">
-                <p class="portal-module__intro">
-                    Standart bir Symfony projesinde üçüncü parti paketler ve tarifler yüklendikçe
-                    ana dizin dosya çöplüğüne döner. CPalius, "Tertemiz Ana Dizin" politikasını benimsedi.
-                </p>
+        <div class="section-header fade-in">
+            <span class="section-label">{{ 'architecture.label'|trans({}, t) }}</span>
+            <h2 class="section-title">{{ 'architecture.title'|trans({}, t) }}</h2>
+            <p class="section-desc">{{ 'architecture.desc'|trans({}, t) }}</p>
+        </div>
 
-                <div class="arch-layout">
-                    <div class="arch-tree-wrapper">
-                        <div class="folder-tree">
-                            <div class="folder-tree-header">
-                                <span class="folder-tree-dot red"></span>
-                                <span class="folder-tree-dot yellow"></span>
-                                <span class="folder-tree-dot green"></span>
-                                <span>pristine-root</span>
-                            </div>
-                            <pre><span class="folder-name">CPalius/</span>
+        <div class="arch-layout">
+            <div class="arch-tree-wrapper fade-in-left">
+                <div class="folder-tree">
+                    <div class="folder-tree-header">
+                        <span class="folder-tree-dot red"></span>
+                        <span class="folder-tree-dot yellow"></span>
+                        <span class="folder-tree-dot green"></span>
+                        <span>pristine-root</span>
+                    </div>
+                    <pre><span class="folder-name">CPalius/</span>
 │
-├── <span class="folder-name">cp-core/</span>          <span class="folder-comment"># KERNEL &amp; SYSTEM SPACE</span>
-│   ├── bin/          <span class="folder-comment"># Konsol komut aracı</span>
-│   ├── config/       <span class="folder-comment"># Core konfigürasyonları</span>
-│   ├── migrations/   <span class="folder-comment"># Veritabanı göç dosyaları</span>
-│   ├── src/          <span class="folder-comment"># PHP sınıfları (App\\)</span>
-│   └── var/          <span class="folder-comment"># Cache, log, SQLite</span>
+├── <span class="folder-name">cp-core/</span>          <span class="folder-comment">{{ 'architecture.tree_kernel'|trans({}, t) }}</span>
+│   ├── bin/          <span class="folder-comment">{{ 'architecture.tree_bin'|trans({}, t) }}</span>
+│   ├── config/       <span class="folder-comment">{{ 'architecture.tree_config'|trans({}, t) }}</span>
+│   ├── migrations/   <span class="folder-comment">{{ 'architecture.tree_migrations'|trans({}, t) }}</span>
+│   ├── src/          <span class="folder-comment">{{ 'architecture.tree_src'|trans({}, t) }}</span>
+│   └── var/          <span class="folder-comment">{{ 'architecture.tree_var'|trans({}, t) }}</span>
 │
-├── <span class="folder-name">cp-includes/</span>      <span class="folder-comment"># DEPENDENCIES SPACE</span>
-│   └── vendor/       <span class="folder-comment"># Composer paketleri</span>
+├── <span class="folder-name">cp-includes/</span>      <span class="folder-comment">{{ 'architecture.tree_deps'|trans({}, t) }}</span>
+│   └── vendor/       <span class="folder-comment">{{ 'architecture.tree_vendor'|trans({}, t) }}</span>
 │
-├── <span class="folder-name">cp-content/</span>       <span class="folder-comment"># USER &amp; DEVELOPER SPACE</span>
-│   ├── config/       <span class="folder-comment"># Config Sync alanı</span>
-│   ├── modules/      <span class="folder-comment"># Bağımsız modüller</span>
-│   ├── themes/       <span class="folder-comment"># UI temaları</span>
-│   └── translations/ <span class="folder-comment"># Çeviriler (tr, en)</span>
+├── <span class="folder-name">cp-content/</span>       <span class="folder-comment">{{ 'architecture.tree_user'|trans({}, t) }}</span>
+│   ├── config/       <span class="folder-comment">{{ 'architecture.tree_config_sync'|trans({}, t) }}</span>
+│   ├── modules/      <span class="folder-comment">{{ 'architecture.tree_modules'|trans({}, t) }}</span>
+│   ├── themes/       <span class="folder-comment">{{ 'architecture.tree_themes'|trans({}, t) }}</span>
+│   └── translations/ <span class="folder-comment">{{ 'architecture.tree_translations'|trans({}, t) }}</span>
 │
-├── <span class="folder-name">public/</span>           <span class="folder-comment"># WEB ROOT</span>
-│   ├── index.php     <span class="folder-comment"># Front Controller</span>
-│   └── assets/       <span class="folder-comment"># Frontend varlıkları</span>
+├── <span class="folder-name">public/</span>           <span class="folder-comment">{{ 'architecture.tree_web'|trans({}, t) }}</span>
+│   ├── index.php     <span class="folder-comment">{{ 'architecture.tree_index'|trans({}, t) }}</span>
+│   └── assets/       <span class="folder-comment">{{ 'architecture.tree_assets'|trans({}, t) }}</span>
 │
 ├── .env
 └── composer.json</pre>
-                        </div>
-                    </div>
+                </div>
+            </div>
 
-                    <div class="arch-cards-wrapper">
-                        <div class="arch-card">
-                            <div class="arch-card-icon"><i class="bi bi-cpu"></i></div>
-                            <div class="arch-card-content">
-                                <h5>cp-core/ <code>Kernel &amp; System Space</code></h5>
-                                <p>Çekirdek PHP sınıfları, konfigürasyonlar, konsol araçları ve veritabanı göç dosyaları. Symfony Flex tariflerinin doğrudan bu alana kurulması garanti altındadır.</p>
-                            </div>
-                        </div>
-                        <div class="arch-card">
-                            <div class="arch-card-icon"><i class="bi bi-box-seam"></i></div>
-                            <div class="arch-card-content">
-                                <h5>cp-includes/ <code>Dependencies Space</code></h5>
-                                <p>Composer paketleri ve Symfony kütüphaneleri bu izole alanda tutulur. <code>vendor-dir</code> yeniden yapılandırılmıştır.</p>
-                            </div>
-                        </div>
-                        <div class="arch-card">
-                            <div class="arch-card-icon"><i class="bi bi-puzzle"></i></div>
-                            <div class="arch-card-content">
-                                <h5>cp-content/ <code>User &amp; Developer Space</code></h5>
-                                <p>Modüller, temalar, çeviriler ve Config Sync alanı. Geliştiricinin kendi kodları ile framework sistem dosyaları asla birbirine karışmaz.</p>
-                            </div>
-                        </div>
-                        <div class="arch-card">
-                            <div class="arch-card-icon"><i class="bi bi-globe"></i></div>
-                            <div class="arch-card-content">
-                                <h5>public/ <code>Web Root</code></h5>
-                                <p>Dışarıya açık tek klasör. Front Controller (index.php) ve derlenmiş frontend varlıkları burada yer alır. Güvenlik sınırı.</p>
-                            </div>
-                        </div>
+            <div class="arch-cards-wrapper fade-in-right">
+                <div class="arch-card">
+                    <div class="arch-card-icon"><i class="bi bi-cpu"></i></div>
+                    <div class="arch-card-content">
+                        <h5>cp-core/ <code>{{ 'architecture.card_core_title'|trans({}, t) }}</code></h5>
+                        <p>{{ 'architecture.card_core_text'|trans({}, t) }}</p>
+                    </div>
+                </div>
+
+                <div class="arch-card">
+                    <div class="arch-card-icon"><i class="bi bi-box-seam"></i></div>
+                    <div class="arch-card-content">
+                        <h5>cp-includes/ <code>{{ 'architecture.card_includes_title'|trans({}, t) }}</code></h5>
+                        <p>{{ 'architecture.card_includes_html'|trans({}, t)|raw }}</p>
+                    </div>
+                </div>
+
+                <div class="arch-card">
+                    <div class="arch-card-icon"><i class="bi bi-puzzle"></i></div>
+                    <div class="arch-card-content">
+                        <h5>cp-content/ <code>{{ 'architecture.card_content_title'|trans({}, t) }}</code></h5>
+                        <p>{{ 'architecture.card_content_text'|trans({}, t) }}</p>
+                    </div>
+                </div>
+
+                <div class="arch-card">
+                    <div class="arch-card-icon"><i class="bi bi-globe"></i></div>
+                    <div class="arch-card-content">
+                        <h5>public/ <code>{{ 'architecture.card_public_title'|trans({}, t) }}</code></h5>
+                        <p>{{ 'architecture.card_public_text'|trans({}, t) }}</p>
                     </div>
                 </div>
             </div>

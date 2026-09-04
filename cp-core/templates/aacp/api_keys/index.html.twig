@@ -3,8 +3,7 @@
 {% block header %}{{ 'aacp.api_keys.header'|trans }}{% endblock %}
 
 {% block javascripts %}
-    {{ parent() }}
-    {{ importmap('aacp-api-keys') }}
+    {{ importmap(['app', 'aacp-api-keys']) }}
 {% endblock %}
 
 {% block body %}

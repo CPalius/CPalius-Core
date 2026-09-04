@@ -1,4 +1,8 @@
-{% macro renderItems(nodes) %}
+{#
+    Phase 3: translationMap is item id => TranslationTab list for the edit tree.
+    Missing locales are created with one click; map is computed in memory (no extra query).
+#}
+{% macro renderItems(nodes, translationMap = {}) %}
     {% import _self as self %}
     <ul class="{{ nodes is not empty and nodes[0].item.parent is null ? '' : 'ml-sp-md mt-1.5' }} space-y-1.5" data-sortable-list data-parent-id="{{ nodes is not empty ? (nodes[0].item.parent.id ?? '') : '' }}">
         {% for node in nodes %}
@@ -8,6 +12,23 @@
                         <span class="cursor-move text-neutral-500" data-drag-handle>⠿</span>
                         <span class="text-fs-sm font-medium text-neutral-900">{{ node.item.label }}</span>
                         <span class="badge badge-neutral">{{ node.item.locale }}</span>
+                        {% for tab in translationMap[node.item.id]|default([]) %}
+                            {% if tab.isCurrent %}
+                                {# Current locale is already shown as a badge above. #}
+                            {% elseif tab.exists %}
+                                <span class="badge badge-success" title="{{ tab.label ?? tab.nativeName }}">{{ tab.code }}</span>
+                            {% else %}
+                                <form method="post" action="{{ path('admin_menus_translate_item', {itemId: node.item.id, locale: tab.code}) }}" class="inline">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_menu_form') }}">
+                                    <button type="submit"
+                                            title="{{ 'cp.translation_tabs.add_hint'|trans({locale: tab.nativeName}) }}"
+                                            class="badge badge-neutral border border-dashed border-neutral-300 hover:border-primary-500 hover:text-primary-600">
+                                        + {{ tab.code }}
+                                    </button>
+                                </form>
+                            {% endif %}
+                        {% endfor %}
+
                         {% if node.item.url %}
                             <span class="text-fs-xs text-neutral-500">{{ node.item.url }}</span>
                         {% elseif node.item.nodeId %}
@@ -24,7 +45,7 @@
                 </div>
 
                 {% if node.children is not empty %}
-                    {{ self.renderItems(node.children) }}
+                    {{ self.renderItems(node.children, translationMap) }}
                 {% endif %}
             </li>
         {% endfor %}

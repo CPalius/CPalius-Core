@@ -19,5 +19,7 @@ capabilities:
     - system.users.view
     - system.users.manage
     - system.localization.manage
+    - account.profile.edit
+    - account.avatar.upload
     - core.url_alias.manage
     - admin.access

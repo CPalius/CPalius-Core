@@ -1,0 +1,102 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.members.edit.header'|trans({name: user.fullName}) }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_members_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.members.action.back_list'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card>
+        <form method="post">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_member') }}">
+
+            <h2 class="text-fs-sm font-semibold text-neutral-700 mb-3">{{ 'studio.forum.members.edit.section.account'|trans }}</h2>
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.edit.email'|trans }}</label>
+                    <input type="email" name="email" value="{{ formValues.email }}" required maxlength="180" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.edit.username'|trans }}</label>
+                    <input type="text" name="username" value="{{ formValues.username }}" maxlength="180" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.edit.first_name'|trans }}</label>
+                    <input type="text" name="first_name" value="{{ formValues.firstName }}" maxlength="120" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.edit.last_name'|trans }}</label>
+                    <input type="text" name="last_name" value="{{ formValues.lastName }}" maxlength="120" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.edit.status'|trans }}</label>
+                    <select name="status" class="form-select">
+                        <option value="active" {{ formValues.status == 'active' ? 'selected' : '' }}>{{ 'studio.forum.members.edit.status.active'|trans }}</option>
+                        <option value="inactive" {{ formValues.status == 'inactive' ? 'selected' : '' }}>{{ 'studio.forum.members.edit.status.inactive'|trans }}</option>
+                        <option value="banned" {{ formValues.status == 'banned' ? 'selected' : '' }}>{{ 'studio.forum.members.edit.status.banned'|trans }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.edit.password'|trans }}</label>
+                    <input type="password" name="plain_password" value="" autocomplete="new-password" class="form-control" placeholder="{{ 'studio.forum.members.edit.password_hint'|trans }}">
+                </div>
+            </div>
+
+            <h2 class="text-fs-sm font-semibold text-neutral-700 mt-8 mb-3">{{ 'studio.forum.members.edit.section.profile'|trans }}</h2>
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.edit.location'|trans }}</label>
+                    <input type="text" name="location" value="{{ formValues.location }}" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.edit.rank'|trans }}</label>
+                    <select name="rank_id" class="form-select">
+                        <option value="">— {{ 'studio.forum.members.rank_select.automatic'|trans }} —</option>
+                        {% for rank in allRanks %}
+                            <option value="{{ rank.id }}" {{ formValues.rankId == rank.id ? 'selected' : '' }}>{{ rank.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label">{{ 'studio.forum.members.edit.bio'|trans }}</label>
+                    <textarea name="bio" rows="3" class="form-control">{{ formValues.bio }}</textarea>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label">{{ 'studio.forum.members.edit.signature'|trans }}</label>
+                    <textarea name="signature" rows="3" maxlength="500" class="form-control">{{ formValues.signature }}</textarea>
+                </div>
+            </div>
+
+            <h2 class="text-fs-sm font-semibold text-neutral-700 mt-8 mb-3">{{ 'studio.forum.members.edit.section.title'|trans }}</h2>
+            <p class="text-fs-xs text-neutral-500 mb-3">{{ 'studio.forum.members.edit.section.title_hint'|trans }}</p>
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.edit.custom_title'|trans }}</label>
+                    <input type="text" name="custom_title" value="{{ formValues.customTitle }}" maxlength="120" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.edit.custom_title_color'|trans }}</label>
+                    <input type="color" name="custom_title_color" value="{{ formValues.customTitleColor }}" class="form-control" style="height: 42px; padding: 4px;">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.edit.custom_title_style'|trans }}</label>
+                    <select name="custom_title_style" class="form-select">
+                        <option value="plain" {{ formValues.customTitleStyle == 'plain' ? 'selected' : '' }}>{{ 'studio.forum.members.edit.style.plain'|trans }}</option>
+                        <option value="bold" {{ formValues.customTitleStyle == 'bold' ? 'selected' : '' }}>{{ 'studio.forum.members.edit.style.bold'|trans }}</option>
+                        <option value="badge" {{ formValues.customTitleStyle == 'badge' ? 'selected' : '' }}>{{ 'studio.forum.members.edit.style.badge'|trans }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.edit.custom_title_icon'|trans }}</label>
+                    <input type="text" name="custom_title_icon" value="{{ formValues.customTitleIcon }}" placeholder="{{ 'studio.forum.ranks.form.icon_placeholder'|trans }}" class="form-control">
+                </div>
+            </div>
+
+            <div class="mt-6 flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ 'studio.forum.members.edit.save'|trans }}</button>
+                <a href="{{ path('admin_forum_members_index') }}" class="btn btn-neutral">{{ 'studio.forum.members.edit.cancel'|trans }}</a>
+            </div>
+        </form>
+    </twig:studio:card>
+{% endblock %}

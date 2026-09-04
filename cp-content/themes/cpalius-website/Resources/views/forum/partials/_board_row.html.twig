@@ -1,27 +1,51 @@
 {#
-    Tek bir forum/bölüm satırı — hem forum index'te (sections.html.twig)
-    hem de bir bölümün kendi sayfasındaki "Alt forumlar" tablosunda
-    (topics.html.twig) kullanılan ortak bileşen.
-
-    Beklenen değişken: board (App\Entity\ForumSection)
+    CPalius Forum Engine — node/forum satırı (profesyonel board listesi).
+    Beklenen: board (ForumSection), lastVisitAt (optional)
 #}
-<div class="forum-board">
-    <span class="forum-board__icon"><i class="bi {{ board.icon|default(board.allowsTopics ? 'bi-chat-square-text' : 'bi-folder2', true) }}"></i></span>
-        <div class="forum-board__body">
-        <span class="forum-board__type">{{ 'forum.label.subcategory'|trans }}</span>
-        <h3><a href="{{ path('forum_section', {sectionSlug: board.slug}) }}">{{ board.title }}</a></h3>
-        {% if board.description %}<p>{{ board.description }}</p>{% endif %}
-    </div>
-    <div class="forum-board__last">
-        {% if board.lastTopicTitle %}
-            <a href="{{ path('forum_topic', {topicId: board.lastTopicId}) }}">{{ board.lastTopicTitle }}</a>
-            <span>{{ board.lastPosterName }} · {{ board.lastPostAt|date('d.m.Y H:i') }}</span>
+{% set boardHref = board.linkNode and board.linkUrl ? board.linkUrl : path('forum_section', {sectionSlug: board.slug}) %}
+{% set isUnread = lastVisitAt is defined and lastVisitAt and board.lastPostAt and board.lastPostAt > lastVisitAt %}
+{% set subforums = forum_section_children(board)|filter(s => s.allowsTopics() or s.isLinkNode()) %}
+<div class="forum-board {{ board.linkNode ? 'forum-board--link' : '' }} {{ board.isLocked ? 'forum-board--locked' : '' }} {{ isUnread ? 'forum-board--unread' : '' }}">
+    <span class="forum-board__icon" aria-hidden="true">
+        {% if board.isLocked %}
+            <i class="bi bi-lock-fill"></i>
+        {% elseif isUnread %}
+            <i class="bi bi-chat-square-text-fill forum-board__icon--neon"></i>
         {% else %}
-            <span class="empty">{{ 'forum.empty.no_posts_yet'|trans }}</span>
+            <i class="bi {{ board.icon|default(board.allowsTopics ? 'bi-chat-square-text' : (board.linkNode ? 'bi-box-arrow-up-right' : 'bi-folder2'), true) }}"></i>
+        {% endif %}
+    </span>
+    <div class="forum-board__body">
+        <span class="forum-board__type">{{ board.linkNode ? 'forum.label.forum'|trans : 'forum.label.subcategory'|trans }}</span>
+        <h3><a href="{{ boardHref }}" {% if board.linkNode %}target="_blank" rel="noopener"{% endif %}>{{ board.title }}</a></h3>
+        {% if board.description %}<p>{{ board.description }}</p>{% endif %}
+        {% if subforums is not empty %}
+            <div class="forum-board__sub">
+                {% for sub in subforums %}
+                    <a href="{{ sub.linkNode and sub.linkUrl ? sub.linkUrl : path('forum_section', {sectionSlug: sub.slug}) }}" class="forum-subforum-pill" {% if sub.linkNode %}target="_blank" rel="noopener"{% endif %}>{{ sub.title }}</a>
+                {% endfor %}
+            </div>
         {% endif %}
     </div>
     <div class="forum-board__stats">
-        <strong>{{ board.topicCount }}</strong>
-        <span>{{ 'forum.stat.topic'|trans }}</span>
+        <div class="forum-board__stat-col">
+            <strong>{{ board.topicCount|forum_number }}</strong>
+            <span>{{ 'index.topics'|trans({}, 'forums') }}</span>
+        </div>
+        <div class="forum-board__stat-col">
+            <strong>{{ board.postCount|forum_number }}</strong>
+            <span>{{ 'index.messages'|trans({}, 'forums') }}</span>
+        </div>
+    </div>
+    <div class="forum-board__last">
+        {% if board.lastTopicTitle %}
+            {% include '@Theme/forum/partials/_avatar.html.twig' with {name: board.lastPosterName|default('?')} %}
+            <div class="forum-board__last-text">
+                <a href="{{ path('forum_topic', {topicId: board.lastTopicId, slug: ''}) }}" title="{{ board.lastTopicTitle }}">{{ board.lastTopicTitle|length > 42 ? board.lastTopicTitle|slice(0, 42) ~ '…' : board.lastTopicTitle }}</a>
+                <span>{{ board.lastPosterName }} · <time>{{ board.lastPostAt|forum_relative_time }}</time></span>
+            </div>
+        {% else %}
+            <span class="empty">{{ 'forum.empty.no_posts_yet'|trans }}</span>
+        {% endif %}
     </div>
 </div>

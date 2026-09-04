@@ -11,12 +11,7 @@ use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
 /**
- * Slawman developer-portal entegrasyonu (ctype-strip, type-badge)
- * PostSubType::label()'ı Twig'te çağırabilmek için ince bir köprüye
- * ihtiyaç duyar — Twig statik PHP metotlarını doğrudan çağıramaz.
- * autoconfigure sayesinde (bkz. Resources/config/services.yaml)
- * AbstractExtension'dan türeyen bu sınıf otomatik olarak 'twig.extension'
- * etiketiyle kaydedilir, ekstra bir servis tanımı gerekmez.
+ * Twig bridge for PostSubType::label() and related presentation helpers.
  */
 final class BlogTwigExtension extends AbstractExtension
 {

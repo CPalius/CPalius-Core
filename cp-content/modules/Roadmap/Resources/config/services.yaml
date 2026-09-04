@@ -1,0 +1,24 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Modules\Roadmap\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    Modules\Roadmap\Service\:
+        resource: '../../Service/'
+
+    Modules\Roadmap\Repository\:
+        resource: '../../Repository/'
+
+    Modules\Roadmap\Portal\:
+        resource: '../../Portal/'
+
+    Modules\Roadmap\Studio\:
+        resource: '../../Studio/'
+
+    Modules\Roadmap\Service\RoadmapFeedService:
+        arguments:
+            $forumFeedProvider: '@?Modules\Roadmap\Contract\RoadmapForumFeedProviderInterface'

@@ -1,0 +1,11 @@
+{% if captchaEnabled and captchaConfig.site_key %}
+    <div class="forum-field" data-captcha-widget data-provider="{{ captchaConfig.provider }}" data-version="{{ captchaConfig.recaptcha_version }}">
+        {% if captchaConfig.provider == 'recaptcha' and captchaConfig.recaptcha_version == 'v2' %}
+            <div class="g-recaptcha" data-sitekey="{{ captchaConfig.site_key }}"></div>
+        {% elseif captchaConfig.provider == 'recaptcha' %}
+            <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response">
+        {% elseif captchaConfig.provider == 'turnstile' %}
+            <div class="cf-turnstile" data-sitekey="{{ captchaConfig.site_key }}"></div>
+        {% endif %}
+    </div>
+{% endif %}

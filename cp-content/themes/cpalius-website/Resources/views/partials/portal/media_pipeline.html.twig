@@ -1,0 +1,36 @@
+{% set t = 'portal' %}
+<section class="section section-darker" id="media-pipeline">
+    <div class="container">
+        <div class="section-header fade-in">
+            <span class="section-label">{{ 'media.label'|trans({}, t) }}</span>
+            <h2 class="section-title">{{ 'media.title'|trans({}, t) }}</h2>
+            <p class="section-desc">{{ 'media.desc'|trans({}, t) }}</p>
+        </div>
+
+        <div class="grid-golden fade-in">
+            <div class="grid-golden-major">
+                <div class="feature-card" style="margin-bottom: var(--sp-md);">
+                    <div class="feature-icon"><i class="bi bi-crop"></i></div>
+                    <h4>{{ 'media.processor_title'|trans({}, t) }}</h4>
+                    <p>{{ 'media.processor_text_html'|trans({}, t)|raw }}</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="bi bi-hdd"></i></div>
+                    <h4>{{ 'media.cache_title'|trans({}, t) }}</h4>
+                    <p>{{ 'media.cache_text_html'|trans({}, t)|raw }}</p>
+                </div>
+            </div>
+            <div class="grid-golden-minor">
+                <div class="cp-resource-block">
+                    <div class="code-block-header">
+                        <i class="bi bi-braces"></i> {{ 'media.filter_title'|trans({}, t) }}
+                    </div>
+                    <pre>{{ 'manifesto.thumb_code'|trans({}, t) }}</pre>
+                </div>
+                <p style="margin-top: var(--sp-sm); font-size: var(--fs-sm); color: rgba(255,255,255,0.7);">
+                    {{ 'media.filter_text_html'|trans({}, t)|raw }}
+                </p>
+            </div>
+        </div>
+    </div>
+</section>

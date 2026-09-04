@@ -6,30 +6,35 @@ namespace Modules\Forum\Controller;
 
 use App\Core\Pagination\Paginator;
 use App\Core\Settings\SettingsRegistry;
-use App\Entity\ForumPost;
-use App\Entity\ForumSection;
-use App\Entity\ForumTopic;
-use App\Entity\ForumTopicPrefix;
+use Modules\Forum\Entity\ForumPost;
+use Modules\Forum\Entity\ForumSection;
+use Modules\Forum\Entity\ForumTopic;
+use Modules\Forum\Entity\ForumTopicPrefix;
 use App\Entity\User;
-use App\Repository\ForumPostDislikeRepository;
-use App\Repository\ForumPostLikeRepository;
-use App\Repository\ForumPostRepository;
-use App\Repository\ForumPostReportRepository;
-use App\Repository\ForumSectionRepository;
-use App\Repository\ForumTopicPrefixRepository;
-use App\Repository\ForumTopicRepository;
-use App\Repository\ForumUserRankRepository;
+use Modules\Forum\Entity\ForumNodePermission;
+use Modules\Forum\Repository\ForumPostDislikeRepository;
+use Modules\Forum\Repository\ForumPostLikeRepository;
+use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumPostReportRepository;
+use Modules\Forum\Repository\ForumSectionRepository;
+use Modules\Forum\Repository\ForumTopicPrefixRepository;
+use Modules\Forum\Repository\ForumTopicRepository;
+use Modules\Forum\Repository\ForumUserRankRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\ForumDictionary;
 use Modules\Forum\ForumSectionType;
 use Modules\Forum\Service\ForumActivityService;
 use Modules\Forum\Service\ForumBanService;
 use Modules\Forum\Service\ForumModerationService;
+use Modules\Forum\Service\ForumPermissionService;
+use Modules\Forum\Service\ForumProfileStatsService;
 use Modules\Forum\Service\ForumRankService;
+use Modules\Forum\Service\ForumReputationService;
 use Modules\Forum\Service\ForumSearchService;
 use Modules\Forum\Service\ForumSectionHierarchyService;
 use Modules\Forum\Service\ForumTopicService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -40,8 +45,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Forum ön yüz — Cotonti forums.sections / forums.topics / forums.posts /
- * forums.newtopic / forums.editpost modlarının Symfony karşılığı.
+ * Front board / forum / thread hierarchy.
  */
 final class ForumFrontController extends AbstractController
 {
@@ -58,8 +62,11 @@ final class ForumFrontController extends AbstractController
         private readonly ForumModerationService $moderationService,
         private readonly ForumSearchService $searchService,
         private readonly ForumSectionHierarchyService $hierarchyService,
+        private readonly ForumPermissionService $permissionService,
         private readonly ForumBanService $banService,
         private readonly ForumRankService $rankService,
+        private readonly ForumProfileStatsService $profileStatsService,
+        private readonly ForumReputationService $reputationService,
         private readonly ForumActivityService $activityService,
         private readonly Paginator $paginator,
         private readonly SettingsRegistry $settingsRegistry,
@@ -68,22 +75,27 @@ final class ForumFrontController extends AbstractController
     ) {
     }
 
-    #[Route('/forum', name: 'forum_index')]
+    #[Route('/forums', name: 'forum_index')]
+    #[Route('/forum', name: 'forum_board_legacy')]
     public function index(Request $request): Response
     {
+        $this->assertGuestViewAllowed();
         $locale = $request->getLocale();
-
-        return $this->render('@CpaliusWebsiteTheme/forum/sections.html.twig', [
+        $response = $this->render('@Theme/forum/sections.html.twig', [
             'forumHome' => $this->forumHomeContext(),
             'indexTree' => $this->hierarchyService->buildIndexTree($locale),
             'breadcrumbs' => [],
             'currentSection' => null,
             'forumStats' => $this->hierarchyService->aggregateStats($locale),
             'forumActivity' => $this->activityService->buildPanelState(),
+            'lastVisitAt' => $this->resolveLastVisit($request),
         ]);
+
+        return $this->withLastVisitCookie($response);
     }
 
-    #[Route('/forum/activity', name: 'forum_activity', methods: ['GET'], priority: 2)]
+    #[Route('/forums/activity', name: 'forum_activity', methods: ['GET'], priority: 2)]
+    #[Route('/forum/activity', name: 'forum_activity_legacy', methods: ['GET'], priority: 2)]
     public function activity(Request $request): Response
     {
         if (!$this->activityService->isEnabled()) {
@@ -100,7 +112,7 @@ final class ForumFrontController extends AbstractController
         $chunk = $this->activityService->fetchTab($tab, $offset, $limit);
 
         if ($request->isXmlHttpRequest() || $request->query->getBoolean('partial')) {
-            $html = $this->renderView('@CpaliusWebsiteTheme/forum/partials/_activity_rows.html.twig', [
+            $html = $this->renderView('@Theme/forum/partials/_activity_rows.html.twig', [
                 'items' => $chunk['items'],
             ]);
 
@@ -115,19 +127,26 @@ final class ForumFrontController extends AbstractController
         return $this->redirectToRoute('forum_index');
     }
 
-    #[Route('/forum/{sectionSlug}', name: 'forum_section', priority: 1)]
+    #[Route('/forums/forum/{sectionSlug}', name: 'forum_section', priority: 1, requirements: ['sectionSlug' => '^(?!activity$|ara$|bildirimler$|cevrimici$)[^/]+'])]
+    #[Route('/forum/{sectionSlug}', name: 'forum_section_legacy', priority: 1, requirements: ['sectionSlug' => '^(?!activity$|ara$|bildirimler$|cevrimici$)[^/]+'])]
     public function section(Request $request, string $sectionSlug): Response
     {
         $section = $this->findSectionOrFail($sectionSlug, $request->getLocale());
+        $this->assertNodeAccessible($section);
+
+        if ($section->isLinkNode() && $section->getLinkUrl() !== null) {
+            return $this->redirect($section->getLinkUrl());
+        }
 
         if ($section->isContainer()) {
-            return $this->render('@CpaliusWebsiteTheme/forum/sections.html.twig', [
+            return $this->withLastVisitCookie($this->render('@Theme/forum/sections.html.twig', [
                 'forumHome' => $this->forumHomeContext(),
                 'indexTree' => $this->hierarchyService->buildSectionTree($section),
                 'breadcrumbs' => $this->hierarchyService->getBreadcrumbChain($section),
                 'currentSection' => $section,
                 'forumStats' => $this->hierarchyService->aggregateStats($request->getLocale()),
-            ]);
+                'lastVisitAt' => $this->resolveLastVisit($request),
+            ]));
         }
 
         if (!$section->allowsTopics()) {
@@ -137,40 +156,74 @@ final class ForumFrontController extends AbstractController
         $hidePrivate = (bool) $this->settingsRegistry->get('forum.hide_private_topics', true);
         $viewer = $this->getUser();
         $viewerEntity = $viewer instanceof User ? $viewer : null;
+        $filter = (string) $request->query->get('filter', 'all');
+        $allowedFilters = ['all', 'solved', 'latest', 'mine', 'popular'];
+        if (!\in_array($filter, $allowedFilters, true)) {
+            $filter = 'all';
+        }
+        if ($filter === 'mine' && $viewerEntity === null) {
+            $filter = 'all';
+        }
 
-        $qb = $this->topicRepository->createSectionTopicsQueryBuilder($section, $viewerEntity, $hidePrivate);
-        $perPage = (int) $this->settingsRegistry->get('forum.topics_per_page', ForumDictionary::DEFAULT_TOPICS_PER_PAGE);
-        $topics = $this->paginator->paginate($qb, $request->query->getInt('page', 1), $perPage);
+        $qb = $this->topicRepository->createSectionTopicsQueryBuilder(
+            $section,
+            $viewerEntity,
+            $hidePrivate,
+            $filter,
+            $this->isGranted('forum.topic.moderate'),
+        );
+        $perPage = (int) $this->settingsRegistry->get(
+            'forum.threads_per_page',
+            $this->settingsRegistry->get('forum.topics_per_page', ForumDictionary::DEFAULT_TOPICS_PER_PAGE),
+        );
+        $topics = $this->paginator->paginate($qb, $request->query->getInt('page', 1), max(1, $perPage));
 
         $section->setViewCount($section->getViewCount() + 1);
         $this->entityManager->flush();
 
-        return $this->render('@CpaliusWebsiteTheme/forum/topics.html.twig', [
+        return $this->withLastVisitCookie($this->render('@Theme/forum/topics.html.twig', [
             'section' => $section,
             'breadcrumbs' => $this->hierarchyService->getBreadcrumbChain($section),
             'forumHome' => $this->forumHomeContext(),
             'childSections' => $this->hierarchyService->getSortedChildren($section, ForumSectionType::Subcategory),
             'topics' => $topics,
+            'filter' => $filter,
+            'canCreateThread' => $this->canCreateThread($section),
             'hotThreshold' => (int) $this->settingsRegistry->get('forum.hot_topic_threshold', ForumDictionary::HOT_TOPIC_POST_THRESHOLD),
             'postsPerPage' => (int) $this->settingsRegistry->get('forum.posts_per_page', ForumDictionary::DEFAULT_POSTS_PER_PAGE),
-        ]);
+            'lastVisitAt' => $this->resolveLastVisit($request),
+        ]));
     }
 
-    #[Route('/forum/{sectionSlug}/yeni', name: 'forum_new_topic', methods: ['GET', 'POST'])]
-    #[IsGranted('forum.topic.create')]
+    #[Route('/forums/forum/{sectionSlug}/yeni', name: 'forum_new_topic', methods: ['GET', 'POST'])]
+    #[Route('/forum/{sectionSlug}/yeni', name: 'forum_new_topic_legacy', methods: ['GET', 'POST'])]
     public function newTopic(Request $request, string $sectionSlug): Response
     {
         $section = $this->findSectionOrFail($sectionSlug, $request->getLocale());
+        $this->assertNodeAccessible($section);
+
+        if (!$this->canCreateThread($section)) {
+            throw new AccessDeniedHttpException();
+        }
+
+        $this->assertCanCreateThreadInSection($section);
 
         if ($section->isContainer() || !$section->allowsTopics()) {
             throw new NotFoundHttpException($this->translator->trans('site.forum.section.topics_not_allowed'));
+        }
+
+        if ($section->isLocked() && !$this->isGranted('forum.topic.moderate')) {
+            throw new AccessDeniedHttpException($this->translator->trans('site.forum.section.locked'));
         }
 
         /** @var User $user */
         $user = $this->getUser();
         $this->assertNotMuted($user);
 
-        $prefixes = $this->topicPrefixRepository->findAllOrdered();
+        $prefixes = array_values(array_filter(
+            $this->topicPrefixRepository->findAllOrdered(),
+            static fn (ForumTopicPrefix $prefix): bool => $prefix->isAvailableIn($section),
+        ));
 
         if ($request->isMethod('POST')) {
             $this->assertValidCsrf($request, 'forum_new_topic');
@@ -179,12 +232,12 @@ final class ForumFrontController extends AbstractController
             $description = trim((string) $request->request->get('description'));
             $body = trim((string) $request->request->get('body'));
             $isPrivate = $request->request->getBoolean('private');
-            $prefix = $this->resolvePrefix($request);
+            $prefix = $this->resolvePrefix($request, 'prefix_id', $section);
 
             if ($title === '' || $body === '') {
                 $this->addFlash('error', $this->translator->trans('site.forum.new_topic.title_body_required'));
 
-                return $this->render('@CpaliusWebsiteTheme/forum/new_topic.html.twig', [
+                return $this->render('@Theme/forum/new_topic.html.twig', [
                     'section' => $section,
                     'prefixes' => $prefixes,
                     'formValues' => compact('title', 'description', 'body', 'isPrivate') + ['prefixId' => $prefix?->getId()],
@@ -196,7 +249,7 @@ final class ForumFrontController extends AbstractController
             return $this->redirectToRoute('forum_topic', $this->topicRouteParams($topic));
         }
 
-        return $this->render('@CpaliusWebsiteTheme/forum/new_topic.html.twig', [
+        return $this->render('@Theme/forum/new_topic.html.twig', [
             'section' => $section,
             'prefixes' => $prefixes,
             'formValues' => ['title' => '', 'description' => '', 'body' => '', 'isPrivate' => false, 'prefixId' => null],
@@ -204,8 +257,15 @@ final class ForumFrontController extends AbstractController
     }
 
     #[Route(
-        '/forum/konu/{topicId}-{slug}',
+        '/forums/thread/{topicId}-{slug}',
         name: 'forum_topic',
+        requirements: ['topicId' => '\d+', 'slug' => '[a-z0-9-]*'],
+        defaults: ['slug' => ''],
+        priority: 2,
+    )]
+    #[Route(
+        '/forum/konu/{topicId}-{slug}',
+        name: 'forum_topic_legacy',
         requirements: ['topicId' => '\d+', 'slug' => '[a-z0-9-]*'],
         defaults: ['slug' => ''],
         priority: 2,
@@ -214,6 +274,7 @@ final class ForumFrontController extends AbstractController
     {
         $topic = $this->findTopicOrFail($topicId);
         $this->assertTopicVisible($topic);
+        $this->assertNodeAccessible($topic->getSection());
 
         if ($topic->getMovedToTopic() !== null) {
             return $this->redirectToRoute('forum_topic', $this->topicRouteParams($topic->getMovedToTopic()), 301);
@@ -236,18 +297,24 @@ final class ForumFrontController extends AbstractController
         $qb = $this->postRepository->createTopicPostsQueryBuilder($topic);
         $posts = $this->paginator->paginate($qb, $request->query->getInt('page', 1), $perPage);
 
-        $canReply = $this->isGranted('forum.topic.create') && !$topic->isLocked();
+        $canReply = $this->canReplyToTopic($topic);
         $canModerate = $this->isGranted('forum.topic.moderate');
+        $canLock = $canModerate || $this->isGranted('forum.thread.lock');
+        $canSticky = $canModerate || $this->isGranted('forum.thread.sticky');
+        $canMove = $canModerate || $this->isGranted('forum.thread.move');
 
         $postIds = array_map(static fn ($post) => $post->getId(), iterator_to_array($posts));
         $viewer = $this->getUser();
 
-        return $this->render('@CpaliusWebsiteTheme/forum/posts.html.twig', [
+        return $this->render('@Theme/forum/posts.html.twig', [
             'topic' => $topic,
             'section' => $topic->getSection(),
             'posts' => $posts,
             'canReply' => $canReply,
             'canModerate' => $canModerate,
+            'canLock' => $canLock,
+            'canSticky' => $canSticky,
+            'canMove' => $canMove,
             'postbitStats' => $this->buildPostbitStats($posts),
             'likeCounts' => $this->postLikeRepository->countByPostIds($postIds),
             'likedPostIds' => $viewer instanceof User ? $this->postLikeRepository->findLikedPostIdsForUser($postIds, $viewer) : [],
@@ -256,14 +323,23 @@ final class ForumFrontController extends AbstractController
             'moveTargets' => $canModerate
                 ? $this->hierarchyService->getTopicBoards($topic->getSection()->getLocale(), $topic->getSection())
                 : [],
+            'reputationEnabled' => $this->reputationService->isEnabled(),
+            'repReasons' => \Modules\Forum\Entity\ForumUserReputation::REASONS,
+            'fastReplyEnabled' => (bool) $this->settingsRegistry->get('forum.fast_reply_enabled', true),
         ]);
     }
 
     /**
-     * Thread sayfasındaki her benzersiz yazar için { userId: {topicCount,
-     * postCount, rank} } — hepsi TOPLU sorgularla (Law 6.1 N+1 muhafızı).
+     * Per-author postbit stats for the thread page, loaded in bulk (Law 6.1).
      *
-     * @return array<int, array{topicCount: int, postCount: int, rank: ?\App\Entity\ForumUserRank}>
+     * @return array<int, array{
+     *     topicCount: int,
+     *     postCount: int,
+     *     rank: ?\Modules\Forum\Entity\ForumUserRank,
+     *     likesReceived: int,
+     *     reputationNet: int,
+     *     popularity: int
+     * }>
      */
     private function buildPostbitStats(iterable $posts): array
     {
@@ -282,24 +358,44 @@ final class ForumFrontController extends AbstractController
         $topicCounts = $this->topicRepository->countTopicsForUserIds($ids);
         $postCounts = $this->postRepository->countPublicPostsForUserIds($ids);
         $ranks = $this->rankRepository->findAllOrdered();
+        $engagement = $this->profileStatsService->batchEngagementForUserIds($ids, $topicCounts, $postCounts);
 
         $stats = [];
         foreach ($authorIds as $id => $author) {
             $postCount = $postCounts[$id] ?? 0;
+            $eng = $engagement[$id] ?? ['likesReceived' => 0, 'reputationNet' => 0, 'popularity' => 0];
             $stats[$id] = [
                 'topicCount' => $topicCounts[$id] ?? 0,
                 'postCount' => $postCount,
                 'rank' => $this->rankService->resolveRankFromPreloaded($author, $postCount, $ranks),
+                'likesReceived' => $eng['likesReceived'],
+                'reputationNet' => $eng['reputationNet'],
+                'popularity' => $eng['popularity'],
             ];
         }
 
         return $stats;
     }
 
-    #[Route('/forum/konu/{topicId}/yanit', name: 'forum_reply', methods: ['POST'], requirements: ['topicId' => '\d+'])]
-    #[IsGranted('forum.topic.create')]
+    #[Route('/forums/thread/{slug}', name: 'forum_thread_by_slug', methods: ['GET'], priority: 1, requirements: ['slug' => '[a-z0-9-]+'])]
+    public function topicBySlug(Request $request, string $slug): Response
+    {
+        $topic = $this->topicRepository->findOneVisibleBySlug($slug);
+        if (!$topic instanceof ForumTopic) {
+            throw new NotFoundHttpException($this->translator->trans('site.forum.topic_not_found'));
+        }
+
+        return $this->redirectToRoute('forum_topic', $this->topicRouteParams($topic), 301);
+    }
+
+    #[Route('/forums/thread/{topicId}/yanit', name: 'forum_reply', methods: ['POST'], requirements: ['topicId' => '\d+'])]
+    #[Route('/forum/konu/{topicId}/yanit', name: 'forum_reply_legacy', methods: ['POST'], requirements: ['topicId' => '\d+'])]
     public function reply(Request $request, int $topicId): Response
     {
+        if (!$this->canCreateThread()) {
+            throw new AccessDeniedHttpException();
+        }
+
         $topic = $this->findTopicOrFail($topicId);
         $this->assertTopicVisible($topic);
 
@@ -310,6 +406,7 @@ final class ForumFrontController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
         $this->assertNotMuted($user);
+        $this->assertCanReplyInSection($topic->getSection());
 
         $this->assertValidCsrf($request, 'forum_reply');
 
@@ -329,7 +426,8 @@ final class ForumFrontController extends AbstractController
         return $this->redirectToRoute('forum_topic', array_merge($this->topicRouteParams($topic), ['page' => max(1, $lastPage)]));
     }
 
-    #[Route('/forum/mesaj/{postId}/duzenle', name: 'forum_edit_post', methods: ['GET', 'POST'], requirements: ['postId' => '\d+'])]
+    #[Route('/forums/mesaj/{postId}/duzenle', name: 'forum_edit_post', methods: ['GET', 'POST'], requirements: ['postId' => '\d+'])]
+    #[Route('/forum/mesaj/{postId}/duzenle', name: 'forum_edit_post_legacy', methods: ['GET', 'POST'], requirements: ['postId' => '\d+'])]
     public function editPost(Request $request, int $postId): Response
     {
         $post = $this->findPostOrFail($postId);
@@ -337,7 +435,9 @@ final class ForumFrontController extends AbstractController
 
         /** @var User|null $user */
         $user = $this->getUser();
-        $isModerator = $this->isGranted('forum.topic.moderate');
+        $isModerator = $this->isGranted('forum.topic.moderate')
+            || $this->isGranted('forum.post.edit')
+            || $this->isGranted('forum.post.edit.any');
 
         if (!$this->topicService->canEditPost($post, $user, $isModerator)) {
             throw new AccessDeniedHttpException($this->translator->trans('site.forum.edit_post.access_denied'));
@@ -354,7 +454,7 @@ final class ForumFrontController extends AbstractController
             if ($body === '' || ($isFirstPost && $topicTitle === '')) {
                 $this->addFlash('error', $this->translator->trans('site.forum.edit_post.title_body_required'));
 
-                return $this->render('@CpaliusWebsiteTheme/forum/edit_post.html.twig', [
+                return $this->render('@Theme/forum/edit_post.html.twig', [
                     'post' => $post,
                     'topic' => $post->getTopic(),
                     'section' => $post->getSection(),
@@ -369,7 +469,7 @@ final class ForumFrontController extends AbstractController
             return $this->redirectToRoute('forum_topic', $this->topicRouteParams($post->getTopic()));
         }
 
-        return $this->render('@CpaliusWebsiteTheme/forum/edit_post.html.twig', [
+        return $this->render('@Theme/forum/edit_post.html.twig', [
             'post' => $post,
             'topic' => $post->getTopic(),
             'section' => $post->getSection(),
@@ -407,14 +507,15 @@ final class ForumFrontController extends AbstractController
         return $this->redirectToRoute('forum_topic', $this->topicRouteParams($remainingTopic));
     }
 
-    #[Route('/forum/konu/{topicId}/moderate', name: 'forum_moderate_topic', methods: ['POST'], requirements: ['topicId' => '\d+'])]
-    #[IsGranted('forum.topic.moderate')]
+    #[Route('/forums/thread/{topicId}/moderate', name: 'forum_moderate_topic', methods: ['POST'], requirements: ['topicId' => '\d+'])]
+    #[Route('/forum/konu/{topicId}/moderate', name: 'forum_moderate_topic_legacy', methods: ['POST'], requirements: ['topicId' => '\d+'])]
     public function moderateTopic(Request $request, int $topicId): Response
     {
         $topic = $this->findTopicOrFail($topicId);
         $this->assertValidCsrf($request, 'forum_moderate');
 
         $action = (string) $request->request->get('action');
+        $this->assertThreadModerationCapability($action);
 
         if ($action === 'move') {
             $targetId = $this->parseOptionalPositiveInt($request, 'target_section_id');
@@ -437,14 +538,15 @@ final class ForumFrontController extends AbstractController
         }
 
         match ($action) {
-            'lock' => $topic->setState(ForumTopic::STATE_LOCKED),
-            'unlock' => $topic->setState(ForumTopic::STATE_OPEN),
+            'lock' => $topic->setLocked(true),
+            'unlock' => $topic->setLocked(false),
             'sticky' => $topic->setSticky(true),
             'unsticky' => $topic->setSticky(false),
-            'announce' => $topic->setState(ForumTopic::STATE_LOCKED)->setSticky(true),
-            'clear' => $topic->setState(ForumTopic::STATE_OPEN)->setSticky(false)->setMode(ForumTopic::MODE_NORMAL),
+            'announce' => $topic->setLocked(true)->setSticky(true),
+            'clear' => $topic->setLocked(false)->setSticky(false)->setMode(ForumTopic::MODE_NORMAL),
             'prefix' => $topic->setPrefix($this->resolvePrefix($request)),
             'delete' => $this->topicService->deleteTopic($topic),
+            'restore' => $this->topicService->restoreTopic($topic),
             default => throw new BadRequestHttpException($this->translator->trans('site.forum.moderate.invalid_action')),
         };
 
@@ -475,12 +577,13 @@ final class ForumFrontController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
         $this->assertNotMuted($user);
+        $this->assertCanReactToPost($post, $user);
 
         $liked = $this->topicService->toggleLike($post, $user);
         $count = $this->postLikeRepository->countByPost($post);
         $siblingCount = $this->postDislikeRepository->countByPost($post);
 
-        if ($request->isXmlHttpRequest()) {
+        if ($this->wantsJson($request)) {
             return $this->json([
                 'liked' => $liked,
                 'count' => $count,
@@ -505,12 +608,13 @@ final class ForumFrontController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
         $this->assertNotMuted($user);
+        $this->assertCanReactToPost($post, $user);
 
         $disliked = $this->topicService->toggleDislike($post, $user);
         $count = $this->postDislikeRepository->countByPost($post);
         $siblingCount = $this->postLikeRepository->countByPost($post);
 
-        if ($request->isXmlHttpRequest()) {
+        if ($this->wantsJson($request)) {
             return $this->json([
                 'disliked' => $disliked,
                 'count' => $count,
@@ -554,7 +658,19 @@ final class ForumFrontController extends AbstractController
         return $this->redirectToRoute('forum_topic', $this->topicRouteParams($post->getTopic()));
     }
 
-    #[Route('/forum/ara', name: 'forum_search', methods: ['GET'], priority: 3)]
+    #[Route('/forums/cevrimici', name: 'forum_online', methods: ['GET'], priority: 4)]
+    #[Route('/forum/cevrimici', name: 'forum_online_legacy', methods: ['GET'], priority: 4)]
+    public function online(): Response
+    {
+        $this->assertGuestViewAllowed();
+
+        return $this->render('@Theme/forum/online.html.twig', [
+            'forumHome' => $this->forumHomeContext(),
+        ]);
+    }
+
+    #[Route('/forums/ara', name: 'forum_search', methods: ['GET'], priority: 3)]
+    #[Route('/forum/ara', name: 'forum_search_legacy', methods: ['GET'], priority: 3)]
     public function search(Request $request): Response
     {
         $query = trim((string) $request->query->get('q'));
@@ -583,7 +699,7 @@ final class ForumFrontController extends AbstractController
             $totalResults = $results['totalTopics'] + $results['totalPosts'];
         }
 
-        return $this->render('@CpaliusWebsiteTheme/forum/search.html.twig', [
+        return $this->render('@Theme/forum/search.html.twig', [
             'query' => $query,
             'scope' => $scope,
             'sectionFilter' => $sectionFilter > 0 ? $sectionFilter : null,
@@ -626,6 +742,19 @@ final class ForumFrontController extends AbstractController
 
     private function assertTopicVisible(ForumTopic $topic): void
     {
+        if ($topic->isDeleted() && !$this->isGranted('forum.topic.moderate')) {
+            throw new NotFoundHttpException($this->translator->trans('site.forum.topic_not_found'));
+        }
+
+        if ($topic->isModerated()) {
+            /** @var User|null $user */
+            $user = $this->getUser();
+            $isAuthor = $user !== null && $topic->getFirstPoster()?->getId() === $user->getId();
+            if (!$isAuthor && !$this->isGranted('forum.topic.moderate')) {
+                throw new NotFoundHttpException($this->translator->trans('site.forum.topic_not_found'));
+            }
+        }
+
         if (!$topic->isPrivate()) {
             return;
         }
@@ -644,11 +773,173 @@ final class ForumFrontController extends AbstractController
         throw new AccessDeniedHttpException($this->translator->trans('site.forum.private_topic_denied'));
     }
 
+    private function assertNodeAccessible(ForumSection $section): void
+    {
+        $this->assertGuestViewAllowed();
+
+        $user = $this->getUser();
+        $userEntity = $user instanceof User ? $user : null;
+
+        if (!$this->permissionService->isAllowed($section, $userEntity, ForumNodePermission::PERM_VIEW)) {
+            throw new AccessDeniedHttpException($this->translator->trans('site.forum.private_topic_denied'));
+        }
+
+        $cursor = $section;
+        while ($cursor instanceof ForumSection) {
+            $capability = $cursor->getRequiredCapability();
+            if ($capability !== null && $capability !== '' && !$this->isGranted($capability)) {
+                throw new AccessDeniedHttpException($this->translator->trans('site.forum.private_topic_denied'));
+            }
+            $cursor = $cursor->getParent();
+        }
+    }
+
+    private function assertCanCreateThreadInSection(ForumSection $section): void
+    {
+        $user = $this->getUser();
+        $userEntity = $user instanceof User ? $user : null;
+
+        if (!$this->permissionService->isAllowed($section, $userEntity, ForumNodePermission::PERM_THREAD_CREATE)) {
+            throw new AccessDeniedHttpException($this->translator->trans('site.forum.section.locked'));
+        }
+    }
+
+    private function assertCanReplyInSection(ForumSection $section): void
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            throw new AccessDeniedHttpException();
+        }
+
+        if (!$this->permissionService->isAllowed($section, $user, ForumNodePermission::PERM_REPLY)) {
+            throw new AccessDeniedHttpException($this->translator->trans('site.forum.topic_locked'));
+        }
+    }
+
+    private function assertGuestViewAllowed(): void
+    {
+        if ($this->getUser() instanceof User) {
+            return;
+        }
+
+        if (!(bool) $this->settingsRegistry->get('forum.allow_guest_view', true)) {
+            throw new AccessDeniedHttpException($this->translator->trans('site.forum.guest_view_denied'));
+        }
+    }
+
+    private function canCreateThread(?ForumSection $section = null): bool
+    {
+        if (!$this->isGranted('forum.thread.create') && !$this->isGranted('forum.topic.create')) {
+            return false;
+        }
+
+        if ($section === null) {
+            return true;
+        }
+
+        if ($section->isLocked() && !$this->isGranted('forum.topic.moderate')) {
+            return false;
+        }
+
+        $user = $this->getUser();
+
+        return $this->permissionService->isAllowed(
+            $section,
+            $user instanceof User ? $user : null,
+            ForumNodePermission::PERM_THREAD_CREATE,
+        );
+    }
+
+    private function canReplyToTopic(ForumTopic $topic): bool
+    {
+        if (!(bool) $this->settingsRegistry->get('forum.fast_reply_enabled', true)) {
+            return false;
+        }
+
+        if ($topic->isLocked() || $topic->getSection()->isLocked()) {
+            return false;
+        }
+
+        if (!$this->canCreateThread($topic->getSection())) {
+            return false;
+        }
+
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return false;
+        }
+
+        return $this->permissionService->isAllowed($topic->getSection(), $user, ForumNodePermission::PERM_REPLY);
+    }
+
+    private function assertThreadModerationCapability(string $action): void
+    {
+        if ($this->isGranted('forum.topic.moderate')) {
+            return;
+        }
+
+        $map = [
+            'lock' => 'forum.thread.lock',
+            'unlock' => 'forum.thread.lock',
+            'sticky' => 'forum.thread.sticky',
+            'unsticky' => 'forum.thread.sticky',
+            'move' => 'forum.thread.move',
+            'announce' => 'forum.thread.sticky',
+            'clear' => 'forum.topic.moderate',
+            'prefix' => 'forum.topic.moderate',
+            'delete' => 'forum.topic.moderate',
+            'restore' => 'forum.topic.moderate',
+        ];
+
+        $required = $map[$action] ?? 'forum.topic.moderate';
+        if (!$this->isGranted($required)) {
+            throw new AccessDeniedHttpException($this->translator->trans('site.forum.moderate.invalid_action'));
+        }
+    }
+
+    private function resolveLastVisit(Request $request): ?\DateTimeImmutable
+    {
+        $raw = $request->cookies->get('forum_last_visit');
+        if ($raw === null || !ctype_digit($raw)) {
+            return null;
+        }
+
+        return (new \DateTimeImmutable())->setTimestamp((int) $raw);
+    }
+
+    private function withLastVisitCookie(Response $response): Response
+    {
+        $response->headers->setCookie(new Cookie(
+            'forum_last_visit',
+            (string) time(),
+            time() + 60 * 60 * 24 * 30,
+            '/',
+            null,
+            false,
+            true,
+            false,
+            Cookie::SAMESITE_LAX,
+        ));
+
+        return $response;
+    }
+
     private function assertValidCsrf(Request $request, string $tokenId): void
     {
         if (!$this->isCsrfTokenValid($tokenId, (string) $request->request->get('_token'))) {
             throw new BadRequestHttpException($this->translator->trans('site.forum.csrf_invalid'));
         }
+    }
+
+    private function wantsJson(Request $request): bool
+    {
+        if ($request->isXmlHttpRequest()) {
+            return true;
+        }
+
+        $accept = (string) $request->headers->get('Accept', '');
+
+        return str_contains($accept, 'application/json');
     }
 
     /** @return array{topicId: int, slug: string} */
@@ -658,9 +949,7 @@ final class ForumFrontController extends AbstractController
     }
 
     /**
-     * Forum-özel MUTE (susturma) uygulanan kullanıcının yeni konu/yanıt/
-     * beğeni gibi yazma eylemlerini engeller. BAN zaten ForumBanGuardListener
-     * tarafından tüm ön yüz rotalarında merkezi olarak engellenir.
+     * Block MUTED users from write actions. BAN is already handled by ForumBanGuardListener.
      */
     private function assertNotMuted(User $user): void
     {
@@ -670,21 +959,35 @@ final class ForumFrontController extends AbstractController
         }
     }
 
-    private function resolvePrefix(Request $request, string $field = 'prefix_id'): ?ForumTopicPrefix
+    private function assertCanReactToPost(ForumPost $post, User $user): void
+    {
+        $author = $post->getAuthor();
+        if ($author !== null && $author->getId() === $user->getId()) {
+            throw new AccessDeniedHttpException($this->translator->trans('site.forum.react.own_post_denied'));
+        }
+    }
+
+    private function resolvePrefix(Request $request, string $field = 'prefix_id', ?ForumSection $section = null): ?ForumTopicPrefix
     {
         $id = $this->parseOptionalPositiveInt($request, $field);
         if ($id === null) {
             return null;
         }
 
-        return $this->topicPrefixRepository->find($id);
+        $prefix = $this->topicPrefixRepository->find($id);
+        if (!$prefix instanceof ForumTopicPrefix) {
+            return null;
+        }
+
+        if ($section !== null && !$prefix->isAvailableIn($section)) {
+            return null;
+        }
+
+        return $prefix;
     }
 
     /**
-     * $request->request->getInt() yerine kullanılır: boş string ("— Yok —"
-     * gibi bir <select> seçeneğinden gelen "") ile çağrıldığında PHP'nin
-     * filter_var(FILTER_VALIDATE_INT) uyarısını (FILTER_NULL_ON_FAILURE
-     * bayrağı set edilmemiş) tetiklemeden güvenle null döner.
+     * Empty select values become null without triggering FILTER_VALIDATE_INT warnings.
      */
     private function parseOptionalPositiveInt(Request $request, string $field): ?int
     {

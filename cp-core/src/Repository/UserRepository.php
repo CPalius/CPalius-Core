@@ -36,6 +36,40 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
         return $this->findOneBy(['username' => $username]);
     }
 
+    public function findOneByEmailVerificationToken(string $token): ?User
+    {
+        if ($token === '') {
+            return null;
+        }
+
+        $conn = $this->getEntityManager()->getConnection();
+        $id = $conn->fetchOne(
+            'SELECT id FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(data, \'$.email_verification_token\')) = ? LIMIT 1',
+            [$token],
+        );
+
+        if ($id === false || $id === null) {
+            return null;
+        }
+
+        return $this->find((int) $id);
+    }
+
+    /**
+     * Onay bekleyen kayıtlar — inactive + registration_pending_approval.
+     *
+     * @return list<User>
+     */
+    public function findPendingApproval(): array
+    {
+        return $this->createQueryBuilder('u')
+            ->andWhere('u.status = :inactive')
+            ->setParameter('inactive', User::STATUS_INACTIVE)
+            ->orderBy('u.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
     /**
      * CpUserProvider için: verilen kimliği ÖNCE e-posta, bulunamazsa
      * kullanıcı adı olarak arar. E-posta önceliklidir çünkü her kullanıcının
@@ -113,6 +147,25 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
         return (int) $qb->getQuery()->getSingleScalarResult() > 0;
     }
 
+    public function isUsernameTakenByAnotherUser(string $username, ?int $excludeId): bool
+    {
+        if ($username === '') {
+            return false;
+        }
+
+        $qb = $this->createQueryBuilder('u')
+            ->select('COUNT(u.id)')
+            ->andWhere('u.username = :username')
+            ->setParameter('username', $username);
+
+        if ($excludeId !== null) {
+            $qb->andWhere('u.id != :excludeId')
+                ->setParameter('excludeId', $excludeId);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult() > 0;
+    }
+
     /**
      * AACP Dashboard "Kullanıcılar" kartı için toplam sayı.
      */
@@ -122,6 +175,18 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
             ->select('COUNT(u.id)')
             ->getQuery()
             ->getSingleScalarResult();
+    }
+
+    public function findNewestActive(): ?User
+    {
+        return $this->createQueryBuilder('u')
+            ->andWhere('u.status = :status')
+            ->setParameter('status', User::STATUS_ACTIVE)
+            ->orderBy('u.createdAt', 'DESC')
+            ->addOrderBy('u.id', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
     /**

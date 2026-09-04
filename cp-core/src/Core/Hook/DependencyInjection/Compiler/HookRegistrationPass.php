@@ -14,21 +14,8 @@ use Symfony\Component\DependencyInjection\Reference;
 use Throwable;
 
 /**
- * Attribute Kulvarı'nın (Symfony tarzı) derleme zamanı toplayıcısı.
- *
- * AdminMenuRegistrationPass/SettingsRegistrationPass ile AYNI iskelet:
- * dosya sistemi taraması + Reflection, modül izolasyonu try/catch(Throwable)
- * ile sağlanır. Tek fark: burada sadece bir "tanım listesi" üretmekle
- * kalınmaz, ayrıca #[CpHook] taşıyan HER servis HookManager'ın lazy
- * ServiceLocator'ına da eklenir — HookManager çalışma zamanında bu
- * servisleri isimleriyle (FQCN) çözer, tüm dinleyicileri eager olarak
- * inşa etmez (Manifesto Law 6.1 ruhu: hiç tetiklenmeyen bir hook'un
- * dinleyici servisi hiçbir zaman instantiate edilmez).
- *
- * Taranan konumlar: cp-core/src (çekirdek servisler) + her modülün kendi
- * kök dizini (modül servisleri her yerde olabilir — Controller, Service,
- * Hooks... bu yüzden AdminMenuRegistrationPass'in aksine tek bir alt
- * dizine değil, tüm App\:/Modules\: servis tanımlarının üzerinden geçilir).
+ * Compile-time collector for #[CpHook] methods; registers them on HookManager's lazy locator (Law 6.1).
+ * Scans cp-core/src plus each module root; a failing module scan is isolated.
  */
 final class HookRegistrationPass implements CompilerPassInterface
 {
@@ -65,8 +52,7 @@ final class HookRegistrationPass implements CompilerPassInterface
                     $serviceIds[$item['serviceId']] = true;
                 }
             } catch (Throwable) {
-                // Modül izolasyonu: bir modülün dizini taranırken hata
-                // oluşursa sadece o modülün attribute hook'ları kayıt olmaz.
+                // Module isolation: a scan error drops only that module's attribute hooks.
             }
         }
 

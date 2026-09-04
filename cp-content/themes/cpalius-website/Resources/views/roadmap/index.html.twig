@@ -1,0 +1,181 @@
+{% extends '@Theme/layout.html.twig' %}
+
+{% block title %}{{ 'site.roadmap.meta.title'|trans }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
+{% block meta_description %}{{ 'site.roadmap.meta.description'|trans }}{% endblock %}
+
+{% block content %}
+<section class="post-hero roadmap-hero" id="roadmap-hero">
+    <div class="container">
+        <ul class="slw-breadcrumb fade-in visible">
+            <li><a href="{{ path('theme_cpalius_website_home') }}">~/cpalius</a></li>
+            <li>roadmap</li>
+        </ul>
+
+        <span class="section-label fade-in visible">{{ 'site.roadmap.pulse.eyebrow'|trans }}</span>
+        <h1 class="post-hero-title fade-in visible">{{ 'site.roadmap.pulse.title'|trans }}</h1>
+        <p class="post-hero-excerpt fade-in visible">{{ 'site.roadmap.pulse.lead'|trans }}</p>
+
+        <div class="roadmap-hero__stats fade-in visible">
+            <div class="roadmap-hero__stat">
+                <strong>{{ recentCount }}</strong>
+                <span>{{ 'site.roadmap.pulse.recent'|trans }}</span>
+            </div>
+            <div class="roadmap-hero__stat">
+                <strong>{{ total }}</strong>
+                <span>{{ 'site.roadmap.main.title'|trans }}</span>
+            </div>
+            <div class="roadmap-hero__stat">
+                <strong>{{ moduleTimeline|length }}</strong>
+                <span>{{ 'site.roadmap.modules.title'|trans }}</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section section-light roadmap-page" id="roadmap-page">
+    <div class="container">
+        <nav class="roadmap-filters fade-in visible" aria-label="{{ 'site.roadmap.filters.label'|trans }}">
+            <a class="roadmap-filter{{ statusFilter is null ? ' is-active' : '' }}"
+               href="{{ path('roadmap_index') }}">{{ 'site.roadmap.filters.all'|trans }}</a>
+            {% for status in statuses %}
+                <a class="roadmap-filter{{ statusFilter == status ? ' is-active' : '' }}"
+                   href="{{ path('roadmap_index', {status: status}) }}">
+                    {{ ('site.roadmap.status.' ~ status)|trans }}
+                </a>
+            {% endfor %}
+        </nav>
+
+        <div class="grid-golden roadmap-layout fade-in visible">
+            <div class="grid-golden-major">
+                <div class="roadmap-col-head">
+                    <h5>
+                        <i class="bi bi-signpost-2"></i>
+                        {{ 'site.roadmap.main.title'|trans }}
+                    </h5>
+                    <p>{{ 'site.roadmap.main.subtitle'|trans }}</p>
+                </div>
+
+                {% if nativeEntries is empty %}
+                    <p class="section-desc">{{ 'site.roadmap.main.empty'|trans }}</p>
+                {% else %}
+                    <div class="roadmap-main-list">
+                        {% for entry in nativeEntries %}
+                            <article class="roadmap-main-card roadmap-main-card--{{ entry.status }}">
+                                <div class="roadmap-main-card__meta">
+                                    <span class="roadmap-chip roadmap-chip--status-{{ entry.status }}">
+                                        {{ ('site.roadmap.status.' ~ entry.status)|trans }}
+                                    </span>
+                                    <span class="roadmap-chip">{{ ('site.roadmap.kind.' ~ entry.kind)|trans }}</span>
+                                    {% if entry.versionLabel %}
+                                        <span class="roadmap-chip roadmap-chip--muted">{{ entry.versionLabel }}</span>
+                                    {% endif %}
+                                    {% if entry.publishedAt %}
+                                        <time datetime="{{ entry.publishedAt|date('c') }}">{{ entry.publishedAt|date('d M Y') }}</time>
+                                    {% endif %}
+                                </div>
+                                <h3 class="roadmap-main-card__title">
+                                    <a href="{{ path('roadmap_show', {slug: entry.slug}) }}">
+                                        {% if entry.icon %}<i class="bi {{ entry.icon }}"></i>{% endif %}
+                                        {{ entry.title }}
+                                    </a>
+                                </h3>
+                                <p class="roadmap-main-card__summary">{{ entry.summary|slice(0, 100) }}{% if entry.summary|length > 100 %}…{% endif %}</p>
+                                <a class="roadmap-main-card__link" href="{{ path('roadmap_show', {slug: entry.slug}) }}">
+                                    {{ 'site.roadmap.card.open'|trans }} →
+                                </a>
+                            </article>
+                        {% endfor %}
+                    </div>
+
+                    {% if totalPages > 1 %}
+                        <nav class="roadmap-pagination" aria-label="{{ 'site.roadmap.pagination'|trans }}">
+                            {% if page > 1 %}
+                                <a class="btn btn-outline" href="{{ path('roadmap_index', {page: page - 1, status: statusFilter}) }}">←</a>
+                            {% endif %}
+                            <span class="roadmap-pagination__pages">{{ page }} / {{ totalPages }}</span>
+                            {% if page < totalPages %}
+                                <a class="btn btn-outline" href="{{ path('roadmap_index', {page: page + 1, status: statusFilter}) }}">→</a>
+                            {% endif %}
+                        </nav>
+                    {% endif %}
+                {% endif %}
+            </div>
+
+            <aside class="grid-golden-minor roadmap-sidebar" id="roadmap-sidebar">
+                <div class="roadmap-col-head">
+                    <h5>
+                        <i class="bi bi-clock-history"></i>
+                        {{ 'site.roadmap.modules.title'|trans }}
+                    </h5>
+                    <p>{{ 'site.roadmap.modules.tunnel_intro'|trans }}</p>
+                </div>
+
+                {% if moduleTunnelRows is empty %}
+                    <p class="roadmap-module-block__empty">{{ 'site.roadmap.modules.tunnel_empty'|trans }}</p>
+                {% else %}
+                    <div class="roadmap-tunnel roadmap-tunnel--paired" aria-label="{{ 'site.roadmap.modules.title'|trans }}">
+                        {% for row in moduleTunnelRows %}
+                            <div class="roadmap-tunnel__row">
+                                <div class="roadmap-tunnel__side roadmap-tunnel__side--left">
+                                    {% if row.blog %}
+                                        {% set item = row.blog %}
+                                        <article class="roadmap-tunnel__card roadmap-tunnel__card--blog">
+                                            <h6 class="roadmap-tunnel__title"><a href="{{ item.url }}">{{ item.title }}</a></h6>
+                                            {% if item.excerpt %}
+                                                <p class="roadmap-tunnel__excerpt">{{ item.excerpt|slice(0, 48) }}{% if item.excerpt|length > 48 %}…{% endif %}</p>
+                                            {% endif %}
+                                            <div class="roadmap-tunnel__meta">
+                                                <time datetime="{{ item.occurredAt|date('c') }}">{{ item.occurredAt|date('d.m.Y') }}</time>
+                                            </div>
+                                        </article>
+                                    {% endif %}
+                                </div>
+
+                                <div class="roadmap-tunnel__axis">
+                                    {% set nodeItem = row.blog|default(row.forum) %}
+                                    {% if nodeItem %}
+                                        <div class="roadmap-tunnel__node">
+                                            {% if nodeItem.authorAvatarUrl %}
+                                                <img class="roadmap-tunnel__avatar" src="{{ nodeItem.authorAvatarUrl }}" alt="">
+                                            {% else %}
+                                                {% include '@Theme/forum/partials/_avatar.html.twig' with {
+                                                    name: nodeItem.authorName|default(nodeItem.badge|default('?')),
+                                                    size: 'sm'
+                                                } %}
+                                            {% endif %}
+                                            {% if row.blog and row.forum %}
+                                                <span class="roadmap-tunnel__badge roadmap-tunnel__badge--split" title="Blog + Forum">
+                                                    <i class="bi bi-newspaper"></i><i class="bi bi-chat-dots"></i>
+                                                </span>
+                                            {% else %}
+                                                <span class="roadmap-tunnel__badge roadmap-tunnel__badge--{{ nodeItem.source }}">
+                                                    <i class="bi {{ nodeItem.icon|default('bi-circle') }}"></i>
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="roadmap-tunnel__side roadmap-tunnel__side--right">
+                                    {% if row.forum %}
+                                        {% set item = row.forum %}
+                                        <article class="roadmap-tunnel__card roadmap-tunnel__card--forum">
+                                            <h6 class="roadmap-tunnel__title"><a href="{{ item.url }}">{{ item.title }}</a></h6>
+                                            {% if item.excerpt %}
+                                                <p class="roadmap-tunnel__excerpt">{{ item.excerpt|slice(0, 48) }}{% if item.excerpt|length > 48 %}…{% endif %}</p>
+                                            {% endif %}
+                                            <div class="roadmap-tunnel__meta">
+                                                <time datetime="{{ item.occurredAt|date('c') }}">{{ item.occurredAt|date('d.m.Y') }}</time>
+                                            </div>
+                                        </article>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}

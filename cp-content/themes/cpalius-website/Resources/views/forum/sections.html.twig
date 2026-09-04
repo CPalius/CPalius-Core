@@ -1,4 +1,4 @@
-{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+{% extends '@Theme/forum/layout.html.twig' %}
 
 {% set pageTitle = currentSection ? currentSection.title : forumHome.title %}
 {% set pageDesc = currentSection and currentSection.description ? currentSection.description : forumHome.description %}
@@ -7,43 +7,31 @@
 {% block meta_description %}{{ currentSection and currentSection.description ? currentSection.description : forumHome.metaDescription }}{% endblock %}
 
 {% block forum_breadcrumbs %}
-    {% include '@CpaliusWebsiteTheme/forum/partials/_breadcrumbs.html.twig' with {
-        breadcrumbs: breadcrumbs|default([]),
-        forumHome: forumHome,
-    } %}
+    {% if currentSection or breadcrumbs|default([]) is not empty %}
+        {% include '@Theme/forum/partials/_breadcrumbs.html.twig' with {
+            breadcrumbs: breadcrumbs|default([]),
+            forumHome: forumHome,
+        } %}
+    {% endif %}
 {% endblock %}
 
 {% block forum_content %}
-    <header class="forum-header fade-in">
-        <div class="forum-header__top">
-            <div>
-                <p class="forum-header__kicker">{{ forumHome.label }}</p>
-                <h1 class="section-title">{{ pageTitle }}</h1>
-                {% if pageDesc %}
-                    <p class="forum-header__desc">{{ pageDesc }}</p>
-                {% endif %}
-            </div>
-            <div class="forum-header__actions">
-                <a href="{{ path('forum_search') }}" class="forum-search-btn"><i class="bi bi-search"></i> {{ 'forum.action.search'|trans }}</a>
-                <div class="forum-header__stats">
-                    <span><i class="bi bi-bar-chart"></i> <strong>{{ forumStats.topics }}</strong> {{ 'forum.stat.topic'|trans }}</span>
-                    <span><i class="bi bi-bar-chart-line"></i> <strong>{{ forumStats.posts }}</strong> {{ 'forum.stat.post'|trans }}</span>
-                    <span><i class="bi bi-people"></i> <strong>{{ forumStats.users }}</strong> {{ 'forum.stat.user'|trans }}</span>
+    {% if currentSection %}
+        <header class="forum-header fade-in">
+            <div class="forum-header__top">
+                <div>
+                    <h1 class="section-title">{{ pageTitle }}</h1>
+                    {% if pageDesc %}
+                        <p class="forum-header__desc">{{ pageDesc }}</p>
+                    {% endif %}
                 </div>
             </div>
-        </div>
-    </header>
-
-    {% if currentSection is null %}
-        {% include '@CpaliusWebsiteTheme/forum/partials/activity_panel.html.twig' %}
+        </header>
     {% endif %}
 
-    <div class="forum-list-head fade-in" aria-hidden="true">
-        <span></span>
-        <span>{{ 'forum.label.forum'|trans }}</span>
-        <span>{{ 'forum.label.last_post'|trans }}</span>
-        <span>{{ 'forum.label.stats'|trans }}</span>
-    </div>
+    {% if currentSection is null %}
+        {% include '@Theme/forum/partials/activity_panel.html.twig' %}
+    {% endif %}
 
     {% if indexTree is empty %}
         <div class="forum-empty">
@@ -78,7 +66,7 @@
                     </div>
                     <div class="forum-boards">
                         {% for board in catBlock.subcategories %}
-                            {% include '@CpaliusWebsiteTheme/forum/partials/_board_row.html.twig' with {board: board} %}
+                            {% include '@Theme/forum/partials/_board_row.html.twig' with {board: board, lastVisitAt: lastVisitAt|default(null)} %}
                         {% else %}
                             <div class="forum-board forum-board--empty"><span>{{ 'forum.empty.no_subcategory'|trans }}</span></div>
                         {% endfor %}
@@ -94,7 +82,7 @@
                     </div>
                     <div class="forum-boards">
                         {% for board in block.directSubcategories %}
-                            {% include '@CpaliusWebsiteTheme/forum/partials/_board_row.html.twig' with {board: board} %}
+                            {% include '@Theme/forum/partials/_board_row.html.twig' with {board: board, lastVisitAt: lastVisitAt|default(null)} %}
                         {% endfor %}
                     </div>
                 </div>

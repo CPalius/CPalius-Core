@@ -143,6 +143,27 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
+     * Published node by slug in any locale (locale switch fallback).
+     */
+    public function findOnePublishedBySlug(string $slug, ?string $type = null): ?Node
+    {
+        $qb = $this->createQueryBuilder('n')
+            ->andWhere('n.slug = :slug')
+            ->andWhere('n.status = :status')
+            ->andWhere('n.deletedAt IS NULL')
+            ->setParameter('slug', $slug)
+            ->setParameter('status', Node::STATUS_PUBLISHED)
+            ->orderBy('n.id', 'ASC')
+            ->setMaxResults(1);
+
+        if ($type !== null && $type !== '') {
+            $qb->andWhere('n.type = :type')->setParameter('type', $type);
+        }
+
+        return $qb->getQuery()->getOneOrNullResult();
+    }
+
+    /**
      * Bir içeriğin AYNI translation_group_id'yi paylaşan tüm dil
      * çevirilerini döner. Örn. "Hakkımızda" sayfasının tr+en Node
      * kayıtlarının ikisini birden almak için kullanılır (dil değiştirme

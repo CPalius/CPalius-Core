@@ -1,0 +1,61 @@
+{#
+    Active theme details and the state of its declared entry assets.
+    A missing file here almost always means the theme was shipped without its build output.
+#}
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.menu.theme_options'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('aacp_themes') }}" class="btn btn-sm btn-neutral">
+        {{ 'aacp.menu.themes'|trans }}
+    </a>
+{% endblock %}
+
+{% block body %}
+    {% if theme is null %}
+        <twig:cp:card>
+            <p class="text-fs-sm !text-slate-500">{{ 'aacp.themes.empty'|trans }}</p>
+        </twig:cp:card>
+    {% else %}
+        <div class="space-y-sp-md lg:w-[61.8%]">
+            <twig:cp:card title="{{ theme.name }}">
+                <dl class="grid grid-cols-3 gap-y-2 text-fs-sm">
+                    <dt class="!text-slate-500">{{ 'aacp.themes.column.directory'|trans }}</dt>
+                    <dd class="col-span-2 font-mono !text-slate-200">{{ theme.dirName }}</dd>
+
+                    <dt class="!text-slate-500">{{ 'aacp.themes.column.version'|trans }}</dt>
+                    <dd class="col-span-2 !text-slate-200">{{ theme.version }}</dd>
+
+                    <dt class="!text-slate-500">{{ 'aacp.themes.author'|trans }}</dt>
+                    <dd class="col-span-2 !text-slate-200">{{ theme.author ?: '—' }}</dd>
+
+                    <dt class="!text-slate-500">{{ 'aacp.themes.column.namespace'|trans }}</dt>
+                    <dd class="col-span-2 font-mono !text-primary-400">@{{ theme.twigNamespace }}</dd>
+                </dl>
+            </twig:cp:card>
+
+            <twig:cp:card title="{{ 'aacp.themes.assets_header'|trans }}" padded="{{ false }}">
+                <twig:cp:table headers="{{ [
+                    'aacp.themes.column.type'|trans,
+                    'aacp.themes.column.path'|trans,
+                    'aacp.themes.column.state'|trans,
+                ] }}" empty="{{ assets is empty }}" emptyText="{{ 'aacp.themes.no_assets'|trans }}">
+                    <twig:block name="rows">
+                        {% for asset in assets %}
+                            <tr>
+                                <td><span class="badge badge-neutral font-mono uppercase">{{ asset.type }}</span></td>
+                                <td class="font-mono text-fs-xs !text-slate-300">{{ asset.path }}</td>
+                                <td>
+                                    <twig:cp:badge
+                                        status="{{ asset.exists ? 'active' : 'quarantined' }}"
+                                        label="{{ (asset.exists ? 'aacp.themes.asset_ok' : 'aacp.themes.asset_missing')|trans }}" />
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+            </twig:cp:card>
+        </div>
+    {% endif %}
+{% endblock %}

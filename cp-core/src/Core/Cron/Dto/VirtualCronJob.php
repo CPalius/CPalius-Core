@@ -5,20 +5,8 @@ declare(strict_types=1);
 namespace App\Core\Cron\Dto;
 
 /**
- * Kod tabanlı (Attribute veya Flat-File kulvarı) bir cron görevinin,
- * bellekte (in-memory) üretilen, DB'ye HİÇ yazılmayan taşıyıcısı.
- *
- * App\Entity\CronJob (DB-tabanlı, "[MANUEL]" rozetli görevler) ile KASITLI
- * olarak aynı Doctrine entity'si DEĞİLDİR — bu sınıf salt bir DTO'dur,
- * kalıcılık katmanına hiç dokunmaz. Ancak AACP şablonlarının ve
- * CronManager::getTasks()'ın tek bir birleşik listede işleyebilmesi için
- * DB'deki CronJob ile AYNI OKUMA arayüzünü (getName/getCronExpression/...)
- * sunar — bkz. CronManager::getTasks() dönüş tipi.
- *
- * $sourceType ayrımı AACP panelindeki "[KOD]" rozetinin hangi kulvardan
- * geldiğini (attribute mi flat-file mi) göstermek için kullanılır; çalışma
- * zamanı davranışını ETKİLEMEZ (ikisi de RunVirtualCronJobCommand üzerinden
- * aynı şekilde tetiklenir).
+ * In-memory DTO for attribute/flat-file cron jobs (never persisted). Same read API as CronJob.
+ * $sourceType is for the AACP "[KOD]" badge only; both tracks run via RunVirtualCronJobCommand.
  */
 final class VirtualCronJob
 {
@@ -41,7 +29,7 @@ final class VirtualCronJob
     }
 
     /**
-     * AACP tablosunun "Ad" kolonuyla uyumlu okuma arayüzü (bkz. CronJob::getName()).
+     * Same name getter as CronJob for the AACP table "Ad" column.
      */
     public function getName(): string
     {
@@ -90,10 +78,7 @@ final class VirtualCronJob
 
     public function isActive(): bool
     {
-        // Kod tabanlı görevler her zaman aktiftir: DB'deki "active" bayrağının
-        // kod kulvarında bir karşılığı yoktur — bir görevi devre dışı bırakmak
-        // isteyen geliştirici attribute'u/dosyayı kaldırır (Manifesto Law 3.1
-        // ruhu: kodun kendisi tek gerçek kaynaktır).
+        // Code jobs are always on; disable by removing the attribute/file (Law 3.1).
         return true;
     }
 

@@ -2,11 +2,25 @@
 
 {% block header %}{{ user ? 'aacp.users.form.header_edit'|trans : 'aacp.users.form.header_create'|trans }}{% endblock %}
 
+{% block javascripts %}
+    {{ importmap(['app', 'aacp-user-roles']) }}
+{% endblock %}
+
 {% block body %}
     {{ form_start(form, {
         action: user ? path('aacp_users_edit', {id: user.id}) : path('aacp_users_create'),
     }) }}
-    <div class="flex flex-col gap-sp-md lg:flex-row lg:items-start">
+    <div class="flex flex-col gap-sp-md lg:flex-row lg:items-start"
+         data-aacp-user-roles
+         data-role-catalog="{{ roleCatalog|json_encode|e('html_attr') }}"
+         data-module-labels="{{ {
+             core: 'aacp.users.module.core'|trans,
+             blog: 'aacp.users.module.blog'|trans,
+             forum: 'aacp.users.module.forum'|trans,
+             roadmap: 'aacp.users.module.roadmap'|trans,
+         }|json_encode|e('html_attr') }}"
+         data-full-access-label="{{ 'aacp.users.roles.full_access'|trans|e('html_attr') }}"
+         data-empty-label="{{ 'aacp.users.roles.preview_empty'|trans|e('html_attr') }}">
         <div class="min-w-0 space-y-sp-md lg:w-[70%]">
             <twig:cp:card title="{{ 'aacp.users.form.section_account'|trans }}">
                 <div class="space-y-sp-sm">
@@ -22,6 +36,34 @@
                     {{ form_row(form.lastName) }}
                 </div>
             </twig:cp:card>
+
+            <twig:cp:card title="{{ 'aacp.users.form.section_effective_access'|trans }}">
+                <p class="mb-3 text-fs-xs !text-slate-500">{{ 'aacp.users.form.effective_access_hint'|trans }}</p>
+                <div data-aacp-role-preview>
+                    {% if effectiveSummary.fullAccess %}
+                        <p class="rounded-md border border-primary-500/30 bg-primary-500/10 px-3 py-2 text-fs-xs !text-primary-200">
+                            {{ 'aacp.users.roles.full_access'|trans }}
+                        </p>
+                    {% elseif effectiveSummary.modules is empty %}
+                        <p class="text-fs-xs !text-slate-500">{{ 'aacp.users.roles.preview_empty'|trans }}</p>
+                    {% else %}
+                        <div class="space-y-3">
+                            {% for moduleKey, capabilities in effectiveSummary.modules %}
+                                <div>
+                                    <p class="mb-1 text-fs-xs font-semibold uppercase tracking-wide !text-slate-400">
+                                        {{ ('aacp.users.module.' ~ moduleKey)|trans({}, 'messages')|default(moduleKey) }}
+                                    </p>
+                                    <ul class="space-y-0.5">
+                                        {% for capability in capabilities %}
+                                            <li class="font-mono text-fs-xs !text-slate-500">{{ capability }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </twig:cp:card>
         </div>
 
         <div class="min-w-0 space-y-sp-md lg:w-[30%]">
@@ -32,8 +74,24 @@
             </twig:cp:card>
 
             <twig:cp:card title="{{ 'aacp.users.form.section_roles'|trans }}">
+                <p class="mb-3 text-fs-xs !text-slate-500">{{ 'aacp.users.form.roles_hint'|trans }}</p>
                 {{ form_widget(form.roles) }}
                 {{ form_errors(form.roles) }}
+
+                <div class="mt-4 space-y-2 border-t border-white/10 pt-3">
+                    {% for roleId, entry in roleCatalog %}
+                        <div class="text-fs-xs">
+                            <p class="font-medium !text-slate-300">{{ entry.label }}</p>
+                            {% if entry.fullAccess %}
+                                <p class="!text-slate-500">{{ 'aacp.users.roles.full_access'|trans }}</p>
+                            {% else %}
+                                <p class="!text-slate-500">
+                                    {{ entry.modules|keys|map(m => ('aacp.users.module.' ~ m)|trans({}, 'messages')|default(m))|join(', ') }}
+                                </p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
             </twig:cp:card>
 
             <twig:cp:card padded="{{ false }}">

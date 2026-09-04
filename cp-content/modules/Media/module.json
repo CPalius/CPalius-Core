@@ -1,7 +1,14 @@
 {
     "name": "Media",
     "version": "1.0.0",
-    "description": "CPalius medya kütüphanesi ve görsel seçici.",
+    "description": "CPalius media library and image picker.",
     "author": "CPalius",
-    "bundle": "Modules\\Media\\MediaModule"
+    "bundle": "Modules\\Media\\MediaModule",
+    "core_version": "^1.0",
+    "requires": {},
+    "conflicts": {},
+    "provides": [
+        "media",
+        "asset-picker"
+    ]
 }

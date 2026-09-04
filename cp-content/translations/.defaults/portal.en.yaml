@@ -1,0 +1,545 @@
+# CPalius CMF — Portal / showcase strings (non-ICU domain: braces are literal).
+# Restored verbatim from the original cpalius-website marketing site and
+# extended with the architecture features shipped after the whitepaper.
+
+meta:
+  title: "CPalius CMF — Next-Generation Content Management Framework | PHP 8.2+ & Symfony 7.4"
+  description: "CPalius CMF: a secure, modular, and extensible enterprise content management framework built on PHP 8.2+ and Symfony 7.4 LTS. Open source and community supported."
+
+nav:
+  about: "About"
+  architecture: "Architecture"
+  core: "Core"
+  features: "Features"
+  entity: "Entity Model"
+  audit: "Audit Log"
+  platform: "Extensibility"
+  aacp: "AACP"
+  modules: "Modules"
+  forum: "Forum Engine"
+  media: "Media Pipeline"
+  localization: "Deep-Localization"
+  security: "Security"
+  manifesto: "Manifesto"
+  roadmap: "Roadmap"
+  whitepaper: "Whitepaper"
+  community: "Community"
+  group_about: "About"
+  group_architecture: "Architecture"
+  group_platform: "Platform"
+  github: "GitHub"
+
+hero:
+  label: "NEXT-GEN CONTENT MANAGEMENT FRAMEWORK"
+  subtitle_line1: "From a Content Management System"
+  subtitle_em: "\"Bulletproof\""
+  subtitle_line2: "Enterprise Application Framework"
+  desc: "A world-class, optimized, secure, and extensible foundation that bridges plugin-rich but cumbersome CMS platforms and frameworks that require starting everything from scratch."
+  cta_whitepaper: "Read the Whitepaper"
+  cta_architecture: "Explore the Architecture"
+  badge_opensource: "Open Source"
+
+about:
+  label: "Why CPalius?"
+  title: "Theory, Practice, and the Pain of Reinventing the Wheel"
+  desc: "Every modern web project starts on a double-edged sword. CPalius was built to close the gap between these two worlds."
+  problems_title: "Current Challenges"
+  problem_cms_title: "Classic CMS Platforms (WordPress, Drupal)"
+  problem_cms_text: "Packed with plugins and themes, yet burdened by cumbersome database schemas, mountains of technical debt, and security weaknesses."
+  problem_fw_title: "Pure Frameworks (Symfony, Laravel)"
+  problem_fw_text: "An approach that wastes time by rebuilding core components such as authentication, ACL, file management, and admin panels for every project."
+  problem_mvc_title: "The Romance of Building MVC from Scratch"
+  problem_mvc_text: "Writing your own framework may sound romantic, but it hides a massive iceberg of security (CSRF, XSS, SQLi), dependency injection, and HTTP-layer concerns."
+  solution_title: "The CPalius Solution"
+  sol_infra_title: "World-Class Foundation"
+  sol_infra_text: "An architecture built on Symfony 7.4 LTS's proven security and performance foundation, free from technical debt."
+  sol_components_title: "Ready-Made Enterprise Components"
+  sol_components_text: "Core components such as authentication, ACL, file management, localization, and an admin panel are included from day one. No more reinventing the wheel."
+  sol_modular_title: "Modular and Extensible"
+  sol_modular_text: "More than a CMS: an application platform for car dealerships, travel agencies, CRM, and ERP systems — all running on the same foundation."
+  sol_core_title: "An Unbreakable Core"
+  sol_core_text: "Errors from user modules never bring down the system. Four layers of active defense and quarantine keep the core running."
+
+architecture:
+  label: "Chapter 1"
+  title: "\"Pristine Root\" and Folder Architecture"
+  desc: "As third-party packages and recipes accumulate, a standard Symfony project root becomes cluttered. CPalius follows a \"Pristine Root\" policy."
+  tree_kernel: "# KERNEL & SYSTEM SPACE"
+  tree_bin: "# Console command tools"
+  tree_config: "# Core configuration"
+  tree_migrations: "# Database migrations"
+  tree_src: "# PHP classes (App\\)"
+  tree_var: "# Cache, logs, SQLite"
+  tree_deps: "# DEPENDENCIES SPACE"
+  tree_vendor: "# Composer packages"
+  tree_user: "# USER & DEVELOPER SPACE"
+  tree_config_sync: "# Config Sync area"
+  tree_modules: "# Independent modules"
+  tree_themes: "# UI themes"
+  tree_translations: "# Translations (tr, en)"
+  tree_web: "# WEB ROOT"
+  tree_index: "# Front Controller"
+  tree_assets: "# Frontend assets"
+  card_core_title: "Kernel & System Space"
+  card_core_text: "Core PHP classes, configuration, console tools, and database migrations. Symfony Flex recipes are guaranteed to install directly here."
+  card_includes_title: "Dependencies Space"
+  card_includes_html: "Composer packages and Symfony libraries live in this isolated space. The <code>vendor-dir</code> has been reconfigured."
+  card_content_title: "User & Developer Space"
+  card_content_text: "Modules, themes, translations, and Config Sync live here. Developer code never mixes with framework system files."
+  card_public_title: "Web Root"
+  card_public_text: "The only public folder. The Front Controller (index.php) and compiled frontend assets live here. This is the security boundary."
+
+core:
+  label: "Chapter 2"
+  title: "\"Core Never Dies\" — An Unbreakable Core Architecture"
+  desc: "A four-layer active defense and quarantine line that prevents bad or broken user code from locking down the entire system."
+  line1_label: "Defense Line 1"
+  line1_title: "Solving the Chicken-and-Egg Problem"
+  line1_p1_html: "When Symfony boots, it reads <strong>config/bundles.php</strong>. At this stage the database connection, service container, and autoloader are not fully ready. Trying to read module status from the database would lock the system before it can boot."
+  line1_p2_html: "<strong>Solution:</strong> When a module is activated or deactivated, CPalius generates a static, PHP opcache-friendly array file named <code>active_modules.php</code>. <code>bundles.php</code> only reads that file — it never touches the database."
+  code_file: "cp-core/config/bundles.php"
+  code_comment_core: "// Core always stays up"
+  code_comment_modules: "// Load active modules from file"
+  line2_label: "Defense Line 2"
+  line2_title: "Runtime Isolation"
+  line2_p1_html: "A class existing on disk (<code>class_exists</code>) does not mean its code runs safely. A <strong>TypeError</strong> or <strong>RuntimeException</strong> thrown inside a module's <code>boot()</code> method can crash the entire system."
+  line2_p2_html: "<strong>Solution:</strong> <code>Kernel::boot()</code> is overridden so every module-level boot process is wrapped in <code>try/catch (\\Throwable)</code>. Faulty modules are quarantined automatically while the core keeps running."
+  line3_label: "Defense Line 3"
+  line3_title: "Compile-Time Lock Protection & Dry-Run"
+  line3_p1: "Invalid YAML syntax or a bad DI definition in a plugin can make the Symfony container uncompilable. In that state, even terminal commands fail."
+  line3_p2_html: "<strong>Solution:</strong> Before activation, an isolated subprocess is started with <code>symfony/process</code>. It runs <code>cache:clear</code> → <code>lint:yaml</code> → <code>lint:container</code>. On failure, activation is cancelled and the module is permanently quarantined. Broken state is never written to disk."
+  line4_label: "New — Defense Line 4"
+  line4_title: "Isolated Route Loader"
+  line4_p1_html: "In standard Symfony, a syntax error in a module's <code>routes.yaml</code> file crashes the entire system."
+  line4_p2_html: "<strong>Solution:</strong> <code>SafeModuleRouteLoader</code> loads each module's routes inside an isolated try/catch block. The faulty module is skipped while the rest of the system stays 100% available."
+  line4_code_header: "cp-core/src/Core/Routing/SafeModuleRouteLoader.php"
+  line4_code: |
+    foreach ($this->moduleRegistry->getHealthyModuleBundles() as $moduleClass) {
+        try {
+            $imported = $this->import($routesFile, 'yaml');
+            $collection->addCollection($imported);
+        } catch (\Throwable $e) {
+            $this->logger?->error('Skipping broken module routes', [
+                'module' => $moduleClass,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+features:
+  label: "Chapters 3 — 4"
+  title: "Data Model and Platform Capabilities"
+  desc: "A hybrid data model, high-performance indexing, and localization are built into the core from day one."
+  hybrid_title: "Hybrid Data Model"
+  hybrid_text: "Frequently queried fields (ID, Title, Slug, Status) live in real columns; flexible fields (body, SEO, gallery) live in a single JSON column. Escape EAV JOIN hell and WordPress meta chaos."
+  index_title: "Flat Field Index Engine"
+  index_text: "Query JSON data in a database-agnostic way. NodeFieldIndex plus a Doctrine Event Listener build a typed index table. The same DQL works on SQLite, MySQL, and Postgres."
+  i18n_title: "Localization (i18n)"
+  i18n_text: "Multilingual support is baked into the core from day one. Composite uniqueness guarantees UNIQUE(slug, locale) and UNIQUE(translation_group_id, locale). Language is not a late polish layer."
+  config_title: "Config Sync System"
+  config_text: "Drupal's config sync approach, combined with Symfony TreeBuilder. Roles and capability matrices live in YAML and travel with Git. User data stays in the database."
+  bundle_title: "Modular Bundle Architecture"
+  bundle_text: "Every module runs as an independent Symfony Bundle with its own routes, services, templates, and migrations. Full isolation under the Modules\\ namespace."
+  zero_title: "Zero Node.js Policy"
+  zero_text: "Developer and admin panels use AssetMapper + Standalone Tailwind CSS. Zero Node.js dependency. No build step — develop and deploy directly."
+  xss_title: "Core-Level XSS Sanitization"
+  xss_text_html: "Per Manifesto Law 5.3, every rich-text value destined for the database is sterilized at the core level via <code>RichTextSanitizer</code>."
+  seo_title: "Dynamic Semantic SEO"
+  seo_text_html: "Automatic JSON-LD (Schema.org) generation (BlogPosting, WebPage) from hybrid JSON-based data through <code>SchemaOrgBuilder</code>."
+  event_title: "Autonomous Event-Driven Topology"
+  event_text: "A reactive messaging backbone built without violating YAGNI — asynchronous and decoupling-focused. Cross-layer dependencies and hook triggers (event subscribers) are minimized with \"Golden Ratio\" precision."
+
+tech:
+  label: "Technology Stack"
+  title: "Built on Proven Foundations"
+  php_role: "Core Language"
+  symfony_role: "Framework Foundation"
+  doctrine_role: "Database Layer"
+  asset_role: "Frontend Assets"
+  tailwind_role: "Standalone Binary"
+
+entity:
+  label: "Chapter 5"
+  title: "Two Entity Classes: Content vs Business"
+  desc: "CPalius is more than a CMS; it is a flexible application platform for car dealerships, travel agencies, personnel management, and CRM/ERP systems."
+  col_feature: "Feature"
+  col_content: "Content Entities (Node)"
+  col_business: "Business Records (Resource)"
+  row_concept: "Conceptual Equivalent"
+  row_concept_content: "Pages, Articles, Listing Showcases, Blogs"
+  row_concept_business: "Vehicles, Invoices, Reservations, Personnel"
+  row_slug: "Slug"
+  row_slug_content: "Yes — SEO-friendly URL generation"
+  row_slug_business: "No — Internal management record"
+  row_i18n: "Localization"
+  row_i18n_content: "Yes — with translation_group_id"
+  row_i18n_business: "No — Monolingual record"
+  row_status: "Publication Status"
+  row_status_content: "Yes — draft / published / archived"
+  row_status_business: "No — State machine (workflow)"
+  row_seo: "SEO"
+  row_seo_content: "Yes — Metadata in JSON data"
+  row_seo_business: "No — Not public"
+  row_common: "Common Ground"
+  row_common_value: "The same Capability model, Twig components, CLI management, and Config Sync"
+  attr_title_html: "#[CpResource] <span class=\"text-accent\">Revolution</span>"
+  attr_p1: "To reduce business-process development to seconds, a custom PHP Attribute was designed. With a single annotation, a plain Doctrine class is connected to the full power of the platform."
+  attr_thanks: "With this single attribute:"
+  attr_cap_html: "Dynamic capabilities are <strong>registered automatically</strong> in the role matrix"
+  attr_crud_html: "CRUD forms and list screens are <strong>derived dynamically</strong>"
+  attr_tenant_html: "SaaS multi-tenant isolation is <strong>applied automatically</strong>"
+  attr_audit_html: "All changes are recorded in the <strong>version history</strong> (audit log)"
+  code_header: "Example: Vehicle Entity"
+
+audit:
+  label: "Completed — Manifesto Law 4.1"
+  title: "#[CpResource] Audit Log — Who Changed What, When"
+  desc: "Every insert, update, and delete of an entity marked #[CpResource(auditable: true)] or #[Auditable] is written automatically to the cp_audit_logs table by a fully isolated Doctrine listener that never touches the audited entity itself."
+  flow_label: "onFlush / postFlush Listener"
+  flow_title: "Isolated Change Capture"
+  flow_p1_html: "Updates and deletes are captured in <code class=\"code-inline\">onFlush</code> — identifiers are already known — and inserted into the same flush via <code class=\"code-inline\">UnitOfWork::computeChangeSet()</code>. Creates are held until <code class=\"code-inline\">postFlush</code> so the generated primary key can be recorded, then persisted with a single guarded re-flush."
+  flow_p2_html: "The current user comes from <code class=\"code-inline\">TokenStorageInterface</code>; the diff is stored as <code class=\"code-inline\">{field: [oldValue, newValue]}</code> JSON. Creates use <code class=\"code-inline\">[null, newValue]</code>, deletes use <code class=\"code-inline\">[oldValue, null]</code>."
+  schema_label: "cp_audit_logs"
+  schema_title: "Append-Only History Table"
+  schema_p1_html: "Columns: <code class=\"code-inline\">resource_name</code>, <code class=\"code-inline\">resource_id</code> (VARCHAR — composite and UUID keys fit too), <code class=\"code-inline\">user_id</code>, <code class=\"code-inline\">action</code> (create/update/delete), <code class=\"code-inline\">changes</code> (JSON), and <code class=\"code-inline\">created_at</code>."
+  schema_p2_html: "<code class=\"code-inline\">AuditLogRepository</code> exposes <code class=\"code-inline\">findForResource()</code>, <code class=\"code-inline\">findRecent()</code>, and <code class=\"code-inline\">findByUser()</code>. Records are never edited or deleted through the application — append-only by design."
+  code_header: "cp-core/src/Core/Audit/EventListener/AuditLogListener.php"
+
+platform:
+  label: "Chapter 8"
+  title: "Platform Extensibility Layer"
+  desc: "Since the first whitepaper release, four new extension backbones have been added to the core: REST API Gateway, an isolated Hook System, a unified Cron/Automation Engine, and a module-independent Plugin layer. Each carries the same \"Core Never Dies\" armor."
+  api_label: "#[CpApi] Gateway"
+  api_title: "Cryptographic REST API Gateway"
+  api_text_html: "A single <code class=\"code-inline\">/api/{path}</code> wildcard route matches services annotated with <code class=\"code-inline\">#[CpApi]</code> at compile time via <code class=\"code-inline\">ApiRegistrationPass</code>. Authentication uses the <code class=\"code-inline\">X-CP-API-KEY</code> header, verified with SHA-256 hashing and the timing-attack-safe <code class=\"code-inline\">hash_equals()</code>, in a fail-closed manner — if the key is invalid, the target method is never called. Each endpoint is isolated in its own try/catch armor; a crashing endpoint only affects itself."
+  api_code_header: "ApiKeyService::isValid()"
+  api_code: |
+    $providedHash = hash('sha256', $providedKey);
+    foreach ($this->loadAll() as $apiKey) {
+        if (!$apiKey->active) {
+            continue;
+        }
+        // Timing-attack safe compare — never early-return on length alone.
+        if (hash_equals($apiKey->hash, $providedHash)) {
+            return true;
+        }
+    }
+    return false;
+  hook_label: "Dual Lane"
+  hook_title: "Dual-Track Isolated Hook Engine"
+  hook_text_html: "Cotonti-style flat-file <code class=\"code-inline\">Hooks/{hook_point}.php</code> files run inside an isolated Closure scope — variable leakage into outer scope is impossible. Symfony-style services annotated with <code class=\"code-inline\">#[CpHook]</code> are collected via <code class=\"code-inline\">HookRegistrationPass</code>. A crashing hook never turns the page into a 500; it is written to the quarantine log."
+  hook_code_header: "HookManager — flat-file Closure scope"
+  hook_code: |
+    // Cotonti-style: include inside a bound Closure — no $this leak.
+    $runner = static function (array $context) use ($file): void {
+        include $file;
+    };
+    try {
+        $runner($context);
+    } catch (\Throwable $e) {
+        $this->quarantineHook($file, $e);
+    }
+
+    // Attribute lane: #[CpHook('blog.render.sidebar')] on a service method
+  cron_label: "Hybrid Engine"
+  cron_title: "Unified Hybrid Cron / Automation Engine"
+  cron_text_html: "<code class=\"code-inline\">CronManager</code> merges three parallel sources — database <code class=\"code-inline\">cp_cron_jobs</code>, services marked with <code class=\"code-inline\">#[CpCronJob]</code>, and flat-file <code class=\"code-inline\">Hooks/cron.{job}.php</code> files — into a single list. Jobs run in isolated subprocesses allowed only for <code class=\"code-inline\">cp:*</code>-prefixed commands via <code class=\"code-inline\">CronCommandWhitelist</code>."
+  cron_code_header: "CronManager — unified sources"
+  cron_code: |
+    // 1) DB rows in cp_cron_jobs
+    // 2) #[CpCronJob] attribute methods
+    // 3) Hooks/cron.{name}.php flat files
+    foreach ($this->collectJobs() as $job) {
+        $this->processFactory->runIsolated($job);
+    }
+  plugin_title: "Module-Independent Plugin Layer"
+  plugin_text_html: "A second extension point apart from modules: services marked with <code class=\"code-inline\">PluginInterface</code> are collected by <code class=\"code-inline\">PluginRegistry</code>, and activation state is stored in the database via <code class=\"code-inline\">PluginToggleRepository</code>. A module can toggle optional sub-features such as widgets/sidebars independently of the module itself."
+  n1_title: "N+1 Guard at the DBAL Middleware Level"
+  n1_text_html: "The N+1 protection announced as a concept in the whitepaper now runs as a real Doctrine DBAL Middleware chain: <code class=\"code-inline\">QueryCounterConnection</code>, <code class=\"code-inline\">Driver</code>, <code class=\"code-inline\">Statement</code>, and <code class=\"code-inline\">TableParser</code> together keep a per-table query counter and throw <code class=\"code-inline\">MaxQueriesExceededException</code> when the limit is exceeded."
+  messenger_title: "Async Queue Infrastructure (Prepared)"
+  messenger_text_html: "The <code class=\"code-inline\">symfony/messenger</code> package is installed and its status is visible in the AACP System Monitor. The foundation for future email, notification, and bulk-processing queues is already in place; no active transport is wired yet."
+  settings_title: "Lazy-Load Settings Engine"
+  settings_text_html: "A settings infrastructure managed with <code class=\"code-inline\">#[CpSetting]</code> and loaded from the database in a single query <strong>only when requested</strong> (<code class=\"code-inline\">SettingsRegistry</code>). It stays faithful to the performance budget."
+
+aacp:
+  label: "Chapter 9"
+  title: "AACP — Admin Control Panel & Recovery Mode"
+  desc: "The Safe Mode / Recovery Console promised in the whitepaper roadmap is now real: including a token-based recovery interface that stays up even if the database is completely down, AACP has become a full system management center."
+  safe_label: "Completed — Manifesto Law 2.3"
+  safe_title: "Safe Mode & Recovery Console (/aacp/recovery)"
+  safe_text_html: "The <code class=\"code-inline\">/aacp/recovery</code> endpoint is intentionally left public (<code class=\"code-inline\">PUBLIC_ACCESS</code>) in <code class=\"code-inline\">security.yaml</code>; it authorizes itself by comparing the <code class=\"code-inline\">AACP_RECOVERY_TOKEN</code> from <code class=\"code-inline\">.env</code> with <code class=\"code-inline\">hash_equals()</code> (timing-safe). It runs no Doctrine queries — it remains operational even when the database is completely down. If the token is empty, the door stays fully closed (fail-safe)."
+  monitor_label: "New"
+  monitor_title: "Live System Monitor (htop-style)"
+  monitor_text_html: "The <code class=\"code-inline\">/aacp/system</code> and <code class=\"code-inline\">/aacp/system/metrics</code> JSON endpoints report load average, memory, OPcache hit-rate, database connection status, and Messenger queue status live in an htop-like fashion. For components that are not installed, it honestly returns \"not installed\"."
+  quarantine_label: "New"
+  quarantine_title: "Quarantine Screen & Cache Rebuild Console"
+  quarantine_text_html: "<code class=\"code-inline\">/aacp/quarantine</code> — a read-only panel that reads and lists the <code class=\"code-inline\">module_quarantine.log</code> file. <code class=\"code-inline\">/aacp/system/cache-rebuild/*</code> triggers Symfony cache, OPcache reset, and Tailwind asset rebuild operations through three separate AJAX endpoints that share the same CSRF token."
+  locale_label: "New"
+  locale_title: "Localization Panel & Performance Management"
+  locale_text_html: "<code class=\"code-inline\">TranslationManager</code> lets you edit core and module <code class=\"code-inline\">messages+intl-icu.{tr,en}.yaml</code> files from the web with an atomic write guarantee (<code class=\"code-inline\">.tmp</code> + <code class=\"code-inline\">rename()</code>). A separate Performance Management screen runs live connection tests for Redis, Memcached, Varnish, and Nginx PageSpeed — the \"active\" flag is set only when the test succeeds."
+  card_api_title: "API Key Management"
+  card_api_text: "Key generation and lifecycle management for the REST Gateway."
+  card_cron_title: "Cron Management"
+  card_cron_text: "A unified list of tasks from DB, attribute, and flat-file sources."
+  card_hook_title: "Hook Explorer"
+  card_hook_text: "A panel that discovers all hook points and attached listeners."
+  card_locale_title: "Language (Locale) Management"
+  card_locale_text: "Active/passive/default language settings — a single source of truth."
+
+modules:
+  label: "Reference Modules"
+  title: "First-Party Modules: Proof of the Platform"
+  desc: "The Blog, Media, and Menu modules are reference implementations that exercise every platform extension point (API, Hook, Cron, Plugin, Settings) end to end."
+  blog_title: "Blog Module"
+  blog_text_html: "A full blog system built on <code class=\"code-inline\">Node::type='post'</code>. Category/tag management, scheduled publishing (<code class=\"code-inline\">PublishScheduledPostsTask</code>), a <code class=\"code-inline\">GET /api/blog/posts</code> REST endpoint, a sidebar hook, and Schema.org (BlogPosting) JSON-LD generation — all together."
+  media_title: "Media Module"
+  media_text_html: "A media library plus image picker admin UI built on <code class=\"code-inline\">AssetManager</code> and an independent <code class=\"code-inline\">Asset</code> entity. SHA-256-based deduplication on a Flysystem storage layer."
+  menu_title: "Menu Module"
+  menu_text_html: "WordPress-style drag-and-drop frontend menu management. <code class=\"code-inline\">Menu</code>/<code class=\"code-inline\">MenuItem</code> entities bind to Node with a loose reference (not an FK) for soft-delete compatibility."
+
+forum:
+  label: "XenForo / IPS-Class Engine"
+  title: "CPalius Forum Engine"
+  desc: "The Forum module proves the platform can carry a full community suite — hierarchical boards, thread prefixes, a moderation queue, and a rank/badge system — on the same Node tree and Capability model as the rest of CPalius."
+  tree_title: "Hierarchical Node Tree"
+  tree_text: "Boards nest to any depth on the same Node tree used for content. Sub-forums, categories, and private sections inherit permissions from their parent while each board keeps its own last-post cache for a single-query index render."
+  prefix_title: "Thread Prefixes"
+  prefix_text_html: "Per-board prefixes such as <code class=\"code-inline\">[Announcement]</code>, <code class=\"code-inline\">[Solved]</code>, and <code class=\"code-inline\">[Question]</code> with their own colour, permissions, and filters — stored on the topic and rendered into the title and the listing chips."
+  moderation_title: "Report & Moderation Queue"
+  moderation_text: "Members report posts with a reason; reports land in a dedicated queue where moderators move, merge, lock, soft-delete, or dismiss. Every action is a Capability check, and the whole flow is CSRF-guarded."
+  ranks_title: "Ranks & Badges"
+  ranks_text: "Post-count and reputation thresholds promote members through configurable ranks; manual badges and a per-user reputation ledger (with reasons) drive the profile card and the activity panel."
+  layout_title: "Golden-Ratio Fluid Layout"
+  layout_text: "The post view splits 20% author card / 80% message body — the Golden Ratio proportion used across CPalius — so long threads stay readable on every viewport without a fixed sidebar width."
+  cta_title: "Live Forum"
+  cta_text: "Hierarchical boards, thread prefixes, and the moderation queue are production-ready — jump from the showcase into the Forum Engine."
+  layout_code_header: "Postbit — 20% / 80% Golden Ratio"
+  layout_code: |
+    .forum-postbit { display: grid; grid-template-columns: 20% 80%; gap: var(--sp-md); }
+    .forum-postbit__author { /* rank, badges, reputation */ }
+    .forum-postbit__body { /* message + reactions */ }
+
+media:
+  label: "Completed — Manifesto Law 3.3"
+  title: "Media & Image Processing Pipeline"
+  desc: "A GD-based service resizes and crops uploaded images to any requested dimension on demand, caches every derivative under public/uploads/cache/, and exposes it to templates through a single Twig filter."
+  processor_title: "ImageProcessor (GD)"
+  processor_text_html: "<code class=\"code-inline\">ImageProcessor::thumbnail($source, $width, $height, $mode)</code> generates a <code class=\"code-inline\">crop</code> (cover + centre-crop) or <code class=\"code-inline\">fit</code> (contain, no upscale) derivative, preserves transparency for PNG/GIF/WebP, and is fail-soft — a single image that cannot be processed returns the original URL instead of breaking the page."
+  cache_title: "Persistent Disk Cache"
+  cache_text_html: "Derivatives are written to <code class=\"code-inline\">public/uploads/cache/&lt;w&gt;x&lt;h&gt;-&lt;mode&gt;/</code> and served directly by the web server on every later request. A cache hit is a single <code class=\"code-inline\">filemtime()</code> comparison against the source; <code class=\"code-inline\">purge()</code> drops every size of one asset when it is replaced."
+  filter_title: "{{ asset|cp_thumb(300, 200) }}"
+  filter_text_html: "The <code class=\"code-inline\">cp_thumb</code> Twig filter accepts an <code class=\"code-inline\">Asset</code>, an asset id, a storage key, or a <code class=\"code-inline\">/uploads/...</code> URL and returns the resized derivative URL — for example <code class=\"code-inline\">{{ asset|cp_thumb(300, 200) }}</code> or <code class=\"code-inline\">{{ url|cp_thumb(800, 600, 'fit') }}</code>."
+
+localization:
+  label: "Deep-Localization"
+  title: "Atomic Translation Safety & Smart Locale Switching"
+  desc: "Content rows bind vertically through a translation_group_id UUID; LocaleSwitchService never 404s when a sibling is missing; translation files are written with atomic .tmp + rename() so a power cut cannot corrupt them."
+  group_title: "translation_group_id UUID"
+  group_text_html: "Each content row lives in its own locale and links to siblings through a <code class=\"code-inline\">translation_group_id</code> UUID. At the DB layer, <code class=\"code-inline\">UNIQUE(translation_group_id, locale)</code> enforces at most one row per locale per group — even under concurrent requests."
+  switch_title: "LocaleSwitchService — Never-404 Switching"
+  switch_text_html: "The language switcher builds the counterpart URL for the current page. If the sibling slug is missing or route generation fails, it falls back to that locale's homepage — never a 404. AACP has no URL prefix; panel locale uses the <code class=\"code-inline\">cp_locale</code> cookie."
+  atomic_title: "Atomic .tmp + rename() Writes"
+  atomic_text_html: "<code class=\"code-inline\">TranslationManager</code> writes YAML to a <code class=\"code-inline\">.tmp-*</code> file first, then atomically replaces the target with an OS-level <code class=\"code-inline\">rename()</code>. Even a power cut cannot leave a half-written translation file."
+  switch_code_header: "LocaleSwitchService::urlFor()"
+  switch_code: |
+    try {
+        $params = $this->withTranslatedParams($request, $params, $targetLocale);
+        $params['_locale'] = $targetLocale;
+        return $this->urlGenerator->generate($route, $params);
+    } catch (RoutingException|Throwable) {
+        // Missing sibling or broken route → locale home, never 404.
+        return $this->homeUrl($targetLocale);
+    }
+  atomic_code_header: "TranslationManager — atomic write"
+  atomic_code: |
+    $tmpPath = $filePath . '.tmp-' . bin2hex(random_bytes(4));
+    $this->filesystem->dumpFile($tmpPath, $yaml);
+    // OS-level rename is atomic on the same filesystem.
+    $this->filesystem->rename($tmpPath, $filePath, true);
+
+security:
+  label: "Chapter 6"
+  title: "Security and Performance Principles"
+  desc: "Security and performance are not a finishing polish added at the end of a project; they are the system's fundamental building blocks."
+  cbac_title: "Capability-Based Access Control (CBAC)"
+  cbac_p1: "Dynamically generated capabilities are checked instead of relying on the standard ROLE_ADMIN approach. Role names are never checked anywhere in the code."
+  cbac_roles_html: "<strong>Roles = Config (YAML):</strong> Travel with Git.<br><strong>Users = Content (DB):</strong> Never exported."
+  tenant_title: "SaaS Tenant Leak Protection"
+  tenant_p1_html: "The biggest security risk in multi-tenant (SaaS) systems is a developer forgetting to write <code class=\"code-inline\">WHERE tenant_id = ?</code>."
+  tenant_p2_html: "In CPalius, this possibility has been <strong>eliminated at the platform level</strong>. Doctrine SQLFilter automatically injects a tenant constraint into every query. No developer intervention is required."
+  n1_title: "N+1 Query Guard"
+  n1_p1: "A Doctrine Listener that blocks N+1 query errors — one of the most common causes of database slowness — and triggers in development."
+  n1_p2_html: "If the query count for the same table exceeds the limit in one HTTP request, <code class=\"code-inline\">MaxQueriesExceededException</code> is thrown. Developers cannot ship until the error is fixed locally."
+  voter_title: "Voter-to-SQL Transformation"
+  voter_p1_html: "<code class=\"code-inline\">QueryScopeApplier</code> eliminates PHP-based Voter checks on list screens (and the N+1 memory crisis they cause)."
+  voter_p2_html: "A user's <code>.own</code> or <code>.any</code> capabilities are converted into SQL <code>WHERE</code> conditions on the Doctrine QueryBuilder before the query ever hits the database."
+  zerotrust_title: "Zero-Trust Payload Validation"
+  zerotrust_p1: "A strict-type DTO (Data Transfer Object) architecture that trusts no HTTP payload from the outside world. Data is autonomously sterilized with Symfony Validator before it reaches controllers."
+  zerotrust_p2: "Malicious manipulation attempts are rejected immediately, protecting core integrity with \"Golden Ratio\" precision."
+  lockfree_title: "Lock-Free High Concurrency"
+  lockfree_p1: "An Optimistic Locking backbone that relegates traditional table-lock crises to history. Thousands of concurrent data mutations are isolated with atomic transactions without deadlocks."
+  lockfree_p2: "Stripped of complexity through the YAGNI philosophy, this infrastructure defers server bottlenecks to pure hardware limits."
+
+manifesto:
+  label: "Architectural Depth"
+  title: "Technical Manifesto"
+  desc: "Five foundational architectural principles and deep code-level features that form the enterprise backbone of CPalius CMF."
+  block1_title: "Block 1: Hybrid Data Architecture and Flat-Field Index Engine"
+  block1_p1_html: "<strong>Two-Class Entity and JSON-Relational Hybrid Structure:</strong> Completely rejecting the cumbersome EAV (Entity-Attribute-Value) model of traditional CMS platforms, CPalius manages fields in two separate classes. Business records (<code>#[CpResource]</code>) live in strict-typed SQL columns, while content records (Node) store all dynamic data in a single JSON column for flexibility."
+  block1_p2_html: "<strong>Performance Genius (Flat-Field Index Engine):</strong> Because searching JSON columns with WHERE conditions is slow, CPalius uses an autonomous Doctrine Event Listener-based flattening engine. Fields marked <code>queryable: true</code> are reflected into the <code>node_field_index</code> table. The ProcessWire-inspired <code>findNodesBySelector</code> API simplifies complex queries."
+  block2_title: "Block 2: Military-Grade Isolation and Sandbox Layer"
+  block2_p1_html: "<strong>Core Never Dies (Unbreakable Core):</strong> A massive isolation layer sits between the user space (<code>cp-content/modules</code>) and the core (<code>cp-core</code>). A faulty third-party module cannot crash the entire application."
+  block2_p2_html: "<strong>Quarantine Armor and Emergency Valve:</strong> When a module is activated, <code>lint:container</code> and <code>lint:yaml</code> tests run in an isolated subprocess via <code>symfony/process</code>. At runtime, entry points are armored with <code>try/catch</code>. A crashing module is immediately ignored and written to <code>module_quarantine.log</code>."
+  block3_title: "Block 3: Deep-Localization and Dynamic Compiler-Pass"
+  block3_p1_html: "<strong>Enterprise Multilingual Topology:</strong> Language support is part of the core. Each piece of content is produced as a vertical table row (Node) and linked via a <code>translationGroupId</code> UUID. It is physically protected at the DB layer."
+  block3_p2_html: "<strong>Plug-and-Play Translation Compilation:</strong> Modules keep their own translations in their own directories. <code>TranslationFileLocator</code> finds them and injects them into the <code>framework.translator.paths</code> array via a Symfony Compiler Pass. Translations are written to disk with an atomic write algorithm."
+  block4_title: "Block 4: Hybrid Automation and Cron Engine"
+  block4_p1_html: "<strong>Unified Cron Infrastructure:</strong> Legacy database crons meet modern architecture. Virtual jobs can be created with the <code>#[CpCronJob]</code> attribute, or via <code>Hooks/cron.*.php</code> files."
+  block4_p2_html: "<strong>Isolated Triggering and System Oversight:</strong> <code>CronManager</code> runs jobs as isolated subprocesses (Process) to prevent memory leaks. Administrators can live-monitor jobs from the <code>/aacp/cron</code> cyber-console and trigger them with \"Run Now\" AJAX signals."
+  block5_title: "Block 5: Modular REST API and Security Gateway"
+  block5_p1_html: "<strong>An End to Routing Chaos:</strong> Instead of routing files, module developers open endpoints by placing a <code>#[CpApi]</code> attribute on the method. Everything is managed centrally through <code>ApiGatewayController</code>."
+  block5_p2_html: "<strong>Cryptographic Security Backbone:</strong> The <code>X-CP-API-KEY</code> header is checked via <code>cp_settings</code>. <code>ApiKeyService</code> performs SHA-256 verification with the timing-attack-safe <code>hash_equals</code> function."
+  block1_code: |
+    // Super-fluent Selector API usage
+    $nodes = $nodeRepository->findNodesBySelector(
+        'type=post, status=published, is_featured=1, limit=5, sort=createdAt:desc'
+    );
+
+    // Flat-Field engine snippet running in the background
+    // The dynamic 'is_featured' field from JSON is JOINed at high speed
+    // via 'value_int' in the index table.
+  block2_code: |
+    // Real-time quarantine isolation in ApiGatewayController
+    try {
+        $service = $this->serviceLocator->get($serviceId);
+        $result = $service->$methodName($request, ...$endpoint['pathParameters']);
+
+        return $result instanceof JsonResponse ? $result : new JsonResponse($result);
+    } catch (\Throwable $e) {
+        // A crashing module never takes the whole system down with a 500.
+        // It is isolated, logged, and the Gateway keeps running.
+        $this->quarantineApiFailure($serviceId, $methodName, $e);
+
+        return new JsonResponse(['error' => 'Internal API Error'], 500);
+    }
+  block3_code: |
+    // Atomic file-write guarantee inside TranslationManager
+    $dir = dirname($filePath);
+    if (!is_dir($dir)) {
+        $this->filesystem->mkdir($dir);
+    }
+
+    // 1. First write safely to a temporary .tmp file
+    $yaml = Yaml::dump($data, 2, 2);
+    $tmpPath = $filePath . '.tmp-' . bin2hex(random_bytes(4));
+    $this->filesystem->dumpFile($tmpPath, $yaml);
+
+    // 2. Atomically replace the target via OS-level rename().
+    // Even if power is cut, the file can never be left half-written.
+    $this->filesystem->rename($tmpPath, $filePath, true);
+  block4_code: |
+    // cp-content/modules/Blog/Cron/PublishScheduledPostsTask.php
+    final class PublishScheduledPostsTask
+    {
+        public function __construct(
+            private readonly EntityManagerInterface $entityManager,
+            private readonly NodeRepository $nodeRepository,
+        ) {}
+
+        // Pure attribute-based cron registration — no DB record required
+        #[CpCronJob(schedule: '*/5 * * * *', name: 'blog.publish_scheduled')]
+        public function execute(): string
+        {
+            $dueNodes = $this->nodeRepository->findDueScheduledNodes();
+
+            if ($dueNodes === []) {
+                return 'No content due for publication.';
+            }
+
+            foreach ($dueNodes as $node) {
+                $node->publish($node->getPublishedAt());
+            }
+            $this->entityManager->flush();
+
+            return sprintf('%d content items published.', count($dueNodes));
+        }
+    }
+  block5_code: |
+    // 1. A clean endpoint inside the module
+    #[CpApi(path: '/blog/posts', methods: ['GET'], public: false)]
+    public function getPosts(Request $request): JsonResponse
+    {
+        // Business logic...
+    }
+
+    // 2. Fail-closed armor in ApiGatewayController
+    // On public:false routes, a missing API key means the target
+    // method is NEVER called.
+    if (!$endpoint['definition']['public'] && !$this->hasValidApiKey($request)) {
+        return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+    }
+  audit_code: |
+    #[AsDoctrineListener(event: Events::onFlush)]
+    #[AsDoctrineListener(event: Events::postFlush)]
+    final class AuditLogListener
+    {
+        public function onFlush(OnFlushEventArgs $args): void
+        {
+            $unitOfWork = $args->getObjectManager()->getUnitOfWork();
+            $auditable = $this->resourceRegistry->getAuditableEntityClasses();
+
+            foreach ($unitOfWork->getScheduledEntityUpdates() as $entity) {
+                if (!$this->isAuditable($entity, $auditable)) {
+                    continue;
+                }
+                // {field: [oldValue, newValue]} — computed into the same flush
+                $changes = $this->buildUpdateChanges($unitOfWork, $entity);
+            }
+        }
+    }
+  thumb_code: |
+    {# Any Asset, asset id, storage key or /uploads/... URL #}
+    <img src="{{ asset|cp_thumb(300, 200) }}" alt="{{ asset.originalName }}">
+
+    {# 'fit' keeps the whole image inside the box without upscaling #}
+    <img src="{{ featuredImageUrl|cp_thumb(800, 600, 'fit') }}" alt="">
+
+stats:
+  defense: "Defense Lines"
+  n1: "N+1 Query Tolerance"
+  layers: "Extension Layers"
+  modules: "Module Capacity"
+  opensource: "Open Source"
+
+roadmap:
+  label: "Chapter 10"
+  title: "Future Roadmap"
+  desc: "Of the items promised in the first whitepaper, Safe Mode, the on-demand image pipeline, and the audit log are complete. The following systems will be built in upcoming development sprints."
+  sprint1: "Sprint 1"
+  sprint1_title: "Workflow & State Machine"
+  sprint1_text_html: "A mechanism that manages transitions for business records such as invoices, vehicles, and reservations (draft → preparation → sold) through YAML definitions and connects each transition to an automatic audit log. The <code class=\"code-inline\">CpResource::$workflow</code> field is already declared — the next step is wiring the real transition/guard engine."
+  sprint2: "Sprint 2 — Done"
+  sprint2_title: "On-Demand Image Pipeline"
+  sprint2_text_html: "Shipped. <code class=\"code-inline\">ImageProcessor</code> (GD) resizes/crops on demand and caches under <code class=\"code-inline\">public/uploads/cache/</code>; the <code class=\"code-inline\">cp_thumb</code> Twig filter exposes it to every theme."
+  sprint3: "Sprint 3 — Done"
+  sprint3_title: "#[CpResource] Audit Log"
+  sprint3_text_html: "Shipped. The <code class=\"code-inline\">cp_audit_logs</code> table and an isolated <code class=\"code-inline\">onFlush</code>/<code class=\"code-inline\">postFlush</code> listener record every create/update/delete of an auditable entity. Marking any entity <code class=\"code-inline\">#[Auditable]</code> switches it on."
+  sprint4: "Sprint 4"
+  sprint4_title: "Messenger Async Queue"
+  sprint4_text_html: "<code class=\"code-inline\">symfony/messenger</code> is installed and visible in the AACP System Monitor; the next step is wiring a real transport (Doctrine/Redis) and moving email and notification work onto an asynchronous queue."
+
+community:
+  label: "Community"
+  title: "Let's Perfect the Architecture Together"
+  desc: "CPalius will become a stronger application framework through the power of its community. We look forward to your ideas, feedback, and architectural suggestions."
+  cta_github: "Join us on GitHub"
+  cta_discuss: "Join the Discussion"
+
+whitepaper:
+  meta_title: "CPalius CMF Whitepaper — Technical Review & Architecture Roadmap"
+  meta_description: "CPalius CMF technical whitepaper: Pristine Root, Core Never Dies, hybrid data model, i18n, CBAC, SaaS tenant protection, and roadmap."
+  back: "Back to home"
+  badge: "Technical Review (Whitepaper) & Architecture Roadmap (RFC)"
+  version: "Version: v1.0.0-draft"
+  toc_title: "Contents"
+  cta: "Read the Whitepaper"

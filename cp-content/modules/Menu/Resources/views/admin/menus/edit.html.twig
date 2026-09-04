@@ -9,7 +9,7 @@
 
 {% block body %}
     {% import '@MenuModule/admin/menus/_macros.html.twig' as menuMacros %}
-    {% set treeHtml = tree is not empty ? menuMacros.renderItems(tree) : '' %}
+    {% set treeHtml = tree is not empty ? menuMacros.renderItems(tree, translationMap) : '' %}
 
     <div class="flex flex-col gap-sp-md lg:flex-row lg:items-start">
         <div class="min-w-0 space-y-sp-md lg:w-[61.8%]">
@@ -34,9 +34,11 @@
 
                     <div>
                         <label class="form-label">{{ 'menu.edit.locale_field'|trans }}</label>
+                        {# Phase 3: locale list comes from LocaleProvider; no hard-coded list. #}
                         <select name="locale" class="form-select">
-                            <option value="tr">Türkçe</option>
-                            <option value="en">English</option>
+                            {% for locale in locales %}
+                                <option value="{{ locale.code }}" {{ locale.code == defaultLocale ? 'selected' : '' }}>{{ locale.nativeName }}</option>
+                            {% endfor %}
                         </select>
                     </div>
 

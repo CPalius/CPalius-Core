@@ -1,0 +1,23 @@
+{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+
+{% block title %}{{ 'account.register.pending_title'|trans }}{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in" style="text-align:center; max-width: 520px; margin: 0 auto;">
+    <h1 class="section-title">{{ 'account.register.pending_heading'|trans }}</h1>
+    <p class="forum-header__desc" style="margin: var(--sp-md) auto 0;">
+        {% if emailVerification and adminApproval %}
+            {{ 'account.register.pending_both'|trans }}
+        {% elseif emailVerification %}
+            {{ 'account.register.pending_email'|trans }}
+        {% elseif adminApproval %}
+            {{ 'account.register.pending_approval'|trans }}
+        {% else %}
+            {{ 'account.register.pending_generic'|trans }}
+        {% endif %}
+    </p>
+    <p style="margin-top: var(--sp-lg);">
+        <a href="{{ path('account_login') }}" class="btn btn-primary btn-sm">{{ 'account.register.login_link'|trans }}</a>
+    </p>
+</div>
+{% endblock %}

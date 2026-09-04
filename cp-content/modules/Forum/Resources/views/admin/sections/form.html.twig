@@ -55,6 +55,47 @@
                 <textarea name="description" rows="3" class="form-control">{{ formValues.description }}</textarea>
             </div>
 
+            <div class="grid gap-4 md:grid-cols-2 mt-4">
+                <div>
+                    <label class="form-label" for="node_type">{{ 'studio.forum.sections.form.node_type'|trans }}</label>
+                    <select name="node_type" id="node_type" class="form-select">
+                        <option value="category" {{ formValues.nodeType|default('forum') == 'category' ? 'selected' : '' }}>{{ 'studio.forum.sections.form.node_type.category'|trans }}</option>
+                        <option value="forum" {{ formValues.nodeType|default('forum') == 'forum' ? 'selected' : '' }}>{{ 'studio.forum.sections.form.node_type.forum'|trans }}</option>
+                        <option value="link" {{ formValues.nodeType|default('forum') == 'link' ? 'selected' : '' }}>{{ 'studio.forum.sections.form.node_type.link'|trans }}</option>
+                    </select>
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.forum.sections.form.node_type_hint'|trans }}</p>
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.sections.form.link_url'|trans }}</label>
+                    <input type="url" name="link_url" value="{{ formValues.linkUrl|default('') }}" class="form-control" placeholder="https://">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label">{{ 'studio.forum.sections.form.required_capability'|trans }}</label>
+                    <input type="text" name="required_capability" value="{{ formValues.requiredCapability|default('') }}" class="form-control" placeholder="forum.view">
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.forum.sections.form.required_capability_hint'|trans }}</p>
+                </div>
+                <div>
+                    <label class="form-label" for="default_topic_sort">{{ 'studio.forum.sections.form.default_topic_sort'|trans({}, 'forums') }}</label>
+                    <select name="default_topic_sort" id="default_topic_sort" class="form-select">
+                        {% for sortKey, sortLabel in {
+                            'latest': 'studio.forum.sections.form.sort.latest',
+                            'created': 'studio.forum.sections.form.sort.created',
+                            'title': 'studio.forum.sections.form.sort.title',
+                            'replies': 'studio.forum.sections.form.sort.replies',
+                            'views': 'studio.forum.sections.form.sort.views'
+                        } %}
+                            <option value="{{ sortKey }}" {{ formValues.defaultTopicSort|default('latest') == sortKey ? 'selected' : '' }}>{{ sortLabel|trans({}, 'forums') }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <label class="inline-flex items-center gap-2 text-fs-sm">
+                        <input type="checkbox" name="is_locked" value="1" {{ formValues.locked|default(false) ? 'checked' : '' }}>
+                        {{ 'studio.forum.sections.form.is_locked'|trans({}, 'forums') }}
+                    </label>
+                </div>
+            </div>
+
             <div class="mt-6 flex gap-2">
                 <button type="submit" class="btn btn-primary">{{ 'studio.forum.sections.form.save'|trans }}</button>
                 <a href="{{ path('admin_forum_sections_index') }}" class="btn btn-neutral">{{ 'studio.forum.sections.form.cancel'|trans }}</a>

@@ -4,20 +4,24 @@ declare(strict_types=1);
 
 namespace Modules\Blog\Controller;
 
+use App\Core\Localization\LocaleProvider;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Blog front route'ları bilinçli olarak /{_locale}/blog öneki taşır (bkz.
- * Resources/config/routes.yaml). Menü seed verisi veya dış linkler bazen
- * locale'siz /blog kullanır; bu controller onları kanonik URL'e yönlendirir.
+ * Redirect locale-less /blog links to the canonical /{_locale}/blog path.
  */
 final class LegacyBlogRedirectController extends AbstractController
 {
+    public function __construct(
+        private readonly LocaleProvider $localeProvider,
+    ) {
+    }
+
     #[Route('/blog', name: 'blog_index_legacy', priority: 10)]
     public function index(): RedirectResponse
     {
-        return $this->redirectToRoute('blog_index', ['_locale' => 'tr'], 301);
+        return $this->redirectToRoute('blog_index', ['_locale' => $this->localeProvider->getDefaultCode()], 301);
     }
 }

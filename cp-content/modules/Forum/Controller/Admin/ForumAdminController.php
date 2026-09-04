@@ -5,18 +5,20 @@ declare(strict_types=1);
 namespace Modules\Forum\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
-use App\Entity\ForumPostReport;
-use App\Entity\ForumSection;
+use App\Core\Localization\LocaleProvider;
+use Modules\Forum\Entity\ForumPostReport;
+use Modules\Forum\Entity\ForumSection;
 use App\Entity\User;
 use App\Core\Pagination\Paginator;
-use App\Entity\ForumTopic;
-use App\Repository\ForumPostReportRepository;
-use App\Repository\ForumPostRepository;
-use App\Repository\ForumSectionRepository;
-use App\Repository\ForumTopicPrefixRepository;
-use App\Repository\ForumTopicRepository;
+use Modules\Forum\Entity\ForumTopic;
+use Modules\Forum\Repository\ForumPostReportRepository;
+use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumSectionRepository;
+use Modules\Forum\Repository\ForumTopicPrefixRepository;
+use Modules\Forum\Repository\ForumTopicRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Modules\Forum\ForumNodeType;
 use Modules\Forum\ForumSectionType;
 use Modules\Forum\Service\ForumModerationService;
 use Modules\Forum\Service\ForumSectionDeletionService;
@@ -36,9 +38,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 #[Route('/admin/forum', name: 'admin_forum_')]
 final class ForumAdminController extends AbstractController
 {
-    private const DEFAULT_LOCALE = 'tr';
-
     public function __construct(
+        private readonly LocaleProvider $localeProvider,
         private readonly ForumSectionRepository $sectionRepository,
         private readonly ForumTopicRepository $topicRepository,
         private readonly ForumPostRepository $postRepository,
@@ -57,26 +58,26 @@ final class ForumAdminController extends AbstractController
     }
 
     #[Route('', name: 'dashboard', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Forum', icon: 'heroicons:chat-bubble-left-right', panel: 'studio', priority: 25, capability: 'forum.section.manage', group: 'İçerik')]
+    #[CpAdminMenu(label: 'Forum', icon: 'heroicons:chat-bubble-left-right', panel: 'studio', priority: 26, capability: 'forum.section.manage', group: 'İçerik')]
     #[IsGranted('forum.section.manage')]
     public function dashboard(): Response
     {
-        $sections = $this->hierarchyService->getAllSections(self::DEFAULT_LOCALE);
+        $sections = $this->hierarchyService->getAllSections($this->localeProvider->getDefaultCode());
         $latestTopics = $this->topicRepository->findLatest(10);
 
         $totalTopics = (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(t.id)')
-            ->from('App\Entity\ForumTopic', 't')
+            ->from('Modules\Forum\Entity\ForumTopic', 't')
             ->getQuery()
             ->getSingleScalarResult();
 
         $totalPosts = (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(p.id)')
-            ->from('App\Entity\ForumPost', 'p')
+            ->from('Modules\Forum\Entity\ForumPost', 'p')
             ->getQuery()
             ->getSingleScalarResult();
 
-        // Grafikler için: en aktif 6 (konteyner olmayan) bölüm, mesaj sayısına göre.
+        // Chart: top 6 non-container sections by post count.
         $chartSections = array_values(array_filter($sections, static fn (ForumSection $s) => !$s->isContainer()));
         usort($chartSections, static fn (ForumSection $a, ForumSection $b) => $b->getPostCount() <=> $a->getPostCount());
         $chartSections = \array_slice($chartSections, 0, 6);
@@ -101,16 +102,87 @@ final class ForumAdminController extends AbstractController
     }
 
     #[Route('/moderation', name: 'moderation_index', methods: ['GET'])]
-    #[IsGranted('forum.topic.moderate')]
+    #[CpAdminMenu(label: 'Moderasyon Masası', icon: 'heroicons:shield-check', panel: 'studio', priority: 28, capability: 'forum.moderation.manage', group: 'İçerik', parent: 'admin_forum_dashboard')]
+    #[IsGranted('forum.moderation.manage')]
     public function moderationIndex(): Response
     {
         return $this->render('@ForumModule/admin/moderation/index.html.twig', [
             'reports' => $this->postReportRepository->findOpen(),
+            'deletedTopics' => $this->topicRepository->findDeleted(80),
+            'bulkTopics' => $this->topicRepository->findLatest(60),
+            'moveTargets' => $this->hierarchyService->getTopicBoards($this->localeProvider->getDefaultCode()),
         ]);
     }
 
+    #[Route('/moderation/bulk', name: 'moderation_bulk', methods: ['POST'])]
+    #[IsGranted('forum.moderation.manage')]
+    public function moderationBulk(Request $request): Response
+    {
+        $this->assertValidCsrf($request, 'admin_forum_moderation');
+
+        $ids = array_values(array_filter(
+            array_map('intval', (array) $request->request->all('topic_ids')),
+            static fn (int $id): bool => $id > 0,
+        ));
+        $topics = $this->topicRepository->findByIds($ids);
+        $action = (string) $request->request->get('bulk_action');
+
+        match ($action) {
+            'lock' => $this->moderationService->bulkLock($topics, true),
+            'unlock' => $this->moderationService->bulkLock($topics, false),
+            'sticky' => $this->moderationService->bulkSticky($topics, true),
+            'unsticky' => $this->moderationService->bulkSticky($topics, false),
+            'delete' => $this->moderationService->bulkSoftDelete($topics),
+            'hard_delete' => $this->moderationService->bulkHardDelete($topics),
+            'restore' => $this->moderationService->bulkRestore($topics),
+            'move' => $this->bulkMoveFromRequest($request, $topics),
+            'merge' => $this->bulkMergeFromRequest($request, $topics),
+            default => throw new BadRequestHttpException($this->translator->trans('site.forum.moderate.invalid_action')),
+        };
+
+        $this->addFlash('success', $this->translator->trans('studio.forum.moderation.bulk_done', ['count' => \count($topics)]));
+
+        return $this->redirectToRoute('admin_forum_moderation_index');
+    }
+
+    /**
+     * @param list<ForumTopic> $topics
+     */
+    private function bulkMoveFromRequest(Request $request, array $topics): void
+    {
+        $targetId = $request->request->getInt('target_section_id');
+        $target = $this->sectionRepository->find($targetId);
+        if (!$target instanceof ForumSection || !$target->allowsTopics()) {
+            throw new BadRequestHttpException($this->translator->trans('site.forum.moderate.invalid_target_section'));
+        }
+
+        $this->moderationService->bulkMove($topics, $target, $request->request->getBoolean('keep_redirect'));
+    }
+
+    /**
+     * @param list<ForumTopic> $topics
+     */
+    private function bulkMergeFromRequest(Request $request, array $topics): void
+    {
+        $targetId = $request->request->getInt('merge_target_topic_id');
+        $target = $this->topicRepository->find($targetId);
+        if (!$target instanceof ForumTopic) {
+            throw new BadRequestHttpException($this->translator->trans('studio.forum.moderation.merge_target_required'));
+        }
+
+        $sources = array_values(array_filter(
+            $topics,
+            static fn (ForumTopic $topic): bool => $topic->getId() !== $target->getId(),
+        ));
+        if ($sources === []) {
+            throw new BadRequestHttpException($this->translator->trans('studio.forum.moderation.merge_sources_required'));
+        }
+
+        $this->moderationService->mergeInto($sources, $target);
+    }
+
     #[Route('/moderation/{id}/resolve', name: 'moderation_resolve', methods: ['POST'], requirements: ['id' => '\d+'])]
-    #[IsGranted('forum.topic.moderate')]
+    #[IsGranted('forum.moderation.manage')]
     public function moderationResolve(int $id, Request $request): Response
     {
         $report = $this->findReportOrFail($id);
@@ -125,7 +197,7 @@ final class ForumAdminController extends AbstractController
     }
 
     #[Route('/moderation/{id}/dismiss', name: 'moderation_dismiss', methods: ['POST'], requirements: ['id' => '\d+'])]
-    #[IsGranted('forum.topic.moderate')]
+    #[IsGranted('forum.moderation.manage')]
     public function moderationDismiss(int $id, Request $request): Response
     {
         $report = $this->findReportOrFail($id);
@@ -140,7 +212,7 @@ final class ForumAdminController extends AbstractController
     }
 
     #[Route('/moderation/{id}/delete-post', name: 'moderation_delete_post', methods: ['POST'], requirements: ['id' => '\d+'])]
-    #[IsGranted('forum.topic.moderate')]
+    #[IsGranted('forum.moderation.manage')]
     public function moderationDeletePost(int $id, Request $request): Response
     {
         $report = $this->findReportOrFail($id);
@@ -166,16 +238,17 @@ final class ForumAdminController extends AbstractController
     }
 
     #[Route('/sections', name: 'sections_index', methods: ['GET'])]
-    #[IsGranted('forum.section.manage')]
+    #[CpAdminMenu(label: 'Düğümler', icon: 'heroicons:rectangle-group', panel: 'studio', priority: 26, capability: 'forum.nodes.manage', group: 'İçerik', parent: 'admin_forum_dashboard')]
+    #[IsGranted('forum.nodes.manage')]
     public function sectionsIndex(): Response
     {
         return $this->render('@ForumModule/admin/sections/index.html.twig', [
-            'tree' => $this->hierarchyService->buildAdminTree(self::DEFAULT_LOCALE),
+            'tree' => $this->hierarchyService->buildAdminTree($this->localeProvider->getDefaultCode()),
         ]);
     }
 
     #[Route('/sections/create', name: 'sections_create', methods: ['GET', 'POST'])]
-    #[IsGranted('forum.section.manage')]
+    #[IsGranted('forum.nodes.manage')]
     public function sectionsCreate(Request $request): Response
     {
         if ($request->isMethod('POST')) {
@@ -194,7 +267,7 @@ final class ForumAdminController extends AbstractController
     }
 
     #[Route('/sections/{id}/edit', name: 'sections_edit', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
-    #[IsGranted('forum.section.manage')]
+    #[IsGranted('forum.nodes.manage')]
     public function sectionsEdit(int $id, Request $request): Response
     {
         $section = $this->findSectionOrFail($id);
@@ -219,11 +292,16 @@ final class ForumAdminController extends AbstractController
             'parentId' => $section->getParent()?->getId(),
             'sortOrder' => $section->getSortOrder(),
             'sectionType' => $section->getSectionType()->value,
+            'nodeType' => $section->getNodeType()->value,
+            'linkUrl' => $section->getLinkUrl() ?? '',
+            'requiredCapability' => $section->getRequiredCapability() ?? '',
+            'locked' => $section->isLocked(),
+            'defaultTopicSort' => $section->getDefaultTopicSort(),
         ]);
     }
 
     #[Route('/sections/{id}/delete', name: 'sections_delete', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
-    #[IsGranted('forum.section.manage')]
+    #[IsGranted('forum.nodes.manage')]
     public function sectionsDelete(int $id, Request $request): Response
     {
         $section = $this->findSectionOrFail($id);
@@ -266,7 +344,7 @@ final class ForumAdminController extends AbstractController
     }
 
     #[Route('/sections/{id}/resync', name: 'sections_resync', methods: ['POST'], requirements: ['id' => '\d+'])]
-    #[IsGranted('forum.section.manage')]
+    #[IsGranted('forum.nodes.manage')]
     public function sectionsResync(int $id, Request $request): Response
     {
         $section = $this->findSectionOrFail($id);
@@ -277,22 +355,64 @@ final class ForumAdminController extends AbstractController
         return $this->redirectToRoute('admin_forum_sections_index');
     }
 
+    #[Route('/sections/{id}/move', name: 'sections_move', methods: ['POST'], requirements: ['id' => '\d+'])]
+    #[IsGranted('forum.nodes.manage')]
+    public function sectionsMove(int $id, Request $request): Response
+    {
+        $section = $this->findSectionOrFail($id);
+        $this->assertValidCsrf($request, 'admin_forum_section');
+
+        $direction = (string) $request->request->get('direction');
+        $siblings = $this->sectionRepository->findSiblings($section);
+        $index = null;
+        foreach ($siblings as $i => $sibling) {
+            if ($sibling->getId() === $section->getId()) {
+                $index = $i;
+                break;
+            }
+        }
+
+        if ($index === null) {
+            return $this->redirectToRoute('admin_forum_sections_index');
+        }
+
+        $swapWith = $direction === 'up' ? ($siblings[$index - 1] ?? null) : ($siblings[$index + 1] ?? null);
+        if ($swapWith instanceof ForumSection) {
+            $currentOrder = $section->getSortOrder();
+            $section->setSortOrder($swapWith->getSortOrder());
+            $swapWith->setSortOrder($currentOrder);
+            $section->touch();
+            $swapWith->touch();
+            $this->entityManager->flush();
+        }
+
+        return $this->redirectToRoute('admin_forum_sections_index');
+    }
+
+    #[Route('/sections/{id}/toggle-lock', name: 'sections_toggle_lock', methods: ['POST'], requirements: ['id' => '\d+'])]
+    #[IsGranted('forum.nodes.manage')]
+    public function sectionsToggleLock(int $id, Request $request): Response
+    {
+        $section = $this->findSectionOrFail($id);
+        $this->assertValidCsrf($request, 'admin_forum_section');
+        $section->setLocked(!$section->isLocked());
+        $section->touch();
+        $this->entityManager->flush();
+        $this->addFlash('success', $this->translator->trans('studio.forum.sections.lock_toggled', [
+            'title' => $section->getTitle(),
+            'state' => $section->isLocked() ? 'locked' : 'open',
+        ], 'forums'));
+
+        return $this->redirectToRoute('admin_forum_sections_index');
+    }
+
     #[Route('/topics', name: 'topics_index', methods: ['GET'])]
     #[CpAdminMenu(label: 'Konular', icon: 'heroicons:chat-bubble-left-right', panel: 'studio', priority: 26, capability: 'forum.topic.moderate', group: 'İçerik', parent: 'admin_forum_dashboard')]
     #[IsGranted('forum.topic.moderate')]
     public function topicsIndex(Request $request): Response
     {
-        $qb = $this->entityManager->createQueryBuilder()
-            ->select('t')
-            ->from(ForumTopic::class, 't')
-            ->orderBy('t.sticky', 'DESC')
-            ->addOrderBy('t.updatedAt', 'DESC');
-
         $search = trim((string) $request->query->get('q', ''));
-        if ($search !== '') {
-            $qb->andWhere('t.title LIKE :search')->setParameter('search', '%' . $search . '%');
-        }
-
+        $qb = $this->topicRepository->createAdminListQueryBuilder($search !== '' ? $search : null);
         $topics = $this->paginator->paginate($qb, $request->query->getInt('page', 1), 30);
 
         return $this->render('@ForumModule/admin/topics/index.html.twig', [
@@ -330,11 +450,11 @@ final class ForumAdminController extends AbstractController
         }
 
         if ($slug === '') {
-            $slugger = new AsciiSlugger(self::DEFAULT_LOCALE);
+            $slugger = new AsciiSlugger($this->localeProvider->getDefaultCode());
             $slug = strtolower($slugger->slug($title)->toString());
         }
 
-        $section = new ForumSection($code, $slug, self::DEFAULT_LOCALE, $title);
+        $section = new ForumSection($code, $slug, $this->localeProvider->getDefaultCode(), $title);
         $this->applyRequestToSection($section, $request);
 
         return $section;
@@ -363,6 +483,13 @@ final class ForumAdminController extends AbstractController
         $section->setSortOrder($request->request->getInt('sort_order'));
         $section->setSectionType($type);
         $section->setParent($parent instanceof ForumSection ? $parent : null);
+
+        $nodeType = ForumNodeType::tryFrom((string) $request->request->get('node_type', '')) ?? ForumNodeType::fromSectionType($type);
+        $section->setNodeType($nodeType);
+        $section->setLinkUrl(trim((string) $request->request->get('link_url')));
+        $section->setRequiredCapability(trim((string) $request->request->get('required_capability')));
+        $section->setLocked($request->request->getBoolean('is_locked'));
+        $section->setDefaultTopicSort((string) $request->request->get('default_topic_sort', 'latest'));
     }
 
     /** @return array<string, mixed> */
@@ -392,6 +519,13 @@ final class ForumAdminController extends AbstractController
             'parentId' => $parentId,
             'sortOrder' => 0,
             'sectionType' => $sectionType,
+            'nodeType' => ForumNodeType::fromSectionType(
+                ForumSectionType::tryFrom($sectionType) ?? ForumSectionType::Division,
+            )->value,
+            'linkUrl' => '',
+            'requiredCapability' => '',
+            'locked' => false,
+            'defaultTopicSort' => 'latest',
         ];
     }
 
@@ -402,7 +536,7 @@ final class ForumAdminController extends AbstractController
     {
         return $this->render('@ForumModule/admin/sections/form.html.twig', [
             'section' => $section,
-            'parentOptionsByType' => $this->hierarchyService->buildParentOptionsByType(self::DEFAULT_LOCALE, $section),
+            'parentOptionsByType' => $this->hierarchyService->buildParentOptionsByType($this->localeProvider->getDefaultCode(), $section),
             'formValues' => $formValues,
         ]);
     }

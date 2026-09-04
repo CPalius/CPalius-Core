@@ -43,8 +43,8 @@
                         </td>
                         <td>
                             {% for role in user.cpaliusRoles %}
-                                <span class="badge badge-neutral mr-1">
-                                    {{ role }}
+                                <span class="badge badge-neutral mr-1" title="{{ role }}">
+                                    {{ roleLabels[role]|default(role) }}
                                 </span>
                             {% else %}
                                 <span class="text-fs-xs !text-slate-600">—</span>

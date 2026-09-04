@@ -166,7 +166,7 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
                         'capability' => $menu->capability,
                         'group' => $menu->group,
                         'routeName' => $routeName,
-                        'routePrefix' => $classRoutePrefix !== '' ? $classRoutePrefix : $routeName,
+                        'routePrefix' => $this->resolveMenuRoutePrefix($classRoutePrefix, $methodRouteName, $routeName),
                         'module' => $module,
                         'controllerClass' => $className,
                         'method' => $method->getName(),
@@ -182,5 +182,35 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
         }
 
         return $collected;
+    }
+
+    /**
+     * Menü öğesi için aktif-sayfa eşleştirmesinde kullanılan prefix.
+     * Sınıf düzeyindeki geniş prefix (ör. admin_forum_) yerine, her action
+     * kendi alt rotalarını kapsayan dar bir prefix alır (ör. admin_forum_sections_).
+     */
+    private function resolveMenuRoutePrefix(string $classRoutePrefix, string $methodRouteName, string $routeName): string
+    {
+        if ($classRoutePrefix === '') {
+            return $routeName;
+        }
+
+        if (!str_ends_with($classRoutePrefix, '_')) {
+            return $routeName;
+        }
+
+        // admin_forum_permissions_, admin_blog_post_ gibi alt-controller prefix'leri
+        $segments = array_values(array_filter(explode('_', rtrim($classRoutePrefix, '_'))));
+        if (count($segments) >= 3) {
+            return $classRoutePrefix;
+        }
+
+        if (!str_contains($methodRouteName, '_')) {
+            return $routeName;
+        }
+
+        $segment = explode('_', $methodRouteName, 2)[0];
+
+        return $classRoutePrefix.$segment.'_';
     }
 }

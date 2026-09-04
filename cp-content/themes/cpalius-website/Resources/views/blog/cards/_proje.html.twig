@@ -6,7 +6,7 @@
 <article class="slw-feed-card blog-card--proje slw-ctype--proje fade-in">
     <div class="blog-card-proje__inner">
         <div class="blog-card-proje__media">
-            {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_cover.html.twig' with { post: post } %}
+            {% include '@Theme/blog/partials/_feed_card_cover.html.twig' with { post: post } %}
         </div>
         <div class="slw-feed-card__body blog-card-proje__body">
             <div class="slw-feed-card__head">
@@ -19,7 +19,7 @@
             <h4 class="slw-feed-card__title">
                 <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
             </h4>
-            {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+            {% include '@Theme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
 
             {% if (typeFields.repo_url is defined and typeFields.repo_url) or (typeFields.demo_url is defined and typeFields.demo_url) %}
                 <div class="project-card-links blog-card-proje__actions">

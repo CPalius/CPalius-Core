@@ -1,44 +1,26 @@
-<section class="portal-zone" id="stats">
+{% set t = 'portal' %}
+<section class="section section-darker" id="stats">
     <div class="container">
-        <div class="portal-module fade-in">
-            <div class="portal-module__head">
-                <h2 class="portal-module__title">
-                    <i class="bi bi-speedometer2"></i>
-                    <span>Platform Özeti</span>
-                </h2>
-                <span class="portal-module__eyebrow">İstatistik</span>
+        <div class="stats-bar fade-in">
+            <div class="stat-item">
+                <div class="stat-number" data-count="4">0</div>
+                <div class="stat-label">{{ 'stats.defense'|trans({}, t) }}</div>
             </div>
-            <div class="portal-module__body portal-module__body--stats">
-                <div class="portal-stat-boxes portal-stat-boxes--4">
-                    <div class="portal-stat-box">
-                        <span class="portal-stat-box__icon"><i class="bi bi-shield"></i></span>
-                        <div>
-                            <div class="portal-stat-box__value" data-count="3">0</div>
-                            <div class="portal-stat-box__label">Savunma Hattı</div>
-                        </div>
-                    </div>
-                    <div class="portal-stat-box">
-                        <span class="portal-stat-box__icon"><i class="bi bi-database-x"></i></span>
-                        <div>
-                            <div class="portal-stat-box__value" data-count="0">0</div>
-                            <div class="portal-stat-box__label">N+1 Toleransı</div>
-                        </div>
-                    </div>
-                    <div class="portal-stat-box">
-                        <span class="portal-stat-box__icon"><i class="bi bi-puzzle"></i></span>
-                        <div>
-                            <div class="portal-stat-box__value">∞</div>
-                            <div class="portal-stat-box__label">Modül Kapasitesi</div>
-                        </div>
-                    </div>
-                    <div class="portal-stat-box">
-                        <span class="portal-stat-box__icon"><i class="bi bi-github"></i></span>
-                        <div>
-                            <div class="portal-stat-box__value" data-count="100" data-prefix="%">0</div>
-                            <div class="portal-stat-box__label">Açık Kaynak</div>
-                        </div>
-                    </div>
-                </div>
+            <div class="stat-item">
+                <div class="stat-number" data-count="0">0</div>
+                <div class="stat-label">{{ 'stats.n1'|trans({}, t) }}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" data-count="4">0</div>
+                <div class="stat-label">{{ 'stats.layers'|trans({}, t) }}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" data-count="∞">∞</div>
+                <div class="stat-label">{{ 'stats.modules'|trans({}, t) }}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" data-count="100" data-prefix="%">0</div>
+                <div class="stat-label">{{ 'stats.opensource'|trans({}, t) }}</div>
             </div>
         </div>
     </div>

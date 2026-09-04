@@ -3,8 +3,7 @@
 {% block header %}{{ 'aacp.plugins.header'|trans }}{% endblock %}
 
 {% block javascripts %}
-    {{ parent() }}
-    {{ importmap('aacp-plugins') }}
+    {{ importmap(['app', 'aacp-plugins']) }}
 {% endblock %}
 
 {% block body %}

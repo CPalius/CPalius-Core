@@ -1,47 +1,31 @@
+{% set t = 'portal' %}
 <section class="hero" id="hero">
     <div class="container hero-grid">
         <div class="hero-content">
-            {% if portalBlock.label|default('') %}
-                <p class="hero-label">{{ portalBlock.label }}</p>
-            {% endif %}
-            <h1 class="hero-title">
-                {% set heroTitle = portalBlock.title|default('CPalius CMF') %}
-                {% if 'CMF' in heroTitle %}
-                    {{ heroTitle|replace({'CMF': ''})|trim }} <span class="text-accent">CMF</span>
-                {% else %}
-                    {{ heroTitle }}
-                {% endif %}
-            </h1>
-            {% if portalBlock.subtitle|default('') %}
-                <p class="hero-subtitle">{{ portalBlock.subtitle|nl2br }}</p>
-            {% endif %}
-            {% if portalBlock.description|default('') %}
-                <p class="hero-desc">{{ portalBlock.description }}</p>
-            {% endif %}
+            <p class="hero-label">{{ 'hero.label'|trans({}, t) }}</p>
+            <h1 class="hero-title">CPalius <span class="text-accent">CMF</span></h1>
+            <p class="hero-subtitle">
+                <span>{{ 'hero.subtitle_line1'|trans({}, t) }}</span><br>
+                <em>{{ 'hero.subtitle_em'|trans({}, t) }}</em>
+                <span>{{ 'hero.subtitle_line2'|trans({}, t) }}</span>
+            </p>
+            <p class="hero-desc">{{ 'hero.desc'|trans({}, t) }}</p>
             <div class="hero-actions">
-                {% if portalBlock.cta_primary_label|default('') %}
-                    <a href="{{ portalBlock.cta_primary_href|default('#') }}" class="btn btn-primary">
-                        <i class="bi bi-book"></i> {{ portalBlock.cta_primary_label }}
-                    </a>
-                {% endif %}
-                {% if portalBlock.cta_secondary_label|default('') %}
-                    <a href="{{ portalBlock.cta_secondary_href|default('#') }}" class="btn btn-secondary">
-                        <i class="bi bi-diagram-3"></i> {{ portalBlock.cta_secondary_label }}
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
-                {% endif %}
+                <a href="{{ path('theme_whitepaper', {_locale: app.request.locale}) }}" class="btn btn-primary">
+                    <i class="bi bi-book"></i> {{ 'hero.cta_whitepaper'|trans({}, t) }}
+                </a>
+                <a href="#architecture" class="btn btn-secondary">
+                    <i class="bi bi-diagram-3"></i> {{ 'hero.cta_architecture'|trans({}, t) }}
+                    <i class="bi bi-arrow-right"></i>
+                </a>
             </div>
-            {% set badges = portalBlock.badges|default('')|split(',') %}
-            {% if badges|length > 0 and portalBlock.badges|default('') != '' %}
-                <div class="hero-tech-badges">
-                    {% for badge in badges %}
-                        {% set badgeText = badge|trim %}
-                        {% if badgeText %}
-                            <span class="badge">{{ badgeText }}</span>
-                        {% endif %}
-                    {% endfor %}
-                </div>
-            {% endif %}
+            <div class="hero-tech-badges">
+                <span class="badge">PHP 8.2+</span>
+                <span class="badge">Symfony 7.4 LTS</span>
+                <span class="badge">Doctrine ORM</span>
+                <span class="badge">AssetMapper</span>
+                <span class="badge">{{ 'hero.badge_opensource'|trans({}, t) }}</span>
+            </div>
         </div>
 
         <div class="hero-visual">

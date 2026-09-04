@@ -4,13 +4,14 @@
     "minimum-stability": "stable",
     "prefer-stable": true,
     "require": {
-        "php": ">=8.2",
+        "php": ">=8.4",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "doctrine/doctrine-bundle": "^3.2",
-        "doctrine/doctrine-migrations-bundle": "^4.0",
-        "doctrine/orm": "^3.6",
-        "league/flysystem-bundle": "^3.7",
+        "ext-fileinfo": "*",
+        "doctrine/doctrine-bundle": "^3.3.1",
+        "doctrine/doctrine-migrations-bundle": "^4.0.1",
+        "doctrine/orm": "^3.6.8",
+        "league/flysystem-bundle": "^3.7.1",
         "symfony/asset-mapper": "7.4.*",
         "symfony/console": "7.4.*",
         "symfony/dotenv": "7.4.*",
@@ -18,6 +19,7 @@
         "symfony/form": "7.4.*",
         "symfony/framework-bundle": "7.4.*",
         "symfony/html-sanitizer": "7.4.*",
+        "symfony/mailer": "7.4.*",
         "symfony/messenger": "7.4.*",
         "symfony/mime": "7.4.*",
         "symfony/process": "7.4.*",
@@ -29,11 +31,22 @@
         "symfony/translation": "7.4.*",
         "symfony/twig-bundle": "7.4.*",
         "symfony/uid": "7.4.*",
-        "symfony/ux-icons": "^3.3",
-        "symfony/ux-twig-component": "^3.3",
+        "symfony/ux-icons": "^3.4",
+        "symfony/ux-twig-component": "^3.4",
         "symfony/validator": "7.4.*",
         "symfony/yaml": "7.4.*",
         "symfonycasts/tailwind-bundle": "^0.14.0"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.95.24",
+        "phpstan/phpstan": "^2.2.12",
+        "phpstan/phpstan-doctrine": "^2.0.28",
+        "phpstan/phpstan-phpunit": "^2.0.18",
+        "phpstan/phpstan-symfony": "^2.0.20",
+        "phpunit/phpunit": "^11.5.56",
+        "symfony/browser-kit": "7.4.*",
+        "symfony/css-selector": "7.4.*",
+        "symfony/phpunit-bridge": "^7.4.18"
     },
     "config": {
         "allow-plugins": {
@@ -54,7 +67,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "App\\Tests\\": "cp-core/tests/"
+            "App\\Tests\\": "cp-core/tests/",
+            "Modules\\": "cp-core/tests/Fixtures/Modules/"
         }
     },
     "replace": {
@@ -78,6 +92,20 @@
         ],
         "post-update-cmd": [
             "@auto-scripts"
+        ],
+        "lint": [
+            "@php cp-core/bin/console lint:container",
+            "@php cp-core/bin/console lint:yaml cp-core/config cp-content --parse-tags",
+            "@php cp-core/bin/console lint:twig cp-core/templates cp-content"
+        ],
+        "phpstan": "@php cp-includes/vendor/bin/phpstan analyse --memory-limit=1G",
+        "cs-check": "@php cp-includes/vendor/bin/php-cs-fixer fix --dry-run --diff",
+        "cs-fix": "@php cp-includes/vendor/bin/php-cs-fixer fix",
+        "test": "@php cp-includes/vendor/bin/phpunit",
+        "ci": [
+            "@lint",
+            "@phpstan",
+            "@test"
         ]
     },
     "conflict": {

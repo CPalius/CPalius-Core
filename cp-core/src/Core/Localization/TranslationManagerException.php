@@ -8,9 +8,7 @@ use RuntimeException;
 use Throwable;
 
 /**
- * TranslationManager'ın attığı TEK hata türü — controller seviyesinde
- * yakalanıp kullanıcıya flash-mesaj/JSON hatası olarak gösterilir, asla
- * 500'e düşürülmez (Core Never Dies).
+ * Only exception type from TranslationManager. Controllers turn it into flash/JSON — never HTTP 500.
  */
 final class TranslationManagerException extends RuntimeException
 {

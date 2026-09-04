@@ -1,18 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core\Module;
 
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Throwable;
 
 /**
- * Aktif modül listesini karantina kurallarıyla birlikte çözer.
- *
- * Bu sınıf, DI container henüz boot olmadan (config/bundles.php aşamasında)
- * çağrılabilecek şekilde tasarlanmıştır: hiçbir bağımlılığı yoktur, sadece
- * dosya sistemi ve autoloader ile konuşur. Container boot olduktan sonra
- * aynı sınıf bir servis olarak da kullanılabilir (ör. admin panelinde
- * karantina uyarılarını göstermek için).
+ * Resolves the active module list and applies the quarantine rules.
+ * Dependency-free by design: it runs before the DI container exists (bundles.php stage).
  */
 final class ModuleRegistry
 {
@@ -27,8 +24,8 @@ final class ModuleRegistry
     }
 
     /**
-     * config/active_modules.php dosyasını okur, her modül sınıfını
-     * doğrular; bozuk olanları karantinaya alıp listeden çıkarır.
+     * Reads active_modules.php and validates every module class,
+     * quarantining and dropping the broken ones.
      *
      * @return list<class-string<BundleInterface>>
      */
@@ -37,15 +34,16 @@ final class ModuleRegistry
         $this->quarantined = [];
 
         $declaredModules = $this->loadDeclaredModules();
-
         $healthy = [];
+
         foreach ($declaredModules as $moduleClass) {
-            if (!is_string($moduleClass) || $moduleClass === '') {
-                $this->quarantine('(geçersiz girdi)', 'active_modules.php içinde boş veya geçersiz bir modül tanımı bulundu.');
+            if (!\is_string($moduleClass) || $moduleClass === '') {
+                $this->quarantine('(invalid entry)', 'active_modules.php contains an empty or invalid module entry.');
                 continue;
             }
 
             $reason = $this->validate($moduleClass);
+
             if ($reason !== null) {
                 $this->quarantine($moduleClass, $reason);
                 continue;
@@ -70,37 +68,30 @@ final class ModuleRegistry
     }
 
     /**
-     * Bir modülü DIŞARIDAN (ör. cp:module:activate dry-run başarısız
-     * olduğunda) kalıcı olarak karantina logına yazar. getHealthyModuleBundles()
-     * akışından bağımsızdır: burada modül active_modules.php'ye hiç
-     * yazılmamıştır, sadece "bu modülü aktive etmeyi deneme, denendi ve
-     * başarısız oldu" kaydı düşülür.
+     * Records a permanent quarantine entry for a module that was never written to
+     * active_modules.php, e.g. one whose activation dry-run failed.
      */
     public function quarantinePermanently(string $moduleClass, string $reason): void
     {
         $dir = \dirname($this->quarantineLogFile);
+
         if (!is_dir($dir)) {
             @mkdir($dir, 0775, true);
         }
 
         $line = sprintf(
-            '[%s] %s modülü aktivasyon ön kontrolünde (dry-run) başarısız olduğu için karantinaya alındı. Sebep: %s',
+            '[%s] %s was quarantined after failing its activation pre-flight check. Reason: %s',
             date('Y-m-d H:i:s'),
             $moduleClass,
             $reason,
         );
 
-        @file_put_contents($this->quarantineLogFile, $line.PHP_EOL, FILE_APPEND | LOCK_EX);
+        @file_put_contents($this->quarantineLogFile, $line.\PHP_EOL, \FILE_APPEND | \LOCK_EX);
     }
 
     /**
-     * cp-content/modules/ altındaki TÜM modül klasörlerini (aktif olsun
-     * olmasın) tarar; her biri için module.json'dan ad/versiyon bilgisini,
-     * active_modules.php + validate() sonucuna göre de durumunu üretir.
-     *
-     * cp:module:list gibi tanısal komutlar için tasarlanmıştır;
-     * getHealthyModuleBundles()'ın aksine burada hiçbir şey karantina
-     * listesine yazılmaz, sadece durum raporlanır.
+     * Scans every module directory (active or not) and reports its status.
+     * Diagnostic only: unlike getHealthyModuleBundles(), nothing is quarantined here.
      *
      * @return list<array{
      *     dirName: string,
@@ -118,14 +109,15 @@ final class ModuleRegistry
         }
 
         $declaredModules = $this->loadDeclaredModules();
-
         $modules = [];
+
         foreach (scandir($this->modulesDir) ?: [] as $dirName) {
             if ($dirName === '.' || $dirName === '..') {
                 continue;
             }
 
             $moduleDir = $this->modulesDir.'/'.$dirName;
+
             if (!is_dir($moduleDir)) {
                 continue;
             }
@@ -138,27 +130,28 @@ final class ModuleRegistry
 
     /**
      * @param list<mixed> $declaredModules
+     *
      * @return array{dirName: string, name: string, version: string, class: ?string, status: 'active'|'inactive'|'quarantined', reason: ?string}
      */
     private function describeModule(string $dirName, string $moduleDir, array $declaredModules): array
     {
-        $manifest = $this->readManifest($moduleDir);
-        $name = $manifest['name'] ?? $dirName;
-        $version = $manifest['version'] ?? 'unknown';
-        $moduleClass = $manifest['bundle'] ?? null;
+        $manifest = ModuleManifest::fromDirectory($moduleDir);
+        $name = $manifest?->name ?? $dirName;
+        $version = $manifest?->version ?? 'unknown';
+        $moduleClass = $manifest?->bundle;
 
-        if (!is_string($moduleClass) || $moduleClass === '') {
+        if ($moduleClass === null) {
             return [
                 'dirName' => $dirName,
                 'name' => $name,
                 'version' => $version,
                 'class' => null,
                 'status' => 'quarantined',
-                'reason' => 'module.json içinde geçerli bir "bundle" alanı bulunamadı.',
+                'reason' => 'module.json is missing a valid "bundle" field.',
             ];
         }
 
-        $isDeclared = in_array($moduleClass, $declaredModules, true);
+        $isDeclared = \in_array($moduleClass, $declaredModules, true);
         $validationError = $this->validate($moduleClass);
 
         if ($validationError !== null) {
@@ -183,26 +176,6 @@ final class ModuleRegistry
     }
 
     /**
-     * @return array{name?: string, version?: string, bundle?: string}
-     */
-    private function readManifest(string $moduleDir): array
-    {
-        $manifestFile = $moduleDir.'/module.json';
-        if (!is_file($manifestFile)) {
-            return [];
-        }
-
-        try {
-            $contents = file_get_contents($manifestFile);
-            $data = $contents === false ? null : json_decode($contents, true, flags: JSON_THROW_ON_ERROR);
-        } catch (Throwable) {
-            return [];
-        }
-
-        return is_array($data) ? $data : [];
-    }
-
-    /**
      * @return list<mixed>
      */
     private function loadDeclaredModules(): array
@@ -214,45 +187,42 @@ final class ModuleRegistry
         try {
             $modules = require $this->activeModulesFile;
         } catch (Throwable $e) {
-            // active_modules.php dosyasının kendisi bile syntax hatası
-            // içerebilir; bu durumda tüm modül sistemi devre dışı kalır
-            // ama Core hâlâ ayağa kalkar.
-            $this->quarantine('(active_modules.php)', 'Dosya okunamadı: '.$e->getMessage());
+            // Even active_modules.php itself may be broken; the module system then
+            // stays disabled while the core still boots.
+            $this->quarantine('(active_modules.php)', 'File could not be read: '.$e->getMessage());
 
             return [];
         }
 
-        return is_array($modules) ? array_values($modules) : [];
+        return \is_array($modules) ? array_values($modules) : [];
     }
 
     /**
-     * Modül sınıfını doğrular. Sorun yoksa null, varsa sebep metni döner.
+     * Validates a module class. Returns null when healthy, otherwise the reason.
      */
     private function validate(string $moduleClass): ?string
     {
-        // 1) Autoloader sınıfı fiziksel olarak bulup yükleyebiliyor mu?
-        //    (Bir syntax hatası burada Throwable olarak fırlar; class_exists
-        //    otomatik require tetikler.)
+        // class_exists() triggers the autoloader, so a syntax error surfaces here.
         try {
             $exists = class_exists($moduleClass);
         } catch (Throwable $e) {
-            return sprintf('Sınıf yüklenirken hata oluştu: %s', $e->getMessage());
+            return sprintf('Class could not be loaded: %s', $e->getMessage());
         }
 
         if (!$exists) {
-            return 'Sınıf bulunamadı (dosya eksik olabilir veya namespace/dosya adı uyuşmuyor).';
+            return 'Class not found (missing file, or namespace and filename do not match).';
         }
 
-        // 2) Sözleşmeye uyuyor mu? (Her Module aynı zamanda bir Bundle olmalı.)
+        // Contract check: every module must also be a Symfony bundle.
         try {
             $implementsBundle = is_subclass_of($moduleClass, BundleInterface::class)
-                || in_array(BundleInterface::class, class_implements($moduleClass) ?: [], true);
+                || \in_array(BundleInterface::class, class_implements($moduleClass) ?: [], true);
         } catch (Throwable $e) {
-            return sprintf('Sınıf denetlenirken hata oluştu: %s', $e->getMessage());
+            return sprintf('Class could not be inspected: %s', $e->getMessage());
         }
 
         if (!$implementsBundle) {
-            return sprintf('%s sınıfı BundleInterface uygulamıyor.', $moduleClass);
+            return sprintf('%s does not implement BundleInterface.', $moduleClass);
         }
 
         return null;
@@ -269,14 +239,16 @@ final class ModuleRegistry
     private function flushQuarantineLog(): void
     {
         $dir = \dirname($this->quarantineLogFile);
+
         if (!is_dir($dir)) {
             @mkdir($dir, 0775, true);
         }
 
         $lines = [];
+
         foreach ($this->quarantined as $entry) {
             $lines[] = sprintf(
-                '[%s] %s modülü karantinaya alındı. Sebep: %s',
+                '[%s] %s was quarantined. Reason: %s',
                 date('Y-m-d H:i:s'),
                 $entry['class'],
                 $entry['reason'],
@@ -285,8 +257,8 @@ final class ModuleRegistry
 
         @file_put_contents(
             $this->quarantineLogFile,
-            implode(PHP_EOL, $lines).PHP_EOL,
-            FILE_APPEND | LOCK_EX,
+            implode(\PHP_EOL, $lines).\PHP_EOL,
+            \FILE_APPEND | \LOCK_EX,
         );
     }
 }

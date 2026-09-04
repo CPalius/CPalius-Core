@@ -14,17 +14,8 @@ use Symfony\Component\DependencyInjection\Reference;
 use Throwable;
 
 /**
- * #[CpApi] ile işaretlenmiş TÜM servis metotlarını derleme zamanında
- * toplayan ve ApiGatewayController'ın lazy ServiceLocator'ına bağlayan
- * pass. HookRegistrationPass ile BİREBİR AYNI iskelet (aynı modül
- * izolasyonu, aynı ServiceLocatorTagPass kullanımı) — tek fark taranan
- * attribute (#[CpApi]) ve üretilen tanımın şekli (path/methods/public).
- *
- * Çakışan path+method çiftleri (iki modülün aynı uç noktayı tanımlaması)
- * BİLİNÇLİ olarak hata FIRLATMAZ: "Core Never Dies" ruhuyla, ilk bulunan
- * tanım kazanır, sonrakiler sessizce atlanır (bkz. process() içindeki
- * $seen kontrolü) — bir modülün kötü niyetli/hatalı bir #[CpApi] tanımı
- * container derlemesini asla durduramaz.
+ * Compile-time collector for #[CpApi] methods; binds them to the gateway's lazy locator.
+ * Duplicate path+method pairs keep the first definition; later ones are skipped (never abort compile).
  */
 final class ApiRegistrationPass implements CompilerPassInterface
 {
@@ -72,8 +63,7 @@ final class ApiRegistrationPass implements CompilerPassInterface
                     $serviceIds[$item['serviceId']] = true;
                 }
             } catch (Throwable) {
-                // Modül izolasyonu: bir modülün dizini taranırken hata
-                // oluşursa sadece o modülün API uç noktaları kayıt olmaz.
+                // Module isolation: a scan error drops only that module's API endpoints.
             }
         }
 

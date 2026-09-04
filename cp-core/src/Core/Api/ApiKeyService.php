@@ -9,24 +9,8 @@ use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * "/api/*" uç noktalarını koruyan API anahtarlarının tek doğruluk kaynağı.
- *
- * Ekstra tablo şişkinliği yaratmamak için (talep gereği) anahtarlar
- * cp_settings tablosunda TEK bir satırda ("core.api_keys", module: "core"),
- * setting_value sütununa JSON-encode edilmiş bir dizi olarak saklanır.
- * SettingsRegistry/#[CpSetting] sistemine BİLİNÇLİ olarak DAHİL EDİLMEZ:
- * o sistem "tanım zamanında sabit, değeri DB'den okunan tekil skalarlar"
- * için tasarlandı (bkz. SettingsRegistry docblock'u); API anahtarları ise
- * çalışma zamanında büyüyüp küçülen bir LİSTEdir ve kendi CRUD mantığına
- * (üret/sil/pasif et) ihtiyaç duyar — bu yüzden ayrı, özel bir servis.
- *
- * Güvenlik: düz metin anahtarın KENDİSİ hiçbir zaman kalıcı olarak
- * saklanmaz. Sadece SHA-256 hash'i (hash_equals ile zamanlama saldırısına
- * dirençli karşılaştırma için) ve son 4 karakteri (yönetim ekranında
- * "sk_....a1b2" gibi teşhis amaçlı gösterim için) tutulur. Üretilen
- * anahtar SADECE generate() çağrısının dönüş değerinde, TEK SEFERLİK
- * olarak görünür — AACP panelinde de aynı kural geçerlidir (bkz.
- * ApiKeyController::create()).
+ * API keys stored as one JSON list in cp_settings (core.api_keys), not as #[CpSetting] scalars.
+ * Only SHA-256 hashes and last-4 are persisted; plaintext is returned once from generate().
  */
 final class ApiKeyService
 {
@@ -40,9 +24,7 @@ final class ApiKeyService
     }
 
     /**
-     * Kriptografik olarak güvenli, rastgele bir API anahtarı üretir,
-     * hash'ini kalıcı listeye ekler ve DÜZ METİN anahtarı (bir daha asla
-     * geri getirilemeyecek şekilde) döner.
+     * Create a random key, persist its hash, and return the plaintext once.
      *
      * @return array{key: string, apiKey: ApiKey}
      */
@@ -112,10 +94,7 @@ final class ApiKeyService
     }
 
     /**
-     * Gelen X-CP-API-KEY header değerinin sistemde kayıtlı, AKTİF bir
-     * anahtarın hash'iyle eşleşip eşleşmediğini doğrular. hash_equals()
-     * BİLİNÇLİ olarak kullanılır (=== veya strcmp() DEĞİL): karşılaştırma
-     * süresi anahtarın içeriğine bağlı olmamalıdır (timing attack koruması).
+     * Compare the provided key against active hashes with hash_equals() (timing-safe).
      */
     public function isValid(string $providedKey): bool
     {

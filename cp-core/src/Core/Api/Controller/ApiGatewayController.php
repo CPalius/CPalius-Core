@@ -14,32 +14,13 @@ use Symfony\Component\Routing\Attribute\Route;
 use Throwable;
 
 /**
- * Faz 7B: Modüler REST API sisteminin ÇEKİRDEK giriş kapısı.
- *
- * Gelen TÜM "/api/*" isteklerini tek bir route ile yakalar (bkz. #[Route]
- * altındaki wildcard) ve #[CpApi] ile tescillenmiş metotlarla path+method
- * eşleşmesine göre eşleştirip çalıştırır. Cotonti'nin "tek dosya = tek
- * uç nokta" pratik felsefesiyle Symfony'nin routing derleme karmaşığını
- * (her modülün kendi routes.yaml'ını API için ayrıca tanımlaması) BİLİNÇLİ
- * olarak devre dışı bırakır: modül geliştiricisi tek bir #[CpApi] attribute'u
- * ekler, gerisini bu gateway halleder.
- *
- * Kimlik Doğrulama: $public === false olan (varsayılan) her uç nokta için
- * "X-CP-API-KEY" header'ı ApiKeyService::isValid() ile doğrulanır. Geçersiz/
- * eksik anahtar -> anında düz JSON '{"error": "Unauthorized"}' + HTTP 401,
- * hedef metot HİÇ ÇAĞRILMAZ (fail-closed).
- *
- * Core Never Dies Zırhı: eşleşen metodun ÇALIŞTIRILMASI try/catch(Throwable)
- * içine alınır. Bir API endpoint'i çökerse tüm gateway'i (dolayısıyla
- * diğer TÜM API uç noktalarını) 500'e düşürmez; sadece o isteğe düz JSON
- * '{"error": "Internal API Error"}' + HTTP 500 döner, hata module_quarantine.log'a
- * yazılır.
+ * Single /api/* gateway for #[CpApi] methods. Non-public endpoints require X-CP-API-KEY (fail-closed).
+ * Handler failures return 500 JSON and go to module_quarantine.log; they do not take down the gateway.
  */
 final class ApiGatewayController
 {
     /**
-     * @param ContainerInterface $serviceLocator #[CpApi] taşıyan servisleri
-     *   id'leriyle lazy çözen bir ServiceLocator (bkz. ApiRegistrationPass).
+     * @param ContainerInterface $serviceLocator Lazy locator for #[CpApi] services.
      * @param list<array{path: string, methods: list<string>, public: bool, serviceId: string, method: string}> $apiEndpoints
      */
     public function __construct(
@@ -107,22 +88,36 @@ final class ApiGatewayController
     }
 
     /**
-     * "/blog/posts/{id}" kalıbını gerçek "/blog/posts/42" yoluyla eşleştirir.
-     * Eşleşirse yakalanan {param} değerlerini SIRALI bir liste olarak döner
-     * (hedef metoda pozisyonel argüman olarak geçirilir), eşleşmezse null.
+     * Match "/blog/posts/{id}" to a request path. Quote literals only (API-01/02); first match wins.
      *
-     * @return list<string>|null
+     * @return list<string>|null Captured {param} values in order, or null.
      */
     private function matchPath(string $pattern, string $requestPath): ?array
     {
-        $regex = preg_replace('/\{[a-zA-Z_][a-zA-Z0-9_]*\}/', '([^/]+)', preg_quote($pattern, '#'));
-        $regex = str_replace('\\', '', $regex ?? '');
+        // Keep placeholders in the split result so literals and {params} stay in order.
+        $segments = preg_split(
+            '/(\{[a-zA-Z_][a-zA-Z0-9_]*\})/',
+            $pattern,
+            -1,
+            \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY,
+        );
+
+        if ($segments === false) {
+            return null;
+        }
+
+        $regex = '';
+        foreach ($segments as $segment) {
+            $regex .= preg_match('/^\{[a-zA-Z_][a-zA-Z0-9_]*\}$/', $segment) === 1
+                ? '([^/]+)'
+                : preg_quote($segment, '#');
+        }
 
         if (preg_match('#^'.$regex.'$#', $requestPath, $matches) !== 1) {
             return null;
         }
 
-        return array_slice($matches, 1);
+        return array_values(array_slice($matches, 1));
     }
 
     private function hasValidApiKey(Request $request): bool

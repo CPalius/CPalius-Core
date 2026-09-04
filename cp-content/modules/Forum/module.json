@@ -1,7 +1,14 @@
 {
     "name": "Forum",
     "version": "1.0.0",
-    "description": "CPalius forum modülü — bölüm, konu ve mesaj yönetimi.",
+    "description": "CPalius forum module: sections, topics and posts.",
     "author": "CPalius",
-    "bundle": "Modules\\Forum\\ForumModule"
+    "bundle": "Modules\\Forum\\ForumModule",
+    "core_version": "^1.0",
+    "requires": {},
+    "conflicts": {},
+    "provides": [
+        "forum",
+        "content-feed"
+    ]
 }

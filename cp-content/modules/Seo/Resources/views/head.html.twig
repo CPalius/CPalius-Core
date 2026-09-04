@@ -1,0 +1,44 @@
+<title>{{ title }}</title>
+{% if description %}
+<meta name="description" content="{{ description|e('html_attr') }}">
+{% endif %}
+<meta name="robots" content="{{ robots|e('html_attr') }}">
+<link rel="canonical" href="{{ canonical }}">
+{{ hreflang|raw }}
+{% if prevUrl %}<link rel="prev" href="{{ prevUrl }}">{% endif %}
+{% if nextUrl %}<link rel="next" href="{{ nextUrl }}">{% endif %}
+<meta property="og:type" content="{{ ogType|e('html_attr') }}">
+<meta property="og:site_name" content="{{ siteName|e('html_attr') }}">
+<meta property="og:title" content="{{ ogTitle|e('html_attr') }}">
+{% if ogDescription %}
+<meta property="og:description" content="{{ ogDescription|e('html_attr') }}">
+{% endif %}
+<meta property="og:url" content="{{ canonical }}">
+<meta property="og:locale" content="{{ ogLocale|e('html_attr') }}">
+{% if ogImage %}
+<meta property="og:image" content="{{ ogImage }}">
+{% endif %}
+<meta name="twitter:card" content="{{ twitterCard|e('html_attr') }}">
+<meta name="twitter:title" content="{{ ogTitle|e('html_attr') }}">
+{% if ogDescription %}
+<meta name="twitter:description" content="{{ ogDescription|e('html_attr') }}">
+{% endif %}
+{% if ogImage %}
+<meta name="twitter:image" content="{{ ogImage }}">
+{% endif %}
+{% if twitterSite %}
+<meta name="twitter:site" content="{{ twitterSite|e('html_attr') }}">
+{% endif %}
+{% if facebookAppId %}
+<meta property="fb:app_id" content="{{ facebookAppId|e('html_attr') }}">
+{% endif %}
+{% if googleVerification %}
+<meta name="google-site-verification" content="{{ googleVerification|e('html_attr') }}">
+{% endif %}
+{% if bingVerification %}
+<meta name="msvalidate.01" content="{{ bingVerification|e('html_attr') }}">
+{% endif %}
+{% if yandexVerification %}
+<meta name="yandex-verification" content="{{ yandexVerification|e('html_attr') }}">
+{% endif %}
+<script type="application/ld+json">{{ schemaJson|raw }}</script>

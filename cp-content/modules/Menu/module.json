@@ -1,7 +1,13 @@
 {
     "name": "Menu",
     "version": "1.0.0",
-    "description": "CPalius WordPress tarzı frontend menü yönetimi.",
+    "description": "WordPress-style frontend menu management.",
     "author": "CPalius",
-    "bundle": "Modules\\Menu\\MenuModule"
+    "bundle": "Modules\\Menu\\MenuModule",
+    "core_version": "^1.0",
+    "requires": {},
+    "conflicts": {},
+    "provides": [
+        "menu"
+    ]
 }

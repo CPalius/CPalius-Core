@@ -2,6 +2,10 @@
 
 {% block header %}{{ 'aacp.performance.header'|trans }}{% endblock %}
 
+{% block javascripts %}
+    {{ importmap(['app', 'aacp-performance']) }}
+{% endblock %}
+
 {% block body %}
     <div class="space-y-sp-md">
         {{ include('aacp/performance/_backend_card.html.twig', {
@@ -36,7 +40,10 @@
             title: 'aacp.performance.backend.varnish'|trans,
             fields: [
                 {key: 'backend_url', label: 'aacp.performance.field.backend_url'|trans},
+                {key: 'port', label: 'aacp.performance.field.port'|trans},
+                {key: 'ttl', label: 'aacp.performance.field.ttl'|trans},
                 {key: 'timeout', label: 'aacp.performance.field.timeout'|trans},
+                {key: 'excludes', label: 'aacp.performance.field.excludes'|trans, type: 'textarea', hint: 'aacp.performance.field.excludes_hint'|trans, wide: true},
             ],
             config: sections.varnish.config,
             status: sections.varnish.status,
@@ -55,6 +62,4 @@
             csrf_token: csrf_token,
         }) }}
     </div>
-
-    {{ importmap('aacp-performance') }}
 {% endblock %}

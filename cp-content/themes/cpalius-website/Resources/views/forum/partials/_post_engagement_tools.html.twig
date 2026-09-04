@@ -1,0 +1,51 @@
+{# Like / dislike / reputation / quote — below post body #}
+<div class="forum-post__engagement">
+    {% set canReact = cp_is_granted('forum.post.like') and post.author and cp_user() and post.author.id != cp_user().id %}
+    {% if canReact %}
+        {% set isLiked = likedPostIds[post.id]|default(false) %}
+        {% set isDisliked = dislikedPostIds[post.id]|default(false) %}
+        <form method="post" action="{{ path('forum_like_post', {postId: post.id, page: posts.currentPage}) }}" data-like-form>
+            <input type="hidden" name="_token" value="{{ csrf_token('forum_like_post') }}">
+            <button type="submit" class="forum-tool-btn forum-tool-btn--like forum-like-btn {{ isLiked ? 'is-liked' : '' }}" title="{{ 'forum.action.like'|trans }}">
+                <i class="bi {{ isLiked ? 'bi-heart-fill' : 'bi-heart' }}"></i>
+                <span data-like-count>{{ likeCounts[post.id]|default(0) }}</span>
+            </button>
+        </form>
+        <form method="post" action="{{ path('forum_dislike_post', {postId: post.id, page: posts.currentPage}) }}" data-dislike-form>
+            <input type="hidden" name="_token" value="{{ csrf_token('forum_dislike_post') }}">
+            <button type="submit" class="forum-tool-btn forum-tool-btn--dislike forum-dislike-btn {{ isDisliked ? 'is-disliked' : '' }}" title="{{ 'forum.action.dislike'|trans }}">
+                <i class="bi {{ isDisliked ? 'bi-hand-thumbs-down-fill' : 'bi-hand-thumbs-down' }}"></i>
+                <span data-dislike-count>{{ dislikeCounts[post.id]|default(0) }}</span>
+            </button>
+        </form>
+    {% elseif cp_is_granted('forum.post.like') %}
+        {# Own post: show counts read-only, no toggle #}
+        <span class="forum-tool-btn forum-tool-btn--like is-disabled" title="{{ 'site.forum.react.own_post_denied'|trans }}">
+            <i class="bi bi-heart"></i>
+            <span>{{ likeCounts[post.id]|default(0) }}</span>
+        </span>
+        <span class="forum-tool-btn forum-tool-btn--dislike is-disabled" title="{{ 'site.forum.react.own_post_denied'|trans }}">
+            <i class="bi bi-hand-thumbs-down"></i>
+            <span>{{ dislikeCounts[post.id]|default(0) }}</span>
+        </span>
+    {% endif %}
+    {% if reputationEnabled|default(false) and cp_is_granted('forum.reputation.give') and post.author and cp_user() and post.author.id != cp_user().id %}
+        <button type="button"
+            class="forum-tool-btn"
+            data-rep-open
+            data-rep-user="{{ post.author.profileSlug }}"
+            data-rep-name="{{ post.posterName }}"
+            data-rep-post="{{ post.id }}"
+            data-rep-topic="{{ topic.id }}"
+            title="{{ 'forum.action.give_rep'|trans }}">
+            <i class="bi bi-award"></i>
+            <span class="forum-post__engagement-label">{{ 'forum.action.give_rep'|trans }}</span>
+        </button>
+    {% endif %}
+    {% if canReply %}
+        <button type="button" class="forum-tool-btn" data-quote-btn data-quote-post="{{ post.id }}" data-quote-author="{{ post.posterName }}" data-quote-body="{{ post.body|striptags }}" title="{{ 'action.quote'|trans({}, 'forums') }}">
+            <i class="bi bi-chat-quote"></i>
+            <span class="forum-post__engagement-label">{{ 'action.quote'|trans({}, 'forums') }}</span>
+        </button>
+    {% endif %}
+</div>

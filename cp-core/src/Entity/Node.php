@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Core\Annotation\Publishable;
 use App\Core\Annotation\SoftDeletable;
 use App\Core\Database\Traits\SoftDeletableTrait;
+use App\Core\Localization\Contract\TranslatableInterface;
 use App\Core\Security\OwnableInterface;
 use App\Repository\NodeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -37,11 +38,12 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(columns: ['type'], name: 'idx_node_type')]
 #[ORM\Index(columns: ['status'], name: 'idx_node_status')]
 #[ORM\Index(columns: ['locale'], name: 'idx_node_locale')]
+#[ORM\Index(columns: ['type', 'locale', 'status', 'published_at'], name: 'idx_node_type_locale_status_published')]
 #[ORM\UniqueConstraint(name: 'uniq_node_slug_locale', columns: ['slug', 'locale'])]
 #[ORM\UniqueConstraint(name: 'uniq_node_translation_group_locale', columns: ['translation_group_id', 'locale'])]
 #[Publishable(defaultStatus: Node::STATUS_DRAFT)]
 #[SoftDeletable]
-class Node implements OwnableInterface
+class Node implements OwnableInterface, TranslatableInterface
 {
     use SoftDeletableTrait;
 
@@ -259,6 +261,34 @@ class Node implements OwnableInterface
         $this->touch();
 
         return $this;
+    }
+
+    /**
+     * FAZ 3: içeriği grubundan çıkarır (tekilleştirir). Gruptaki diğer
+     * diller etkilenmez — grup bir FK değil, paylaşılan bir etikettir.
+     */
+    public function leaveTranslationGroup(): static
+    {
+        $this->translationGroupId = null;
+        $this->touch();
+
+        return $this;
+    }
+
+    /**
+     * FAZ 3: içerik bir gruba dahil değilse yeni bir grup üretir, dahilse
+     * mevcut grubu döndürür (bkz. TranslationGroupResolver::link()).
+     */
+    public function ensureTranslationGroup(): Uuid
+    {
+        if (!$this->translationGroupId instanceof Uuid) {
+            $this->assignToNewTranslationGroup();
+        }
+
+        /** @var Uuid $translationGroupId assignToNewTranslationGroup() her zaman doldurur */
+        $translationGroupId = $this->translationGroupId;
+
+        return $translationGroupId;
     }
 
     /**

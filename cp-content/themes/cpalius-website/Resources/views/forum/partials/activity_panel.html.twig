@@ -68,7 +68,7 @@
                         <li class="forum-activity__empty">{{ 'forum.activity.empty'|trans }}</li>
                     {% else %}
                         {% for item in chunk.items %}
-                            {% include '@CpaliusWebsiteTheme/forum/partials/_activity_row.html.twig' with { item: item } %}
+                            {% include '@Theme/forum/partials/_activity_row.html.twig' with { item: item } %}
                         {% endfor %}
                     {% endif %}
                 </ul>

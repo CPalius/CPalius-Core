@@ -3,7 +3,7 @@
     Beklenen: post (App\Entity\Node, type='post').
 #}
 <article class="slw-feed-card blog-card--makale slw-ctype--makale fade-in">
-    {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_cover.html.twig' with { post: post } %}
+    {% include '@Theme/blog/partials/_feed_card_cover.html.twig' with { post: post } %}
 
     <div class="slw-feed-card__body">
         <div class="slw-feed-card__head">
@@ -15,6 +15,6 @@
         <h4 class="slw-feed-card__title blog-card__title--editorial">
             <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
         </h4>
-        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+        {% include '@Theme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
     </div>
 </article>

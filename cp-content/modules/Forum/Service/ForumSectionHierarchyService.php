@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
-use App\Entity\ForumSection;
-use App\Repository\ForumSectionRepository;
+use Modules\Forum\Entity\ForumSection;
+use Modules\Forum\Repository\ForumSectionRepository;
 use App\Repository\UserRepository;
 use Modules\Forum\ForumSectionType;
 
 /**
- * Forum > Bölüm > Kategori > Alt kategori hiyerarşisini çözer.
+ * Resolves Forum > Division > Category > Subcategory hierarchy.
  */
 final class ForumSectionHierarchyService
 {
@@ -60,7 +60,7 @@ final class ForumSectionHierarchyService
     }
 
     /**
-     * @return list<ForumSection> Konu taşıma hedefi olabilecek alt kategoriler
+     * @return list<ForumSection> Subcategories that can receive a moved topic
      */
     public function getTopicBoards(string $locale, ?ForumSection $exclude = null): array
     {
@@ -81,8 +81,7 @@ final class ForumSectionHierarchyService
     }
 
     /**
-     * Locale için tüm bölümleri tek sorguda yükler; getChildren() lazy-load
-     * döngüsünü engellemek için parent_id ile bellek içi indeks oluşturur.
+     * Load all sections for the locale in one query and index children by parent_id (avoids lazy-load N+1).
      */
     private function ensureLocaleLoaded(string $locale): void
     {
@@ -188,7 +187,7 @@ final class ForumSectionHierarchyService
     }
 
     /**
-     * Tek bir bölüm/kategori sayfası için indexTree formatında veri.
+     * indexTree payload for a single division/category page.
      *
      * @return list<array{division: ForumSection, categories: list<array{category: ForumSection, subcategories: list<ForumSection>}>, directSubcategories: list<ForumSection>}>
      */
@@ -219,7 +218,7 @@ final class ForumSectionHierarchyService
     }
 
     /**
-     * @return list<ForumSection> kökten (bölüm) mevcut düğüme kadar
+     * @return list<ForumSection> From the root division down to the current node
      */
     public function getAncestors(ForumSection $section): array
     {
@@ -237,7 +236,7 @@ final class ForumSectionHierarchyService
     }
 
     /**
-     * @return list<ForumSection> mevcut düğüm dahil
+     * @return list<ForumSection> Including the current node
      */
     public function getBreadcrumbChain(ForumSection $section): array
     {
@@ -272,8 +271,7 @@ final class ForumSectionHierarchyService
     }
 
     /**
-     * section_type sütunu ile is_container/allow_topics/parent_id birbiriyle
-     * uyumsuzsa (eski kayıtlar) yapıdan tip çıkarır.
+     * Infer type from structure when section_type disagrees with is_container/allow_topics/parent_id (legacy rows).
      */
     public function resolveEffectiveType(ForumSection $section): ForumSectionType
     {
@@ -340,7 +338,7 @@ final class ForumSectionHierarchyService
     }
 
     /**
-     * Admin formu için seviye → üst kayıt seçenekleri haritası.
+     * Admin form map: level → parent-option list.
      *
      * @return array<string, list<array{id: int, label: string}>>
      */

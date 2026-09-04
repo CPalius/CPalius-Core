@@ -73,6 +73,10 @@ return [
         'path' => './cp-core/assets/forum-dashboard.js',
         'entrypoint' => true,
     ],
+    'aacp-user-roles' => [
+        'path' => './cp-core/assets/aacp-user-roles.js',
+        'entrypoint' => true,
+    ],
     'studio-dashboard' => [
         'path' => './cp-core/assets/studio-dashboard.js',
         'entrypoint' => true,

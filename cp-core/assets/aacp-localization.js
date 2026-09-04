@@ -1,11 +1,16 @@
 /**
  * AACP "Dil Yönetimi" sayfası — Translation Explorer tıkla-düzenle akışı,
- * client-side arama filtresi ve içe aktarma (import) tetikleyicisi.
+ * dil sekmeleri, grup/eksik-çeviri filtreleri ve içe aktarma tetikleyicisi.
  *
  * aacp-api-keys.js ile aynı desen (framework'süz/vanilla JS, "sıfır
  * bağımlılık" ilkesi): data-localization-root bulunamazsa sessizce hiçbir
  * şey yapmaz. Bir AJAX isteği başarısız olursa hücre eski değerine geri
  * döner, sayfa asla çökmez.
+ *
+ * FAZ 3: dil sayısı sabit değildir. Sekmeler ve sütunlar sunucudan gelen
+ * aktif dil listesine göre üretilir; bu dosyada hiçbir yerde 'tr'/'en'
+ * yazmaz. Bir dil sekmesi seçildiğinde tablo, O DİLDE çevirisi EKSİK olan
+ * satırlara odaklanır — çevirmenin "sırada ne var" sorusunun cevabı.
  */
 function initAacpLocalization(root) {
     const csrfToken = root.dataset.localizationCsrf;
@@ -16,11 +21,21 @@ function initAacpLocalization(root) {
         return;
     }
 
-    function escapeHtml(value) {
-        const div = document.createElement('div');
-        div.textContent = String(value);
-        return div.innerHTML;
-    }
+    const rows = Array.from(root.querySelectorAll('[data-localization-row]'));
+    const filterInput = root.querySelector('[data-localization-filter]');
+    const groupFilter = root.querySelector('[data-localization-group-filter]');
+    const incompleteFilter = root.querySelector('[data-localization-incomplete-filter]');
+    const countEl = root.querySelector('[data-localization-count]');
+    const tabs = Array.from(root.querySelectorAll('[data-localization-tab]'));
+
+    const ACTIVE_TAB_CLASSES = ['border-primary-500', 'text-primary-400'];
+    const IDLE_TAB_CLASSES = ['border-transparent', 'text-slate-500', 'hover:text-slate-300'];
+
+    let activeLocale = '__all__';
+
+    /* ------------------------------------------------------------------ */
+    /* Inline düzenleme                                                     */
+    /* ------------------------------------------------------------------ */
 
     function flashCell(cell, ok) {
         cell.classList.remove('!bg-success-500/10', '!bg-danger-500/10');
@@ -28,6 +43,29 @@ function initAacpLocalization(root) {
         window.setTimeout(() => {
             cell.classList.remove('!bg-success-500/10', '!bg-danger-500/10');
         }, 900);
+    }
+
+    function markMissingState(cell, value) {
+        const row = cell.closest('[data-localization-row]');
+        const locale = cell.dataset.locale;
+        const isEmpty = String(value).trim() === '';
+
+        cell.classList.toggle('!bg-warning-500/5', isEmpty);
+
+        if (!row) {
+            return;
+        }
+
+        const missing = new Set((row.dataset.missing || '').split(' ').filter(Boolean));
+
+        if (isEmpty) {
+            missing.add(locale);
+        } else {
+            missing.delete(locale);
+        }
+
+        row.dataset.missing = Array.from(missing).join(' ');
+        row.dataset.incomplete = missing.size > 0 ? '1' : '0';
     }
 
     function beginEdit(cell) {
@@ -66,6 +104,7 @@ function initAacpLocalization(root) {
 
             span.textContent = newValue;
             input.replaceWith(span);
+            markMissingState(cell, newValue);
             saveValue(cell, newValue, span, originalValue);
         }
 
@@ -109,8 +148,12 @@ function initAacpLocalization(root) {
             }
 
             flashCell(cell, true);
+            applyFilter();
         } catch (error) {
+            // Fail-safe: sunucu reddettiyse hücre eski değerine döner —
+            // ekranda YANLIŞ bir "kaydedildi" izlenimi bırakmaz.
             span.textContent = originalValue;
+            markMissingState(cell, originalValue);
             flashCell(cell, false);
         }
     }
@@ -119,18 +162,58 @@ function initAacpLocalization(root) {
         cell.addEventListener('click', () => beginEdit(cell));
     });
 
-    const filterInput = document.querySelector('[data-localization-filter]');
-    const countEl = document.querySelector('[data-localization-count]');
-    const rows = Array.from(root.querySelectorAll('[data-localization-row]'));
+    /* ------------------------------------------------------------------ */
+    /* Sekmeler + filtreler                                                 */
+    /* ------------------------------------------------------------------ */
+
+    function setActiveTab(locale) {
+        activeLocale = locale;
+
+        tabs.forEach((tab) => {
+            const isActive = tab.dataset.localizationTab === locale;
+            tab.classList.remove(...ACTIVE_TAB_CLASSES, ...IDLE_TAB_CLASSES);
+            tab.classList.add(...(isActive ? ACTIVE_TAB_CLASSES : IDLE_TAB_CLASSES));
+            tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        // Seçili dilin sütunu dışındakiler soluklaştırılır: çevirmen
+        // gözünü tek sütunda tutabilsin (sütun GİZLENMEZ — kaynak dili
+        // görmeden çeviri yapılamaz).
+        root.querySelectorAll('[data-localization-cell]').forEach((cell) => {
+            const dim = locale !== '__all__' && cell.dataset.locale !== locale;
+            cell.classList.toggle('opacity-40', dim);
+        });
+
+        applyFilter();
+    }
 
     function applyFilter() {
         const term = filterInput ? filterInput.value.trim().toLowerCase() : '';
+        const group = groupFilter ? groupFilter.value : '';
+        const onlyIncomplete = incompleteFilter ? incompleteFilter.checked : false;
+
         let visibleCount = 0;
 
         rows.forEach((row) => {
             const haystack = `${row.dataset.group} ${row.dataset.key} ${row.textContent}`.toLowerCase();
-            const visible = term === '' || haystack.includes(term);
+            const missing = (row.dataset.missing || '').split(' ').filter(Boolean);
+
+            let visible = term === '' || haystack.includes(term);
+
+            if (visible && group !== '' && row.dataset.group !== group) {
+                visible = false;
+            }
+
+            if (visible && onlyIncomplete) {
+                // "Tümü" sekmesindeyken herhangi bir dilde eksik olanlar;
+                // belirli bir dil sekmesindeyken SADECE o dilde eksik olanlar.
+                visible = activeLocale === '__all__'
+                    ? row.dataset.incomplete === '1'
+                    : missing.includes(activeLocale);
+            }
+
             row.classList.toggle('hidden', !visible);
+
             if (visible) {
                 visibleCount += 1;
             }
@@ -141,10 +224,31 @@ function initAacpLocalization(root) {
         }
     }
 
+    tabs.forEach((tab) => {
+        tab.addEventListener('click', () => setActiveTab(tab.dataset.localizationTab));
+    });
+
     if (filterInput) {
         filterInput.addEventListener('input', applyFilter);
-        applyFilter();
     }
+
+    if (groupFilter) {
+        groupFilter.addEventListener('change', applyFilter);
+    }
+
+    if (incompleteFilter) {
+        incompleteFilter.addEventListener('change', applyFilter);
+    }
+
+    // ?locale=xx ile gelindiyse o dilin sekmesi açık başlar.
+    const focusLocale = root.dataset.localizationFocus;
+    const hasFocusTab = focusLocale && tabs.some((tab) => tab.dataset.localizationTab === focusLocale);
+
+    setActiveTab(hasFocusTab ? focusLocale : '__all__');
+
+    /* ------------------------------------------------------------------ */
+    /* İçe aktarma                                                          */
+    /* ------------------------------------------------------------------ */
 
     const importTrigger = document.querySelector('[data-localization-import-trigger]');
     const importInput = document.querySelector('[data-localization-import-input]');

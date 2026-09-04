@@ -1,9 +1,9 @@
-{% extends '@CpaliusWebsiteTheme/layout.html.twig' %}
+{% extends '@Theme/layout.html.twig' %}
 
 {% block title %}#{{ tagSlug }} — {{ 'blog.label.blog'|trans }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
 
 {% block content %}
-{% include '@CpaliusWebsiteTheme/blog/partials/hero.html.twig' %}
+{% include '@Theme/blog/partials/hero.html.twig' %}
 
 <section class="section blog-archive-section" id="blog-tag">
     <div class="container">
@@ -24,12 +24,12 @@
                 {% if posts.isEmpty %}
                     <p class="section-desc">{{ 'blog.tag.empty'|trans }}</p>
                 {% else %}
-                    {% include '@CpaliusWebsiteTheme/blog/partials/posts_feed.html.twig' with {
+                    {% include '@Theme/blog/partials/posts_feed.html.twig' with {
                         posts: posts,
                         listLayout: listLayout|default('grid'),
                     } %}
 
-                    {% include '@CpaliusWebsiteTheme/blog/partials/pagination.html.twig' with {
+                    {% include '@Theme/blog/partials/pagination.html.twig' with {
                         result: posts,
                         route: 'blog_tag',
                         routeParams: {slug: tagSlug},
@@ -38,9 +38,9 @@
             </div>
 
             <aside class="grid-golden-minor" id="blog-sidebar">
-                {% include '@CpaliusWebsiteTheme/blog/partials/search_widget.html.twig' %}
-                {% include '@CpaliusWebsiteTheme/blog/partials/widget_sidebar.html.twig' %}
-                {% include '@CpaliusWebsiteTheme/blog/partials/archive_sidebar.html.twig' %}
+                {% include '@Theme/blog/partials/search_widget.html.twig' %}
+                {% include '@Theme/blog/partials/widget_sidebar.html.twig' %}
+                {% include '@Theme/blog/partials/archive_sidebar.html.twig' %}
             </aside>
         </div>
     </div>

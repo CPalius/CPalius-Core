@@ -1,0 +1,52 @@
+{#
+    Ön yüz (forum/hesap) form teması. Global tema Studio'nun Tailwind
+    iskeletidir; hesap profili gibi site formları bu temayı {% form_theme %}
+    ile bağlar ve .forum-field / .forum-checkbox markup'ını üretir.
+#}
+{% block form_row %}
+    <div class="forum-field">
+        {{ form_label(form) }}
+        {{ form_widget(form) }}
+        {{ form_help(form) }}
+        {{ form_errors(form) }}
+    </div>
+{% endblock form_row %}
+
+{% block form_label %}
+    {% if label is not same as(false) %}
+        <label for="{{ id }}">
+            {{- translation_domain is same as(false) ? label : label|trans(label_translation_parameters, translation_domain) -}}
+        </label>
+    {% endif %}
+{% endblock form_label %}
+
+{% block form_help %}
+    {%- if help is not empty -%}
+        <p class="forum-field-hint">
+            {{- translation_domain is same as(false) ? help : help|trans(help_translation_parameters, translation_domain) -}}
+        </p>
+    {%- endif -%}
+{% endblock form_help %}
+
+{% block form_errors %}
+    {%- if errors|length > 0 -%}
+        <ul class="forum-field__errors">
+            {%- for error in errors -%}
+                <li>{{ error.message }}</li>
+            {%- endfor -%}
+        </ul>
+    {%- endif -%}
+{% endblock form_errors %}
+
+{% block checkbox_row %}
+    <div class="forum-field">
+        <label class="forum-checkbox" for="{{ id }}">
+            {{ form_widget(form) }}
+            <span>
+                {{- translation_domain is same as(false) ? label : label|trans(label_translation_parameters, translation_domain) -}}
+            </span>
+        </label>
+        {{ form_help(form) }}
+        {{ form_errors(form) }}
+    </div>
+{% endblock checkbox_row %}

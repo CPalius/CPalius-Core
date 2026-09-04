@@ -5,31 +5,59 @@ declare(strict_types=1);
 namespace App\Core\Localization;
 
 /**
- * Translation Explorer tablosunun tek bir satırı: bir anahtarın hem TR
- * hem EN karşılığı ve bu anahtarın hangi dosya grubuna ait olduğu
- * ("core" ya da "module:<ModuleName>") — inline düzenleme ve export bu
- * grup bilgisiyle doğru dosyaya geri yazar.
+ * One Translation Explorer row: key, file group, and locale => value (empty string if untranslated).
  */
 final class TranslationEntry
 {
+    /**
+     * @param array<string, string> $values locale => translation (empty string if missing)
+     */
     public function __construct(
         public readonly string $group,
         public readonly string $key,
-        public readonly string $tr,
-        public readonly string $en,
+        public readonly array $values = [],
     ) {
     }
 
-    /**
-     * @return array{group: string, key: string, tr: string, en: string}
-     */
-    public function toArray(): array
+    public function valueFor(string $locale): string
     {
+        return $this->values[$locale] ?? '';
+    }
+
+    /**
+     * True when any of $locales is blank — used by the AACP "missing translations" filter.
+     *
+     * @param list<string> $locales
+     */
+    public function isIncompleteFor(array $locales): bool
+    {
+        foreach ($locales as $locale) {
+            if (trim($this->valueFor($locale)) === '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param list<string> $locales
+     *
+     * @return array{group: string, key: string, values: array<string, string>, incomplete: bool}
+     */
+    public function toArray(array $locales = []): array
+    {
+        $values = [];
+
+        foreach ($locales === [] ? array_keys($this->values) : $locales as $locale) {
+            $values[$locale] = $this->valueFor($locale);
+        }
+
         return [
             'group' => $this->group,
             'key' => $this->key,
-            'tr' => $this->tr,
-            'en' => $this->en,
+            'values' => $values,
+            'incomplete' => $this->isIncompleteFor($locales === [] ? array_keys($this->values) : $locales),
         ];
     }
 }

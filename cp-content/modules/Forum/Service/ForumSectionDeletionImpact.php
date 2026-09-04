@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Modules\Forum\Service;
 
 /**
- * Bir forum yapı kaydının silinmesinin etkisi — admin onay ekranı ve
- * güvenlik kontrolleri için kullanılır.
+ * Impact of deleting a forum structure row — used by the admin confirm screen and safety checks.
  */
 final readonly class ForumSectionDeletionImpact
 {
@@ -31,13 +30,13 @@ final readonly class ForumSectionDeletionImpact
         return $this->topicCount > 0;
     }
 
-    /** Alt kayıt varsa silme tamamen engellenir (içerik kaybını önler). */
+    /** Children present: delete is blocked to prevent content loss. */
     public function isDeletionAllowed(): bool
     {
         return !$this->hasChildSections();
     }
 
-    /** Konu/mesaj varsa başlık yazarak onay zorunludur. */
+    /** Topics/posts remain: the admin must type the title to confirm. */
     public function requiresTitleConfirmation(): bool
     {
         return $this->hasTopics();

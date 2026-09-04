@@ -22,12 +22,14 @@
         <twig:ux:icon name="tabler:language" class="h-5 w-5" />
     </button>
     <div id="aacp-locale-menu" class="dropdown-menu !bg-dark-2 !border !border-white/10 end-0">
-        <a href="{{ path('aacp_locale_switch', {locale: 'tr'}) }}" class="!text-slate-300 hover:!bg-white/5{{ app.request.locale == 'tr' ? ' !text-primary-300' : '' }}">
-            {{ 'aacp.layout.header.locale_tr'|trans }}
-        </a>
-        <a href="{{ path('aacp_locale_switch', {locale: 'en'}) }}" class="!text-slate-300 hover:!bg-white/5{{ app.request.locale == 'en' ? ' !text-primary-300' : '' }}">
-            {{ 'aacp.layout.header.locale_en'|trans }}
-        </a>
+        {% for locale in cp_locales() %}
+            <a href="{{ path('aacp_locale_switch', {locale: locale.code}) }}"
+               class="!text-slate-300 hover:!bg-white/5{{ app.request.locale == locale.code ? ' !text-primary-300' : '' }}"
+               lang="{{ locale.code }}">
+                {{ locale.nativeName }}
+                <span class="ms-1 font-mono text-fs-xs uppercase !text-slate-600">{{ locale.code }}</span>
+            </a>
+        {% endfor %}
     </div>
 </div>
 

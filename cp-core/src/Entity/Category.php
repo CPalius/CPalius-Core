@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use App\Core\Localization\Contract\TranslatableInterface;
+use App\Core\Localization\Contract\TranslatableTrait;
 use App\Repository\CategoryRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -10,9 +12,13 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: CategoryRepository::class)]
 #[ORM\Table(name: 'categories')]
 #[ORM\Index(columns: ['locale'], name: 'idx_category_locale')]
+#[ORM\UniqueConstraint(name: 'uniq_category_translation_group_locale', columns: ['translation_group_id', 'locale'])]
 #[ORM\UniqueConstraint(name: 'uniq_category_slug_locale', columns: ['slug', 'locale'])]
-class Category
+class Category implements TranslatableInterface
 {
+    // FAZ 3: translation_group_id kolonu + çeviri grubu yardımcıları.
+    use TranslatableTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]

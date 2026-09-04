@@ -1,14 +1,4 @@
-{#
-    Modules\Blog\Plugin\BlogWidgetPlugin::render()'ın çıktısı — mevcut
-    .blog-sidebar-widget CSS ailesini kullanır (Faz 1/2'de zaten kurulan
-    tasarım dili, yeni bir sınıf ailesi icat edilmez).
-
-    Beklenen değişkenler:
-      recentPosts (list<App\Entity\Node>)
-      popularTags (list<array{tag: App\Entity\Tag, usageCount: int}>)
-      socialGithubUrl (string) Boş string ise link gizlenir.
-      socialTwitterUrl (string) Boş string ise link gizlenir.
-#}
+{# BlogWidgetPlugin output using .blog-sidebar-widget CSS. Expects recentPosts + popularTags. #}
 {% if socialGithubUrl is not empty or socialTwitterUrl is not empty %}
     <div class="blog-sidebar-widget">
         <h5>{{ 'blog.widget.author_title'|trans }}</h5>

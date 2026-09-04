@@ -15,6 +15,7 @@
     initMobileMenu();
     initNavbarSearch();
     initNavbarUserMenu();
+    initLocaleSwitcher();
     initCounterAnimation();
     initActiveNavLink();
     initPortalSliders();
@@ -154,6 +155,24 @@
     });
   }
 
+  // ---- Locale switcher (details) ----
+  function initLocaleSwitcher() {
+    var switcher = document.getElementById('navLocale');
+    if (!switcher) return;
+
+    document.addEventListener('click', function (e) {
+      if (!switcher.contains(e.target)) {
+        switcher.removeAttribute('open');
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        switcher.removeAttribute('open');
+      }
+    });
+  }
+
   // ---- Navbar User Dropdown ----
   function initNavbarUserMenu() {
     var wrapper = document.getElementById('navUser');
@@ -161,23 +180,46 @@
 
     if (!wrapper || !trigger) return;
 
+    var notifToggle = document.getElementById('navNotifToggle');
+    var notifBox = document.getElementById('navNotifBox');
+
+    function closeUserMenu() {
+      wrapper.classList.remove('open');
+      wrapper.classList.remove('notif-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      if (notifToggle) notifToggle.setAttribute('aria-expanded', 'false');
+    }
+
     trigger.addEventListener('click', function (e) {
       e.stopPropagation();
       var isOpen = wrapper.classList.toggle('open');
+      if (!isOpen) {
+        wrapper.classList.remove('notif-open');
+        if (notifToggle) notifToggle.setAttribute('aria-expanded', 'false');
+      }
       trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     });
 
+    if (notifToggle && notifBox) {
+      notifToggle.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        wrapper.classList.add('open');
+        var isNotifOpen = wrapper.classList.toggle('notif-open');
+        notifToggle.setAttribute('aria-expanded', isNotifOpen ? 'true' : 'false');
+        trigger.setAttribute('aria-expanded', 'true');
+      });
+    }
+
     document.addEventListener('click', function (e) {
       if (!wrapper.contains(e.target)) {
-        wrapper.classList.remove('open');
-        trigger.setAttribute('aria-expanded', 'false');
+        closeUserMenu();
       }
     });
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
-        wrapper.classList.remove('open');
-        trigger.setAttribute('aria-expanded', 'false');
+        closeUserMenu();
       }
     });
   }

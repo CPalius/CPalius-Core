@@ -10,36 +10,14 @@ use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * Faz 7A: CPalius'un "Askeri Düzeyde İzole Hook Sistemi"nin ana orkestra
- * şefi. İki bağımsız kulvarı tek bir trigger() çağrısında birleştirir:
- *
- *   1) Flat-File Kulvarı (Cotonti tarzı): cp-content/modules/*\/Hooks/{hook_point}.php
- *      kalıbındaki dosyalar. Her dosya kapatılmış (bound), izole bir Closure
- *      scope'u içinde include edilir — dosyanın $this'i yoktur, dış scope'a
- *      erişemez, sadece kendisine enjekte edilen yerel $context değişkenini
- *      görür. Bu, üçüncü parti bir hook dosyasının yanlışlıkla (veya kasıtlı
- *      olarak) çağıran fonksiyonun scope'undaki değişkenleri okuyup/yazmasını
- *      İMKANSIZ kılar (değişken sızıntısı yasak).
- *
- *   2) Attribute Kulvarı (Symfony tarzı): #[CpHook('hook_point')] ile
- *      işaretlenmiş servis metotları, HookRegistrationPass tarafından
- *      derleme zamanında toplanır ve burada DI konteynerinden lazy olarak
- *      (ServiceLocator üzerinden) çekilip çağrılır.
- *
- * Core Never Dies Zırhı (Manifesto Law 2.1/2.3): HER İKİ kulvardaki HER
- * ÇALIŞTIRMA try/catch(Throwable) içine alınır. Çöken bir hook, HİÇBİR
- * ZAMAN çağıran sayfayı 500'e düşürmez; sessizce module_quarantine.log'a
- * yazılır ve akış (sıradaki hook'lar, sayfanın geri kalanı) bozulmadan
- * devam eder.
+ * Isolated hook runner: flat-file Closures plus lazy #[CpHook] services in one trigger().
+ * Each invocation is try/caught (Law 2.1/2.3); failures go to module_quarantine.log, never HTTP 500.
  */
 final class HookManager
 {
     /**
-     * @param iterable<int, array{hookPoint: string, priority: int, serviceId: string, method: string}> $attributeHooks
-     *   HookRegistrationPass tarafından üretilen, derleme zamanında sabit
-     *   attribute hook tanımları (cpalius.hook_definitions parametresi).
-     * @param ContainerInterface $serviceLocator #[CpHook] taşıyan
-     *   servisleri id'leriyle lazy çözen bir ServiceLocator (bkz. services.yaml).
+     * @param iterable<int, array{hookPoint: string, priority: int, serviceId: string, method: string}> $attributeHooks Compile-time #[CpHook] defs.
+     * @param ContainerInterface $serviceLocator Lazy locator for #[CpHook] services.
      */
     public function __construct(
         private readonly ModuleRegistry $moduleRegistry,
@@ -59,9 +37,7 @@ final class HookManager
     }
 
     /**
-     * Sistemde o an kayıtlı olan TÜM kanca noktalarını (flat-file taraması +
-     * attribute tanımları) birleştirilmiş, tekilleştirilmiş bir listede
-     * döner. AACP "Kancalar & Hook Gezgini" ekranı için tasarlanmıştır.
+     * Deduped flat-file + attribute hook points for the AACP Hook Explorer.
      *
      * @return list<array{hookPoint: string, type: 'flat-file'|'attribute', source: string, detail: string}>
      */
@@ -137,13 +113,7 @@ final class HookManager
     }
 
     /**
-     * Hook dosyasını, dış scope'tan tamamen izole edilmiş, kapatılmış bir
-     * Closure içinde include eder. Closure statik olarak tanımlanır (baştan
-     * itibaren hiçbir $this bağlamı taşımaz) ve HİÇBİR "use (...)" ile dış
-     * scope değişkeni almaz; dosyanın erişebileceği TEK değişken, kendisine
-     * parametre olarak verilen yerel $context'tir. Bu, dosyanın include
-     * edildiği HookManager metodunun ($this, diğer yerel değişkenler)
-     * hiçbirine erişememesini garanti eder.
+     * Include the hook file in a static Closure with only $context — no $this and no use (...).
      */
     private function includeIsolated(string $hookFile, HookContext $context): HookContext
     {
@@ -168,8 +138,7 @@ final class HookManager
         $safeHookPoint = preg_replace('/[^a-zA-Z0-9_.\-]/', '', $hookPoint) ?? '';
 
         if ($safeHookPoint === '' || $safeHookPoint !== $hookPoint) {
-            // Hook noktası adı beklenmedik karakterler içeriyorsa (path
-            // traversal denemesi dahil) dosya sistemine hiç dokunulmaz.
+            // Reject unexpected hook-point characters (including path traversal).
             return null;
         }
 
@@ -202,14 +171,7 @@ final class HookManager
 
             foreach ($files as $file) {
                 if ($this->declaresPhpClass((string) $file->getPathname())) {
-                    // Modules\X\Hooks\ dizini, Attribute Kulvarı'nın (#[CpHook])
-                    // servis sınıflarıyla AYNI dizini paylaşabilir (bkz.
-                    // BlogAttributeHooks örneği). Bir sınıf/interface/trait
-                    // TANIMLAYAN dosya asla bir "hook noktası dosyası" değildir
-                    // (flat-file dosyaları Cotonti konvansiyonu gereği salt
-                    // prosedürel bir `return (closure)($context);` içerir,
-                    // hiçbir zaman namespace/class bildirmez) — bu yüzden
-                    // flat-file keşfinden HARİÇ TUTULUR.
+                    // Skip class/interface/trait files; they share Hooks/ with #[CpHook] services.
                     continue;
                 }
 
@@ -228,11 +190,7 @@ final class HookManager
     }
 
     /**
-     * Bir PHP dosyasının bir sınıf/interface/trait/enum TANIMLAYIP
-     * tanımlamadığını, dosyayı include ETMEDEN (sadece tokenize ederek)
-     * tespit eder. Flat-file hook dosyalarını Attribute Kulvarı'nın servis
-     * sınıflarından ayırt etmek için kullanılır (bkz. discoverFlatFileHooks()
-     * ve resolveModuleHookFile() docblock'ları).
+     * Detect class/interface/trait/enum by tokenizing only — never include the file.
      */
     private function declaresPhpClass(string $file): bool
     {

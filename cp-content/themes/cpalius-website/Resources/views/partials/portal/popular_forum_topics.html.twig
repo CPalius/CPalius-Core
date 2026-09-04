@@ -2,7 +2,7 @@
 {% if items is not empty %}
 {% set title = portalBlock.title|default('website.landing.portal.popular_title'|trans) %}
 {% set layout = portalBlock.layout|default('slider') %}
-{% embed '@CpaliusWebsiteTheme/partials/portal/_rail.html.twig' with {
+{% embed '@Theme/partials/portal/_rail.html.twig' with {
     blockId: 'popular_forum_topics',
     title: title,
     moreHref: path('forum_index'),

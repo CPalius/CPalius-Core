@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
-use App\Entity\ForumSection;
-use App\Repository\ForumPostRepository;
-use App\Repository\ForumSectionRepository;
-use App\Repository\ForumTopicRepository;
+use Modules\Forum\Entity\ForumSection;
+use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumSectionRepository;
+use Modules\Forum\Repository\ForumTopicRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Forum yapı kaydı silme güvenliği: alt kayıt varken engelle, konu/mesaj
- * varken açık uyarı + başlık onayı iste.
+ * Safe section delete: block if children exist; require title confirmation when topics/posts remain.
  */
 final class ForumSectionDeletionService
 {
@@ -41,7 +40,7 @@ final class ForumSectionDeletionService
     }
 
     /**
-     * Silme isteğini doğrular; hata mesajı döner veya null (geçerli).
+     * Validate a delete request; returns a translation key or null when valid.
      */
     public function validateRequest(
         ForumSection $section,

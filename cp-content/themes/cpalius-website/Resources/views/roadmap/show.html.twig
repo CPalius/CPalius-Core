@@ -1,0 +1,50 @@
+{% extends '@Theme/layout.html.twig' %}
+
+{% block title %}{{ entry.title }} — {{ 'site.roadmap.meta.title'|trans }}{% endblock %}
+{% block meta_description %}{{ entry.summary }}{% endblock %}
+
+{% block content %}
+<section class="post-hero roadmap-hero" id="roadmap-detail-hero">
+    <div class="container container-narrow">
+        <ul class="slw-breadcrumb fade-in visible">
+            <li><a href="{{ path('roadmap_index') }}">~/roadmap</a></li>
+            <li>{{ entry.slug }}</li>
+        </ul>
+
+        <div class="roadmap-detail__badges fade-in visible">
+            <span class="roadmap-chip">{{ ('site.roadmap.kind.' ~ entry.kind)|trans }}</span>
+            <span class="roadmap-chip roadmap-chip--status-{{ entry.status }}">{{ ('site.roadmap.status.' ~ entry.status)|trans }}</span>
+            {% if entry.versionLabel %}
+                <span class="roadmap-chip roadmap-chip--muted">{{ entry.versionLabel }}</span>
+            {% endif %}
+        </div>
+
+        <h1 class="post-hero-title fade-in visible">
+            {% if entry.icon %}<i class="bi {{ entry.icon }}"></i>{% endif %}
+            {{ entry.title }}
+        </h1>
+
+        {% if entry.publishedAt %}
+            <div class="post-hero-meta fade-in visible">
+                <time class="post-hero-meta-item" datetime="{{ entry.publishedAt|date('c') }}">{{ entry.publishedAt|date('d M Y') }}</time>
+            </div>
+        {% endif %}
+
+        <p class="post-hero-excerpt fade-in visible">{{ entry.summary }}</p>
+    </div>
+</section>
+
+<section class="section roadmap-detail-body">
+    <div class="container container-narrow">
+        {% if entry.body %}
+            <div class="post-body fade-in visible">
+                {{ entry.body|raw }}
+            </div>
+        {% endif %}
+
+        <p class="roadmap-detail__back fade-in visible">
+            <a href="{{ path('roadmap_index') }}">← {{ 'site.roadmap.back'|trans }}</a>
+        </p>
+    </div>
+</section>
+{% endblock %}

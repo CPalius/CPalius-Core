@@ -23,7 +23,7 @@
         <h3 class="blog-list-item__title">
             <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
         </h3>
-        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+        {% include '@Theme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
         {% if (typeFields.repo_url is defined and typeFields.repo_url) or (typeFields.demo_url is defined and typeFields.demo_url) %}
             <div class="project-card-links blog-card-proje__actions">
                 {% if typeFields.repo_url is defined and typeFields.repo_url %}
@@ -60,7 +60,7 @@
         <h3 class="blog-list-item__title">
             <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
         </h3>
-        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+        {% include '@Theme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
         {% if typeFields.download_url is defined and typeFields.download_url %}
             <a href="{{ typeFields.download_url }}" target="_blank" rel="noopener noreferrer" class="blog-card-yazilim__download">
                 <i class="bi bi-download" aria-hidden="true"></i> {{ 'blog.card.link.download'|trans }}
@@ -82,14 +82,14 @@
             <span class="blog-card-not__prompt" aria-hidden="true">$</span>
             <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
         </h3>
-        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+        {% include '@Theme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
     </div>
 </article>
 
 {% else %}
 <article class="blog-list-item blog-list-item--makale blog-card--makale slw-ctype--makale fade-in">
     <div class="blog-list-item__thumb">
-        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_cover.html.twig' with { post: post } %}
+        {% include '@Theme/blog/partials/_feed_card_cover.html.twig' with { post: post } %}
     </div>
     <div class="blog-list-item__body">
         <div class="blog-list-item__meta">
@@ -101,7 +101,7 @@
         <h3 class="blog-list-item__title blog-card__title--editorial">
             <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
         </h3>
-        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+        {% include '@Theme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
     </div>
 </article>
 {% endif %}

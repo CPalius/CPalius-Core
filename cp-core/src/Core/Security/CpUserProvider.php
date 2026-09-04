@@ -14,22 +14,8 @@ use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 
 /**
- * CPalius'un e-posta VEYA kullanıcı adıyla giriş yapılabilen kullanıcı
- * sağlayıcısı (login formunda tek bir "Kullanıcı Adı veya E-posta" alanı
- * sunulmasını mümkün kılar).
- *
- * UserRepository zaten UserProviderInterface implement ediyor (Symfony'nin
- * "entity provider" kısayolu, bkz. UserRepository sınıf üstü doküman) ve
- * security.yaml'daki varsayılan "cpalius_users" provider'ı SADECE email
- * property'sine göre arama yapar. Bu sınıf, kullanıcı adı desteği İSTEYEN
- * kurulumlar için security.yaml'da provider olarak seçilebilecek AYRI,
- * opsiyonel bir alternatiftir — mevcut "cpalius_users" (entity provider)
- * davranışını DEĞİŞTİRMEZ, yanına eklenir.
- *
- * Fail-Safe: bulunamayan bir kullanıcı ya da pasif/banlı bir hesap için
- * UserNotFoundException fırlatılır — Symfony bunu firewall seviyesinde
- * "geçersiz kimlik bilgileri" olarak genelleştirip kullanıcıya hesabın var
- * olup olmadığını sızdırmaz (bkz. form_login'in varsayılan davranışı).
+ * Optional user provider: login by email OR username. Does not replace the email-only entity provider.
+ * Unknown/inactive users throw UserNotFoundException so the firewall does not leak account existence.
  */
 final class CpUserProvider implements UserProviderInterface, PasswordUpgraderInterface
 {

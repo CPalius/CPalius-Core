@@ -3,12 +3,15 @@
 {% block header %}{{ 'blog.tags.header'|trans }}{% endblock %}
 
 {% block header_actions %}
-    <a href="{{ path('admin_tags_create') }}" class="btn btn-sm btn-primary">
+    <a href="{{ path('admin_tags_create', {locale: currentLocale}) }}" class="btn btn-sm btn-primary">
         {{ 'blog.tags.create_action'|trans }}
     </a>
 {% endblock %}
 
 {% block body %}
+    {# Phase 3: tags are per-locale rows. #}
+    <twig:studio:locale_filter locales="{{ locales }}" current="{{ currentLocale }}" route="admin_tags_index" />
+
     <twig:studio:card padded="{{ false }}">
         <twig:studio:table headers="{{ [
             'blog.tags.column.name'|trans,

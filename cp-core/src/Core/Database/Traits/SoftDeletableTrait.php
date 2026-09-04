@@ -7,13 +7,7 @@ namespace App\Core\Database\Traits;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * #[SoftDeletable] davranışının somut uygulaması: gerçek bir SQL DELETE
- * yerine deletedAt alanını damgalayarak "Çöp Kutusu" (Recycle Bin)
- * mantığını sağlar. Bu trait KENDİSİ sorguları filtrelemez (ör. "silinmiş
- * kayıtları normal listelerden gizle") — bu davranış, entity'nin
- * repository'sinde bir Doctrine filter (bkz. TenantFilter ile aynı desen,
- * Manifesto Law 5.1) veya QueryScopeApplier tarafında ele alınmalıdır.
- * Trait sadece alan/erişimci iskeletini sağlar.
+ * Soft-delete via deletedAt. Does not hide rows from queries — that belongs on a Doctrine filter / repository.
  */
 trait SoftDeletableTrait
 {
@@ -26,8 +20,7 @@ trait SoftDeletableTrait
     }
 
     /**
-     * Kaydı çöp kutusuna taşır (soft delete). Tarih verilmezse şimdiki
-     * zaman kullanılır.
+     * Move to the recycle bin. Defaults to now.
      */
     public function softDelete(?\DateTimeImmutable $at = null): static
     {
@@ -37,7 +30,7 @@ trait SoftDeletableTrait
     }
 
     /**
-     * Çöp kutusundan geri yükler.
+     * Restore from the recycle bin.
      */
     public function restore(): static
     {

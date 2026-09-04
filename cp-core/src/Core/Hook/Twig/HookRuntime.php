@@ -9,16 +9,7 @@ use App\Core\Hook\HookManager;
 use Twig\Extension\RuntimeExtensionInterface;
 
 /**
- * {{ cp_hook('hook.point', {...}) }} çağrısının veri kaynağı.
- *
- * PluginRuntime ile aynı zorunlu desen: RuntimeExtensionInterface'i
- * implement eder, TwigBundle autoconfigure kuralı bu servisi otomatik
- * 'twig.runtime' etiketiyle işaretler.
- *
- * "Core Never Dies" fail-safe zinciri BURADA TEKRAR edilmez: gerçek
- * try/catch koruması zaten HookManager::trigger() içindedir (her tekil
- * hook için ayrı ayrı) — bu sınıf sadece Twig'den gelen serbest $context
- * array'ini bir HookContext'e sarar ve sonucun HTML çıktısını döner.
+ * Twig runtime for {{ cp_hook() }}. Fail-safe lives in HookManager::trigger(), not here.
  */
 final class HookRuntime implements RuntimeExtensionInterface
 {

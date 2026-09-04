@@ -1,0 +1,13 @@
+{
+    "name": "Roadmap",
+    "version": "1.0.0",
+    "description": "Roadmap, changelog feed and Blog/Forum source aggregation.",
+    "author": "CPalius",
+    "bundle": "Modules\\Roadmap\\RoadmapModule",
+    "core_version": "^1.0",
+    "requires": {},
+    "conflicts": {},
+    "provides": [
+        "roadmap"
+    ]
+}

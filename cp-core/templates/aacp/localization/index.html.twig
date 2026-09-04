@@ -1,3 +1,19 @@
+{#
+    AACP Dil Yönetimi — Translation Explorer.
+
+    FAZ 3: sütunlar SABİT DEĞİLDİR. "locales" değişkeni LocaleProvider'dan
+    (dolayısıyla cp_locales tablosundan) gelir; sisteme yeni bir dil
+    eklendiğinde tabloya otomatik yeni bir sütun ve yeni bir sekme düşer,
+    bu şablonda hiçbir değişiklik gerekmez.
+
+    Beklenen değişkenler:
+      entries         list<{group, key, values: {locale: değer}, incomplete}>
+      locales         list<LocaleDefinition>  (code, name, nativeName, isDefault)
+      groups          list<string>            benzersiz domain etiketleri
+      incompleteCount int                     en az bir dilde boş olan anahtar sayısı
+      focusLocale     string|null             ?locale= ile gelen odak dili
+      csrf_token      string
+#}
 {% extends 'aacp/layout.html.twig' %}
 
 {% block header %}{{ 'aacp.localization.header'|trans }}{% endblock %}
@@ -18,8 +34,7 @@
 {% endblock %}
 
 {% block javascripts %}
-    {{ parent() }}
-    {{ importmap('aacp-localization') }}
+    {{ importmap(['app', 'aacp-localization']) }}
 {% endblock %}
 
 {% block body %}
@@ -27,40 +42,95 @@
          data-localization-root
          data-localization-csrf="{{ csrf_token }}"
          data-localization-update-url="{{ path('aacp_localization_update') }}"
-         data-localization-import-url="{{ path('aacp_localization_import') }}">
+         data-localization-import-url="{{ path('aacp_localization_import') }}"
+         data-localization-focus="{{ focusLocale ?? '' }}">
+
+        {# ---- Dil sekmeleri: "Tümü" + her aktif dil ---- #}
+        <div class="flex flex-wrap items-center gap-x-1 border-b border-white/10"
+             role="tablist"
+             aria-label="{{ 'aacp.localization.tabs_aria'|trans }}">
+            <button type="button"
+                    role="tab"
+                    data-localization-tab="__all__"
+                    class="border-b-2 px-sp-sm py-2.5 text-fs-sm font-medium border-primary-500 text-primary-400">
+                {{ 'aacp.localization.tab.all'|trans }}
+                <span class="badge badge-neutral ms-1.5">{{ entries|length }}</span>
+            </button>
+
+            {% for locale in locales %}
+                <button type="button"
+                        role="tab"
+                        data-localization-tab="{{ locale.code }}"
+                        class="border-b-2 px-sp-sm py-2.5 text-fs-sm font-medium border-transparent text-slate-500 hover:text-slate-300">
+                    {{ locale.nativeName }}
+                    <span class="font-mono text-fs-xs uppercase !text-slate-600">{{ locale.code }}</span>
+                    {% if locale.isDefault %}
+                        <span class="badge badge-success ms-1.5">{{ 'aacp.localization.default_badge'|trans }}</span>
+                    {% endif %}
+                </button>
+            {% endfor %}
+        </div>
 
         {% if focusLocale %}
             <div class="rounded-lg border border-primary-500/40 bg-primary-500/5 px-3 py-2 text-fs-sm !text-primary-300">
-                "{{ focusLocale }}" dili için çeviri yönetimi. Aşağıdaki tablo tüm dilleri birlikte gösterir, ilgili sütunu düzenleyin.
+                {{ 'aacp.localization.focus_notice'|trans({locale: focusLocale}) }}
             </div>
         {% endif %}
 
-        <div class="flex items-center gap-2">
-            <input type="text" data-localization-filter placeholder="{{ 'aacp.localization.search_placeholder'|trans }}"
+        {# ---- Filtre çubuğu ---- #}
+        <div class="flex flex-wrap items-center gap-2">
+            <input type="text"
+                   data-localization-filter
+                   placeholder="{{ 'aacp.localization.search_placeholder'|trans }}"
                    class="form-control !w-80 !bg-dark-1 !border-white/10 !text-slate-200 placeholder-slate-600">
-            <span class="text-fs-xs !text-slate-500" data-localization-count></span>
+
+            <select data-localization-group-filter
+                    class="form-control !w-64 !bg-dark-1 !border-white/10 !text-slate-200">
+                <option value="">{{ 'aacp.localization.all_groups'|trans }}</option>
+                {% for group in groups %}
+                    <option value="{{ group }}">{{ group }}</option>
+                {% endfor %}
+            </select>
+
+            <label class="flex cursor-pointer items-center gap-2 text-fs-sm !text-slate-400">
+                <input type="checkbox" data-localization-incomplete-filter class="form-check-input">
+                {{ 'aacp.localization.only_incomplete'|trans }}
+                <span class="badge badge-warning">{{ incompleteCount }}</span>
+            </label>
+
+            <span class="ms-auto text-fs-xs !text-slate-500" data-localization-count></span>
         </div>
 
+        {# ---- Translation Explorer ---- #}
         <twig:cp:card padded="{{ false }}">
-            <twig:cp:table headers="{{ [
-                'aacp.localization.column.group'|trans,
-                'aacp.localization.column.key'|trans,
-                'aacp.localization.column.tr'|trans,
-                'aacp.localization.column.en'|trans,
-            ] }}" empty="{{ entries is empty }}" emptyText="{{ 'aacp.localization.empty'|trans }}">
+            <twig:cp:table
+                headers="{{ [
+                    'aacp.localization.column.group'|trans,
+                    'aacp.localization.column.key'|trans,
+                ]|merge(locales|map(l => l.nativeName ~ ' (' ~ l.code|upper ~ ')')) }}"
+                empty="{{ entries is empty }}"
+                emptyText="{{ 'aacp.localization.empty'|trans }}">
                 <twig:block name="rows">
                     {% for entry in entries %}
-                        <tr data-localization-row data-group="{{ entry.group }}" data-key="{{ entry.key }}">
+                        <tr data-localization-row
+                            data-group="{{ entry.group }}"
+                            data-key="{{ entry.key }}"
+                            data-incomplete="{{ entry.incomplete ? '1' : '0' }}"
+                            data-missing="{{ entry.values|filter(v => v|trim == '')|keys|join(' ') }}">
                             <td>
-                                <span class="badge badge-neutral">{{ entry.group }}</span>
+                                <span class="badge badge-neutral font-mono">{{ entry.group }}</span>
                             </td>
                             <td class="font-mono text-fs-xs !text-primary-400">{{ entry.key }}</td>
-                            <td data-localization-cell data-locale="tr">
-                                <span data-localization-value>{{ entry.tr }}</span>
-                            </td>
-                            <td data-localization-cell data-locale="en">
-                                <span data-localization-value>{{ entry.en }}</span>
-                            </td>
+
+                            {% for locale in locales %}
+                                {% set value = entry.values[locale.code]|default('') %}
+                                <td data-localization-cell
+                                    data-locale="{{ locale.code }}"
+                                    class="cursor-text align-top{{ value|trim == '' ? ' !bg-warning-500/5' : '' }}"
+                                    title="{{ 'aacp.localization.cell_hint'|trans }}">
+                                    <span data-localization-value>{{ value }}</span>
+                                </td>
+                            {% endfor %}
                         </tr>
                     {% endfor %}
                 </twig:block>

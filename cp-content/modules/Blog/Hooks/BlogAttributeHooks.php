@@ -6,26 +6,24 @@ namespace Modules\Blog\Hooks;
 
 use App\Core\Hook\Attribute\CpHook;
 use App\Core\Hook\HookContext;
+use App\Core\Localization\LocaleProvider;
 use App\Repository\TagRepository;
 
 /**
- * Faz 7B örnek Attribute Kanca (Symfony tarzı): aynı "blog.render.sidebar"
- * noktasına, flat-file dosyasıyla YAN YANA, DI konteynerinden bir bağımlılık
- * (TagRepository) ihtiyaç duyduğu için attribute kulvarından bağlanan bir
- * dinleyici. HookManager iki kulvarı da tetikler; ikisinin de HTML çıktısı
- * appendHtml() ile aynı $context->getHtml() dizisinde birikir.
+ * Phase 7B #[CpHook] listener for blog.render.sidebar (DI); runs beside the flat-file hook.
  */
 final class BlogAttributeHooks
 {
     public function __construct(
         private readonly TagRepository $tagRepository,
+        private readonly LocaleProvider $localeProvider,
     ) {
     }
 
     #[CpHook('blog.render.sidebar', priority: 50)]
     public function onSidebarRender(HookContext $context): HookContext
     {
-        $locale = is_string($context->get('locale')) ? $context->get('locale') : 'tr';
+        $locale = $this->localeProvider->resolve(is_string($context->get('locale')) ? $context->get('locale') : null);
         $popularTags = $this->tagRepository->findMostUsed($locale, 5);
 
         if ($popularTags === []) {

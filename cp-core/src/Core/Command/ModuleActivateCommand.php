@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core\Command;
 
 use App\Core\Module\ModuleActivator;
@@ -12,7 +14,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'cp:module:activate',
-    description: 'Belirtilen modülü doğrular ve active_modules.php dosyasına ekleyerek aktive eder.',
+    description: 'Validates a module and adds it to active_modules.php.',
 )]
 final class ModuleActivateCommand extends Command
 {
@@ -24,28 +26,29 @@ final class ModuleActivateCommand extends Command
 
     protected function configure(): void
     {
-        $this->addArgument('module-name', InputArgument::REQUIRED, 'Aktive edilecek modülün klasör adı (ör. Blog)');
+        $this->addArgument('module-name', InputArgument::REQUIRED, 'Directory name of the module, e.g. Blog');
     }
 
     /**
-     * Asıl doğrulama/aktivasyon mantığı ModuleActivator'da yaşar — bu
-     * komut ve AACPController::activateModule() AYNI servisi kullanır,
-     * böylece web'den aktivasyon da CLI ile birebir aynı dry-run/lint
-     * güvencesine (Manifesto Law 2.2) sahip olur.
+     * The dependency matrix and dry-run live in ModuleActivator, so the CLI and the
+     * AACP web UI share the exact same guarantees (Manifesto Law 2.2).
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
         $moduleName = (string) $input->getArgument('module-name');
 
-        $io->section(sprintf('"%s" modülü için ön kontrol (dry-run) başlatılıyor...', $moduleName));
+        $io->section(sprintf('Running pre-flight checks for "%s"...', $moduleName));
 
         $result = $this->moduleActivator->activate($moduleName);
 
         if (!$result['success']) {
             $io->error($result['message']);
-            if ($result['output'] !== null) {
-                $io->block($result['output'], 'HATA ÇIKTISI', 'fg=red', ' ', true);
+
+            if (($result['problems'] ?? []) !== []) {
+                $io->listing($result['problems']);
+            } elseif ($result['output'] !== null) {
+                $io->block($result['output'], 'ERROR OUTPUT', 'fg=red', ' ', true);
             }
 
             return Command::FAILURE;

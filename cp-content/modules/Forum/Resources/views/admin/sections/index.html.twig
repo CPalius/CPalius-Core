@@ -19,6 +19,7 @@
             'studio.forum.sections.index.column.slug'|trans,
             'studio.forum.sections.index.column.topics'|trans,
             'studio.forum.sections.index.column.posts'|trans,
+            'studio.forum.sections.index.column.lock'|trans({}, 'forums'),
             '',
         ] }}" empty="{{ tree is empty }}" emptyText="{{ 'studio.forum.sections.index.empty_tree'|trans }}">
             <twig:block name="rows">
@@ -48,10 +49,28 @@
                         <td><code>{{ section.slug }}</code></td>
                         <td>{{ section.topicCount }}</td>
                         <td>{{ section.postCount }}</td>
+                        <td class="text-center">
+                            <form method="post" action="{{ path('admin_forum_sections_toggle_lock', {id: section.id}) }}" class="inline">
+                                <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_section') }}">
+                                <button type="submit" class="btn btn-sm {{ section.isLocked ? 'btn-outline-danger' : 'btn-neutral' }}" title="{{ section.isLocked ? 'studio.forum.sections.unlock'|trans({}, 'forums') : 'studio.forum.sections.lock'|trans({}, 'forums') }}">
+                                    <twig:ux:icon name="{{ section.isLocked ? 'heroicons:lock-closed' : 'heroicons:lock-open' }}" class="h-4 w-4" />
+                                </button>
+                            </form>
+                        </td>
                         <td class="text-right">
                             <div class="flex items-center justify-end gap-2">
                                 <a href="{{ path('forum_section', {sectionSlug: section.slug, _locale: section.locale}) }}" class="btn btn-sm btn-neutral" target="_blank">{{ 'studio.forum.sections.index.action.view'|trans }}</a>
                                 <a href="{{ path('admin_forum_sections_edit', {id: section.id}) }}" class="btn btn-sm btn-neutral">{{ 'aacp.users.edit_action'|trans }}</a>
+                                <form method="post" action="{{ path('admin_forum_sections_move', {id: section.id}) }}" class="inline">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_section') }}">
+                                    <input type="hidden" name="direction" value="up">
+                                    <button type="submit" class="btn btn-sm btn-neutral" title="{{ 'studio.forum.sections.index.action.move_up'|trans }}">↑</button>
+                                </form>
+                                <form method="post" action="{{ path('admin_forum_sections_move', {id: section.id}) }}" class="inline">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_section') }}">
+                                    <input type="hidden" name="direction" value="down">
+                                    <button type="submit" class="btn btn-sm btn-neutral" title="{{ 'studio.forum.sections.index.action.move_down'|trans }}">↓</button>
+                                </form>
                                 <a href="{{ path('admin_forum_sections_delete', {id: section.id}) }}" class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</a>
                             </div>
                         </td>

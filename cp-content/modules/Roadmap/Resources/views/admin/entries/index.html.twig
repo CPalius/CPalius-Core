@@ -1,0 +1,69 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.roadmap.entries.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_roadmap_settings_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.roadmap.menu.settings'|trans }}</a>
+    <a href="{{ path('admin_roadmap_create') }}" class="btn btn-sm btn-primary">{{ 'studio.roadmap.entries.create'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <form method="get" class="mb-sp-sm flex flex-wrap gap-3">
+        <select name="status" class="form-select" onchange="this.form.submit()">
+            <option value="">{{ 'studio.roadmap.filter.all_statuses'|trans }}</option>
+            {% for status in statuses %}
+                <option value="{{ status }}" {{ statusFilter == status ? 'selected' : '' }}>{{ ('site.roadmap.status.' ~ status)|trans }}</option>
+            {% endfor %}
+        </select>
+        <select name="kind" class="form-select" onchange="this.form.submit()">
+            <option value="">{{ 'studio.roadmap.filter.all_kinds'|trans }}</option>
+            {% for kind in kinds %}
+                <option value="{{ kind }}" {{ kindFilter == kind ? 'selected' : '' }}>{{ ('site.roadmap.kind.' ~ kind)|trans }}</option>
+            {% endfor %}
+        </select>
+    </form>
+
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'studio.roadmap.column.title'|trans,
+            'studio.roadmap.column.kind'|trans,
+            'studio.roadmap.column.status'|trans,
+            'studio.roadmap.column.published'|trans,
+            '',
+        ] }}" empty="{{ entries is empty }}" emptyText="{{ 'studio.roadmap.entries.empty'|trans }}">
+            <twig:block name="rows">
+                {% for entry in entries %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('admin_roadmap_edit', {id: entry.id}) }}" class="font-medium text-neutral-900 hover:text-primary-600">
+                                {{ entry.title }}
+                            </a>
+                            {% if entry.versionLabel %}
+                                <div class="text-fs-xs text-neutral-500">{{ entry.versionLabel }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="text-fs-xs">{{ ('site.roadmap.kind.' ~ entry.kind)|trans }}</td>
+                        <td class="text-fs-xs">{{ ('site.roadmap.status.' ~ entry.status)|trans }}</td>
+                        <td class="text-fs-xs text-neutral-500">
+                            {{ entry.publishedAt ? entry.publishedAt|date('d.m.Y H:i') : '—' }}
+                        </td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ path('admin_roadmap_edit', {id: entry.id}) }}" class="btn btn-sm btn-neutral">
+                                    {{ 'aacp.users.edit_action'|trans }}
+                                </a>
+                                <form method="post" action="{{ path('admin_roadmap_delete', {id: entry.id}) }}"
+                                      onsubmit="return confirm({{ 'studio.roadmap.delete_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_roadmap_form') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        {{ 'aacp.cron.delete'|trans }}
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+{% endblock %}

@@ -13,6 +13,6 @@
             <span class="blog-card-not__prompt" aria-hidden="true">$</span>
             <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
         </h4>
-        {% include '@CpaliusWebsiteTheme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
+        {% include '@Theme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
     </div>
 </article>

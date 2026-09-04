@@ -10,15 +10,10 @@ use App\Entity\CronJobRun;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * CronManager::getTasks() üzerinden okunan HEM DB HEM kod tabanlı görevler
- * arasından zamanı gelmişleri bulup çalıştıran, gerçek dispatch mantığının
- * TEK yaşadığı yer. cp:cron:run (CLI, gerçek crontab/Task Scheduler girdisi)
- * VE /cron/execute (HTTP pseudo-cron ucu, CRON_TOKEN korumalı) AYNI bu
- * servisi çağırır — iki tetikleyici arasında dispatch mantığının kopyala-
- * yapıştır edilmesi Manifesto'nun "Sıfır Şişkinlik" ilkesine aykırı olurdu.
+ * Runs due DB + code tasks from CronManager::getTasks(). Shared by CLI and HTTP pseudo-cron.
  *
- * @see \App\Core\Command\RunDueCronJobsCommand CLI giriş noktası.
- * @see \App\Controller\CronExecuteController HTTP pseudo-cron giriş noktası.
+ * @see \App\Core\Command\RunDueCronJobsCommand CLI entry.
+ * @see \App\Controller\CronExecuteController HTTP entry (CRON_TOKEN).
  */
 final class CronDispatcher
 {
@@ -32,9 +27,7 @@ final class CronDispatcher
     }
 
     /**
-     * Zamanı gelmiş TÜM görevleri (DB + kod tabanlı) çalıştırır ve her biri
-     * için bir sonuç satırı döner — çağıran taraf (CLI SymfonyStyle veya
-     * HTTP JsonResponse) bu sonuçları kendi formatında sunar.
+     * Run every due task and return one result row per job for CLI/HTTP formatting.
      *
      * @return list<array{jobName: string, sourceType: 'db'|'code', success: bool, message: string}>
      */

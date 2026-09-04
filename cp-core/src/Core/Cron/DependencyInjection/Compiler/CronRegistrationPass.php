@@ -14,22 +14,8 @@ use Symfony\Component\DependencyInjection\Reference;
 use Throwable;
 
 /**
- * Attribute Kulvarı'nın (#[CpCronJob]) VE Flat-File Kulvarı'nın
- * (cp-content/modules/*\/Hooks/cron.{job_name}.php) derleme zamanı ortak
- * toplayıcısı. HookRegistrationPass/ApiRegistrationPass ile AYNI iskelet:
- * dosya sistemi taraması + Reflection, modül izolasyonu try/catch(Throwable)
- * ile sağlanır.
- *
- * Flat-file cron dosyaları BİLİNÇLİ olarak "cron." önekiyle sınırlıdır (ör.
- * "cron.blog_publish.php") — aynı Hooks/ dizini hem #[CpHook] servislerini
- * hem #[CpCronJob] servislerini hem de bu flat-file görevleri barındırabilir
- * (Faz 7'nin "aynı dizin, farklı kulvar" konvansiyonu); önek olmadan her
- * .php dosyasını bir cron görevi sanmak, HookManager'ın hook noktası
- * dosyalarıyla çakışmaya yol açardı.
- *
- * Taranan konumlar: cp-core/src (çekirdek servisler, attribute kulvarı) +
- * her modülün kendi kök dizini (attribute kulvarı) + her modülün Hooks/
- * dizini (flat-file kulvarı, sadece "cron.*.php" kalıbı).
+ * Compile-time collector for #[CpCronJob] and Hooks/cron.{job_name}.php (isolated per module).
+ * The "cron." prefix avoids colliding with hook-point files in the same Hooks/ directory.
  */
 final class CronRegistrationPass implements CompilerPassInterface
 {
@@ -67,8 +53,7 @@ final class CronRegistrationPass implements CompilerPassInterface
                     $serviceIds[$item['serviceId']] = true;
                 }
             } catch (Throwable) {
-                // Modül izolasyonu: bir modülün dizini taranırken hata
-                // oluşursa sadece o modülün attribute cron görevleri kayıt olmaz.
+                // Module isolation: a scan error drops only that module's attribute cron jobs.
             }
 
             try {
@@ -76,7 +61,7 @@ final class CronRegistrationPass implements CompilerPassInterface
                     $collected[] = $item;
                 }
             } catch (Throwable) {
-                // Modül izolasyonu: bkz. yukarıdaki catch bloğu.
+                // Module isolation: same as the attribute-scan catch above.
             }
         }
 
@@ -166,12 +151,7 @@ final class CronRegistrationPass implements CompilerPassInterface
     }
 
     /**
-     * Flat-file cron görevleri servis/DI ihtiyacı duymadığı için burada
-     * Reflection/class_exists yoktur — dosya adı doğrudan sözleşmedir:
-     * "cron.{job_name}.{schedule_slug}.php" değil, sade "cron.{job_name}.php"
-     * (zamanlama dosyanın İÇİNDE, ilk satırdaki `# schedule: ...` yorumuyla
-     * DEĞİL, dosyanın döndürdüğü dizi üzerinden okunur — bkz. HookManager'ın
-     * includeIsolated() ile aynı izolasyon prensibi).
+     * Filename is the contract (cron.{job_name}.php); schedule comes from the returned array, not a header comment.
      *
      * @return list<array{jobName: string, schedule: string, description: string, sourceType: 'flat-file', serviceId: null, method: null, file: string}>
      */
@@ -209,9 +189,7 @@ final class CronRegistrationPass implements CompilerPassInterface
             }
 
             if (!is_array($definition) || !isset($definition['schedule']) || !is_string($definition['schedule'])) {
-                // Flat-file cron sözleşmesi: dosya, en az 'schedule' anahtarı
-                // olan bir dizi DÖNMELİDİR (bkz. örnek dosya). Sözleşmeye
-                // uymayan bir dosya sessizce atlanır (Core Never Dies).
+                // Skip files that do not return an array with a string 'schedule' key.
                 continue;
             }
 

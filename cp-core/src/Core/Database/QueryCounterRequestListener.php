@@ -9,15 +9,8 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * Her HTTP isteğinin en başında QueryCounter'ı sıfırlar. PHP-FPM/worker
- * ortamlarında servis container'ı (ve dolayısıyla QueryCounter singleton'ı)
- * istekler arasında hayatta kalabildiği için bu sıfırlama olmazsa, bir
- * önceki isteğin sorgu sayıları bir sonraki isteğe sızar.
- *
- * onlyMasterRequests: sub-request'lerde (ör. ESI/fragment render) sayaç
- * sıfırlanmaz — bir ana isteğin alt render'ları da AYNI bütçeye dahildir,
- * çünkü tarayıcıya giden tek bir HTTP yanıtının toplam DB maliyetini
- * ölçmek istiyoruz.
+ * Reset QueryCounter on each master HTTP request so PHP-FPM workers do not leak counts.
+ * Sub-requests (ESI) share the same budget as the master response.
  */
 final class QueryCounterRequestListener implements EventSubscriberInterface
 {

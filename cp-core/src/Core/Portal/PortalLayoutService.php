@@ -10,7 +10,7 @@ use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Studio portal layout JSON'unu okur, doğrular ve kaydeder.
+ * Reads, validates, and persists Studio portal layout JSON.
  */
 final class PortalLayoutService
 {
@@ -46,7 +46,7 @@ final class PortalLayoutService
     }
 
     /**
-     * Sıralı tam layout (eksik bloklar catalog default ile tamamlanır).
+     * Ordered full layout; missing blocks are filled from catalog defaults.
      *
      * @return list<array<string, mixed>>
      */
@@ -189,7 +189,7 @@ final class PortalLayoutService
     }
 
     /**
-     * Eski homepage.widget.* checkbox değerlerini enabled bayraklarına yansıtır.
+     * Maps legacy homepage.widget.* checkboxes onto enabled flags.
      *
      * @param list<array<string, mixed>> $layout
      *
@@ -212,7 +212,7 @@ final class PortalLayoutService
 
             $definition = $this->settingsRegistry->getDefinition($legacyKey);
             if ($definition === null) {
-                // Tanım kaldırıldıysa DB ham değerine bak.
+                // Fall back to raw DB value when the definition was removed.
                 $rawMap = $this->settingRepository->findAllAsMap();
                 if (!array_key_exists($legacyKey, $rawMap)) {
                     continue;

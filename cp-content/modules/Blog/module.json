@@ -1,7 +1,16 @@
 {
     "name": "Blog",
     "version": "1.0.0",
-    "description": "CPalius çekirdek blog modülü.",
+    "description": "CPalius core blog module.",
     "author": "CPalius",
-    "bundle": "Modules\\Blog\\BlogModule"
+    "bundle": "Modules\\Blog\\BlogModule",
+    "core_version": "^1.0",
+    "requires": {
+        "Media": "^1.0"
+    },
+    "conflicts": {},
+    "provides": [
+        "blog",
+        "content-feed"
+    ]
 }

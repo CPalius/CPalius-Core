@@ -1,4 +1,4 @@
-{% extends '@CpaliusWebsiteTheme/layout.html.twig' %}
+{% extends '@Theme/layout.html.twig' %}
 
 {% block stylesheets %}
     <link rel="stylesheet" href="/themes/cpalius-website/dist/forum.css">
@@ -9,13 +9,15 @@
     <div class="container">
         {% block forum_breadcrumbs %}{% endblock %}
 
-        {% for type, messages in app.flashes %}
+        {% for type, messages in cp_flashes() %}
             {% for message in messages %}
                 <div class="forum-flash forum-flash--{{ type }}">{{ message }}</div>
             {% endfor %}
         {% endfor %}
 
         {% block forum_content %}{% endblock %}
+
+        {% include '@Theme/forum/partials/_stats_bar.html.twig' %}
     </div>
 </section>
 {% endblock %}

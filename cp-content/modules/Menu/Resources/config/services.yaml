@@ -6,3 +6,12 @@ services:
     Modules\Menu\Controller\:
         resource: '../../Controller/'
         tags: ['controller.service_arguments']
+
+    Modules\Menu\Repository\:
+        resource: '../../Repository/'
+
+    Modules\Menu\Studio\:
+        resource: '../../Studio/'
+
+    Modules\Menu\Twig\:
+        resource: '../../Twig/'

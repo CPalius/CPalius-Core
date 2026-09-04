@@ -3,11 +3,97 @@
 {% block header %}{{ 'studio.homepage.header'|trans }}{% endblock %}
 
 {% block body %}
+    <style>
+        .portal-locale-switch {
+            display: inline-flex;
+            gap: 0;
+            padding: 4px;
+            border-radius: 10px;
+            background: #0f172a;
+            border: 1px solid #1e293b;
+        }
+        .portal-locale-switch [data-copy-locale-tab] {
+            min-width: 7.5rem;
+            padding: 0.55rem 1rem;
+            border-radius: 7px;
+            border: 0;
+            background: transparent;
+            color: #94a3b8;
+            font-size: 0.8125rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+        }
+        .portal-locale-switch [data-copy-locale-tab][aria-selected="true"] {
+            background: #0284c7;
+            color: #fff;
+            box-shadow: 0 0 0 1px rgba(14, 165, 233, .45), 0 6px 16px rgba(2, 132, 199, .35);
+        }
+        .portal-locale-switch [data-copy-locale-tab]:hover:not([aria-selected="true"]) {
+            color: #e2e8f0;
+            background: rgba(148, 163, 184, .12);
+        }
+        .portal-block-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: flex-end;
+            padding-top: 0.75rem;
+            margin-top: 0.75rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        .portal-footer-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.1rem;
+            border-radius: 0.75rem;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+        }
+        .portal-status {
+            min-height: 1.25rem;
+            font-size: 0.75rem;
+            color: #0369a1;
+        }
+        .portal-status.is-error { color: #b91c1c; }
+        .portal-status.is-ok { color: #047857; }
+        .portal-copy-panel {
+            max-height: 28rem;
+            overflow: auto;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            background: #fff;
+        }
+        .portal-field-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+        .portal-field-key {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.7rem;
+            color: #64748b;
+            background: #f1f5f9;
+            border-radius: 999px;
+            padding: 0.15rem 0.5rem;
+        }
+    </style>
+
     <p class="mb-sp-md text-fs-sm text-neutral-500">{{ 'studio.homepage.description'|trans }}</p>
 
-    <form method="post" action="{{ path('admin_homepage_settings_update') }}" id="portal-homepage-form" class="space-y-sp-md">
-        <input type="hidden" name="_token" value="{{ csrf_token }}">
+    <form method="post" action="{{ path('admin_homepage_settings_update') }}" id="portal-homepage-form" class="space-y-sp-md"
+          data-save-block-url="{{ save_block_url }}"
+          data-reset-block-url="{{ reset_block_url }}">
+        <input type="hidden" name="_token" value="{{ csrf_token }}" id="portal-csrf">
         <input type="hidden" name="portal_layout" id="portal-layout-json" value="">
+        <input type="hidden" name="portal_copy" id="portal-copy-json" value="">
 
         <twig:cp:card title="{{ 'studio.homepage.mode_card'|trans }}">
             <label class="form-label" for="homepage_mode">{{ modeDefinition.label|default('Ana Sayfa Modu') }}</label>
@@ -20,13 +106,19 @@
 
         <twig:cp:card title="{{ 'studio.homepage.blocks_card'|trans }}">
             <p class="mb-sp-sm text-fs-sm text-neutral-500">{{ 'studio.homepage.blocks_help'|trans }}</p>
+            <p class="mb-sp-sm text-fs-sm text-sky-900 bg-sky-50 border border-sky-200 rounded-md px-3 py-2">
+                {{ 'studio.homepage.copy_editor_help'|trans }}
+            </p>
 
-            <ul id="portal-block-list" class="space-y-2" data-portal-block-list>
+            <ul id="portal-block-list" class="space-y-3" data-portal-block-list>
                 {% for block in portalBlocks %}
                     {% set meta = portalCatalog[block.id]|default(null) %}
                     {% if meta %}
-                        <li class="rounded-lg border border-neutral-200 bg-white"
+                        {% set copyKeys = portalCopyFields[block.id]|default([]) %}
+                        {% set hasCopy = copyKeys is not empty %}
+                        <li class="rounded-xl border border-neutral-200 bg-white shadow-sm"
                             data-block-id="{{ block.id }}"
+                            {% if hasCopy %}data-has-copy="1"{% endif %}
                             draggable="true">
                             <div class="flex flex-wrap items-center gap-3 px-3 py-2.5">
                                 <button type="button"
@@ -38,7 +130,12 @@
 
                                 <div class="min-w-0 flex-1">
                                     <p class="text-fs-sm font-semibold text-neutral-900">{{ meta.label|trans }}</p>
-                                    <p class="text-fs-xs text-neutral-500">{{ block.id }} · {{ ('studio.homepage.group.' ~ meta.group)|trans }}</p>
+                                    <p class="text-fs-xs text-neutral-500">
+                                        {{ block.id }} · {{ ('studio.homepage.group.' ~ meta.group)|trans }}
+                                        {% if hasCopy %}
+                                            · {{ 'studio.homepage.copy_fields_count'|trans({'count': copyKeys|length}) }}
+                                        {% endif %}
+                                    </p>
                                 </div>
 
                                 <label class="inline-flex items-center gap-2 text-fs-sm text-neutral-700">
@@ -57,54 +154,7 @@
                                 </button>
                             </div>
 
-                            <div class="hidden border-t border-neutral-100 px-3 py-3 space-y-sp-sm bg-neutral-50/60" data-block-settings>
-                                {% if meta.supportsHeroFields %}
-                                    <div class="grid gap-3 md:grid-cols-2">
-                                        <div>
-                                            <label class="form-label">{{ 'studio.homepage.field.title'|trans }}</label>
-                                            <input type="text" class="form-control" data-field="title" value="{{ block.title|default('') }}">
-                                        </div>
-                                        <div>
-                                            <label class="form-label">{{ 'studio.homepage.field.label'|trans }}</label>
-                                            <input type="text" class="form-control" data-field="label" value="{{ block.label|default('') }}">
-                                        </div>
-                                        <div class="md:col-span-2">
-                                            <label class="form-label">{{ 'studio.homepage.field.subtitle'|trans }}</label>
-                                            <textarea class="form-control" rows="2" data-field="subtitle">{{ block.subtitle|default('') }}</textarea>
-                                        </div>
-                                        <div class="md:col-span-2">
-                                            <label class="form-label">{{ 'studio.homepage.field.description'|trans }}</label>
-                                            <textarea class="form-control" rows="3" data-field="description">{{ block.description|default('') }}</textarea>
-                                        </div>
-                                        <div>
-                                            <label class="form-label">{{ 'studio.homepage.field.cta_primary_label'|trans }}</label>
-                                            <input type="text" class="form-control" data-field="cta_primary_label" value="{{ block.cta_primary_label|default('') }}">
-                                        </div>
-                                        <div>
-                                            <label class="form-label">{{ 'studio.homepage.field.cta_primary_href'|trans }}</label>
-                                            <input type="text" class="form-control" data-field="cta_primary_href" value="{{ block.cta_primary_href|default('') }}">
-                                        </div>
-                                        <div>
-                                            <label class="form-label">{{ 'studio.homepage.field.cta_secondary_label'|trans }}</label>
-                                            <input type="text" class="form-control" data-field="cta_secondary_label" value="{{ block.cta_secondary_label|default('') }}">
-                                        </div>
-                                        <div>
-                                            <label class="form-label">{{ 'studio.homepage.field.cta_secondary_href'|trans }}</label>
-                                            <input type="text" class="form-control" data-field="cta_secondary_href" value="{{ block.cta_secondary_href|default('') }}">
-                                        </div>
-                                        <div class="md:col-span-2">
-                                            <label class="form-label">{{ 'studio.homepage.field.badges'|trans }}</label>
-                                            <input type="text" class="form-control" data-field="badges" value="{{ block.badges|default('') }}">
-                                            <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.homepage.field.badges_help'|trans }}</p>
-                                        </div>
-                                    </div>
-                                {% else %}
-                                    <div>
-                                        <label class="form-label">{{ 'studio.homepage.field.title'|trans }}</label>
-                                        <input type="text" class="form-control" data-field="title" value="{{ block.title|default('') }}" placeholder="{{ 'studio.homepage.field.title_placeholder'|trans }}">
-                                    </div>
-                                {% endif %}
-
+                            <div class="hidden border-t border-neutral-100 px-3 py-3 space-y-sp-sm bg-slate-50/80" data-block-settings>
                                 {% if meta.supportsLimit or meta.supportsLayout %}
                                     <div class="grid gap-3 md:grid-cols-2">
                                         {% if meta.supportsLimit %}
@@ -125,6 +175,86 @@
                                         {% endif %}
                                     </div>
                                 {% endif %}
+
+                                <div>
+                                    <label class="form-label">{{ 'studio.homepage.field.title'|trans }}</label>
+                                    <input type="text" class="form-control" data-field="title" value="{{ block.title|default('') }}" placeholder="{{ 'studio.homepage.field.title_placeholder'|trans }}">
+                                    {% if hasCopy %}
+                                        <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.homepage.field.title_optional_help'|trans }}</p>
+                                    {% endif %}
+                                </div>
+
+                                {% if hasCopy %}
+                                    <div class="rounded-lg border border-slate-200 bg-white p-3 space-y-3" data-copy-editor>
+                                        <div class="flex flex-wrap items-center justify-between gap-3">
+                                            <div>
+                                                <p class="text-fs-sm font-semibold text-slate-900">{{ 'studio.homepage.copy_languages'|trans }}</p>
+                                                <p class="text-fs-xs text-slate-500">{{ 'studio.homepage.copy_languages_help'|trans }}</p>
+                                            </div>
+                                            <div class="portal-locale-switch" role="tablist" aria-label="{{ 'studio.homepage.copy_languages'|trans }}">
+                                                {% for tab in portalLocaleTabs %}
+                                                    <button type="button"
+                                                            data-copy-locale-tab="{{ tab.code }}"
+                                                            data-block="{{ block.id }}"
+                                                            aria-selected="{{ loop.first ? 'true' : 'false' }}">
+                                                        {{ tab.label }}
+                                                    </button>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+
+                                        {% for tab in portalLocaleTabs %}
+                                            {% set locale = tab.code %}
+                                            <div class="portal-copy-panel space-y-3 p-3 {{ not loop.first ? 'hidden' : '' }}"
+                                                 data-copy-locale-panel="{{ locale }}"
+                                                 data-block="{{ block.id }}">
+                                                <p class="text-fs-xs font-semibold uppercase tracking-wide text-sky-700">
+                                                    {{ 'studio.homepage.copy_locale_hint'|trans({'locale': tab.label}) }}
+                                                </p>
+                                                {% for fieldKey in copyKeys %}
+                                                    {% set fieldValue = portalCopyValues[block.id][locale][fieldKey]|default('') %}
+                                                    {% set isArea = portalCopyTextareas[block.id][fieldKey]|default(false) %}
+                                                    <div>
+                                                        <div class="portal-field-label mb-1">
+                                                            <label class="form-label mb-0">{{ fieldKey|replace({'_': ' '})|title }}</label>
+                                                            <span class="portal-field-key">{{ fieldKey }}</span>
+                                                        </div>
+                                                        {% if isArea %}
+                                                            <textarea class="form-control font-mono text-fs-xs"
+                                                                      rows="{{ fieldValue|length > 400 ? 8 : 4 }}"
+                                                                      data-copy-block="{{ block.id }}"
+                                                                      data-copy-locale="{{ locale }}"
+                                                                      data-copy-key="{{ fieldKey }}">{{ fieldValue }}</textarea>
+                                                        {% else %}
+                                                            <input type="text"
+                                                                   class="form-control"
+                                                                   data-copy-block="{{ block.id }}"
+                                                                   data-copy-locale="{{ locale }}"
+                                                                   data-copy-key="{{ fieldKey }}"
+                                                                   value="{{ fieldValue }}">
+                                                        {% endif %}
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endfor %}
+
+                                        <div class="portal-block-actions">
+                                            <p class="portal-status mr-auto" data-block-status="{{ block.id }}" aria-live="polite"></p>
+                                            <button type="button"
+                                                    class="btn btn-secondary btn-sm"
+                                                    data-reset-block="{{ block.id }}">
+                                                <twig:ux:icon name="tabler:restore" class="h-4 w-4" />
+                                                {{ 'studio.homepage.reset_block'|trans }}
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-primary btn-sm"
+                                                    data-save-block="{{ block.id }}">
+                                                <twig:ux:icon name="tabler:device-floppy" class="h-4 w-4" />
+                                                {{ 'studio.homepage.save_block'|trans }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                {% endif %}
                             </div>
                         </li>
                     {% endif %}
@@ -132,7 +262,20 @@
             </ul>
         </twig:cp:card>
 
-        <button type="submit" class="btn btn-primary">{{ 'studio.homepage.save'|trans }}</button>
+        <div class="portal-footer-actions">
+            <button type="submit"
+                    formaction="{{ reset_all_url }}"
+                    class="btn btn-secondary"
+                    data-confirm-reset-all
+                    onclick="return confirm({{ 'studio.homepage.reset_all_confirm'|trans|json_encode|raw }});">
+                <twig:ux:icon name="tabler:history" class="h-4 w-4" />
+                {{ 'studio.homepage.reset_all'|trans }}
+            </button>
+            <button type="submit" class="btn btn-primary">
+                <twig:ux:icon name="tabler:checks" class="h-4 w-4" />
+                {{ 'studio.homepage.save_all'|trans }}
+            </button>
+        </div>
     </form>
 
     <script>
@@ -140,9 +283,32 @@
         const list = document.querySelector('[data-portal-block-list]');
         const form = document.getElementById('portal-homepage-form');
         const jsonInput = document.getElementById('portal-layout-json');
-        if (!list || !form || !jsonInput) return;
+        const copyInput = document.getElementById('portal-copy-json');
+        const csrf = document.getElementById('portal-csrf');
+        if (!list || !form || !jsonInput || !copyInput || !csrf) return;
 
+        const saveBlockUrl = form.dataset.saveBlockUrl;
+        const resetBlockUrl = form.dataset.resetBlockUrl;
         let dragEl = null;
+
+        const setStatus = (blockId, message, kind) => {
+            const el = list.querySelector('[data-block-status="' + blockId + '"]');
+            if (!el) return;
+            el.textContent = message || '';
+            el.classList.remove('is-ok', 'is-error');
+            if (kind) el.classList.add(kind);
+        };
+
+        const applyValuesToDom = (blockId, valuesByLocale) => {
+            Object.entries(valuesByLocale || {}).forEach(([locale, fields]) => {
+                Object.entries(fields || {}).forEach(([key, value]) => {
+                    const el = list.querySelector(
+                        '[data-copy-block="' + blockId + '"][data-copy-locale="' + locale + '"][data-copy-key="' + CSS.escape(key) + '"]'
+                    );
+                    if (el) el.value = value;
+                });
+            });
+        };
 
         list.querySelectorAll('[data-toggle-settings]').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -151,6 +317,23 @@
                 if (!panel) return;
                 const open = panel.classList.toggle('hidden') === false;
                 btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+        });
+
+        list.querySelectorAll('[data-copy-locale-tab]').forEach((tab) => {
+            tab.addEventListener('click', () => {
+                const blockId = tab.getAttribute('data-block');
+                const locale = tab.getAttribute('data-copy-locale-tab');
+                const editor = tab.closest('[data-copy-editor]');
+                if (!editor || !blockId || !locale) return;
+
+                editor.querySelectorAll('[data-copy-locale-tab][data-block="' + blockId + '"]').forEach((t) => {
+                    t.setAttribute('aria-selected', t === tab ? 'true' : 'false');
+                });
+
+                editor.querySelectorAll('[data-copy-locale-panel][data-block="' + blockId + '"]').forEach((panel) => {
+                    panel.classList.toggle('hidden', panel.getAttribute('data-copy-locale-panel') !== locale);
+                });
             });
         });
 
@@ -191,9 +374,96 @@
             return block;
         };
 
-        form.addEventListener('submit', () => {
+        const readCopyForBlock = (blockId) => {
+            const payload = {};
+            list.querySelectorAll('[data-copy-block="' + blockId + '"][data-copy-locale][data-copy-key]').forEach((el) => {
+                const locale = el.getAttribute('data-copy-locale');
+                const key = el.getAttribute('data-copy-key');
+                if (!locale || !key) return;
+                payload[locale] = payload[locale] || {};
+                payload[locale][key] = el.value;
+            });
+            return payload;
+        };
+
+        const readCopy = () => {
+            const payload = {};
+            list.querySelectorAll('li[data-has-copy="1"]').forEach((li) => {
+                const id = li.dataset.blockId;
+                if (!id) return;
+                payload[id] = readCopyForBlock(id);
+            });
+            return payload;
+        };
+
+        const postForm = async (url, fields) => {
+            const body = new FormData();
+            body.append('_token', csrf.value);
+            Object.entries(fields).forEach(([k, v]) => body.append(k, v));
+            const res = await fetch(url, {
+                method: 'POST',
+                body,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+            const data = await res.json().catch(() => ({ ok: false, message: 'Request failed' }));
+            if (!res.ok || !data.ok) {
+                throw new Error(data.message || 'Request failed');
+            }
+            return data;
+        };
+
+        list.querySelectorAll('[data-save-block]').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const blockId = btn.getAttribute('data-save-block');
+                if (!blockId) return;
+                btn.disabled = true;
+                setStatus(blockId, '', null);
+                try {
+                    const data = await postForm(saveBlockUrl, {
+                        block_id: blockId,
+                        copy: JSON.stringify(readCopyForBlock(blockId)),
+                    });
+                    if (data.values) applyValuesToDom(blockId, data.values);
+                    setStatus(blockId, data.message || 'Saved', 'is-ok');
+                } catch (err) {
+                    setStatus(blockId, err.message || 'Error', 'is-error');
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        });
+
+        list.querySelectorAll('[data-reset-block]').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const blockId = btn.getAttribute('data-reset-block');
+                if (!blockId) return;
+                if (!confirm({{ 'studio.homepage.reset_block_confirm'|trans|json_encode|raw }})) return;
+                btn.disabled = true;
+                setStatus(blockId, '', null);
+                try {
+                    const data = await postForm(resetBlockUrl, { block_id: blockId });
+                    if (data.values) applyValuesToDom(blockId, data.values);
+                    setStatus(blockId, data.message || 'Reset', 'is-ok');
+                } catch (err) {
+                    setStatus(blockId, err.message || 'Error', 'is-error');
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        });
+
+        form.addEventListener('submit', (e) => {
+            // Skip packing when the dedicated reset-all formaction is used — still need layout? Reset all only resets copy.
+            const submitter = e.submitter;
+            const isResetAll = submitter && submitter.getAttribute('formaction');
             const blocks = Array.from(list.querySelectorAll('li[data-block-id]')).map(readBlock);
             jsonInput.value = JSON.stringify(blocks);
+            if (!isResetAll) {
+                copyInput.value = JSON.stringify(readCopy());
+            } else {
+                copyInput.value = '{}';
+            }
         });
     })();
     </script>

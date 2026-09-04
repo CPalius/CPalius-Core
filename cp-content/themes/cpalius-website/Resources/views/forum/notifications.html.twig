@@ -1,0 +1,76 @@
+{% extends '@Theme/forum/layout.html.twig' %}
+
+{% block title %}{{ 'forum.notifications.title'|trans }} — {{ 'forum.breadcrumb.home_title'|trans }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-crumb fade-in" aria-label="{{ 'forum.nav_aria'|trans }}">
+        <ol class="forum-crumb__list">
+            <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+            <li><a href="{{ path('forum_index') }}">{{ 'forum.breadcrumb.home_title'|trans }}</a></li>
+            <li class="is-active">{{ 'forum.notifications.title'|trans }}</li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in">
+    <div class="forum-header__top">
+        <div>
+            <h1 class="section-title" style="font-size: var(--fs-2xl);">{{ 'forum.notifications.title'|trans }}</h1>
+            <div class="forum-header__meta">
+                <span>{{ 'forum.notifications.unread'|trans({'count': unreadCount}) }}</span>
+            </div>
+        </div>
+        <div class="forum-header__actions">
+            <form method="post" action="{{ path('forum_notifications_mark_read') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('forum_notifications_mark_read') }}">
+                <button type="submit" class="btn btn-sm btn-outline">{{ 'forum.notifications.mark_all_read'|trans }}</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="forum-toolbar fade-in" style="border-bottom: 2px solid var(--slw-border); margin-bottom: var(--sp-md);">
+    <div class="forum-profile-tabs forum-profile-tabs--scroll">
+        {% set tabs = {
+            'all': 'forum.notifications.tab.all',
+            'reply': 'forum.notifications.tab.reply',
+            'thread_reply': 'forum.notifications.tab.thread_reply',
+            'quote': 'forum.notifications.tab.quote',
+            'mention': 'forum.notifications.tab.mention',
+            'reaction': 'forum.notifications.tab.reaction',
+            'dislike': 'forum.notifications.tab.dislike',
+            'reputation': 'forum.notifications.tab.reputation'
+        } %}
+        {% for key, label in tabs %}
+            <a href="{{ path('forum_notifications', {type: key}) }}" class="{{ type == key ? 'is-active' : '' }}">{{ label|trans }}</a>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="forum-notif-list fade-in">
+    {% for n in items %}
+        <a href="{{ path('forum_notification_go', {id: n.id}) }}" class="forum-notif-item {{ n.read ? '' : 'is-unread' }}">
+            <div class="forum-notif-item__icon">
+                {% if n.type == 'reply' %}<i class="bi bi-reply"></i>
+                {% elseif n.type == 'thread_reply' %}<i class="bi bi-chat-dots"></i>
+                {% elseif n.type == 'quote' %}<i class="bi bi-chat-quote"></i>
+                {% elseif n.type == 'mention' %}<i class="bi bi-at"></i>
+                {% elseif n.type == 'reaction' %}<i class="bi bi-heart"></i>
+                {% elseif n.type == 'dislike' %}<i class="bi bi-hand-thumbs-down"></i>
+                {% else %}<i class="bi bi-award"></i>{% endif %}
+            </div>
+            <div class="forum-notif-item__body">
+                <div class="forum-notif-item__text">
+                    {% include '@Theme/forum/partials/_notification_message.html.twig' with {n: n} %}
+                </div>
+                <time datetime="{{ n.createdAt|date('c') }}">{{ n.createdAt|date('d.m.Y H:i') }}</time>
+            </div>
+        </a>
+    {% else %}
+        <div class="forum-empty"><i class="bi bi-bell"></i> {{ 'forum.notifications.empty'|trans }}</div>
+    {% endfor %}
+</div>
+
+{% include '@Theme/forum/partials/pagination.html.twig' with {result: items, route: 'forum_notifications', routeParams: {type: type}} %}
+{% endblock %}

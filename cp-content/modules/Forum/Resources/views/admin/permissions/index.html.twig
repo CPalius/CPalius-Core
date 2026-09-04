@@ -1,0 +1,123 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.permissions.header'|trans({}, 'forums') }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.permissions.action.dashboard'|trans({}, 'forums') }}</a>
+    <a href="{{ path('admin_forum_sections_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.dashboard.action.sections'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <form method="post" id="forum-permissions-form">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_permissions') }}">
+
+        <twig:studio:card padded="{{ false }}">
+            <div class="border-b border-neutral-200 px-4 py-3 text-fs-sm text-neutral-600">
+                {{ 'studio.forum.permissions.hint'|trans({}, 'forums') }}
+            </div>
+
+            <div class="flex flex-wrap gap-1 border-b border-neutral-200 bg-neutral-50 px-4 py-2" role="tablist" aria-label="{{ 'studio.forum.permissions.tabs_aria'|trans({}, 'forums') }}">
+                {% for role in roles %}
+                    <button type="button"
+                            class="rounded-md px-3 py-1.5 text-fs-xs font-medium transition {% if loop.first %}bg-white text-primary-700 shadow-sm ring-1 ring-neutral-200{% else %}text-neutral-600 hover:bg-white/70{% endif %}"
+                            data-perm-tab="{{ role }}"
+                            role="tab"
+                            aria-selected="{{ loop.first ? 'true' : 'false' }}">
+                        {{ ('studio.forum.permissions.role.' ~ role)|trans({}, 'forums') }}
+                    </button>
+                {% endfor %}
+            </div>
+
+            {% for role in roles %}
+                <div class="{{ not loop.first ? 'hidden' : '' }}" data-perm-panel="{{ role }}" role="tabpanel">
+                    <p class="border-b border-neutral-100 bg-neutral-50/50 px-4 py-2 text-fs-xs text-neutral-500">
+                        {{ ('studio.forum.permissions.role_desc.' ~ role)|trans({}, 'forums') }}
+                    </p>
+
+                    <twig:studio:table headers="{{ [
+                        'studio.forum.permissions.col.content'|trans({}, 'forums'),
+                        'studio.forum.permissions.col.value'|trans({}, 'forums'),
+                    ] }}" empty="{{ matrix is empty }}" emptyText="{{ 'studio.forum.permissions.empty'|trans({}, 'forums') }}">
+                        <twig:block name="rows">
+                            {% for row in matrix %}
+                                {% set section = row.section %}
+                                <tr class="bg-neutral-50">
+                                    <td colspan="2" class="!py-2">
+                                        <span style="padding-left: {{ row.depth * 16 }}px" class="inline-flex items-center gap-2 text-fs-sm font-semibold text-neutral-900">
+                                            {% if section.isLocked %}
+                                                <twig:ux:icon name="heroicons:lock-closed" class="h-3.5 w-3.5 text-neutral-400" />
+                                            {% endif %}
+                                            {{ section.title }}
+                                            <span class="rounded bg-white px-1.5 py-0.5 text-fs-xs font-normal capitalize text-neutral-500 ring-1 ring-neutral-200">{{ section.nodeType.value }}</span>
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% for perm in permissions %}
+                                    {% set checked = row.cells[role][perm] %}
+                                    <tr>
+                                        <td class="text-fs-sm text-neutral-700" style="padding-left: {{ (row.depth + 1) * 16 + 12 }}px">
+                                            {{ ('studio.forum.permissions.perm.' ~ perm)|trans({}, 'forums') }}
+                                        </td>
+                                        <td class="w-28">
+                                            <input type="hidden" name="matrix[{{ section.id }}][{{ role }}][{{ perm }}]" value="0">
+                                            <label class="inline-flex cursor-pointer items-center gap-2">
+                                                <input type="checkbox"
+                                                       name="matrix[{{ section.id }}][{{ role }}][{{ perm }}]"
+                                                       value="1"
+                                                       {{ checked ? 'checked' : '' }}
+                                                       class="form-check-input">
+                                                <span class="text-fs-xs text-neutral-500">{{ checked ? 'studio.forum.permissions.value.on'|trans({}, 'forums') : 'studio.forum.permissions.value.off'|trans({}, 'forums') }}</span>
+                                            </label>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </twig:block>
+                    </twig:studio:table>
+                </div>
+            {% endfor %}
+
+            <div class="flex items-center justify-end gap-2 border-t border-neutral-200 px-4 py-3">
+                <a href="{{ path('admin_forum_sections_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.sections.form.cancel'|trans }}</a>
+                <button type="submit" class="btn btn-sm btn-primary">{{ 'studio.forum.permissions.save'|trans({}, 'forums') }}</button>
+            </div>
+        </twig:studio:card>
+    </form>
+
+    <script>
+    (function () {
+        var tabs = document.querySelectorAll('[data-perm-tab]');
+        var panels = document.querySelectorAll('[data-perm-panel]');
+        if (!tabs.length) return;
+
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                var role = tab.getAttribute('data-perm-tab');
+                tabs.forEach(function (t) {
+                    var active = t === tab;
+                    t.setAttribute('aria-selected', active ? 'true' : 'false');
+                    t.classList.toggle('bg-white', active);
+                    t.classList.toggle('text-primary-700', active);
+                    t.classList.toggle('shadow-sm', active);
+                    t.classList.toggle('ring-1', active);
+                    t.classList.toggle('ring-neutral-200', active);
+                    t.classList.toggle('text-neutral-600', !active);
+                });
+                panels.forEach(function (panel) {
+                    panel.classList.toggle('hidden', panel.getAttribute('data-perm-panel') !== role);
+                });
+            });
+        });
+
+        document.querySelectorAll('[data-perm-panel] input[type="checkbox"]').forEach(function (input) {
+            input.addEventListener('change', function () {
+                var label = input.closest('label');
+                if (!label) return;
+                var span = label.querySelector('span');
+                if (!span) return;
+                span.textContent = input.checked ? '{{ 'studio.forum.permissions.value.on'|trans({}, 'forums')|e('js') }}' : '{{ 'studio.forum.permissions.value.off'|trans({}, 'forums')|e('js') }}';
+            });
+        });
+    })();
+    </script>
+{% endblock %}

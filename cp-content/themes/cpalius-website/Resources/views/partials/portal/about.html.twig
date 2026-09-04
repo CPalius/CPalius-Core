@@ -1,85 +1,76 @@
-<section class="portal-zone" id="about">
+{% set t = 'portal' %}
+<section class="section" id="about">
     <div class="container">
-        <div class="portal-module fade-in">
-            <div class="portal-module__head">
-                <h2 class="portal-module__title">
-                    <i class="bi bi-compass"></i>
-                    <span>Teori, Pratik ve "Tekerleği Yeniden İcat Etme" Sancısı</span>
-                </h2>
-                <span class="portal-module__eyebrow">Neden CPalius?</span>
-            </div>
-            <div class="portal-module__body portal-module__body--padded portal-marketing">
-                <p class="portal-module__intro">
-                    Modern web geliştirmede her yeni proje, iki ucu keskin bir bıçağın üzerinde başlar.
-                    CPalius bu iki dünya arasındaki boşluğu doldurmak için doğdu.
-                </p>
+        <div class="section-header fade-in">
+            <span class="section-label">{{ 'about.label'|trans({}, t) }}</span>
+            <h2 class="section-title">{{ 'about.title'|trans({}, t) }}</h2>
+            <p class="section-desc">{{ 'about.desc'|trans({}, t) }}</p>
+        </div>
 
-                <div class="about-grid">
-                    <div class="about-problem">
-                        <div class="problem-card">
-                            <h4><i class="bi bi-exclamation-triangle"></i> Mevcut Sorunlar</h4>
+        <div class="about-grid">
+            <div class="about-problem fade-in-left">
+                <div class="problem-card">
+                    <h4><i class="bi bi-exclamation-triangle"></i> <span>{{ 'about.problems_title'|trans({}, t) }}</span></h4>
 
-                            <div class="problem-item">
-                                <i class="bi bi-x-circle"></i>
-                                <div>
-                                    <strong>Klasik CMS'ler (WordPress, Drupal)</strong>
-                                    <p>Hazır eklenti ve tema sistemleriyle donatılmış ancak hantal veritabanı şemaları, teknik borç dağları ve güvenlik zaafiyetleriyle boğuşan yapılar.</p>
-                                </div>
-                            </div>
-
-                            <div class="problem-item">
-                                <i class="bi bi-x-circle"></i>
-                                <div>
-                                    <strong>Saf Framework'ler (Symfony, Laravel)</strong>
-                                    <p>Her projede auth, ACL, dosya yönetimi ve admin paneli gibi temel bileşenleri sıfırdan yazarak zaman kaybettiren yaklaşım.</p>
-                                </div>
-                            </div>
-
-                            <div class="problem-item">
-                                <i class="bi bi-x-circle"></i>
-                                <div>
-                                    <strong>Sıfırdan MVC Romantizmi</strong>
-                                    <p>Kendi framework'ünü yazmak kulağa romantik gelse de güvenlik (CSRF, XSS, SQLi), DI Container ve HTTP katmanı gibi devasa bir "görünmez buzdağı" barındırır.</p>
-                                </div>
-                            </div>
+                    <div class="problem-item">
+                        <i class="bi bi-x-circle"></i>
+                        <div>
+                            <strong>{{ 'about.problem_cms_title'|trans({}, t) }}</strong>
+                            <p>{{ 'about.problem_cms_text'|trans({}, t) }}</p>
                         </div>
                     </div>
 
-                    <div class="about-solution">
-                        <div class="solution-card">
-                            <h4><i class="bi bi-check-circle"></i> CPalius Çözümü</h4>
+                    <div class="problem-item">
+                        <i class="bi bi-x-circle"></i>
+                        <div>
+                            <strong>{{ 'about.problem_fw_title'|trans({}, t) }}</strong>
+                            <p>{{ 'about.problem_fw_text'|trans({}, t) }}</p>
+                        </div>
+                    </div>
 
-                            <div class="solution-item">
-                                <i class="bi bi-check2-circle"></i>
-                                <div>
-                                    <strong>Dünya Standartlarında Altyapı</strong>
-                                    <p>Symfony 7.4 LTS'nin kanıtlanmış güvenlik ve performans altyapısı üzerine inşa edilmiş, teknik borçtan arınmış mimari.</p>
-                                </div>
-                            </div>
+                    <div class="problem-item">
+                        <i class="bi bi-x-circle"></i>
+                        <div>
+                            <strong>{{ 'about.problem_mvc_title'|trans({}, t) }}</strong>
+                            <p>{{ 'about.problem_mvc_text'|trans({}, t) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                            <div class="solution-item">
-                                <i class="bi bi-check2-circle"></i>
-                                <div>
-                                    <strong>Hazır Kurumsal Bileşenler</strong>
-                                    <p>Auth, ACL, dosya yönetimi, çok dilli yapı ve admin paneli gibi temel bileşenler ilk günden çekirdekte. Tekerleği yeniden icat etmeye son.</p>
-                                </div>
-                            </div>
+            <div class="about-solution fade-in-right">
+                <div class="solution-card">
+                    <h4><i class="bi bi-check-circle"></i> <span>{{ 'about.solution_title'|trans({}, t) }}</span></h4>
 
-                            <div class="solution-item">
-                                <i class="bi bi-check2-circle"></i>
-                                <div>
-                                    <strong>Modüler ve Genişletilebilir</strong>
-                                    <p>CMS'ten öte bir uygulama platformu: Oto Galeri, Turizm Acentası, CRM/ERP — hepsi aynı altyapı üzerinde çalışır.</p>
-                                </div>
-                            </div>
+                    <div class="solution-item">
+                        <i class="bi bi-check2-circle"></i>
+                        <div>
+                            <strong>{{ 'about.sol_infra_title'|trans({}, t) }}</strong>
+                            <p>{{ 'about.sol_infra_text'|trans({}, t) }}</p>
+                        </div>
+                    </div>
 
-                            <div class="solution-item">
-                                <i class="bi bi-check2-circle"></i>
-                                <div>
-                                    <strong>Çökmeyen Çekirdek</strong>
-                                    <p>Kullanıcı modüllerinden gelen hatalar sistemi asla çökertmez. 3 kademeli aktif savunma ve karantina hattı.</p>
-                                </div>
-                            </div>
+                    <div class="solution-item">
+                        <i class="bi bi-check2-circle"></i>
+                        <div>
+                            <strong>{{ 'about.sol_components_title'|trans({}, t) }}</strong>
+                            <p>{{ 'about.sol_components_text'|trans({}, t) }}</p>
+                        </div>
+                    </div>
+
+                    <div class="solution-item">
+                        <i class="bi bi-check2-circle"></i>
+                        <div>
+                            <strong>{{ 'about.sol_modular_title'|trans({}, t) }}</strong>
+                            <p>{{ 'about.sol_modular_text'|trans({}, t) }}</p>
+                        </div>
+                    </div>
+
+                    <div class="solution-item">
+                        <i class="bi bi-check2-circle"></i>
+                        <div>
+                            <strong>{{ 'about.sol_core_title'|trans({}, t) }}</strong>
+                            <p>{{ 'about.sol_core_text'|trans({}, t) }}</p>
                         </div>
                     </div>
                 </div>

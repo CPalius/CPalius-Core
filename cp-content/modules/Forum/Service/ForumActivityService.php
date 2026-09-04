@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Modules\Forum\Service;
 
 use App\Core\Settings\SettingsRegistry;
-use App\Entity\ForumTopic;
+use Modules\Forum\Entity\ForumTopic;
 use App\Entity\User;
-use App\Repository\ForumPostRepository;
-use App\Repository\ForumTopicRepository;
+use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumTopicRepository;
 use App\Repository\UserRepository;
 
 /**
- * Forum ana sayfası "Son olaylar" panosu — sekmeli veri + AJAX load-more.
+ * Homepage "Recent activity" board — tabbed data plus AJAX load-more.
  */
 final class ForumActivityService
 {
@@ -71,7 +71,7 @@ final class ForumActivityService
     }
 
     /**
-     * İlk render için tüm açık sekmelerin ilk dilimi.
+     * First slice of every enabled tab for the initial render.
      *
      * @return array{
      *     enabled: bool,
@@ -120,7 +120,7 @@ final class ForumActivityService
 
         $limit = max(1, min(50, $limit));
         $offset = max(0, $offset);
-        // hasMore için bir fazla çek
+        // Fetch one extra row to know whether hasMore is true.
         $rows = match ($tab) {
             self::TAB_LATEST_TOPICS => $this->mapTopics(
                 $this->topicRepository->findNewestOpened($limit + 1, $offset),
@@ -166,8 +166,10 @@ final class ForumActivityService
                 'sectionSlug' => $topic->getSection()->getSlug(),
                 'author' => $topic->getFirstPosterName(),
                 'authorId' => $topic->getFirstPoster()?->getId(),
+                'authorSlug' => $topic->getFirstPoster()?->getProfileSlug(),
                 'lastPoster' => $topic->getLastPosterName() ?: $topic->getFirstPosterName(),
                 'lastPosterId' => $topic->getLastPoster()?->getId() ?? $topic->getFirstPoster()?->getId(),
+                'lastPosterSlug' => ($topic->getLastPoster() ?? $topic->getFirstPoster())?->getProfileSlug(),
                 'replyCount' => max(0, $postCount - 1),
                 'viewCount' => $topic->getViewCount(),
                 'at' => $useCreatedAt ? $topic->getCreatedAt() : $topic->getUpdatedAt(),
@@ -207,6 +209,7 @@ final class ForumActivityService
                 'title' => $name,
                 'authorId' => $user->getId(),
                 'author' => $name,
+                'profileSlug' => $user->getProfileSlug(),
                 'at' => $user->getCreatedAt(),
                 'replyCount' => null,
                 'viewCount' => null,
@@ -253,6 +256,7 @@ final class ForumActivityService
                 'title' => $name,
                 'authorId' => $userId,
                 'author' => $name,
+                'profileSlug' => $user->getProfileSlug(),
                 'at' => $user->getCreatedAt(),
                 'postCount' => $postCount,
                 'replyCount' => $postCount,
@@ -264,7 +268,7 @@ final class ForumActivityService
     }
 
     /**
-     * Forum listelerinde e-posta yerine kullanıcı adı (yoksa ad soyad).
+     * Display name for forum lists: username, else first+last name (never email).
      */
     private function resolveMemberLabel(User $user): string
     {

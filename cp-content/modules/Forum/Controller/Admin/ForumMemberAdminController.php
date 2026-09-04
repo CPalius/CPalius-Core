@@ -5,15 +5,17 @@ declare(strict_types=1);
 namespace Modules\Forum\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
-use App\Entity\ForumBan;
+use Modules\Forum\Entity\ForumBan;
 use App\Entity\User;
-use App\Repository\ForumBanRepository;
-use App\Repository\ForumPostRepository;
-use App\Repository\ForumTopicRepository;
-use App\Repository\ForumUserRankRepository;
+use Modules\Forum\Repository\ForumBanRepository;
+use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumTopicRepository;
+use Modules\Forum\Repository\ForumUserRankRepository;
 use App\Repository\UserRepository;
 use Modules\Forum\Service\ForumBanService;
 use Modules\Forum\Service\ForumRankService;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,11 +26,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Forum üye dizini — CPalius'un genel kullanıcı yönetimini (AACPUserController)
- * TEKRARLAMAZ; hesap/parola/rol CRUD'u orada kalır. Burada yalnızca
- * forum-bağlamlı işlemler var: mesaj/konu istatistikleri, rütbe atama,
- * forum-özel yasaklama/susturma (bkz. ForumBan — site geneli hesabı
- * ETKİLEMEZ).
+ * Studio forum member directory: profile edit, custom title, rank, ban/mute.
  */
 #[Route('/admin/forum/members', name: 'admin_forum_members_')]
 #[IsGranted('forum.user.manage')]
@@ -45,6 +43,8 @@ final class ForumMemberAdminController extends AbstractController
         private readonly ForumBanService $banService,
         private readonly ForumRankService $rankService,
         private readonly TranslatorInterface $translator,
+        private readonly EntityManagerInterface $entityManager,
+        private readonly UserPasswordHasherInterface $passwordHasher,
     ) {
     }
 
@@ -65,6 +65,9 @@ final class ForumMemberAdminController extends AbstractController
             $usersById[$user->getId()] = $user;
         }
 
+        $allRanks = $this->rankRepository->findAllOrdered();
+        $restrictions = $this->banService->activeRestrictionsByUserIds($userIds);
+
         $members = [];
         foreach ($postCounts as $userId => $postCount) {
             $user = $usersById[$userId] ?? null;
@@ -72,13 +75,14 @@ final class ForumMemberAdminController extends AbstractController
                 continue;
             }
 
+            $restriction = $restrictions[$userId] ?? ['ban' => null, 'mute' => null];
             $members[] = [
                 'user' => $user,
                 'postCount' => $postCount,
                 'topicCount' => $topicCounts[$userId] ?? 0,
-                'rank' => $this->rankService->resolveRank($user),
-                'ban' => $this->banService->activeBanFor($user),
-                'mute' => $this->banService->activeMuteFor($user),
+                'rank' => $this->rankService->resolveRankFromPreloaded($user, $postCount, $allRanks),
+                'ban' => $restriction['ban'],
+                'mute' => $restriction['mute'],
             ];
         }
 
@@ -86,7 +90,7 @@ final class ForumMemberAdminController extends AbstractController
 
         return $this->render('@ForumModule/admin/members/index.html.twig', [
             'members' => $members,
-            'allRanks' => $this->rankRepository->findAllOrdered(),
+            'allRanks' => $allRanks,
             'page' => $page,
             'totalPages' => max(1, (int) ceil($totalMembers / self::PER_PAGE)),
         ]);
@@ -105,6 +109,39 @@ final class ForumMemberAdminController extends AbstractController
         $this->addFlash('success', $this->translator->trans('studio.forum.members.rank_updated'));
 
         return $this->redirectToRoute('admin_forum_members_index');
+    }
+
+    #[Route('/{id}/edit', name: 'edit', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
+    public function edit(int $id, Request $request): Response
+    {
+        $user = $this->findUserOrFail($id);
+        $formValues = $this->memberFormValues($user);
+
+        if ($request->isMethod('POST')) {
+            $this->assertValidCsrf($request);
+            $formValues = $this->submittedMemberFormValues($request);
+
+            $error = $this->persistMemberForm($user, $formValues, $request);
+            if ($error !== null) {
+                $this->addFlash('error', $error);
+
+                return $this->render('@ForumModule/admin/members/edit.html.twig', [
+                    'user' => $user,
+                    'formValues' => $formValues,
+                    'allRanks' => $this->rankRepository->findAllOrdered(),
+                ]);
+            }
+
+            $this->addFlash('success', $this->translator->trans('studio.forum.members.updated', ['name' => $user->getFullName()]));
+
+            return $this->redirectToRoute('admin_forum_members_edit', ['id' => $user->getId()]);
+        }
+
+        return $this->render('@ForumModule/admin/members/edit.html.twig', [
+            'user' => $user,
+            'formValues' => $formValues,
+            'allRanks' => $this->rankRepository->findAllOrdered(),
+        ]);
     }
 
     #[Route('/{id}/ban', name: 'ban', methods: ['POST'], requirements: ['id' => '\d+'])]
@@ -166,14 +203,117 @@ final class ForumMemberAdminController extends AbstractController
     }
 
     /**
-     * $request->request->getInt() yerine kullanılır: boş string (opsiyonel
-     * bir alan boş bırakıldığında) ile çağrıldığında PHP'nin
-     * filter_var(FILTER_VALIDATE_INT) uyarısını tetiklemeden güvenle null döner.
+     * Empty optional fields become null without triggering FILTER_VALIDATE_INT warnings.
      */
     private function parseOptionalPositiveInt(Request $request, string $field): ?int
     {
         $raw = trim((string) $request->request->get($field, ''));
 
         return $raw !== '' && ctype_digit($raw) ? (int) $raw : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function memberFormValues(User $user): array
+    {
+        $manualRankId = $user->getDataValue('forum_rank_id');
+
+        return [
+            'email' => $user->getEmail(),
+            'username' => (string) ($user->getUsername() ?? ''),
+            'firstName' => $user->getFirstName(),
+            'lastName' => $user->getLastName(),
+            'status' => $user->getStatus(),
+            'bio' => $user->getBio(),
+            'location' => $user->getLocation(),
+            'signature' => $user->getSignature(),
+            'customTitle' => $user->getCustomTitle(),
+            'customTitleColor' => $user->getCustomTitleColor() !== '' ? $user->getCustomTitleColor() : '#6B7280',
+            'customTitleStyle' => $user->getCustomTitleStyle(),
+            'customTitleIcon' => $user->getCustomTitleIcon(),
+            'rankId' => is_numeric($manualRankId) ? (int) $manualRankId : '',
+            'plainPassword' => '',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function submittedMemberFormValues(Request $request): array
+    {
+        return [
+            'email' => trim((string) $request->request->get('email')),
+            'username' => trim((string) $request->request->get('username')),
+            'firstName' => trim((string) $request->request->get('first_name')),
+            'lastName' => trim((string) $request->request->get('last_name')),
+            'status' => trim((string) $request->request->get('status')),
+            'bio' => trim((string) $request->request->get('bio')),
+            'location' => trim((string) $request->request->get('location')),
+            'signature' => trim((string) $request->request->get('signature')),
+            'customTitle' => trim((string) $request->request->get('custom_title')),
+            'customTitleColor' => trim((string) $request->request->get('custom_title_color')),
+            'customTitleStyle' => trim((string) $request->request->get('custom_title_style')),
+            'customTitleIcon' => trim((string) $request->request->get('custom_title_icon')),
+            'rankId' => $this->parseOptionalPositiveInt($request, 'rank_id') ?? '',
+            'plainPassword' => (string) $request->request->get('plain_password'),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $formValues
+     */
+    private function persistMemberForm(User $user, array $formValues, Request $request): ?string
+    {
+        $email = (string) $formValues['email'];
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $this->translator->trans('studio.forum.members.error.email_invalid');
+        }
+        if ($this->userRepository->isEmailTakenByAnotherUser($email, $user->getId())) {
+            return $this->translator->trans('studio.forum.members.error.email_taken');
+        }
+
+        $username = (string) $formValues['username'];
+        if ($username !== '' && !preg_match('/^[a-zA-Z0-9_.-]+$/', $username)) {
+            return $this->translator->trans('studio.forum.members.error.username_invalid');
+        }
+        if ($this->userRepository->isUsernameTakenByAnotherUser($username, $user->getId())) {
+            return $this->translator->trans('studio.forum.members.error.username_taken');
+        }
+
+        $status = (string) $formValues['status'];
+        if (!in_array($status, [User::STATUS_ACTIVE, User::STATUS_INACTIVE, User::STATUS_BANNED], true)) {
+            return $this->translator->trans('studio.forum.members.error.status_invalid');
+        }
+
+        $password = (string) $formValues['plainPassword'];
+        if ($password !== '' && strlen($password) < 8) {
+            return $this->translator->trans('studio.forum.members.error.password_short');
+        }
+
+        $user->setEmail($email);
+        $user->setUsername($username !== '' ? $username : null);
+        $user->setFirstName((string) $formValues['firstName']);
+        $user->setLastName((string) $formValues['lastName']);
+        $user->setStatus($status);
+        $user->setBio((string) $formValues['bio']);
+        $user->setLocation((string) $formValues['location']);
+        $user->setSignature((string) $formValues['signature']);
+        $user->setCustomTitle((string) $formValues['customTitle']);
+        $user->setCustomTitleColor((string) $formValues['customTitleColor']);
+        $user->setCustomTitleStyle((string) $formValues['customTitleStyle']);
+        $user->setCustomTitleIcon((string) $formValues['customTitleIcon']);
+
+        $rankId = $this->parseOptionalPositiveInt($request, 'rank_id');
+        $rank = $rankId !== null ? $this->rankRepository->find($rankId) : null;
+        $user->setDataValue('forum_rank_id', $rank?->getId());
+
+        if ($password !== '') {
+            $user->setPassword($this->passwordHasher->hashPassword($user, $password));
+        }
+
+        $this->entityManager->flush();
+
+        return null;
     }
 }

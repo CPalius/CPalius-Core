@@ -1,0 +1,93 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.stats.header'|trans({}, 'forums') }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.dashboard.action.sections'|trans }}</a>
+{% endblock %}
+
+{% block javascripts %}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'forum-dashboard']) }}
+{% endblock %}
+
+{% block body %}
+    <div class="grid gap-4 md:grid-cols-3 mb-6">
+        <twig:studio:card title="{{ 'studio.stats.total_topics'|trans({}, 'forums') }}">
+            <p class="text-2xl font-semibold text-primary-700">{{ totalTopics }}</p>
+        </twig:studio:card>
+        <twig:studio:card title="{{ 'studio.stats.total_posts'|trans({}, 'forums') }}">
+            <p class="text-2xl font-semibold text-primary-700">{{ totalPosts }}</p>
+        </twig:studio:card>
+        <twig:studio:card title="{{ 'studio.stats.total_members'|trans({}, 'forums') }}">
+            <p class="text-2xl font-semibold text-primary-700">{{ totalMembers }}</p>
+        </twig:studio:card>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-2 mb-6">
+        <twig:studio:card title="{{ 'studio.stats.daily_chart'|trans({}, 'forums') }}">
+            <div style="height: 240px; position: relative;">
+                <canvas id="forum-chart-section-bar" data-labels="{{ dailyLabels|json_encode }}" data-values="{{ dailyValues|json_encode }}"></canvas>
+            </div>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'studio.stats.top_forums'|trans({}, 'forums') }}" padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'studio.stats.col.forum'|trans({}, 'forums'),
+                'studio.stats.col.topics'|trans({}, 'forums'),
+                'studio.stats.col.posts'|trans({}, 'forums'),
+            ] }}" empty="{{ topForums is empty }}" emptyText="{{ 'studio.stats.empty'|trans({}, 'forums') }}">
+                <twig:block name="rows">
+                    {% for forum in topForums %}
+                        <tr>
+                            <td class="font-medium">{{ forum.title }}</td>
+                            <td>{{ forum.topicCount }}</td>
+                            <td>{{ forum.postCount }}</td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-2">
+        <twig:studio:card title="{{ 'studio.stats.top_posters'|trans({}, 'forums') }}" padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'studio.stats.col.member'|trans({}, 'forums'),
+                'studio.stats.col.posts'|trans({}, 'forums'),
+            ] }}" empty="{{ topPosters is empty }}" emptyText="{{ 'studio.stats.empty'|trans({}, 'forums') }}">
+                <twig:block name="rows">
+                    {% for row in topPosters %}
+                        <tr>
+                            <td>
+                                <a href="{{ path('forum_profile', {username: row.user.profileSlug, _locale: 'tr'}) }}" class="font-medium text-neutral-900 hover:text-primary-600" target="_blank">
+                                    {{ row.user.fullName }}
+                                </a>
+                            </td>
+                            <td>{{ row.postCount }}</td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'studio.stats.popular_topics'|trans({}, 'forums') }}" padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'studio.stats.col.topic'|trans({}, 'forums'),
+                'studio.stats.col.views'|trans({}, 'forums'),
+            ] }}" empty="{{ popularTopics is empty }}" emptyText="{{ 'studio.stats.empty'|trans({}, 'forums') }}">
+                <twig:block name="rows">
+                    {% for topic in popularTopics %}
+                        <tr>
+                            <td>
+                                <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug, _locale: 'tr'}) }}" class="font-medium text-neutral-900 hover:text-primary-600" target="_blank">
+                                    {{ topic.title }}
+                                </a>
+                            </td>
+                            <td>{{ topic.viewCount }}</td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
+    </div>
+{% endblock %}

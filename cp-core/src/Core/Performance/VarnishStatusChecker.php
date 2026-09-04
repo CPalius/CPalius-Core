@@ -5,14 +5,8 @@ declare(strict_types=1);
 namespace App\Core\Performance;
 
 /**
- * Varnish için PHP tarafında bir extension/protokol istemcisi YOKTUR
- * (Varnish admin CLI'ı ayrı bir binary protokol + secret gerektirir, bu da
- * "sadece durum + temel config" kapsamının dışında — bkz. plan). Bunun
- * yerine yapılandırılan URL'e bir HTTP HEAD isteği atılıp yanıt
- * header'larında Varnish imzası (X-Varnish veya "Via: ... varnish")
- * aranır. Bu yöntemin doğası gereği "kurulu değil" ile "bu URL'in önünde
- * değil" ayrımı HTTP üzerinden yapılamaz — ikisi de aynı 'not_installed'
- * mesajıyla raporlanır, kullanıcıya yanlış bir kesinlik iddia edilmez.
+ * Probe Varnish via HTTP headers (X-Varnish / Via / Server) — there is no PHP client for varnishd.
+ * Does not follow redirects: a 30x to the origin would drop the Varnish hop's signatures.
  */
 final class VarnishStatusChecker implements PerformanceBackendCheckerInterface
 {
@@ -23,51 +17,51 @@ final class VarnishStatusChecker implements PerformanceBackendCheckerInterface
 
     public function testConnection(array $config): PerformanceCheckResult
     {
-        $url = (string) ($config['backend_url'] ?? 'http://127.0.0.1/');
+        $port = $config['port'] ?? 6081;
+        if (!\is_numeric($port) || (int) $port <= 0) {
+            $port = 6081;
+        }
+
+        $url = HttpHeaderProbe::composeUrl(
+            (string) ($config['backend_url'] ?? 'http://127.0.0.1/'),
+            $port,
+        );
         $timeout = (float) ($config['timeout'] ?? 2.0);
 
-        if (!\filter_var($url, \FILTER_VALIDATE_URL)) {
+        if ($url === '' || !\filter_var($url, \FILTER_VALIDATE_URL)) {
             return PerformanceCheckResult::misconfigured('aacp.performance.probe.invalid_url');
         }
 
-        $context = \stream_context_create([
-            'http' => [
-                'method' => 'HEAD',
-                'timeout' => $timeout,
-                'ignore_errors' => true,
-            ],
-        ]);
+        $probe = HttpHeaderProbe::fetchHeaders($url, $timeout);
 
-        $start = \microtime(true);
-        $result = @\file_get_contents($url, false, $context);
-        $latencyMs = (\microtime(true) - $start) * 1000;
-
-        if ($result === false) {
+        if (!$probe['ok']) {
             return PerformanceCheckResult::connectionFailed(
                 'aacp.performance.probe.url_unreachable',
                 ['url' => $url],
-                $latencyMs,
+                $probe['latencyMs'],
             );
         }
 
-        $headers = $http_response_header ?? [];
-        $hasVarnishSignature = false;
-
-        foreach ($headers as $header) {
-            if (\stripos($header, 'X-Varnish:') === 0 || \stripos($header, 'Via:') === 0 && \stripos($header, 'varnish') !== false) {
-                $hasVarnishSignature = true;
-                break;
+        if (!HttpHeaderProbe::hasVarnishSignature($probe['headers'])) {
+            $port = (int) (\parse_url($url, \PHP_URL_PORT) ?: 0);
+            if (\in_array($port, [6081, 6082], true)) {
+                return PerformanceCheckResult::ok(
+                    'aacp.performance.probe.varnish.ok_port',
+                    ['url' => $url, 'port' => $port],
+                    $probe['latencyMs'],
+                );
             }
-        }
 
-        if (!$hasVarnishSignature) {
-            return PerformanceCheckResult::notInstalled('aacp.performance.probe.varnish.not_installed');
+            return PerformanceCheckResult::notInstalled(
+                'aacp.performance.probe.varnish.not_installed',
+                ['url' => $url],
+            );
         }
 
         return PerformanceCheckResult::ok(
             'aacp.performance.probe.varnish.ok',
             ['url' => $url],
-            $latencyMs,
+            $probe['latencyMs'],
         );
     }
 }

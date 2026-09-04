@@ -1,0 +1,24 @@
+{#
+    Notification body text. Expects: n (ForumNotification)
+#}
+{% set name = n.senderName|default(n.data.from_username|default('?')) %}
+{% set topic = n.data.topic_title|default('') %}
+{% if n.type == 'reply' %}
+    {{ 'forum.notifications.msg.reply'|trans({'name': name, 'topic': topic}) }}
+{% elseif n.type == 'thread_reply' %}
+    {{ 'forum.notifications.msg.thread_reply'|trans({'name': name, 'topic': topic}) }}
+{% elseif n.type == 'quote' %}
+    {{ 'forum.notifications.msg.quote'|trans({'name': name, 'topic': topic}) }}
+{% elseif n.type == 'mention' %}
+    {{ 'forum.notifications.msg.mention'|trans({'name': name, 'topic': topic}) }}
+{% elseif n.type == 'reaction' %}
+    {{ 'forum.notifications.msg.reaction'|trans({'name': name, 'topic': topic}) }}
+{% elseif n.type == 'dislike' %}
+    {{ 'forum.notifications.msg.dislike'|trans({'name': name, 'topic': topic}) }}
+{% else %}
+    {{ 'forum.notifications.msg.reputation'|trans({
+        'name': name,
+        'value': n.data.value|default(1) > 0 ? '+1' : '−1',
+        'reason': ('forum.rep.reason.' ~ (n.data.reason|default('helpful')))|trans
+    }) }}
+{% endif %}

@@ -1,0 +1,60 @@
+{#
+    Unified settings screen: Core / Modules / Plugins tabs.
+    Field rendering is delegated to _system_setting_field so all screens behave alike.
+#}
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.settings.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <div class="flex flex-wrap border-b border-white/10" role="tablist" aria-label="{{ 'aacp.settings.tabs_aria'|trans }}">
+            {% for tabId, tabLabel in tabs %}
+                <a href="{{ path('aacp_settings', {tab: tabId}) }}"
+                   role="tab"
+                   aria-selected="{{ tabId == activeTab ? 'true' : 'false' }}"
+                   class="border-b-2 px-sp-sm py-2.5 text-fs-sm font-medium {{ tabId == activeTab
+                       ? 'border-primary-500 text-primary-400'
+                       : 'border-transparent !text-slate-500 hover:!text-slate-300' }}">
+                    {{ tabLabel|trans }}
+                    <span class="badge badge-neutral ms-1.5">{{ tabCounts[tabId]|default(0) }}</span>
+                </a>
+            {% endfor %}
+        </div>
+
+        {% if app.request.query.get('invalid_setting') %}
+            <div class="toast toast-error">
+                {{ 'aacp.settings.invalid_value'|trans({key: app.request.query.get('invalid_setting')}) }}
+            </div>
+        {% endif %}
+
+        {% if settingGroups is empty %}
+            <twig:cp:card>
+                <p class="text-fs-sm !text-slate-500">{{ 'aacp.settings.no_settings'|trans }}</p>
+            </twig:cp:card>
+        {% else %}
+            <form method="post" action="{{ path('aacp_settings_update') }}" class="space-y-sp-md lg:w-[61.8%]">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <input type="hidden" name="_redirect" value="{{ redirectTo }}">
+
+                {% for groupName, settingDefs in settingGroups %}
+                    <twig:cp:card title="{{ groupName|capitalize }}">
+                        <div class="space-y-sp-sm">
+                            {% for setting in settingDefs %}
+                                {% include 'aacp/partials/_system_setting_field.html.twig' with {
+                                    setting: setting,
+                                    value: currentValues[setting.key]|default(null),
+                                    compact: false,
+                                } only %}
+                            {% endfor %}
+                        </div>
+                    </twig:cp:card>
+                {% endfor %}
+
+                <button type="submit" class="btn btn-primary">
+                    {{ 'aacp.settings.save'|trans }}
+                </button>
+            </form>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -1,0 +1,7 @@
+seo_module_public:
+    resource: ../../Controller/SeoFrontController.php
+    type: attribute
+
+seo_module_admin:
+    resource: ../../Controller/Admin/
+    type: attribute

@@ -12,8 +12,7 @@
 {% endblock %}
 
 {% block javascripts %}
-    {{ parent() }}
-    {{ importmap('aacp-dashboard') }}
+    {{ importmap(['app', 'aacp-dashboard']) }}
 {% endblock %}
 
 {% block body %}

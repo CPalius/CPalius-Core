@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use App\Core\Localization\Contract\TranslatableInterface;
+use App\Core\Localization\Contract\TranslatableTrait;
 use App\Repository\TagRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -18,9 +20,13 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: TagRepository::class)]
 #[ORM\Table(name: 'tags')]
 #[ORM\Index(columns: ['locale'], name: 'idx_tag_locale')]
+#[ORM\UniqueConstraint(name: 'uniq_tag_translation_group_locale', columns: ['translation_group_id', 'locale'])]
 #[ORM\UniqueConstraint(name: 'uniq_tag_slug_locale', columns: ['slug', 'locale'])]
-class Tag
+class Tag implements TranslatableInterface
 {
+    // FAZ 3: translation_group_id kolonu + çeviri grubu yardımcıları.
+    use TranslatableTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]

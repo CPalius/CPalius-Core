@@ -7,7 +7,7 @@
 {% if layout == 'list' %}
     <div class="blog-post-list">
         {% for post in posts %}
-            {% include '@CpaliusWebsiteTheme/blog/cards/_list_item.html.twig' with { post: post } %}
+            {% include '@Theme/blog/cards/_list_item.html.twig' with { post: post } %}
         {% endfor %}
     </div>
 {% else %}
@@ -15,8 +15,8 @@
         {% for post in posts %}
             {% set subType = post.getDataValue('post_sub_type', 'makale') %}
             {% include [
-                '@CpaliusWebsiteTheme/blog/cards/_' ~ subType ~ '.html.twig',
-                '@CpaliusWebsiteTheme/blog/cards/_makale.html.twig',
+                '@Theme/blog/cards/_' ~ subType ~ '.html.twig',
+                '@Theme/blog/cards/_makale.html.twig',
             ] with { post: post } %}
         {% endfor %}
     </div>

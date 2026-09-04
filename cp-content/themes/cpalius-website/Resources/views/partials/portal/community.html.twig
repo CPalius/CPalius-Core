@@ -1,24 +1,19 @@
-<section class="portal-zone" id="community">
+{% set t = 'portal' %}
+<section class="section" id="community">
     <div class="container">
-        <div class="portal-module fade-in">
-            <div class="portal-module__head">
-                <h2 class="portal-module__title">
-                    <i class="bi bi-people"></i>
-                    <span>Mimariyi Birlikte Kusursuzlaştıralım</span>
-                </h2>
-                <span class="portal-module__eyebrow">Topluluk</span>
-            </div>
-            <div class="portal-module__body portal-module__body--padded portal-marketing portal-marketing--center">
-                <p class="portal-module__intro">
-                    CPalius, topluluğun gücüyle en sağlam uygulama framework'üne dönüşecek.
-                    Fikirlerinizi, eleştirilerinizi ve mimari önerilerinizi heyecanla bekliyoruz.
+        <div class="container-narrow" style="text-align:center;">
+            <div class="fade-in">
+                <span class="section-label" style="margin: 0 auto var(--sp-xs);">{{ 'community.label'|trans({}, t) }}</span>
+                <h2 class="section-title" style="display:inline-block;">{{ 'community.title'|trans({}, t) }}</h2>
+                <p class="section-desc" style="margin: var(--sp-md) auto var(--sp-lg); text-align:center; max-width:680px;">
+                    {{ 'community.desc'|trans({}, t) }}
                 </p>
-                <div class="portal-cta-row">
-                    <a href="#" class="btn btn-primary">
-                        <i class="bi bi-github"></i> GitHub'da Katıl
+                <div class="hero-actions" style="justify-content:center;">
+                    <a href="https://github.com/slaweally" target="_blank" rel="noopener" class="btn btn-primary">
+                        <i class="bi bi-github"></i> {{ 'community.cta_github'|trans({}, t) }}
                     </a>
-                    <a href="{{ path('blog_index') }}" class="btn btn-secondary">
-                        <i class="bi bi-chat-dots"></i> Blog'u İncele
+                    <a href="{{ path('forum_index') }}" class="btn btn-outline">
+                        <i class="bi bi-chat-dots"></i> {{ 'community.cta_discuss'|trans({}, t) }}
                     </a>
                 </div>
             </div>

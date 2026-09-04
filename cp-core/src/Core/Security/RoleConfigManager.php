@@ -1,37 +1,35 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core\Security;
 
 use Symfony\Component\Yaml\Yaml;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 use Throwable;
 
 /**
- * Rolleri DB'de DEĞİL, cp-content/config/sync/user.role.*.yaml
- * dosyalarında saklarız — Content (kullanıcılar, node'lar) DB'de kalırken,
- * Config (roller, yapılandırma) dosya sisteminde ve versiyon kontrolünde
- * kalır. Böylece bir rolün yetenekleri, ortamdan ortama (dev/staging/prod)
- * git ile taşınabilir; DB migration/seed gerekmez.
- *
- * Fail-Safe: bozuk bir YAML dosyası, geçersiz bir "role.id" ya da eksik
- * "capabilities" alanı sessizce ATLANIR (o rol hiç var olmamış gibi
- * davranılır) — asla bir hata tüm rol çözümlemesini durdurmaz veya
- * (daha kötüsü) o role belirsiz/geniş bir yetki vermez.
+ * Roles live in cp-content/config/sync/user.role.*.yaml (versioned config), not in the DB.
+ * Broken YAML / missing id / missing capabilities skip that role — never grant extra access.
+ * Parsed map is stored in cache.app, keyed by a file-mtime fingerprint (PERF-03).
  */
 final class RoleConfigManager
 {
+    private const CACHE_TTL = 3600;
+
     /** @var array<string, array{id: string, label: string, capabilities: list<string>}>|null */
     private ?array $roles = null;
 
     public function __construct(
         private readonly CapabilityRegistry $capabilityRegistry,
         private readonly string $syncDir,
+        private readonly CacheInterface $cache,
     ) {
     }
 
     /**
-     * Verilen rol kimliğinin ("admin", "editor") gerçek, ÇÖZÜLMÜŞ
-     * (fail-safe filtrelenmiş) yetenek listesini döner. Rol config'i
-     * yoksa veya bozuksa boş dizi döner — asla exception fırlatmaz.
+     * Resolved capabilities for a role id. Missing/broken config returns [] — never throws.
      *
      * @return list<string>
      */
@@ -54,11 +52,10 @@ final class RoleConfigManager
     }
 
     /**
-     * Birden çok rolün (bir kullanıcının sahip olduğu tüm roller) birleşik
-     * yetenek kümesini döner. Tanımsız/bozuk bir rol kimliği listede varsa
-     * o rol sessizce yok sayılır, diğerleri normal çözülmeye devam eder.
+     * Union of capabilities across role ids. Unknown role ids are skipped.
      *
      * @param list<string> $roleIds
+     *
      * @return list<string>
      */
     public function getCapabilitiesForRoles(array $roleIds): array
@@ -101,21 +98,41 @@ final class RoleConfigManager
             return $this->roles;
         }
 
-        $this->roles = [];
+        try {
+            $fingerprint = $this->syncFingerprint();
+            /** @var array<string, array{id: string, label: string, capabilities: list<string>}> $roles */
+            $roles = $this->cache->get('cpalius.roles.'.$fingerprint, function (ItemInterface $item): array {
+                $item->expiresAfter(self::CACHE_TTL);
+
+                return $this->parseRoleFiles();
+            });
+
+            return $this->roles = $roles;
+        } catch (Throwable) {
+            return $this->roles = $this->parseRoleFiles();
+        }
+    }
+
+    /**
+     * @return array<string, array{id: string, label: string, capabilities: list<string>}>
+     */
+    private function parseRoleFiles(): array
+    {
+        $roles = [];
 
         if (!is_dir($this->syncDir)) {
-            return $this->roles;
+            return $roles;
         }
 
         foreach (glob($this->syncDir.'/user.role.*.yaml') ?: [] as $file) {
             $role = $this->parseRoleFile($file);
 
             if ($role !== null) {
-                $this->roles[$role['id']] = $role;
+                $roles[$role['id']] = $role;
             }
         }
 
-        return $this->roles;
+        return $roles;
     }
 
     /**
@@ -149,5 +166,21 @@ final class RoleConfigManager
             'label' => is_string($role['label'] ?? null) ? $role['label'] : $id,
             'capabilities' => array_values(array_filter($capabilities, 'is_string')),
         ];
+    }
+
+    /**
+     * File-mtime fingerprint so an edited YAML is a new cache key (no explicit invalidate).
+     */
+    private function syncFingerprint(): string
+    {
+        $parts = [];
+
+        foreach (glob($this->syncDir.'/user.role.*.yaml') ?: [] as $file) {
+            $parts[] = basename($file).':'.(string) @filemtime($file);
+        }
+
+        sort($parts);
+
+        return hash('sha256', implode('|', $parts));
     }
 }

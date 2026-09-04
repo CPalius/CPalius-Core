@@ -1,0 +1,109 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ entry ? 'studio.roadmap.form.header_edit'|trans : 'studio.roadmap.form.header_create'|trans }}{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'cp-editor-init']) }}
+{% endblock %}
+
+{% block body %}
+    <form method="post"
+          action="{{ entry ? path('admin_roadmap_edit', {id: entry.id}) : path('admin_roadmap_create') }}"
+          class="flex flex-col gap-sp-md lg:flex-row lg:items-start">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_roadmap_form') }}">
+
+        <div class="min-w-0 space-y-sp-md lg:w-[75%]">
+            <twig:studio:card title="{{ 'studio.roadmap.form.section_content'|trans }}">
+                <div class="space-y-sp-sm">
+                    <div>
+                        <label for="title" class="form-label">{{ 'studio.roadmap.form.title'|trans }}</label>
+                        <input type="text" id="title" name="title" value="{{ formValues.title }}" required autofocus class="form-control">
+                    </div>
+                    <div>
+                        <label for="summary" class="form-label">{{ 'studio.roadmap.form.summary'|trans }}</label>
+                        <textarea id="summary" name="summary" rows="3" required class="form-control">{{ formValues.summary }}</textarea>
+                    </div>
+                    <div>
+                        <label for="body" class="form-label">{{ 'studio.roadmap.form.body'|trans }}</label>
+                        <textarea id="body"
+                                  name="body"
+                                  rows="20"
+                                  class="form-control min-h-[550px]"
+                                  style="min-height: 550px;"
+                                  data-cpeditor
+                                  placeholder="{{ 'studio.roadmap.form.body_placeholder'|trans }}">{{ formValues.body }}</textarea>
+                    </div>
+                </div>
+            </twig:studio:card>
+
+            <twig:studio:card padded="{{ false }}">
+                <details class="group">
+                    <summary class="flex cursor-pointer list-none items-center justify-between px-sp-sm py-3 text-fs-sm font-semibold text-neutral-900">
+                        {{ 'studio.roadmap.form.section_seo'|trans }}
+                        <span class="text-fs-xs text-neutral-500 transition group-open:rotate-180">▾</span>
+                    </summary>
+                    <div class="space-y-sp-sm border-t border-neutral-200 px-sp-sm py-sp-sm">
+                        <div>
+                            <label for="slug" class="form-label">{{ 'studio.roadmap.form.slug'|trans }}</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-fs-sm text-neutral-500">/tr/roadmap/</span>
+                                <input type="text" id="slug" name="slug" value="{{ formValues.slug }}" class="form-control" placeholder="auto">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="icon" class="form-label">{{ 'studio.roadmap.form.icon'|trans }}</label>
+                            <input type="text" id="icon" name="icon" value="{{ formValues.icon }}" class="form-control" placeholder="bi-flag">
+                        </div>
+                    </div>
+                </details>
+            </twig:studio:card>
+        </div>
+
+        <div class="min-w-0 space-y-sp-md lg:w-[25%]">
+            <twig:studio:card title="{{ 'studio.roadmap.form.section_publish'|trans }}">
+                <div class="space-y-sp-sm">
+                    <div>
+                        <label for="kind" class="form-label">{{ 'studio.roadmap.form.kind'|trans }}</label>
+                        <select id="kind" name="kind" class="form-select">
+                            {% for kind in kinds %}
+                                <option value="{{ kind }}" {{ formValues.kind == kind ? 'selected' : '' }}>{{ ('site.roadmap.kind.' ~ kind)|trans }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="status" class="form-label">{{ 'studio.roadmap.form.status'|trans }}</label>
+                        <select id="status" name="status" class="form-select">
+                            {% for status in statuses %}
+                                <option value="{{ status }}" {{ formValues.status == status ? 'selected' : '' }}>{{ ('site.roadmap.status.' ~ status)|trans }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="publishedAt" class="form-label">{{ 'studio.roadmap.form.published'|trans }}</label>
+                        <input type="datetime-local" id="publishedAt" name="publishedAt" value="{{ formValues.publishedAt }}" class="form-control">
+                    </div>
+                    <div>
+                        <label for="versionLabel" class="form-label">{{ 'studio.roadmap.form.version'|trans }}</label>
+                        <input type="text" id="versionLabel" name="versionLabel" value="{{ formValues.versionLabel }}" class="form-control" placeholder="v1.2 / Sprint 4">
+                    </div>
+                    <div>
+                        <label for="sortOrder" class="form-label">{{ 'studio.roadmap.form.sort'|trans }}</label>
+                        <input type="number" id="sortOrder" name="sortOrder" value="{{ formValues.sortOrder }}" class="form-control">
+                    </div>
+                    <label class="mt-1 flex items-center gap-2">
+                        <input type="checkbox" name="isFeatured" value="1" {{ formValues.isFeatured ? 'checked' : '' }}>
+                        <span class="text-fs-sm text-neutral-600">{{ 'studio.roadmap.form.featured'|trans }}</span>
+                    </label>
+                </div>
+            </twig:studio:card>
+
+            <div class="flex flex-wrap items-center gap-3">
+                <button type="submit" class="btn btn-primary">
+                    {{ entry ? 'aacp.users.form.submit_edit'|trans : 'studio.roadmap.form.submit_create'|trans }}
+                </button>
+                <a href="{{ path('admin_roadmap_index') }}" class="text-fs-sm font-medium text-neutral-500 hover:text-neutral-900">{{ 'aacp.users.form.cancel'|trans }}</a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

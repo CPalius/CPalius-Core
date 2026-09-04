@@ -1,9 +1,4 @@
-{#
-    Bağımsız bir dış çatı — admin/layout.html.twig'i BİLİNÇLİ OLARAK extend
-    ETMEZ, çünkü bu içerik bir <dialog> içine fetch+innerHTML ile enjekte
-    edilir (bkz. cp-core/assets/media-picker.js). Studio kabuğunu tekrar
-    render etmek hem gereksiz hem de modal deneyimini bozar.
-#}
+{# Standalone picker shell — does not extend admin/layout; injected into a dialog via media-picker.js. #}
 <div class="border-b border-neutral-200 p-sp-sm">
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <form method="get" data-media-picker-search class="min-w-0 flex-1">

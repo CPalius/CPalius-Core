@@ -10,22 +10,8 @@ use Symfony\Component\Yaml\Yaml;
 use Throwable;
 
 /**
- * AACP "Dil Yönetimi" panelinin tek veri kaynağı: sistemdeki tüm
- * messages+intl-icu.{tr,en}.yaml dosyalarını (çekirdek + modüller) okur,
- * düzleştirilmiş bir TranslationEntry listesi sunar, inline düzenlemeyi
- * ilgili dosyaya geri yazar, ve tam matrisi JSON/YAML olarak
- * dışa/içe aktarır.
- *
- * Core Never Dies: bu servis KENDİSİ bozuksa (bozuk bir YAML dosyası,
- * eksik dizin) sistemin geri kalanını asla etkilemez — her okuma/yazma
- * işlemi kendi try/catch'i içinde izole edilir, hatalar TranslationManagerException
- * olarak fırlatılır ve SADECE controller seviyesinde kullanıcıya
- * flash-mesaj olarak gösterilir; hiçbir zaman uygulamayı çökertmez.
- *
- * Atomik Yazma: her dosya güncellemesi önce bir .tmp dosyasına yazılır,
- * sonra rename() ile hedefin üzerine taşınır — yazma sırasında işlem
- * kesintiye uğrarsa (disk dolması, süreç öldürülmesi) orijinal dosya
- * bozulmadan kalır, ya TAM yeni içerik ya da TAM eski içerik olur.
+ * AACP translation explorer: read/write YAML (core + modules), flatten entries, import/export JSON/YAML.
+ * Locales come from LocaleProvider. Writes are atomic (.tmp then rename). Failures are TranslationManagerException only.
  */
 final class TranslationManager
 {
@@ -36,37 +22,55 @@ final class TranslationManager
     }
 
     /**
-     * @return list<TranslationEntry> anahtara göre alfabetik sıralı, tüm gruplar birleştirilmiş
+     * Active locales for column headers and validation.
+     *
+     * @return list<string>
+     */
+    public function locales(): array
+    {
+        return $this->locator->locales();
+    }
+
+    /**
+     * @return list<TranslationEntry> Sorted by group then key, all groups merged.
      */
     public function listAll(): array
     {
+        $locales = $this->locales();
         $entries = [];
 
         foreach ($this->locator->locateAll() as $group => $filesByLocale) {
-            $trData = $this->safeParseYaml($filesByLocale['tr'] ?? null);
-            $enData = $this->safeParseYaml($filesByLocale['en'] ?? null);
+            /** @var array<string, array<string, string>> $dataByLocale */
+            $dataByLocale = [];
+            $keys = [];
 
-            $keys = array_unique([...array_keys($trData), ...array_keys($enData)]);
+            foreach ($locales as $locale) {
+                $data = $this->safeParseYaml($filesByLocale[$locale] ?? null);
+                $dataByLocale[$locale] = $data;
+                $keys = [...$keys, ...array_keys($data)];
+            }
 
-            foreach ($keys as $key) {
-                $entries[] = new TranslationEntry(
-                    group: $group,
-                    key: $key,
-                    tr: $trData[$key] ?? '',
-                    en: $enData[$key] ?? '',
-                );
+            foreach (array_unique($keys) as $key) {
+                $values = [];
+
+                foreach ($locales as $locale) {
+                    $values[$locale] = $dataByLocale[$locale][$key] ?? '';
+                }
+
+                $entries[] = new TranslationEntry(group: $group, key: $key, values: $values);
             }
         }
 
-        usort($entries, static fn (TranslationEntry $a, TranslationEntry $b): int => $a->key <=> $b->key);
+        usort(
+            $entries,
+            static fn (TranslationEntry $a, TranslationEntry $b): int => [$a->group, $a->key] <=> [$b->group, $b->key],
+        );
 
         return $entries;
     }
 
     /**
-     * Tek bir anahtarın tek bir locale'deki değerini günceller. Anahtar
-     * o gruptaki dosyada henüz yoksa yeni eklenir; dosya hiç yoksa
-     * (henüz hiç çeviri edilmemiş bir modül) sıfırdan oluşturulur.
+     * Set one key in one locale. Creates the key or the file if missing.
      *
      * @throws TranslationManagerException
      */
@@ -84,15 +88,19 @@ final class TranslationManager
     }
 
     /**
-     * @return array<string, array<string, string>> locale => [key => value] — tüm gruplar birleştirilmiş
+     * Export matrix keyed by group then locale (avoids colliding keys across domains).
+     *
+     * @return array<string, array<string, array<string, string>>>
      */
     public function exportMatrix(): array
     {
-        $matrix = ['tr' => [], 'en' => []];
+        $locales = $this->locales();
+        $matrix = [];
 
         foreach ($this->listAll() as $entry) {
-            $matrix['tr'][$entry->key] = $entry->tr;
-            $matrix['en'][$entry->key] = $entry->en;
+            foreach ($locales as $locale) {
+                $matrix[$entry->group][$locale][$entry->key] = $entry->valueFor($locale);
+            }
         }
 
         return $matrix;
@@ -100,7 +108,7 @@ final class TranslationManager
 
     public function exportAsJson(): string
     {
-        $json = json_encode($this->exportMatrix(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $json = json_encode($this->exportMatrix(), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES);
 
         if ($json === false) {
             throw new TranslationManagerException('Çeviri matrisi JSON formatına dönüştürülemedi.');
@@ -115,46 +123,26 @@ final class TranslationManager
     }
 
     /**
-     * Dışarıdan yüklenen JSON/YAML içeriğini {tr: {key: value}, en: {key: value}}
-     * şeklinde bekler ve HER anahtarı kendi ait olduğu grubun dosyasına
-     * geri yazar (mevcut anahtarların grubu korunur; sistemde hiç var
-     * olmayan yeni bir anahtar "core" grubuna düşer).
+     * Import JSON/YAML. New format is grouped; legacy flat {tr,en} maps keys to their current group (or core).
+     * Invalid payload throws and writes nothing (all-or-nothing).
      *
-     * Fail-Safe: içerik bu şekle uymuyorsa, tek bir satır bile bozuksa
-     * TranslationManagerException fırlatılır ve HİÇBİR dosyaya yazma
-     * yapılmaz (ya tamamı ya hiçbiri — kısmi/tutarsız bir import olmaz).
+     * @return int Number of key-locale pairs written.
      *
      * @throws TranslationManagerException
      */
     public function importFromString(string $content, string $format): int
     {
-        $matrix = $this->parseImportContent($content, $format);
+        $decoded = $this->decode($content, $format);
+        $byGroupAndLocale = $this->normalizeImportPayload($decoded);
 
-        $existingGroupByKey = [];
-        foreach ($this->listAll() as $entry) {
-            $existingGroupByKey[$entry->key] = $entry->group;
-        }
-
-        /** @var array<string, array<string, array<string, string>>> $byGroupAndLocale group => locale => [key => value] */
-        $byGroupAndLocale = [];
-
-        foreach (['tr', 'en'] as $locale) {
-            foreach ($matrix[$locale] ?? [] as $key => $value) {
-                if (!is_string($key) || !is_string($value)) {
-                    throw new TranslationManagerException(sprintf('Geçersiz çeviri girdisi: "%s" alanı metin (string) olmalıdır.', $key));
-                }
-
-                $group = $existingGroupByKey[$key] ?? 'core';
-                $byGroupAndLocale[$group][$locale][$key] = $value;
-            }
-        }
-
+        // Do not open any file until the whole payload is validated.
+        $plan = [];
         $updatedCount = 0;
 
         foreach ($byGroupAndLocale as $group => $localeData) {
             foreach ($localeData as $locale => $keyValues) {
-                $filePath = $this->resolveFilePathForGroup($group, $locale);
-                $data = $this->safeParseYaml($filePath);
+                $filePath = $this->resolveFilePathForGroup((string) $group, (string) $locale);
+                $data = $plan[$filePath] ?? $this->safeParseYaml($filePath);
 
                 foreach ($keyValues as $key => $value) {
                     $data[$key] = $value;
@@ -162,40 +150,164 @@ final class TranslationManager
                 }
 
                 ksort($data);
-                $this->writeYamlAtomic($filePath, $data);
+                $plan[$filePath] = $data;
             }
+        }
+
+        foreach ($plan as $filePath => $data) {
+            $this->writeYamlAtomic((string) $filePath, $data);
         }
 
         return $updatedCount;
     }
 
     /**
-     * @return array{tr: array<string, string>, en: array<string, string>}
+     * @return array<mixed>
+     *
      * @throws TranslationManagerException
      */
-    private function parseImportContent(string $content, string $format): array
+    private function decode(string $content, string $format): array
     {
         try {
             $decoded = match ($format) {
-                'json' => json_decode($content, true, 512, JSON_THROW_ON_ERROR),
+                'json' => json_decode($content, true, 512, \JSON_THROW_ON_ERROR),
                 'yaml' => Yaml::parse($content),
                 default => throw new TranslationManagerException(sprintf('Desteklenmeyen içe aktarma formatı: "%s".', $format)),
             };
+        } catch (TranslationManagerException $e) {
+            throw $e;
         } catch (Throwable $e) {
             throw new TranslationManagerException('Dosya okunamadı: içerik geçerli bir '.strtoupper($format).' değil. ('.$e->getMessage().')');
         }
 
-        if (!is_array($decoded) || !isset($decoded['tr']) || !isset($decoded['en'])) {
-            throw new TranslationManagerException('Dosya beklenen yapıda değil: en üst seviyede "tr" ve "en" anahtarları olmalıdır.');
+        if (!\is_array($decoded) || $decoded === []) {
+            throw new TranslationManagerException('Dosya beklenen yapıda değil: en üst seviyede bir anahtar-değer eşlemesi (obje/map) olmalıdır.');
         }
 
-        if (!is_array($decoded['tr']) || !is_array($decoded['en'])) {
-            throw new TranslationManagerException('"tr" ve "en" alanları anahtar-değer eşlemesi (obje/map) olmalıdır.');
-        }
-
-        return ['tr' => $decoded['tr'], 'en' => $decoded['en']];
+        return $decoded;
     }
 
+    /**
+     * Normalize both import shapes into group => locale => [key => value] and validate values.
+     *
+     * @param array<mixed> $decoded
+     *
+     * @return array<string, array<string, array<string, string>>>
+     *
+     * @throws TranslationManagerException
+     */
+    private function normalizeImportPayload(array $decoded): array
+    {
+        $locales = $this->locales();
+        $isLegacyFlat = false;
+
+        foreach (array_keys($decoded) as $topKey) {
+            if (\in_array($topKey, $locales, true)) {
+                $isLegacyFlat = true;
+                break;
+            }
+        }
+
+        if ($isLegacyFlat) {
+            return $this->normalizeLegacyPayload($decoded);
+        }
+
+        $result = [];
+
+        foreach ($decoded as $group => $localeData) {
+            if (!\is_string($group) || !\is_array($localeData)) {
+                throw new TranslationManagerException('Dosya beklenen yapıda değil: her grup, dil kodlarından oluşan bir obje içermelidir.');
+            }
+
+            foreach ($localeData as $locale => $keyValues) {
+                if (!\is_string($locale) || !\in_array($locale, $locales, true)) {
+                    // Skip locale blocks that are not active here (file may come from another install).
+                    continue;
+                }
+
+                if (!\is_array($keyValues)) {
+                    throw new TranslationManagerException(sprintf('"%s" grubunun "%s" bloğu anahtar-değer eşlemesi olmalıdır.', $group, $locale));
+                }
+
+                $result[$group][$locale] = $this->assertKeyValueMap($keyValues);
+            }
+        }
+
+        if ($result === []) {
+            throw new TranslationManagerException('Dosyada içe aktarılabilecek hiçbir aktif dil bloğu bulunamadı.');
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<mixed> $decoded
+     *
+     * @return array<string, array<string, array<string, string>>>
+     *
+     * @throws TranslationManagerException
+     */
+    private function normalizeLegacyPayload(array $decoded): array
+    {
+        $existingGroupByKey = [];
+
+        foreach ($this->listAll() as $entry) {
+            $existingGroupByKey[$entry->key] ??= $entry->group;
+        }
+
+        $result = [];
+
+        foreach ($this->locales() as $locale) {
+            if (!isset($decoded[$locale])) {
+                continue;
+            }
+
+            if (!\is_array($decoded[$locale])) {
+                throw new TranslationManagerException(sprintf('"%s" alanı anahtar-değer eşlemesi (obje/map) olmalıdır.', $locale));
+            }
+
+            foreach ($this->assertKeyValueMap($decoded[$locale]) as $key => $value) {
+                $group = $existingGroupByKey[$key] ?? $this->locator->defaultGroup();
+                $result[$group][$locale][$key] = $value;
+            }
+        }
+
+        if ($result === []) {
+            throw new TranslationManagerException('Dosyada içe aktarılabilecek hiçbir aktif dil bloğu bulunamadı.');
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<mixed> $map
+     *
+     * @return array<string, string>
+     *
+     * @throws TranslationManagerException
+     */
+    private function assertKeyValueMap(array $map): array
+    {
+        $result = [];
+
+        foreach ($map as $key => $value) {
+            if (!\is_string($key) || trim($key) === '') {
+                throw new TranslationManagerException('Geçersiz çeviri anahtarı: anahtarlar boş olmayan metinler olmalıdır.');
+            }
+
+            if (!\is_string($value)) {
+                throw new TranslationManagerException(sprintf('Geçersiz çeviri girdisi: "%s" alanı metin (string) olmalıdır.', $key));
+            }
+
+            $result[$key] = $value;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @throws TranslationManagerException
+     */
     private function resolveFilePathForGroup(string $group, string $locale): string
     {
         foreach ($this->locator->locateAll() as $existingGroup => $filesByLocale) {
@@ -204,11 +316,14 @@ final class TranslationManager
             }
         }
 
-        if ($group !== 'core' && str_starts_with($group, 'module:')) {
-            throw new TranslationManagerException(sprintf('"%s" grubu için "%s" dil dosyası bulunamadı.', $group, $locale));
+        // Group exists but this locale has no file yet (or the group is new): create it on write.
+        $path = $this->locator->resolveFilePath($group, $locale);
+
+        if ($path === null) {
+            throw new TranslationManagerException(sprintf('"%s" çeviri grubu çözümlenemedi.', $group));
         }
 
-        return $this->locator->resolveCoreFilePath($locale);
+        return $path;
     }
 
     /**
@@ -226,13 +341,14 @@ final class TranslationManager
             return [];
         }
 
-        if (!is_array($data)) {
+        if (!\is_array($data)) {
             return [];
         }
 
         $result = [];
+
         foreach ($data as $key => $value) {
-            if (is_string($key) && is_string($value)) {
+            if (\is_string($key) && \is_string($value)) {
                 $result[$key] = $value;
             }
         }
@@ -242,11 +358,12 @@ final class TranslationManager
 
     /**
      * @param array<string, string> $data
+     *
      * @throws TranslationManagerException
      */
     private function writeYamlAtomic(string $filePath, array $data): void
     {
-        $dir = dirname($filePath);
+        $dir = \dirname($filePath);
 
         try {
             if (!is_dir($dir)) {
@@ -263,13 +380,43 @@ final class TranslationManager
         }
     }
 
-    private function assertValidLocale(string $locale): void
+    /**
+     * Create empty-value copies of existing domain files for a new locale. Existing files are left untouched.
+     */
+    public function seedLocale(string $locale): void
     {
-        if (!in_array($locale, ['tr', 'en'], true)) {
-            throw new TranslationManagerException(sprintf('Geçersiz dil kodu: "%s".', $locale));
+        $this->assertValidLocale($locale);
+
+        foreach ($this->locator->locateAll() as $group => $filesByLocale) {
+            if (isset($filesByLocale[$locale]) && is_file($filesByLocale[$locale])) {
+                continue;
+            }
+
+            $sourcePath = $filesByLocale[$this->locator->locales()[0] ?? ''] ?? (array_values($filesByLocale)[0] ?? null);
+            $keys = array_keys($this->safeParseYaml(\is_string($sourcePath) ? $sourcePath : null));
+            $path = $this->locator->resolveFilePath($group, $locale);
+
+            if ($path === null) {
+                continue;
+            }
+
+            $this->writeYamlAtomic($path, array_fill_keys($keys, ''));
         }
     }
 
+    /**
+     * @throws TranslationManagerException
+     */
+    private function assertValidLocale(string $locale): void
+    {
+        if (!\in_array($locale, $this->locales(), true)) {
+            throw new TranslationManagerException(sprintf('Geçersiz veya aktif olmayan dil kodu: "%s".', $locale));
+        }
+    }
+
+    /**
+     * @throws TranslationManagerException
+     */
     private function assertValidKey(string $key): void
     {
         if (trim($key) === '') {
