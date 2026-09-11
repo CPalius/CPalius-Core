@@ -35,6 +35,10 @@ Bugün blog ve topluluk siteleri; yarın galeri, acente, CRM veya ERP tarzı uyg
 
 ## Hızlı başlangıç
 
+> **İlk iş, commit korumasını kurun:** `git config core.hooksPath .githooks`
+> Bir kaynak dosyayı boşaltan, %80’den fazla küçülten veya sır içeren
+> commit’leri engeller. Bkz. `.githooks/pre-commit`.
+
 ```bash
 composer install
 cp .env.example .env   # ardından DATABASE_URL, APP_SECRET, token’ları ayarlayın

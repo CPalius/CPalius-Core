@@ -35,6 +35,10 @@ No Node.js is required for the core or admin UI (AssetMapper + standalone Tailwi
 
 ## Quick start
 
+> **First, install the commit guard:** `git config core.hooksPath .githooks`
+> It blocks commits that would empty a source file, shrink one by more than
+> 80%, or include a secret. See `.githooks/pre-commit`.
+
 ```bash
 composer install
 cp .env.example .env   # then set DATABASE_URL, APP_SECRET, tokens
