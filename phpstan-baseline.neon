@@ -1531,19 +1531,7 @@ parameters:
 			path: cp-core/tests/Integration/AacpFieldControllerTest.php
 
 		-
-			message: '#^Service "test\.service_container" is not registered in the container\.$#'
-			identifier: symfonyContainer.serviceNotFound
-			count: 2
-			path: cp-core/tests/Integration/AacpFieldControllerTest.php
-
-		-
 			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertInstanceOf\(\) with ''App\\\\Controller\\\\Admin\\\\AACPController'' and App\\Controller\\Admin\\AACPController will always evaluate to true\.$#'
-			identifier: staticMethod.alreadyNarrowedType
-			count: 1
-			path: cp-core/tests/Integration/AacpRedisResilienceTest.php
-
-		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertInstanceOf\(\) with ''App\\\\Core\\\\Cache\\\\OptionalRedis'' and App\\Core\\Cache\\OptionalRedis will always evaluate to true\.$#'
 			identifier: staticMethod.alreadyNarrowedType
 			count: 1
 			path: cp-core/tests/Integration/AacpRedisResilienceTest.php
@@ -1557,12 +1545,6 @@ parameters:
 		-
 			message: '#^Service "App\\Core\\Performance\\PerformanceInventory" is private\.$#'
 			identifier: symfonyContainer.privateService
-			count: 1
-			path: cp-core/tests/Integration/AacpRedisResilienceTest.php
-
-		-
-			message: '#^Service "test\.service_container" is not registered in the container\.$#'
-			identifier: symfonyContainer.serviceNotFound
 			count: 1
 			path: cp-core/tests/Integration/AacpRedisResilienceTest.php
 
@@ -1585,21 +1567,9 @@ parameters:
 			path: cp-core/tests/Integration/AacpTaxonomyControllerTest.php
 
 		-
-			message: '#^Service "Doctrine\\ORM\\EntityManagerInterface" is private\.$#'
-			identifier: symfonyContainer.privateService
-			count: 5
-			path: cp-core/tests/Integration/AacpTaxonomyControllerTest.php
-
-		-
-			message: '#^Service "Symfony\\Component\\Security\\Core\\Authentication\\Token\\Storage\\TokenStorageInterface" is private\.$#'
+			message: '#^Service "security\.csrf\.token_manager" is private\.$#'
 			identifier: symfonyContainer.privateService
 			count: 1
-			path: cp-core/tests/Integration/AacpTaxonomyControllerTest.php
-
-		-
-			message: '#^Service "test\.service_container" is not registered in the container\.$#'
-			identifier: symfonyContainer.serviceNotFound
-			count: 2
 			path: cp-core/tests/Integration/AacpTaxonomyControllerTest.php
 
 		-
@@ -1607,18 +1577,6 @@ parameters:
 			identifier: symfonyContainer.serviceNotFound
 			count: 1
 			path: cp-core/tests/Integration/AnonymousSessionTest.php
-
-		-
-			message: '#^Service "App\\Core\\Config\\ConfigFile" is private\.$#'
-			identifier: symfonyContainer.privateService
-			count: 1
-			path: cp-core/tests/Integration/ConfigRoundTripTest.php
-
-		-
-			message: '#^Service "App\\Core\\Config\\ConfigManager" is private\.$#'
-			identifier: symfonyContainer.privateService
-			count: 1
-			path: cp-core/tests/Integration/ConfigRoundTripTest.php
 
 		-
 			message: '#^Service "App\\Core\\Config\\Provider\\FieldConfigProvider" is private\.$#'
@@ -1629,7 +1587,13 @@ parameters:
 		-
 			message: '#^Service "App\\Core\\Field\\FieldDefinitionRegistry" is private\.$#'
 			identifier: symfonyContainer.privateService
-			count: 2
+			count: 1
+			path: cp-core/tests/Integration/ConfigRoundTripTest.php
+
+		-
+			message: '#^Service "App\\Core\\Field\\FieldTypeRegistry" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
 			path: cp-core/tests/Integration/ConfigRoundTripTest.php
 
 		-
@@ -1639,25 +1603,7 @@ parameters:
 			path: cp-core/tests/Integration/ConfigRoundTripTest.php
 
 		-
-			message: '#^Service "Doctrine\\ORM\\EntityManagerInterface" is private\.$#'
-			identifier: symfonyContainer.privateService
-			count: 1
-			path: cp-core/tests/Integration/ConfigRoundTripTest.php
-
-		-
-			message: '#^Service "test\.service_container" is not registered in the container\.$#'
-			identifier: symfonyContainer.serviceNotFound
-			count: 2
-			path: cp-core/tests/Integration/ConfigRoundTripTest.php
-
-		-
 			message: '#^Service "App\\Core\\Content\\ContentModerationManager" is private\.$#'
-			identifier: symfonyContainer.privateService
-			count: 1
-			path: cp-core/tests/Integration/ContentModerationTest.php
-
-		-
-			message: '#^Service "App\\Core\\Revision\\Repository\\NodeRevisionRepository" is private\.$#'
 			identifier: symfonyContainer.privateService
 			count: 1
 			path: cp-core/tests/Integration/ContentModerationTest.php
@@ -1669,63 +1615,21 @@ parameters:
 			path: cp-core/tests/Integration/ContentModerationTest.php
 
 		-
-			message: '#^Service "Doctrine\\ORM\\EntityManagerInterface" is private\.$#'
+			message: '#^Service "App\\Core\\Field\\FieldDefinitionRegistry" is private\.$#'
 			identifier: symfonyContainer.privateService
 			count: 1
-			path: cp-core/tests/Integration/ContentModerationTest.php
-
-		-
-			message: '#^Service "test\.service_container" is not registered in the container\.$#'
-			identifier: symfonyContainer.serviceNotFound
-			count: 2
-			path: cp-core/tests/Integration/ContentModerationTest.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type App\\Core\\Revision\\Entity\\NodeRevision\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: cp-core/tests/Integration/ContentModerationTest.php
-
-		-
-			message: '#^Service "test\.service_container" is not registered in the container\.$#'
-			identifier: symfonyContainer.serviceNotFound
-			count: 2
 			path: cp-core/tests/Integration/CpEntityQueryTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertCount\(\) with 1 and array\{\} will always evaluate to false\.$#'
-			identifier: staticMethod.impossibleType
-			count: 1
-			path: cp-core/tests/Integration/EntityAccessGrantTest.php
-
-		-
-			message: '#^Method App\\Tests\\Integration\\EntityAccessGrantTest\:\:persistUser\(\) has parameter \$roles with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
+			message: '#^Parameter \#1 \$array \(list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
 			count: 1
 			path: cp-core/tests/Integration/EntityAccessGrantTest.php
 
 		-
 			message: '#^Service "App\\Core\\Security\\EntityAccessManager" is private\.$#'
 			identifier: symfonyContainer.privateService
-			count: 3
-			path: cp-core/tests/Integration/EntityAccessGrantTest.php
-
-		-
-			message: '#^Service "Doctrine\\ORM\\EntityManagerInterface" is private\.$#'
-			identifier: symfonyContainer.privateService
-			count: 4
-			path: cp-core/tests/Integration/EntityAccessGrantTest.php
-
-		-
-			message: '#^Service "security\.token_storage" is private\.$#'
-			identifier: symfonyContainer.privateService
 			count: 1
-			path: cp-core/tests/Integration/EntityAccessGrantTest.php
-
-		-
-			message: '#^Service "test\.service_container" is not registered in the container\.$#'
-			identifier: symfonyContainer.serviceNotFound
-			count: 2
 			path: cp-core/tests/Integration/EntityAccessGrantTest.php
 
 		-
@@ -1737,19 +1641,13 @@ parameters:
 		-
 			message: '#^Service "App\\Core\\Display\\EntityDisplayRegistry" is private\.$#'
 			identifier: symfonyContainer.privateService
+			count: 3
+			path: cp-core/tests/Integration/EntityDisplayTest.php
+
+		-
+			message: '#^Service "App\\Core\\Field\\FieldDefinitionRegistry" is private\.$#'
+			identifier: symfonyContainer.privateService
 			count: 1
-			path: cp-core/tests/Integration/EntityDisplayTest.php
-
-		-
-			message: '#^Service "App\\Core\\Display\\Repository\\EntityDisplayRepository" is private\.$#'
-			identifier: symfonyContainer.privateService
-			count: 2
-			path: cp-core/tests/Integration/EntityDisplayTest.php
-
-		-
-			message: '#^Service "Doctrine\\ORM\\EntityManagerInterface" is private\.$#'
-			identifier: symfonyContainer.privateService
-			count: 2
 			path: cp-core/tests/Integration/EntityDisplayTest.php
 
 		-
@@ -1759,25 +1657,19 @@ parameters:
 			path: cp-core/tests/Integration/EntityDisplayTest.php
 
 		-
-			message: '#^Service "test\.service_container" is not registered in the container\.$#'
-			identifier: symfonyContainer.serviceNotFound
-			count: 2
-			path: cp-core/tests/Integration/EntityDisplayTest.php
-
-		-
 			message: '#^Service "Doctrine\\ORM\\EntityManagerInterface" is private\.$#'
 			identifier: symfonyContainer.privateService
-			count: 4
+			count: 1
 			path: cp-core/tests/Integration/EntityLifecycleHookIntegrationTest.php
 
 		-
-			message: '#^Service "Symfony\\Component\\Security\\Core\\Authorization\\AuthorizationCheckerInterface" is private\.$#'
+			message: '#^Service "Symfony\\Bundle\\SecurityBundle\\Security" is private\.$#'
 			identifier: symfonyContainer.privateService
 			count: 1
 			path: cp-core/tests/Integration/EntityLifecycleHookIntegrationTest.php
 
 		-
-			message: '#^Service "security\.token_storage" is private\.$#'
+			message: '#^Service "Symfony\\Component\\Security\\Core\\Authentication\\Token\\Storage\\TokenStorageInterface" is private\.$#'
 			identifier: symfonyContainer.privateService
 			count: 1
 			path: cp-core/tests/Integration/EntityLifecycleHookIntegrationTest.php
@@ -1785,7 +1677,7 @@ parameters:
 		-
 			message: '#^Service "test\.service_container" is not registered in the container\.$#'
 			identifier: symfonyContainer.serviceNotFound
-			count: 2
+			count: 1
 			path: cp-core/tests/Integration/EntityLifecycleHookIntegrationTest.php
 
 		-
@@ -1795,21 +1687,15 @@ parameters:
 			path: cp-core/tests/Integration/EntityTypeRegistrationTest.php
 
 		-
-			message: '#^Service "Doctrine\\ORM\\EntityManagerInterface" is private\.$#'
+			message: '#^Service "App\\Core\\Field\\FieldDefinitionRegistry" is private\.$#'
 			identifier: symfonyContainer.privateService
 			count: 1
 			path: cp-core/tests/Integration/FieldApiEndToEndTest.php
 
 		-
-			message: '#^Service "Twig\\Environment" is private\.$#'
+			message: '#^Service "App\\Core\\Field\\FieldTypeRegistry" is private\.$#'
 			identifier: symfonyContainer.privateService
 			count: 1
-			path: cp-core/tests/Integration/FieldApiEndToEndTest.php
-
-		-
-			message: '#^Service "test\.service_container" is not registered in the container\.$#'
-			identifier: symfonyContainer.serviceNotFound
-			count: 2
 			path: cp-core/tests/Integration/FieldApiEndToEndTest.php
 
 		-
@@ -1825,32 +1711,8 @@ parameters:
 			path: cp-core/tests/Integration/ModuleIsolationTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertInstanceOf\(\) with ''App\\\\Core\\\\Revision\\\\Entity\\\\NodeRevision'' and App\\Core\\Revision\\Entity\\NodeRevision will always evaluate to true\.$#'
-			identifier: staticMethod.alreadyNarrowedType
-			count: 1
-			path: cp-core/tests/Integration/NodeRevisionTest.php
-
-		-
-			message: '#^Service "App\\Core\\Revision\\Repository\\NodeRevisionRepository" is private\.$#'
-			identifier: symfonyContainer.privateService
-			count: 1
-			path: cp-core/tests/Integration/NodeRevisionTest.php
-
-		-
 			message: '#^Service "App\\Core\\Revision\\RevisionManager" is private\.$#'
 			identifier: symfonyContainer.privateService
-			count: 1
-			path: cp-core/tests/Integration/NodeRevisionTest.php
-
-		-
-			message: '#^Service "Doctrine\\ORM\\EntityManagerInterface" is private\.$#'
-			identifier: symfonyContainer.privateService
-			count: 1
-			path: cp-core/tests/Integration/NodeRevisionTest.php
-
-		-
-			message: '#^Service "test\.service_container" is not registered in the container\.$#'
-			identifier: symfonyContainer.serviceNotFound
 			count: 2
 			path: cp-core/tests/Integration/NodeRevisionTest.php
 
@@ -1879,13 +1741,13 @@ parameters:
 			path: cp-core/tests/Integration/ResourceAdminTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertInstanceOf\(\) with ''App\\\\Core\\\\Entity\\\\FieldableInterface'' and App\\Core\\Taxonomy\\Entity\\Term will always evaluate to true\.$#'
-			identifier: staticMethod.alreadyNarrowedType
+			message: '#^Service "App\\Core\\Entity\\EntityTypeRegistry" is private\.$#'
+			identifier: symfonyContainer.privateService
 			count: 1
 			path: cp-core/tests/Integration/TaxonomyTest.php
 
 		-
-			message: '#^Service "App\\Core\\Entity\\EntityTypeRegistry" is private\.$#'
+			message: '#^Service "App\\Core\\Field\\FieldDefinitionRegistry" is private\.$#'
 			identifier: symfonyContainer.privateService
 			count: 1
 			path: cp-core/tests/Integration/TaxonomyTest.php
@@ -1903,33 +1765,21 @@ parameters:
 			path: cp-core/tests/Integration/TaxonomyTest.php
 
 		-
-			message: '#^Service "App\\Core\\Taxonomy\\VocabularyRegistry" is private\.$#'
-			identifier: symfonyContainer.privateService
+			message: '#^Using nullsafe method call on non\-nullable type object\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
 			count: 1
 			path: cp-core/tests/Integration/TaxonomyTest.php
 
 		-
-			message: '#^Service "Doctrine\\ORM\\EntityManagerInterface" is private\.$#'
-			identifier: symfonyContainer.privateService
-			count: 2
-			path: cp-core/tests/Integration/TaxonomyTest.php
-
-		-
-			message: '#^Service "test\.service_container" is not registered in the container\.$#'
-			identifier: symfonyContainer.serviceNotFound
-			count: 2
-			path: cp-core/tests/Integration/TaxonomyTest.php
-
-		-
-			message: '#^Service "Symfony\\Component\\Form\\FormFactoryInterface" is private\.$#'
+			message: '#^Service "App\\Core\\Field\\FieldDefinitionRegistry" is private\.$#'
 			identifier: symfonyContainer.privateService
 			count: 1
 			path: cp-core/tests/Integration/UserFieldableFormTest.php
 
 		-
-			message: '#^Service "test\.service_container" is not registered in the container\.$#'
-			identifier: symfonyContainer.serviceNotFound
-			count: 2
+			message: '#^Service "Symfony\\Component\\Form\\FormFactoryInterface" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
 			path: cp-core/tests/Integration/UserFieldableFormTest.php
 
 		-
@@ -1943,6 +1793,36 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: cp-core/tests/Integration/WorkflowRegistryTest.php
+
+		-
+			message: '#^Class Doctrine\\DBAL\\Platforms\\SQLitePlatform referenced with incorrect case\: Doctrine\\DBAL\\Platforms\\SqlitePlatform\.$#'
+			identifier: class.nameCase
+			count: 2
+			path: cp-core/tests/Support/IntegrationSchema.php
+
+		-
+			message: '#^Service "Doctrine\\ORM\\EntityManagerInterface" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 2
+			path: cp-core/tests/Support/IntegrationTestCase.php
+
+		-
+			message: '#^Service "Symfony\\Component\\HttpFoundation\\RequestStack" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Support/IntegrationTestCase.php
+
+		-
+			message: '#^Service "Symfony\\Component\\Security\\Core\\Authentication\\Token\\Storage\\TokenStorageInterface" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Support/IntegrationTestCase.php
+
+		-
+			message: '#^Service "test\.service_container" is not registered in the container\.$#'
+			identifier: symfonyContainer.serviceNotFound
+			count: 1
+			path: cp-core/tests/Support/IntegrationTestCase.php
 
 		-
 			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with 40 and 40 will always evaluate to true\.$#'
