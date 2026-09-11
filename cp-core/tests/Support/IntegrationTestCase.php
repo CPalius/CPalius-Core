@@ -104,7 +104,9 @@ abstract class IntegrationTestCase extends TestCase
     protected function authenticateAs(string $cpaliusRole, ?string $email = null): User
     {
         $user = new User($email ?? $cpaliusRole.'@example.test');
-        $user->setPassword('x')->setCpaliusRoles([$cpaliusRole]);
+        // An inactive user is denied by QueryScopeApplier before any capability is
+        // consulted, which would make every access assertion vacuously pass.
+        $user->setPassword('x')->setCpaliusRoles([$cpaliusRole])->setStatus(User::STATUS_ACTIVE);
 
         $em = $this->em();
         $em->persist($user);
