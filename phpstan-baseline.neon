@@ -1621,6 +1621,12 @@ parameters:
 			path: cp-core/tests/Integration/CpEntityQueryTest.php
 
 		-
+			message: '#^Service "App\\Core\\Command\\DebugCommand" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/DebugCommandTest.php
+
+		-
 			message: '#^Parameter \#1 \$array \(list\<string\>\) of array_values is already a list, call has no effect\.$#'
 			identifier: arrayValues.list
 			count: 1

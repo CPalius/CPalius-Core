@@ -31,11 +31,11 @@
   CI/PHPStan/cs-fixer/README/LICENSE/SECURITY.md yoktu, kuruldu; güvenlik katmanı
   ilk kez test edildi (537 test, 17 bulgu düzeltildi); `cp:doctor` ve `cp:update`
   yazıldı; entegrasyon paketinin kararsızlığı çözüldü. **Her şey git'te** (12 commit).
-- **Sıradaki iş:** T5.2b (`cp:debug:*`) · T3.4 Migrate API · T5.1 maker · ya da
+- **Sıradaki iş:** T3.4 Migrate API · T5.1 maker · T5.5 el kitabı · ya da
   birikmiş teknik borç (strict_types + stil sweep, aşağıda).
 - **Bekleyen migration:** yok. Artık `cp:doctor` bunu kendisi söylüyor.
 - **Doğrulama durumu (2026-09-12):** PHPStan level 6 temiz (baseline 374) ·
-  php-cs-fixer temiz · **966 unit + 55 entegrasyon testi yeşil** ·
+  php-cs-fixer temiz · **966 unit + 71 entegrasyon testi yeşil** ·
   `cp:doctor --fail-on=high` gerçek DB'de 0 · lint:container dev+prod OK.
   Entegrasyon paketi arka arkaya iki koşumda birebir aynı sonucu verdi.
 - **Bilinen ön koşullar:** DB için `C:\laragon\bin\php\php-8.4.14-nts-Win32-vs17-x64\php.exe`
@@ -143,7 +143,7 @@ Sütunlar: **CP**=CPalius · **DR**=Drupal 10/11 · **T3**=TYPO3 v13 · **WP**=W
 | 27 | Admin UI + kurtarma konsolu | **A+** | A | A | A | A | T3.5 ✅ — `/aacp/logs` watchdog + mail resend; `/aacp/recovery` DB'siz (ayırt edici) |
 | 28 | Güvenlik telemetri + IP ban (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
 | 29 | Yedekleme (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
-| 30 | DX: maker + doctor + test kit + geliştirici dokümanı | **B** | A | B | B | B | T5.2a ✅ `cp:doctor` (9 kontrol) + `IntegrationTestCase`/`IntegrationSchema`; kalan: maker (T5.1), `cp:debug:*` (T5.2b), el kitabı (T5.5) |
+| 30 | DX: maker + doctor + test kit + geliştirici dokümanı | **A** | A | B | B | B | T5.2 ✅ `cp:doctor` (10 kontrol) + `cp:debug` (6 konu) + `IntegrationTestCase`/`IntegrationSchema`; kalan: maker (T5.1), el kitabı (T5.5) |
 
 ### Ek eksenler (31–40) — "ürün olma" ekseni
 
@@ -659,14 +659,18 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 - [ ] `cp:make:module|resource|entity|field-type|hook|cron|api|settings|admin-controller`
 - [ ] CPalius konvansiyonlarına uygun iskele (migration dahil)
 
-#### T5.2 — `cp:doctor` + `cp:debug:*`  `[~]`  (2026-09-12 — doctor bitti, debug kaldı)
+#### T5.2 — `cp:doctor` + `cp:debug:*`  `[x]`  (2026-09-12)
 - [x] `cp:doctor` — dokuz salt-okunur kontrol, altı grupta: `migrations` (bekleyen + diskte olmayan ama kayıtlı), `modules` (karantina), `capabilities` (rolde olup kayıtlı olmayan yetki = sessiz hiçlik; kayıtlı olup hiçbir rolde olmayan), `translations` (**satır sayısı değil, düzleştirilmiş anahtar kümesi** — eşit satırlı iki dosya farklı anahtar taşıyabilir), `environment` (prod'da debug, eksik eklenti, yazılamayan dizin, kurtarma kapısı token'ları), `security` (duruş puanı köprüsü), `updates` (T3.6)
 - [x] `--fail-on` (CI kapısı; hatalı eşik **reddedilir**, sessizce kapıyı kapatmaz), `--only`, `--list`, `--all`, `--json`
 - [x] **Doctor'ın kendi izolasyonu:** bir check patlarsa koşu durmaz, exception bir bulguya dönüşür. `cp:doctor` zaten bozuk kurulumlarda çalıştırılacak — ilk gerçek problemde ölen teşhis aracı tam ihtiyaç anında işe yaramaz ("Core Never Dies" araç katmanına taşındı)
 - [x] Çeviri anahtarı **kullanmıyor**, düz metin üretiyor: çeviri kataloğunun kendisi bozuk olabilir
 - [x] `#[AutoconfigureTag('cpalius.doctor.check')]` — bir modül kendi kontrolünü katkılayabilir, çekirdek modülü tanımadan
 - [x] Testler: `DoctorTest` (7), `DoctorFindingTest` (15), `TranslationParityCheckTest` (8, gerçek geçici dosya ağacı)
-- [ ] **KALAN:** `cp:debug:capabilities|hooks|fields|resources|cron|entity-types`
+- [x] `cp:debug <topic>` — altı konu tek komutta: `capabilities` (hangi rol tutuyor), `hooks`, `cron` (DB + attribute + flat-file bir arada), `entity-types` (keşfedilen bayraklarla), `fields` (kayıtlı tipler + tanımlar, kayıtsız tip **UNREGISTERED** damgalı), `resources`. `--filter` + `--json` + kabuk tamamlama
+- [x] **Neden tek komut:** altı ayrı sınıfın farkı ikişer satırlık veri şekillendirmesi; ayrı dosyalar biri büyüdüğü an birbirinden kopardı
+- [x] **Neden var:** CPalius kendini büyük ölçüde attribute ile keşfediyor (`#[CpHook]`, `#[CpCronJob]`, `#[CpResource]`, `#[CpEntityType]`, `#[CpFieldType]`). Bu, modüle az törenle çok erişim veriyor — ama geliştiriciye "benimki kaydoldu mu" sorusunun cevabını tetikleyip bakmaktan başka yolla vermiyor. Hook noktasındaki yazım hatası **hata değil sessizlik** üretiyor
+- [x] Testler: `DebugCommandTest` (11) — altı konunun her biri kendi kayıt defterini gerçek API'siyle okuyor, filtre daraltıyor, JSON sütun adlarıyla anahtarlı, bilinmeyen konu **boş tablo değil hata** veriyor (yazım hatasına boş liste dönmek "hiçbir şey kayıtlı değil" diye okunurdu)
+- **Alan notu:** Drupal `drush` alt komutlarıyla benzerini verir ama çekirdekte değil, contrib araçta. Symfony'nin `debug:*` ailesi framework nesnelerini gösterir, CPalius'un kendi sözleşmelerini değil. **C → A.**
 - **Kanıt:** Bu komutun yazılma sebebi gerçek bir olaydı — beş migration birkaç oturum boyunca uygulanmadan durdu ve **hiçbir belirti vermedi**, çünkü onlara ihtiyaç duyan özellikler sessizce bozulacak şekilde yazılmıştı. `cp:doctor` CI'da 16. adım olarak koşuyor.
 
 #### T5.3 — Modül test kiti  `[~]`  (2026-09-12 — taban + DB reset bitti)
