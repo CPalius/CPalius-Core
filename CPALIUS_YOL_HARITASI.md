@@ -25,20 +25,30 @@
 ## 0. NEREDE KALDIK? (her oturum başında güncelle)
 
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
-  **GC2** bitti. **T3.2 (multisite/org) İPTAL** (öncelik dışı).
-- **Son oturum:** 2026-09-12 — GC2: `forum_notifications` drop + Category/Tag →
-  `blog_category` / `blog_tag` Vocabulary veri migrasyonu (`Version20260912150000` +
-  `…160000`). Blog facade `CategoryRepository`/`TagRepository` Term üzerinde.
-- **Sıradaki iş:** **T3.6** — `cp:update` orkestratör (veya T3.4 Migrate API).
-- **Bekleyen migration:** yok (latest = `Version20260912160000`).
+  **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (motor + komut) bitti.
+  **T3.2 (multisite/org) İPTAL** (öncelik dışı).
+- **Son oturum:** 2026-09-12 — **GC3: kalite kapıları + kanıt borcu kapatıldı.**
+  CI/PHPStan/cs-fixer/README/LICENSE/SECURITY.md yoktu, kuruldu; güvenlik katmanı
+  ilk kez test edildi (537 test, 17 bulgu düzeltildi); `cp:doctor` ve `cp:update`
+  yazıldı; entegrasyon paketinin kararsızlığı çözüldü. **Her şey git'te** (12 commit).
+- **Sıradaki iş:** AACP "Güncellemeler" ekranı (T3.6'nın kalan üçüncü maddesi) —
+  ya da T5.2b (`cp:debug:*`) / T3.4 Migrate API.
+- **Bekleyen migration:** yok. Artık `cp:doctor` bunu kendisi söylüyor.
+- **Doğrulama durumu (2026-09-12):** PHPStan level 6 temiz (baseline 374) ·
+  php-cs-fixer temiz · **966 unit + 55 entegrasyon testi yeşil** ·
+  `cp:doctor --fail-on=high` gerçek DB'de 0 · lint:container dev+prod OK.
+  Entegrasyon paketi arka arkaya iki koşumda birebir aynı sonucu verdi.
 - **Bilinen ön koşullar:** DB için `C:\laragon\bin\php\php-8.4.14-nts-Win32-vs17-x64\php.exe`
-  (bkz. memory `php-cli-environment`). Test DB `cpalius-cmf_test`. `phpunit.xml.dist`
-  kök dizinde. Bu oturumda phpunit yok; lint + HTTP smoke yapıldı.
-- **Pre-existing sorun (bizden değil):** `cp-core/templates/aacp/resources/index.html.twig`
-  (untracked) `u.truncate` filtresi yüzünden lint:twig'de hata veriyor — `#[CpResource]`
-  auto-admin işinden kalma, T1.1 kapsamı dışı.
+  (bkz. memory `php-cli-environment`). Test DB `cpalius-cmf_test` (MySQL; `dbname_suffix`
+  ile). `phpunit.xml.dist` kök dizinde.
+  **Commit koruması:** `git config core.hooksPath .githooks` — boş dosya, %80'den fazla
+  küçülen dosya ve sır içeren commit'leri engeller (bkz. §4, 2026-09-12 (19)).
 - **Kalan GC borcu (bilinçli):** webhook → Messenger (hibrit kuyruk kararı); flat index
   Term; auth context-vary.
+- **Kalan teknik borç (bilinçli değil, sıraya alındı):** 51 dosyada
+  `declare(strict_types=1)` eksik (aralarında `Kernel.php`, `Node.php`, `User.php`,
+  `CPaliusVoter.php`); toplu stil sweep'i (452/850 dosya) tek commit olarak bekliyor;
+  migration'lar MySQL'e çivili (bkz. skor satırı 40).
 
 ---
 
@@ -87,7 +97,7 @@ güvenlik-varsayılan** ekseninde dört rakibi de geçmiş durumda.
 > **BAKIM KURALI:** Her tier adımı bittiğinde bu bölüm güncellenir. Değişen satırın
 > CPalius puanı yükseltilir, "CPalius bugün" notu yeni gerçeğe göre yazılır, gerekiyorsa
 > "en iyi kim" değerlendirmesi gözden geçirilir. Küçük bir geliştirme bile buraya yansır.
-> Son güncelleme: **2026-09-11 (T2.5 sonrası).**
+> Son güncelleme: **2026-09-12 (GC3 + T3.6 sonrası).**
 >
 > **HEDEF KRİTERİ (2026-09-11'den itibaren):** Her satırda amaç sadece rakiplere yetişmek
 > (`A`) değil, **o satırın `A+`ı olmak.** Bir tier adımını tasarlarken "Drupal/ProcessWire/
@@ -128,12 +138,35 @@ Sütunlar: **CP**=CPalius · **DR**=Drupal 10/11 · **T3**=TYPO3 v13 · **WP**=W
 | 22 | REST / JSON:API / headless auth | B | A+ | B | A | B | T4.1 + T4.2 |
 | 23 | Hook / eklenti ergonomisi | B | A | B | A+ | A | T1.5 |
 | 24 | Cron / zamanlanmış görevler | A | A | A | C | B | — (CP: birleşik motor + izole subprocess + UI) |
-| 25 | Modül paketleme + lifecycle + tek-tık dağıtım | B | A | A | A+ | B | T3.6 (cp:update) |
+| 25 | Modül paketleme + lifecycle + tek-tık dağıtım | **A** | A | A | A+ | B | T3.6 ✅ `cp:update` sıralı+devam ettirilebilir; kalan: paket deposu / tek-tık kurulum |
 | 26 | Migrate / CMS-ten CMS'e veri taşıma | D | A+ | B | B | C | T3.4 |
 | 27 | Admin UI + kurtarma konsolu | **A+** | A | A | A | A | T3.5 ✅ — `/aacp/logs` watchdog + mail resend; `/aacp/recovery` DB'siz (ayırt edici) |
 | 28 | Güvenlik telemetri + IP ban (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
 | 29 | Yedekleme (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
-| 30 | DX: maker + doctor + test kit + geliştirici dokümanı | C | A | B | B | B | T5.1–T5.5 |
+| 30 | DX: maker + doctor + test kit + geliştirici dokümanı | **B** | A | B | B | B | T5.2a ✅ `cp:doctor` (9 kontrol) + `IntegrationTestCase`/`IntegrationSchema`; kalan: maker (T5.1), `cp:debug:*` (T5.2b), el kitabı (T5.5) |
+
+### Ek eksenler (31–40) — "ürün olma" ekseni
+
+> **NEDEN SONRADAN EKLENDİ (2026-09-12):** İlk 30 satır *yetenek* kıyaslıyor ve
+> orada birçok satırda öndeyiz. Ama bir framework'ün "bunu seçelim mi" kararı
+> büyük ölçüde burada veriliyor — ve dört rakip de tam olarak bu eksenlerde
+> kazanıyordu. Bu blok eklenene kadar tablo, projenin en büyük açığını hiç
+> göstermiyordu: satır 33 ve 34 `D` iken satır 2'yi `A++`'tan öteye taşımak
+> hiçbir kullanıcı kazandırmaz.
+
+| # | Yetenek alanı | CP | DR | T3 | WP | PW | Yol haritası |
+|---|---|:--:|:--:|:--:|:--:|:--:|---|
+| 31 | Sürüm politikası + BC garantisi + LTS | D | A+ | A+ | A++ | A | `cp:update` altyapısı hazır (T3.6); semver + BC belgesi + update-hook sözleşmesi yazılmalı |
+| 32 | Kurulum deneyimi ("5 dakika kuralı") | **B** | B | C | A++ | A | `.env.example` + README geri geldi; kalan: tek komutluk kurulum sihirbazı |
+| 33 | Dokümantasyon | **C** | A+ | A+ | A+ | A+ | README (EN+TR) + SECURITY.md var; geliştirici el kitabı yok → T5.5 |
+| 34 | CI / otomatik kalite kapısı | **A** | A+ | A | B | B | ✅ GitHub Actions: lint ×3 + çekirdek izolasyon + PHPStan L6 + stil + `cp:doctor` + iki test paketi |
+| 35 | Paket ekosistemi + dağıtım kanalı | D | A+ | A | A++ | B | Modül deposu/registry yok — satır 25'in kalan yarısı |
+| 36 | Güvenlik açığı bildirim süreci + CVE | **B** | A++ | A+ | A | B | SECURITY.md + kapsam + SLA yazıldı; CVE/advisory süreci ve gerçek adres onayı kaldı |
+| 37 | Performans kanıtı (benchmark) | D | B | B | C | A | İddia var, ölçüm yok — benchmark paketi yazılmalı |
+| 38 | Erişilebilirlik (WCAG) — admin UI | ? | A+ | A | A | C | Hiç ölçülmedi; Drupal'ın a11y gate'i çekirdek politika |
+| 39 | Gözlemlenebilirlik (log / metrik / health) | **A** | A | A | C | B | T3.5 ✅ `Core/Logging` watchdog + `/aacp/logs` + mail log; T5.2a ✅ `cp:doctor` |
+| 40 | DB taşınabilirliği | C | A+ | A | C | C | 60 migration'ın hepsi ham MySQL DDL (`AUTO_INCREMENT`, `ENGINE=InnoDB`), platform koşulu **sıfır**. ORM katmanı taşınabilir, kurulum değil. **Karar bekliyor:** "MySQL-only, bilinçli" diye yazılacak mı, yoksa DBAL-taşınabilir migration disiplinine mi geçilecek |
+
 
 ### Alan alan — en iyi kim, CPalius nerede
 
@@ -581,11 +614,18 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 - **Kanıt:** `logger->error()` → DB satırı → `/aacp/logs`; test/async mail → MailLog; resend kuyruğa alır.
 - **Alan notu:** AuditLog (entity-diff) ve SystemTelemetryLog (güvenlik) ayrı kaldı — tek tabloya sıkıştırılmadı.
 
-#### T3.6 — Çekirdek update runner  `[ ]`
-- [ ] `cp:update` — sıralı: pending migration → çekirdek update-hook → modül `upgrade()` → config import → cache rebuild
-- [ ] Update-hook registry (sıralı, versiyon-etiketli, idempotent)
-- [ ] AACP "Güncellemeler" ekranı + kuru çalıştırma
-- **Kanıt:** Sürüm atla → `cp:update` her şeyi doğru sırada uygular, yarıda kalırsa devam edebilir.
+#### T3.6 — Çekirdek update runner  `[~]`  (2026-09-12 — motor + komut bitti, AACP ekranı kaldı)
+- [x] `cp:update` — sıralı: pending migration → çekirdek update-hook → modül `upgrade()` → config import → cache rebuild (`Core/Update/UpdateRunner`)
+- [x] Update-hook registry: `UpdateHookInterface` (`#[AutoconfigureTag]`) + `UpdateHookLedger`. Değişmeyen id ile tanımlı, sürümle etiketli, **birden fazla sürüm atlansa bile yayın sırasıyla** uygulanır
+- [x] `--dry-run` (hiçbir şeye dokunmadan rapor) + `--json` (CI)
+- [x] **Kapattığı asıl boşluk:** manifest sürümü ilerleyen bir modülün `upgrade()`'i yalnızca **yeniden etkinleştirmede** çalışıyordu. Operatörün her modülü elle kapatıp açması, üstelik hangisinin buna ihtiyacı olduğunu bilmeden, gerekiyordu — artık `cp:update` yapıyor
+- [x] Devam ettirilebilirlik tasarımın kendisinde: ledger hook **döndükten sonra** yazılır (yarıda kesilen hook tekrar çalışır, "yapıldı" sanılmaz); bozuk ledger **boş** okunur, "hepsi bitti" değil; bir hook patlarsa komşuları çalışmaya devam eder; **yalnızca migration hatası** boru hattını durdurur
+- [x] Ledger `cp_settings`'te (modül sürümlerinin zaten kullandığı konvansiyon) — kendi tablosu olsaydı, o tabloyu yaratan koşumu kaydedemezdi
+- [x] `cp:doctor`'a `updates` kontrolü bağlandı: doctor geride kalmışlığı fark eder, update ileri taşır
+- [x] Testler: `UpdateRunnerTest` (6, gerçek `final` işbirlikçiler + fixture hook) — sıralama, dry-run'ın hiçbir şey değiştirmemesi, bir-kez-çalışma, atlanan sürümler arası sıra, hata izolasyonu, bozuk-ledger fail-safe'i. `UpdateStepResultTest` (4)
+- [ ] **KALAN:** AACP "Güncellemeler" ekranı — motor ve komut hazır, ekran ikisinin tüketicisi
+- **Kanıt:** `cp:update --dry-run` gerçek kurulumda beş adımı da sırayla raporluyor ve hiçbir şeye dokunmuyor; `--fail-on` yok çünkü çıkış kodu zaten başarısızlığı taşıyor. İkinci koşumda tamamlanan iş atlanıyor.
+- **Alan notu:** Drupal `update.php` + `drush updb`, WordPress `wp core update-db` aynı işi görür ama ikisi de **veri düzeltmelerini** ayrı bir mekanizmaya bırakır (Drupal `hook_update_N`, WP sürüm karşılaştırmalı elle kod). CPalius'ta hook'lar tipli bir arayüz, ledger'ı var, sürüm sırası garantili ve `--dry-run` ile önce prod'da sorulabiliyor. **B → A** (A+ değil: tek-tık paket güncellemesi ve AACP ekranı yok).
 
 ---
 
@@ -618,12 +658,21 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 - [ ] `cp:make:module|resource|entity|field-type|hook|cron|api|settings|admin-controller`
 - [ ] CPalius konvansiyonlarına uygun iskele (migration dahil)
 
-#### T5.2 — `cp:doctor` + `cp:debug:*`  `[ ]`
-- [ ] `cp:doctor` — pending migration, config drift, karantina, eksik çeviri, N+1 offender, güvenlik checklist
-- [ ] `cp:debug:capabilities|hooks|fields|resources|cron|entity-types`
+#### T5.2 — `cp:doctor` + `cp:debug:*`  `[~]`  (2026-09-12 — doctor bitti, debug kaldı)
+- [x] `cp:doctor` — dokuz salt-okunur kontrol, altı grupta: `migrations` (bekleyen + diskte olmayan ama kayıtlı), `modules` (karantina), `capabilities` (rolde olup kayıtlı olmayan yetki = sessiz hiçlik; kayıtlı olup hiçbir rolde olmayan), `translations` (**satır sayısı değil, düzleştirilmiş anahtar kümesi** — eşit satırlı iki dosya farklı anahtar taşıyabilir), `environment` (prod'da debug, eksik eklenti, yazılamayan dizin, kurtarma kapısı token'ları), `security` (duruş puanı köprüsü), `updates` (T3.6)
+- [x] `--fail-on` (CI kapısı; hatalı eşik **reddedilir**, sessizce kapıyı kapatmaz), `--only`, `--list`, `--all`, `--json`
+- [x] **Doctor'ın kendi izolasyonu:** bir check patlarsa koşu durmaz, exception bir bulguya dönüşür. `cp:doctor` zaten bozuk kurulumlarda çalıştırılacak — ilk gerçek problemde ölen teşhis aracı tam ihtiyaç anında işe yaramaz ("Core Never Dies" araç katmanına taşındı)
+- [x] Çeviri anahtarı **kullanmıyor**, düz metin üretiyor: çeviri kataloğunun kendisi bozuk olabilir
+- [x] `#[AutoconfigureTag('cpalius.doctor.check')]` — bir modül kendi kontrolünü katkılayabilir, çekirdek modülü tanımadan
+- [x] Testler: `DoctorTest` (7), `DoctorFindingTest` (15), `TranslationParityCheckTest` (8, gerçek geçici dosya ağacı)
+- [ ] **KALAN:** `cp:debug:capabilities|hooks|fields|resources|cron|entity-types`
+- **Kanıt:** Bu komutun yazılma sebebi gerçek bir olaydı — beş migration birkaç oturum boyunca uygulanmadan durdu ve **hiçbir belirti vermedi**, çünkü onlara ihtiyaç duyan özellikler sessizce bozulacak şekilde yazılmıştı. `cp:doctor` CI'da 16. adım olarak koşuyor.
 
-#### T5.3 — Modül test kiti  `[ ]`
-- [ ] `CpaliusKernelTestCase`, entity factory'ler, fixture modül, DB reset helper'ı
+#### T5.3 — Modül test kiti  `[~]`  (2026-09-12 — taban + DB reset bitti)
+- [x] `App\Tests\Support\IntegrationTestCase` — kernel boot + şema reset + `authenticateAs()` / `pushRequest()` / `browser()`. Önceden bu blok **15 dosyada, 4 farklı yazımla** kopyalanmıştı
+- [x] `App\Tests\Support\IntegrationSchema` — **metadata'ya değil, veritabanına** bakarak tüm tabloları düşürür. `dropSchema($metadata)` silinen bir entity'nin tablosunu kaldıramaz; o yetimlerin FK'leri canlı tabloların düşürülmesini engeller ve `createSchema` "zaten var" der. Entegrasyon paketinin **kararsızlığının kökü buydu** (PHPUnit başarısız testleri öne aldığı için her koşumda farklı test patlıyordu)
+- [x] Fixture modül deseni zaten vardı (`cp-core/tests/Fixtures/Modules/`), `HookFixture` gerçek `#[CpHook]` servisiyle
+- [ ] **KALAN:** entity factory'ler; dokümante edilmiş örnek modül testi
 - [ ] Dokümante edilmiş örnek modül testi
 
 #### T5.4 — Kalan config provider'lar + AACP config UI (Faz C2) + config split  `[ ]`
@@ -654,6 +703,66 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 ## 4. İLERLEME GÜNLÜĞÜ
 
 > En yeni en üstte. Her oturum sonunda: değişen dosyalar, doğrulama, kalan risk.
+
+### 2026-09-12 (19) — GC3: kalite kapıları, kanıt borcu, T3.6 · **+ veri kaybı olayı**
+**Bağlam:** Bu oturum bir denetimle başladı: yol haritası birçok satırda `A++` diyordu
+ama o iddiaları üreten kodun **hiç testi yoktu**, ve projede CI, PHPStan yapılandırması,
+README, LICENSE ya da SECURITY.md de yoktu. Teşhis şuydu: mimari değil, **kanıt** eksik.
+
+**Kalite kapıları (yoktan var edildi):**
+- `phpstan.neon.dist` **level 6** + `phpstan-baseline.neon` (mevcut borç donduruldu,
+  yeni kod tam seviyede tutuluyor). `ignoreErrors` bilinçli boş: baseline bakiyeyi
+  *sayılabilir* tutar, geniş desenli bir ignore aynı hatayı gelecekte de yutardı
+- `.php-cs-fixer.dist.php` (@Symfony + strict_types + sıralı import). Kapatılan üç
+  kuralın her birinin gerekçesi dosyada yazılı
+- `.github/workflows/ci.yml` — 16 adım: lint ×3, **çekirdek izolasyon kuralı**
+  (`use Modules\` grep'i artık makine denetimli), doctrine mapping, PHPStan,
+  stil (yalnız değişen dosyalar), `cp:doctor`, unit + entegrasyon
+- README (EN+TR) git geçmişinden geri alındı, LICENSE + SECURITY.md + `.env.example` yazıldı
+
+**Güvenlik katmanı ilk kez test edildi** (alt-ajan, 537 test / 1342 assertion):
+23 bulgu, 17'si düzeltildi. En kritik ikisi:
+- **`SecretBox` mühürlü değildi** — yol haritası "mühürlü" diyordu, gerçekte AES-256-**CBC**,
+  MAC yok. Artık AES-256-GCM; `v2:` öneki sayesinde eski değerler okunmaya devam ediyor,
+  migration gerekmiyor
+- **Çözülemeyen secret 2FA'yı sessizce kapatıyordu** (fail-open). APP_SECRET rotasyonu →
+  tüm hesapların ikinci faktörü kapanır, arayüzde hâlâ "korumalı" görünürdü. Artık fail-closed
+- Yanında: IPv4-mapped IPv6 yüzünden **çift yığınlı sunucuda IP ban listesi tamamen
+  atlanıyordu**; allowlist koruması CIDR'ları hiç kapsamıyordu; `GREATEST()` MySQL dışında
+  yeniden-ban yolunu kırıyordu; `SecurityAuditor` tanınmayan WAF değerini **"PASS"** sayıyordu
+- Adil olmak gerekirse: `TotpGenerator` altı resmî RFC 6238 vektörünü ilk denemede geçti,
+  CIDR aritmetiği kusursuzdu, DQL enjeksiyonu yoktu. **İddia doğruymuş, kanıtı eksikmiş**
+
+**Cursor'ın bıraktığı 5 gerçek hata** (kapılar kurulunca ortaya çıktı, hepsi düzeltildi):
+`CategoryRepository::findBy()` üç çağrı noktasında (Doctrine'den miras geliyordu, facade'a
+geçişte kayboldu) · `TagRepository::findBy()` sitemap'te · `BlogAttributeHooks` `findMostUsed()`'ın
+değişen dönüş şeklini bilmiyordu (Hook izolasyonu yüzünden **sessizce karantinaya alınıyordu** —
+popüler etiketler kutusu çalışmayı bırakmış, kimse fark etmemiş). Ayrıca `findByIds()`
+eklenirken **vocabulary koruması** kondu: olmasa uydurulmuş bir POST ile etiket kategori
+olarak iliştirilebilirdi.
+
+**Ayrıca:** `cp:blog:seed-demo-content` her koşumda ölüyordu (`$localeProvider` hiç enjekte
+edilmemişti) · `#[CpResource]` liste şablonu kurulu olmayan bir Twig filtresi (`u`) çağırıyordu ·
+README PostgreSQL desteği iddia ediyordu, 60 migration'ın hepsi ham MySQL DDL.
+
+**T3.6 + T5.2a:** `cp:update` ve `cp:doctor` yazıldı (detay yukarıdaki maddelerde).
+
+**⚠️ VERİ KAYBI OLAYI VE ÖNLEMİ:** Bir toplu düzenleme betiğinde ikinci `preg_replace`
+derlenemeyip `null` döndürdü ve o `null` dosyalara yazıldı — **14 entegrasyon test dosyası
+boşaldı**. Yalnız biri git'te izleniyordu; 13'ü kurtarılamadı ve PHPUnit cache'indeki test
+adlarından + bu dosyadaki açıklamalardan **yeniden yazıldı**. Sonuç eskisinden iyi:
+49 test / **214 assertion** (öncesi 176), baseline 409 → 366.
+**Önlem (`.githooks/pre-commit`, üçü de gerçekten engellediği test edilerek):** boş dosya,
+%80'den fazla küçülen dosya, sır benzeri yol. Kurulum: `git config core.hooksPath .githooks`.
+Asıl ders şu: **13 dosyanın hiçbiri commit edilmemişti.** Artık her şey git'te (12 commit).
+
+**Doğrulama:** PHPStan L6 temiz · cs-fixer temiz · **966 unit + 55 entegrasyon** yeşil ·
+entegrasyon paketi iki ardışık koşumda birebir aynı · `cp:doctor --fail-on=high` gerçek DB'de 0 ·
+lint:container dev+prod.
+
+**Kalan risk:** 51 dosyada `strict_types` yok · toplu stil sweep'i (452 dosya) bekliyor ·
+migration'lar MySQL'e çivili (satır 40 karar bekliyor) · commit'ler henüz **push edilmedi**
+(depo public, onay bekliyor).
 
 ### 2026-09-12 (18) — GC2: forum_notifications drop + Category/Tag → Vocabulary
 **Amaç:** GC1 sonrası biriken borç — bildirim tek tablo; Blog taksonomisi çekirdek
