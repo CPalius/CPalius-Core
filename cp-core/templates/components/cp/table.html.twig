@@ -1,18 +1,9 @@
 {#
-    <twig:cp:table headers="['Ad', 'Versiyon', 'Durum']">
-        <twig:block name="rows">
-            <tr>...</tr>
-        </twig:block>
-    </twig:cp:table>
+    <twig:cp:table headers="['Name', 'Version', 'Status']">...</twig:cp:table>
 
-    Props:
-      headers  (array)  Başlık hücrelerinin metinleri (sırayla).
-      empty    (bool)   Satır yoksa true geçilir; "rows" bloğu yerine boş-durum mesajı gösterilir.
-      emptyText (string) Boş durumda gösterilecek metin.
+    Props: headers, empty, emptyText
 
-    Not: <tbody> içeriği çağıran taraf "rows" bloğunda kendi <tr>/<td>'lerini
-    yazar; bu component sadece tablo iskeletini (kenarlık, başlık stili,
-    zebra/divide çizgileri) standartlaştırır — hücre içeriğine karışmaz.
+    Caller supplies <tr>/<td> in the "rows" block; this component standardizes table shell only.
 #}
 {% props headers = [], empty = false, emptyText = null %}
 

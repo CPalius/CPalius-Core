@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Core\Localization\LocaleProvider;
+use App\Core\Module\ModuleContributionCatalog;
 use App\Core\Portal\PortalBlockDataProviderInterface;
 use App\Core\Portal\PortalLayoutService;
 use App\Core\Portal\WhitepaperContent;
 use App\Core\Settings\SettingsRegistry;
-use App\Repository\NodeRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -24,8 +24,6 @@ use Symfony\Component\Routing\RouterInterface;
  */
 final class ThemeController extends AbstractController
 {
-    private const NODE_TYPE_POST = 'post';
-
     /**
      * @param iterable<PortalBlockDataProviderInterface> $portalBlockProviders
      */
@@ -33,9 +31,9 @@ final class ThemeController extends AbstractController
         private readonly SettingsRegistry $settingsRegistry,
         private readonly RouterInterface $router,
         private readonly PortalLayoutService $portalLayoutService,
-        private readonly NodeRepository $nodeRepository,
         private readonly LocaleProvider $localeProvider,
         private readonly WhitepaperContent $whitepaperContent,
+        private readonly ModuleContributionCatalog $contributions,
         #[TaggedIterator('cpalius.portal.block_data_provider')]
         private readonly iterable $portalBlockProviders = [],
     ) {
@@ -60,13 +58,13 @@ final class ThemeController extends AbstractController
     )]
     public function home(Request $request): Response
     {
-        $mode = $this->settingsRegistry->get('homepage.mode');
+        $mode = (string) $this->settingsRegistry->get('homepage.mode');
+        $route = $this->contributions->homepageModeRoute($mode);
+        if ($route !== null) {
+            return $this->redirectToModuleHomeOrPortal($route, $request);
+        }
 
-        return match ($mode) {
-            'forum' => $this->redirectToModuleHomeOrPortal('forum_index', $request),
-            'blog' => $this->redirectToModuleHomeOrPortal('blog_index', $request),
-            default => $this->renderPortal($request),
-        };
+        return $this->renderPortal($request);
     }
 
     /**
@@ -98,27 +96,18 @@ final class ThemeController extends AbstractController
     private function renderPortal(Request $request): Response
     {
         $blocks = $this->portalLayoutService->getEnabledBlocks();
-        $portalData = [];
-        $forumAvailable = $this->router->getRouteCollection()->get('forum_index') !== null;
-        $blogAvailable = $this->router->getRouteCollection()->get('blog_index') !== null;
+        $catalog = $this->portalLayoutService->getCatalog();
+        $availability = $this->moduleAvailability();
         $locale = $request->getLocale();
 
+        $portalData = [];
         $visibleBlocks = [];
         foreach ($blocks as $block) {
             $id = (string) ($block['id'] ?? '');
-            $limit = (int) ($block['limit'] ?? 5);
-
-            if (str_starts_with($id, 'forum_') && !$forumAvailable) {
-                continue;
-            }
-
-            if (in_array($id, ['latest_forum_topics', 'popular_forum_topics', 'latest_forum_posts'], true)
-                && !$forumAvailable
+            $requiresRoute = $catalog[$id]['requiresRoute'] ?? null;
+            if (\is_string($requiresRoute) && $requiresRoute !== ''
+                && $this->router->getRouteCollection()->get($requiresRoute) === null
             ) {
-                continue;
-            }
-
-            if ($id === 'latest_blog_posts' && !$blogAvailable) {
                 continue;
             }
 
@@ -132,20 +121,6 @@ final class ThemeController extends AbstractController
                 continue;
             }
 
-            if ($id === 'latest_blog_posts') {
-                $items = $this->nodeRepository
-                    ->createPublishedByTypeAndLocaleQueryBuilder(self::NODE_TYPE_POST, $locale)
-                    ->setMaxResults($limit)
-                    ->getQuery()
-                    ->getResult();
-                if ($items === []) {
-                    continue;
-                }
-                $portalData[$id] = ['items' => $items];
-                $visibleBlocks[] = $block;
-                continue;
-            }
-
             // Showcase / marketing blocks are Twig + portal.{locale}.yaml — no module data.
             $visibleBlocks[] = $block;
         }
@@ -153,9 +128,23 @@ final class ThemeController extends AbstractController
         return $this->render('@Theme/landing.html.twig', [
             'portalBlocks' => $visibleBlocks,
             'portalData' => $portalData,
-            'forumAvailable' => $forumAvailable,
-            'blogAvailable' => $blogAvailable,
+            'portalAvailability' => $availability,
+            'forumAvailable' => $availability['forum'] ?? false,
+            'blogAvailable' => $availability['blog'] ?? false,
         ]);
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private function moduleAvailability(): array
+    {
+        $available = [];
+        foreach ($this->contributions->homepageModes() as $id => $mode) {
+            $available[$id] = $this->router->getRouteCollection()->get($mode['route']) !== null;
+        }
+
+        return $available;
     }
 
     /**

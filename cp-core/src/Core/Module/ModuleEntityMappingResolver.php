@@ -8,7 +8,8 @@ use ReflectionClass;
 
 /**
  * Resolve Doctrine ORM mapping for active modules that have an Entity/ directory.
- * Namespace Modules\{Name}\Entity, alias Modules{Name}; Blog/Media (no Entity/) are skipped.
+ * Namespace Modules\{Name}\Entity, alias Modules{Name}; modules without an Entity/
+ * directory (e.g. Media) are skipped.
  */
 final class ModuleEntityMappingResolver
 {

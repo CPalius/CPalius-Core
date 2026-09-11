@@ -10,4 +10,5 @@ return [
   Modules\Roadmap\RoadmapModule::class,
   Modules\Widget\WidgetModule::class,
   Modules\Seo\SeoModule::class,
+  Modules\Pages\PagesModule::class,
 ];

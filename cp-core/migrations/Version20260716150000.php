@@ -8,15 +8,13 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Kullanıcı Yönetimi: users tablosuna opsiyonel "username" kolonu ekler
- * (bkz. App\Entity\User::$username, App\Core\Security\CpUserProvider) —
- * e-postanın yanı sıra kullanıcı adıyla giriş desteği için.
+ * User management: adds optional username column to users (login by email or username).
  */
 final class Version20260716150000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'users tablosuna nullable/unique "username" kolonu ekler (e-posta veya kullanıcı adıyla giriş desteği).';
+        return 'Adds a nullable/unique "username" column to users (login via email or username).';
     }
 
     public function up(Schema $schema): void

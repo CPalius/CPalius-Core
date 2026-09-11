@@ -8,32 +8,13 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * FAZ 3 — Modüler çeviri altyapısı.
- *
- * TranslatableTrait'in getirdiği translation_group_id kolonunu, arayüzü
- * uygulayan dört entity'nin tablosuna ekler: categories, tags, menu_items,
- * forum_sections.
- *
- * Kolon tipi BINARY(16): Symfony\Bridge\Doctrine\Types\UuidType'ın MySQL
- * karşılığıdır ve nodes.translation_group_id ile BİREBİR AYNIDIR (bkz.
- * Version20260714200233) — UUID'yi CHAR(36) olarak tutmak indeks başına
- * ~2,25 kat yer kaplar ve karşılaştırmayı yavaşlatır.
- *
- * NULLABLE'dır ve varsayılan değeri yoktur: mevcut satırlar hiçbir çeviri
- * grubuna dahil olmadan, olduğu gibi kalır. Bu migration VERİ YAZMAZ,
- * dolayısıyla geri alınabilir ve büyük tablolarda kilit süresi yalnızca
- * kolon/indeks ekleme kadardır.
- *
- * nodes tablosundaki UNIQUE (translation_group_id, locale) kısıtının
- * BURADA KARŞILIĞI YOKTUR ve bu bilinçlidir: menu_items aynı menüde aynı
- * dilde birden fazla öğe taşıyabilir; kategoriler/etiketler için de aynı
- * grubun aynı dilde iki kaydı geçici bir düzenleme durumu olabilir. Katı
- * kısıt yerine indeks (arama hızı) tercih edilmiştir.
+ * Phase 3 — adds nullable BINARY(16) translation_group_id to categories, tags, menu_items, forum_sections.
+ * Search index only here; strict UNIQUE(translation_group_id, locale) comes in Version20260903150000.
  */
 final class Version20260903120000 extends AbstractMigration
 {
     /**
-     * @var array<string, string> tablo => indeks adı
+     * @var array<string, string> table => index name
      */
     private const TABLES = [
         'categories' => 'idx_category_translation_group',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Forum\Service;
 
 use App\Core\Content\RichTextSanitizer;
+use App\Core\OriginCache\OriginCachePurger;
 use App\Core\Settings\SettingsRegistry;
 use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Entity\ForumPostDislike;
@@ -16,6 +17,7 @@ use App\Entity\User;
 use Modules\Forum\Repository\ForumPostDislikeRepository;
 use Modules\Forum\Repository\ForumPostLikeRepository;
 use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumSectionRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\ForumDictionary;
 use Modules\Forum\ForumDiscussionState;
@@ -30,12 +32,16 @@ final class ForumTopicService
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly ForumPostRepository $postRepository,
+        private readonly ForumSectionRepository $sectionRepository,
         private readonly ForumPostLikeRepository $postLikeRepository,
         private readonly ForumPostDislikeRepository $postDislikeRepository,
         private readonly ForumStatsService $statsService,
         private readonly RichTextSanitizer $richTextSanitizer,
         private readonly ForumDomainDispatcher $domainDispatcher,
         private readonly SettingsRegistry $settingsRegistry,
+        private readonly OriginCachePurger $originCachePurger,
+        private readonly ForumCensorService $censorService,
+        private readonly ForumPostHoldService $holdService,
     ) {
     }
 
@@ -48,8 +54,13 @@ final class ForumTopicService
         bool $isPrivate,
         Request $request,
         ?ForumTopicPrefix $prefix = null,
+        ?string $contentLocale = null,
     ): ForumTopic {
-        $topic = new ForumTopic($section, $title, $author->getFullName());
+        $locale = $contentLocale !== null && $contentLocale !== '' ? $contentLocale : $section->getLocale();
+        $home = $this->sectionRepository->findLocaleSibling($section, $locale) ?? $section;
+
+        $topic = new ForumTopic($home, $title, $this->posterLabel($author));
+        $topic->setLocale($locale);
         $topic->setSlug($this->generateTopicSlug($title));
         $topic->setDescription($description !== '' ? $description : null);
         $topic->setPrefix($prefix);
@@ -58,12 +69,16 @@ final class ForumTopicService
         $topic->setPostCount(1);
         $topic->setDiscussionState(ForumDiscussionState::Visible);
 
-        $post = new ForumPost($topic, $section, $author->getFullName(), $this->sanitizeBody($body));
+        $post = new ForumPost($topic, $home, $this->posterLabel($author), $this->sanitizeBody($body));
         $post->setAuthor($author);
         $post->setPosterIp($request->getClientIp());
+        if ($this->holdService->shouldHold($author)) {
+            $topic->setDiscussionState(ForumDiscussionState::Moderated);
+            $post->setDiscussionState(ForumDiscussionState::Moderated);
+        }
 
         $topic->setLastPoster($author);
-        $topic->setLastPosterName($author->getFullName());
+        $topic->setLastPosterName($this->posterLabel($author));
         $topic->setPreview(mb_substr(strip_tags($post->getBody()), 0, 128));
         $topic->setLastPostDate($post->getCreatedAt());
 
@@ -76,33 +91,73 @@ final class ForumTopicService
         $topic->setLastPostId($post->getId());
         $this->entityManager->flush();
 
-        $this->statsService->syncSection($section);
-        $this->domainDispatcher->dispatchPostCreated($post, $topic, $author, true);
+        $this->statsService->syncSection($home);
+        if ($home->getId() !== $section->getId()) {
+            $this->statsService->syncSection($section);
+        }
+        if (!$topic->isModerated()) {
+            $this->domainDispatcher->dispatchPostCreated($post, $topic, $author, true);
+            $this->invalidatePublicCache();
+        }
 
         return $topic;
     }
 
     public function addReply(ForumTopic $topic, User $author, string $body, Request $request): ForumPost
     {
-        $post = new ForumPost($topic, $topic->getSection(), $author->getFullName(), $this->sanitizeBody($body));
+        $post = new ForumPost($topic, $topic->getSection(), $this->posterLabel($author), $this->sanitizeBody($body));
         $post->setAuthor($author);
         $post->setPosterIp($request->getClientIp());
+        $held = $this->holdService->shouldHold($author);
+        if ($held) {
+            $post->setDiscussionState(ForumDiscussionState::Moderated);
+        }
 
-        $topic->setLastPoster($author);
-        $topic->setLastPosterName($author->getFullName());
-        $topic->setLastPostDate($post->getCreatedAt());
-        $topic->touch();
+        if (!$held) {
+            $topic->setLastPoster($author);
+            $topic->setLastPosterName($this->posterLabel($author));
+            $topic->setLastPostDate($post->getCreatedAt());
+            $topic->touch();
+        }
 
         $this->entityManager->persist($post);
         $this->entityManager->flush();
 
-        $topic->setLastPostId($post->getId());
-        $this->entityManager->flush();
+        if (!$held) {
+            $topic->setLastPostId($post->getId());
+            $this->entityManager->flush();
+        }
 
         $this->statsService->syncTopic($topic);
-        $this->domainDispatcher->dispatchPostCreated($post, $topic, $author, false);
+        if (!$held) {
+            $this->domainDispatcher->dispatchPostCreated($post, $topic, $author, false);
+            $this->invalidatePublicCache();
+        }
 
         return $post;
+    }
+
+    public function publishHeldPost(ForumPost $post): void
+    {
+        $post->setDiscussionState(ForumDiscussionState::Visible);
+        $topic = $post->getTopic();
+        $wasHeldTopic = $topic->isModerated();
+        if ($wasHeldTopic) {
+            $topic->setDiscussionState(ForumDiscussionState::Visible);
+        }
+        $topic->setLastPoster($post->getAuthor());
+        $topic->setLastPosterName($post->getPosterName());
+        $topic->setLastPostDate($post->getCreatedAt());
+        $topic->setLastPostId($post->getId());
+        $topic->touch();
+        $this->entityManager->flush();
+        $this->statsService->syncTopic($topic);
+
+        $author = $post->getAuthor();
+        if ($author !== null) {
+            $this->domainDispatcher->dispatchPostCreated($post, $topic, $author, $wasHeldTopic);
+            $this->invalidatePublicCache();
+        }
     }
 
     public function deleteTopic(ForumTopic $topic, bool $hard = false): void
@@ -113,6 +168,7 @@ final class ForumTopicService
             $this->entityManager->remove($topic);
             $this->entityManager->flush();
             $this->statsService->syncSection($section);
+            $this->invalidatePublicCache();
 
             return;
         }
@@ -121,6 +177,7 @@ final class ForumTopicService
         $topic->touch();
         $this->entityManager->flush();
         $this->statsService->syncSection($section);
+        $this->invalidatePublicCache();
     }
 
     public function restoreTopic(ForumTopic $topic): void
@@ -129,6 +186,7 @@ final class ForumTopicService
         $topic->touch();
         $this->entityManager->flush();
         $this->statsService->syncSection($topic->getSection());
+        $this->invalidatePublicCache();
     }
 
     /**
@@ -141,6 +199,7 @@ final class ForumTopicService
         if ($keepRedirect) {
             $ghost = new ForumTopic($origin, $topic->getTitle(), $topic->getFirstPosterName());
             $ghost->setSlug($topic->getSlug());
+            $ghost->setLocale($topic->getLocale());
             $ghost->setMovedToTopic($topic);
             $ghost->setLocked(true);
             $this->entityManager->persist($ghost);
@@ -157,6 +216,7 @@ final class ForumTopicService
 
         $this->statsService->syncSection($origin);
         $this->statsService->syncSection($target);
+        $this->invalidatePublicCache();
     }
 
     /**
@@ -188,6 +248,49 @@ final class ForumTopicService
         if ($originSection->getId() !== $targetSection->getId()) {
             $this->statsService->syncSection($targetSection);
         }
+        $this->invalidatePublicCache();
+    }
+
+    /**
+     * Keep the oldest post, append the others' HTML, then delete the extras.
+     *
+     * @param list<ForumPost> $posts
+     */
+    public function mergePosts(array $posts, User $editor): ForumPost
+    {
+        if (\count($posts) < 2) {
+            throw new \InvalidArgumentException('forum.imod.merge_posts_min');
+        }
+
+        usort($posts, static function (ForumPost $a, ForumPost $b): int {
+            $byDate = $a->getCreatedAt() <=> $b->getCreatedAt();
+
+            return $byDate !== 0 ? $byDate : (($a->getId() ?? 0) <=> ($b->getId() ?? 0));
+        });
+
+        $keeper = $posts[0];
+        $topicId = $keeper->getTopic()->getId();
+        foreach ($posts as $post) {
+            if ($post->getTopic()->getId() !== $topicId) {
+                throw new \InvalidArgumentException('forum.imod.merge_posts_same_topic');
+            }
+        }
+
+        $html = $keeper->getBody();
+        $extras = \array_slice($posts, 1);
+        foreach ($extras as $post) {
+            $html .= "\n<hr>\n".$post->getBody();
+        }
+
+        $keeper->setBody($html);
+        $keeper->recordEdit($this->posterLabel($editor));
+        $this->entityManager->flush();
+
+        foreach ($extras as $post) {
+            $this->deletePost($post);
+        }
+
+        return $keeper;
     }
 
     public function canEditPost(ForumPost $post, ?User $user, bool $isModerator): bool
@@ -217,7 +320,7 @@ final class ForumTopicService
     public function updatePost(ForumPost $post, User $editor, string $body, ?string $topicTitle = null): void
     {
         $post->setBody($this->sanitizeBody($body));
-        $post->recordEdit($editor->getFullName());
+        $post->recordEdit($this->posterLabel($editor));
 
         if ($topicTitle !== null) {
             $post->getTopic()->setTitle($topicTitle);
@@ -227,6 +330,7 @@ final class ForumTopicService
 
         $this->entityManager->flush();
         $this->statsService->syncTopic($post->getTopic());
+        $this->invalidatePublicCache();
     }
 
     /**
@@ -313,11 +417,12 @@ final class ForumTopicService
         $this->entityManager->remove($post);
         $this->entityManager->flush();
         $this->statsService->syncTopic($topic);
+        $this->invalidatePublicCache();
     }
 
     private function sanitizeBody(string $body): string
     {
-        return $this->richTextSanitizer->sanitize(nl2br(trim($body), false));
+        return $this->censorService->apply($this->richTextSanitizer->sanitize(nl2br(trim($body), false)));
     }
 
     /**
@@ -366,5 +471,17 @@ final class ForumTopicService
         if ($duplicate instanceof ForumTopic && $topic->getId() !== null) {
             $topic->setSlug($slug . '-' . $topic->getId());
         }
+    }
+
+    private function invalidatePublicCache(): void
+    {
+        $this->originCachePurger->purgeAreas('forums', 'home', 'roadmap');
+    }
+
+    private function posterLabel(User $user): string
+    {
+        $label = $user->getPublicDisplayName();
+
+        return $label !== '' ? $label : ('#'.(string) $user->getId());
     }
 }

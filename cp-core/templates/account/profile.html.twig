@@ -1,6 +1,6 @@
-{% extends '@CpaliusWebsiteTheme/forum/layout.html.twig' %}
+{% extends '@Theme/account/layout.html.twig' %}
 
-{% form_theme form 'form/forum_theme.html.twig' %}
+{% form_theme form '@Theme/form/theme.html.twig' %}
 
 {% block title %}{{ 'account.profile.title'|trans }}{% endblock %}
 
@@ -8,7 +8,9 @@
     <nav class="forum-crumb fade-in" aria-label="{{ 'account.nav_aria'|trans }}">
         <ol class="forum-crumb__list">
             <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
-            <li><a href="{{ path('forum_index') }}">{{ 'forum.breadcrumb.home_title'|trans }}</a></li>
+            {% if accountHomeRoute|default('') not in ['', 'theme_cpalius_website_home'] %}
+                <li><a href="{{ path(accountHomeRoute) }}">{{ 'account.breadcrumb.home'|trans }}</a></li>
+            {% endif %}
             <li class="is-active">{{ 'account.profile.title'|trans }}</li>
         </ol>
     </nav>
@@ -24,7 +26,7 @@
     <div class="forum-profile-settings__avatar forum-form">
         <h2 class="forum-profile-settings__heading">{{ 'account.profile.avatar_heading'|trans }}</h2>
         <div class="forum-profile-settings__avatar-preview" data-account-avatar-preview>
-            {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {
+            {% include '@Theme/forum/partials/_avatar.html.twig' with {
                 name: app.user.fullName,
                 user: app.user,
                 avatarUrl: avatarUrl,
@@ -64,16 +66,17 @@
                 {{ form_row(form.newPassword) }}
             </fieldset>
 
-            <fieldset class="forum-form__section">
-                <legend>{{ 'account.profile.section_notifications'|trans }}</legend>
-                <p class="forum-profile-settings__hint">{{ 'account.profile.notifications_hint'|trans }}</p>
-                {{ form_row(form.forumNotifReply) }}
-                {{ form_row(form.forumNotifThread) }}
-                {{ form_row(form.forumNotifQuote) }}
-                {{ form_row(form.forumNotifReaction) }}
-                {{ form_row(form.forumNotifDislike) }}
-                {{ form_row(form.forumNotifMention) }}
-            </fieldset>
+            {% for section in form.vars.profile_sections|default([]) %}
+                <fieldset class="forum-form__section">
+                    <legend>{{ section.legendKey|trans }}</legend>
+                    {% if section.hintKey %}
+                        <p class="forum-profile-settings__hint">{{ section.hintKey|trans }}</p>
+                    {% endif %}
+                    {% for name in section.fields %}
+                        {{ form_row(attribute(form, name)) }}
+                    {% endfor %}
+                </fieldset>
+            {% endfor %}
 
             <div class="forum-form__actions">
                 <button type="submit" class="btn btn-primary">{{ 'account.profile.save'|trans }}</button>

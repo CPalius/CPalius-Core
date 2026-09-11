@@ -23,20 +23,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
 
 /**
- * Diller için form/mutasyon uçları (create/edit/setDefault/toggleActive).
- * Listeleme EKRANI ayrı bir menü öğesi DEĞİLDİR — dil listesi artık
- * AACPPlaceholderController::advancedManagement() ("Yönetim" sayfası)
- * içinde "Genel Ayarlar" ile aynı sayfada bir bölüm olarak gösterilir
- * (kullanıcı tercihi: tek sayfa, WordPress'in Genel Ayarlar ekranına
- * benzer). Bu controller sadece o sayfadan açılan form/AJAX uçlarını
- * barındırır — MenuAdminController'daki create() deseni (manuel
- * Request::request->get() okuma, Symfony Form KULLANILMAZ çünkü alan
- * sayısı azdır).
- *
- * Kasıtlı olarak SİLME action'ı YOKTUR: var olan Node satırları locale
- * string kolonuna referans verir (FK değildir), fiziksel silme entegrasyon
- * riski taşır. Devre dışı bırakma (isActive=false) geri döndürülebilir ve
- * yeterlidir.
+ * Locale form/AJAX endpoints; list UI lives on advanced management page.
+ * No delete action — nodes reference locale strings; deactivation is enough.
  */
 final class LocaleAdminController
 {
@@ -81,8 +69,7 @@ final class LocaleAdminController
             try {
                 $this->translationManager->seedLocale($code);
             } catch (TranslationManagerException) {
-                // Tohumlama başarısız olsa bile dil kaydı durur — panel
-                // ilk inline düzenlemede dosyayı yine oluşturur.
+                // Locale row persists even if seed fails; files appear on first edit.
             }
 
             return new Response('', Response::HTTP_FOUND, ['Location' => '/aacp/advanced/management']);
@@ -135,9 +122,7 @@ final class LocaleAdminController
     }
 
     /**
-     * Tek isDefault kısıtı DB seviyesinde garanti edilmez (partial unique
-     * index karmaşıklığı gereksiz) — bu action transaction içinde önce TÜM
-     * satırları isDefault=false yapar, sonra hedefi true yapar.
+     * Clears isDefault on all rows in a transaction, then sets the target default.
      */
     #[Route('/aacp/advanced/locales/{id}/set-default', name: 'aacp_locales_set_default', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('system.settings.manage')]

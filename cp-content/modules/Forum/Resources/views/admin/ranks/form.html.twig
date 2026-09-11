@@ -3,6 +3,7 @@
 {% block header %}{{ rank ? 'studio.forum.ranks.form.edit_header'|trans : 'studio.forum.ranks.form.create_header'|trans }}{% endblock %}
 
 {% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
     <twig:studio:card>
         <form method="post">
             <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_rank') }}">

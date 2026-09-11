@@ -8,3 +8,4 @@ capabilities:
     - node.post.delete.own
     - node.post.delete.any
     - node.post.publish
+    - blog.comment.moderate

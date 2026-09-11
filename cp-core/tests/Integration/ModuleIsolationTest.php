@@ -15,38 +15,8 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpKernel\HttpKernelBrowser;
 
 /**
- * ═══════════════════════════════════════════════════════════════════════
- *  "CORE NEVER DIES" — Manifesto Law 2.2 ve 2.3'ün CANLI KANITI
- * ═══════════════════════════════════════════════════════════════════════
- *
- * CPalius'un en büyük mimari iddiası şudur: bir kullanıcı-alanı modülü
- * çökerse, çekirdek ve AACP AYAKTA KALIR. Denetim raporunda bu iddianın
- * kodda doğru uygulandığı ama HİÇBİR TESTLE korunmadığı tespit edildi —
- * yani ilk refactor'da sessizce kaybolabilecek bir garantiydi.
- *
- * Bu test o boşluğu kapatır ve iddiayı EN ZOR biçimde sınar: modül
- * sözdizimsel olarak kusursuzdur, autoloader onu yükler, BundleInterface
- * sözleşmesini eksiksiz uygular, lint:container ve PHPStan temiz geçer —
- * ve yalnızca ÇALIŞMA ANINDA, Kernel::boot() içinde patlar. Hiçbir statik
- * kontrol bunu yakalayamaz; yakalayabilecek tek şey izolasyon zırhıdır.
- *
- * Test ettiğimiz dört bağımsız iddia:
- *
- *   1. Çekirdek, patlayan modüle rağmen boot olur.
- *   2. Sağlam kardeş modül aynı çalıştırmada normal boot olur
- *      (yani izolasyon "her şeyi kapat" değil, cerrahi bir müdahale).
- *   3. Bozuk modül SESSİZCE kaybolmaz — module_quarantine.log'a
- *      gerçek sebebiyle yazılır (Law 2.3, yönetici teşhis edebilmeli).
- *   4. Gerçek HTTP uçları (ana sayfa ve /aacp) hâlâ yanıt üretir;
- *      500 DÖNMEZ.
- *
- * ── Neden WebTestCase değil ──────────────────────────────────────────────
- *
- * WebTestCase, KERNEL_CLASS ortam değişkeninden tek bir çekirdek sınıfı
- * boot eder. Burada bilerek FARKLI bir çekirdeğe (fixture modülleri
- * eklenmiş) ihtiyacımız var, üstelik boot işleminin KENDİSİ test edilen
- * davranış. Bu yüzden çekirdek elle örneklenir ve istekler
- * HttpKernelBrowser ile gerçek bir HTTP döngüsünden geçirilir.
+ * "Core Never Dies" — live proof of Manifesto Law 2.2 and 2.3.
+ * Kernel is booted manually with fixture modules; HttpKernelBrowser drives HTTP tests.
  */
 #[CoversClass(Kernel::class)]
 final class ModuleIsolationTest extends TestCase
@@ -57,12 +27,11 @@ final class ModuleIsolationTest extends TestCase
 
     protected function setUp(): void
     {
-        // cp-core/tests/Integration -> tests -> cp-core -> proje kökü
+        // cp-core/tests/Integration -> tests -> cp-core -> project root
         $projectDir = \dirname(__DIR__, 3);
         $this->quarantineLog = $projectDir.'/cp-core/var/log/module_quarantine.log';
 
-        // Her test kendi karantina logunu yazmalı: önceki testten kalan
-        // satırlar, testin kendi kanıtını üretmeden geçmesine yol açardı.
+        // Clear quarantine log so each test produces its own evidence.
         if (is_file($this->quarantineLog)) {
             @unlink($this->quarantineLog);
         }
@@ -78,15 +47,9 @@ final class ModuleIsolationTest extends TestCase
         $this->kernel = null;
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // İddia 1 — Çekirdek boot olur
-    // ═════════════════════════════════════════════════════════════════════
+    // Claim 1 — Core boots
 
-    /**
-     * Bu testin başarısız olması, izolasyon zırhının kaybolduğu anlamına
-     * gelir: BrokenBootModule::boot()'un fırlattığı RuntimeException
-     * doğrudan buraya yükselir ve test ölümcül bir hatayla düşer.
-     */
+    /** Failure means the isolation shield is gone — boot exception propagates. */
     public function testKernelBootsDespiteModuleThatThrowsDuringBoot(): void
     {
         $this->kernel->boot();
@@ -97,15 +60,9 @@ final class ModuleIsolationTest extends TestCase
         );
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // İddia 2 — İzolasyon cerrahidir, toptan değil
-    // ═════════════════════════════════════════════════════════════════════
+    // Claim 2 — Isolation is surgical, not wholesale
 
-    /**
-     * "Bozuk modül izole edildi" iddiası, tek başına "tüm modüller
-     * kapatıldı" senaryosundan ayırt edilemez. Kontrol grubu şart:
-     * sağlam kardeş AYNI çalıştırmada gerçekten boot edilmeli.
-     */
+    /** Healthy sibling must boot in the same run — control group for isolation. */
     public function testHealthySiblingModuleStillBootsInTheSameRun(): void
     {
         $this->kernel->boot();
@@ -117,12 +74,7 @@ final class ModuleIsolationTest extends TestCase
         );
     }
 
-    /**
-     * Bozuk modül yine de bundle listesinde kalır; çünkü izolasyon onu
-     * listeden çıkarmaz, yalnızca boot() hatasını yutar. Bu ayrım önemli:
-     * modülün servisleri derlenmiştir, sadece çalışma anı başlatması
-     * başarısız olmuştur.
-     */
+    /** Broken module stays in bundle list — isolation swallows boot() errors only. */
     public function testBothFixtureModulesAreRegisteredAsBundles(): void
     {
         $this->kernel->boot();
@@ -136,15 +88,9 @@ final class ModuleIsolationTest extends TestCase
         self::assertContains(BrokenBootModule::class, $bundleClasses);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // İddia 3 — Karantina sessiz değil, teşhis edilebilir (Law 2.3)
-    // ═════════════════════════════════════════════════════════════════════
+    // Claim 3 — Quarantine is logged and diagnosable (Law 2.3)
 
-    /**
-     * Bir hatayı yutup hiçbir iz bırakmamak, çökmekten daha kötüdür:
-     * yönetici modülün neden çalışmadığını asla öğrenemez. Bu yüzden
-     * logda hem SINIF ADI hem GERÇEK SEBEP bulunmalıdır.
-     */
+    /** Log must contain class name and real failure reason — silent swallow is worse. */
     public function testBrokenModuleIsQuarantinedWithItsRealReason(): void
     {
         $this->kernel->boot();
@@ -173,14 +119,9 @@ final class ModuleIsolationTest extends TestCase
         );
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // İddia 4 — Gerçek HTTP uçları ayakta
-    // ═════════════════════════════════════════════════════════════════════
+    // Claim 4 — Real HTTP endpoints stay up
 
-    /**
-     * Asıl kanıt burada: kernel'in "boot oldu" demesi yetmez, gerçek bir
-     * istek gerçek bir yanıt üretmelidir.
-     */
+    /** Kernel boot alone is not enough — a real request must return a response. */
     public function testHomepageStillRespondsWhileAModuleIsBroken(): void
     {
         $this->bootWithSchema();
@@ -197,15 +138,7 @@ final class ModuleIsolationTest extends TestCase
         );
     }
 
-    /**
-     * AACP, Manifesto Law 2.3'ün merkezindeki kurtarma konsoludur: TÜM
-     * modüller çökse bile erişilebilir kalmalıdır.
-     *
-     * Kimlik doğrulaması olmadan beklenen yanıt 302'dir (giriş sayfasına
-     * yönlendirme) — ve bu, tam olarak istediğimiz kanıttır: güvenlik
-     * duvarı ÇALIŞIYOR, yani çekirdeğin istek yaşam döngüsü sağlam.
-     * Beklenmeyen ve kabul edilemez olan 500'dür.
-     */
+    /** AACP recovery console must stay reachable — 302 redirect is OK, 500 is not. */
     public function testAacpRemainsReachableWhileAModuleIsBroken(): void
     {
         $this->bootWithSchema();
@@ -228,12 +161,7 @@ final class ModuleIsolationTest extends TestCase
         );
     }
 
-    /**
-     * Kurtarma konsolunun token korumalı ucu (Law 2.3), oturum ve
-     * veritabanı olmadan da yanıt üretmelidir. Yanlış token ile
-     * erişimin REDDEDİLDİĞİNİ de doğrular — uç açık olmalı ama korumasız
-     * değil.
-     */
+    /** Recovery endpoint responds without auth; wrong token must be rejected. */
     public function testRecoveryEndpointRespondsWithoutAuthentication(): void
     {
         $this->bootWithSchema();
@@ -256,28 +184,9 @@ final class ModuleIsolationTest extends TestCase
         );
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // İddia 5 — İzolasyon, namespace sınırına SAYGI DUYAR
-    // ═════════════════════════════════════════════════════════════════════
+    // Claim 5 — Isolation respects namespace boundary
 
-    /**
-     * Bu, testin en ince ve en önemli iddiasıdır.
-     *
-     * "Core Never Dies" bir toptan try/catch DEĞİLDİR. Kernel::boot()
-     * yalnızca "Modules\" ön ekli bundle'ların hatalarını yutar
-     * (Kernel::MODULE_NAMESPACE_PREFIX). Bir ÇEKİRDEK bundle'ı boot
-     * sırasında patlarsa, bu gerçek bir çekirdek arızasıdır ve OLDUĞU
-     * GİBİ YÜKSELMELİDİR — sessizce yutulup sistemin yarım yamalak
-     * çalışmasına izin verilmemelidir.
-     *
-     * Bu ayrım olmasaydı izolasyon, gerçek hataları da gizleyen bir
-     * "her şeyi yut" mekanizmasına dönüşürdü: en tehlikeli hata sınıfı,
-     * kimsenin görmediği hatadır.
-     *
-     * Fixture bilinçli olarak "App\Tests\Fixtures\..." altındadır, yani
-     * modül ön ekini TAŞIMAZ — BrokenBootModule ile tek farkı budur ve
-     * davranış tamamen tersine döner.
-     */
+    /** Core bundle failures must propagate — only Modules\ prefix errors are swallowed. */
     public function testCoreNamespaceBundleFailureIsNotSwallowed(): void
     {
         $kernel = new CoreFailureTestKernel('test', true);
@@ -300,10 +209,7 @@ final class ModuleIsolationTest extends TestCase
         }
     }
 
-    /**
-     * Çekirdek hatası yutulmadığına göre, karantina loguna da
-     * YAZILMAMALIDIR: karantina bir kullanıcı-alanı kavramıdır.
-     */
+    /** Core failures must not appear in quarantine log — quarantine is user-space only. */
     public function testCoreNamespaceFailureIsNotWrittenToQuarantineLog(): void
     {
         $kernel = new CoreFailureTestKernel('test', true);
@@ -311,14 +217,12 @@ final class ModuleIsolationTest extends TestCase
         try {
             $kernel->boot();
         } catch (\RuntimeException) {
-            // Beklenen: yukarıdaki test bunu zaten doğruluyor.
+            // Expected — covered by the test above.
         } finally {
             $kernel->shutdown();
         }
 
-        // Log dosyası hiç oluşmamış olabilir; o durum da iddiayı sağlar.
-        // Boş dizeye düşürerek tek bir gerçek assert ile ifade ediyoruz —
-        // "koşullu assert" yerine, her yolda anlamlı bir kontrol.
+        // Log may not exist — treat as empty string for a single assert.
         $log = is_file($this->quarantineLog)
             ? (string) file_get_contents($this->quarantineLog)
             : '';
@@ -330,24 +234,14 @@ final class ModuleIsolationTest extends TestCase
         );
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Yardımcılar
-    // ═════════════════════════════════════════════════════════════════════
+    // Helpers
 
-    /**
-     * Çekirdeği boot eder ve SQLite test veritabanında şemayı sıfırdan
-     * kurar. HTTP testleri için gereklidir: ana sayfa ayarları, forum
-     * istatistiklerini ve içerik sayılarını veritabanından okur.
-     *
-     * Şema, boot ETMEYEN testlerde bilinçli olarak kurulmaz — bu maliyeti
-     * yalnızca ona ihtiyaç duyan testler öder.
-     */
+    /** Boots kernel and rebuilds SQLite schema — required for HTTP tests that read DB. */
     private function bootWithSchema(): void
     {
         $this->kernel->boot();
 
-        // framework.test: true sayesinde "test.service_container",
-        // normalde private olan servislere erişim verir.
+        // framework.test exposes test.service_container for private services.
         $container = $this->kernel->getContainer()->get('test.service_container');
 
         /** @var EntityManagerInterface $entityManager */
@@ -366,12 +260,8 @@ final class ModuleIsolationTest extends TestCase
 }
 
 /**
- * Fixture modüllerini gerçek çekirdeğin üzerine ekleyen test çekirdeği.
- *
- * parent::registerBundles() bilinçli olarak çağrılır: testin kanıtladığı
- * şey, GERÇEK uygulamanın (tüm çekirdek bundle'ları ve gerçek modülleriyle
- * birlikte) bozuk bir modüle rağmen ayakta kaldığıdır. Yalnızca fixture'lar
- * yüklenmiş yapay bir çekirdek, çok daha zayıf bir iddia olurdu.
+ * Test kernel adding fixture modules on top of the real core bundles.
+ * parent::registerBundles() is called deliberately for a realistic boot graph.
  */
 final class IsolationTestKernel extends Kernel
 {
@@ -383,13 +273,7 @@ final class IsolationTestKernel extends Kernel
         yield new BrokenBootModule();
     }
 
-    /**
-     * Ayrı önbellek dizini ZORUNLUDUR: bu çekirdeğin servis grafiği
-     * (fixture bundle'ları yüzünden) standart test çekirdeğininkinden
-     * farklıdır. Aynı dizini paylaşsalardı, biri diğerinin derlenmiş
-     * container'ını okuyup fixture'ları hiç görmeyebilir ya da tersine,
-     * normal testler fixture modüllerini yüklenmiş bulabilirdi.
-     */
+    /** Separate cache dir — fixture bundles produce a different service graph. */
     public function getCacheDir(): string
     {
         return $this->getProjectDir().'/cp-core/var/cache/test_isolation';
@@ -397,12 +281,8 @@ final class IsolationTestKernel extends Kernel
 }
 
 /**
- * İzolasyonun namespace sınırını test eden çekirdek.
- *
- * IsolationTestKernel'den tek farkı, eklenen bozuk bundle'ın
- * "Modules\" DEĞİL "App\Tests\Fixtures\" altında olmasıdır. Kernel::boot()
- * yalnızca modül ön ekini taşıyan bundle'ları izole ettiği için, buradaki
- * hata yutulmamalı ve olduğu gibi yükselmelidir.
+ * Kernel testing namespace boundary — broken bundle lives under App\Tests\Fixtures\, not Modules\.
+ * Its boot failure must propagate, not be swallowed.
  */
 final class CoreFailureTestKernel extends Kernel
 {

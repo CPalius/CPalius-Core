@@ -18,6 +18,7 @@ use App\Core\Annotation\CpSetting;
         'none' => 'aacp.system_settings.security.provider_none',
         'recaptcha' => 'aacp.system_settings.security.provider_recaptcha',
         'turnstile' => 'aacp.system_settings.security.provider_turnstile',
+        'hcaptcha' => 'aacp.system_settings.security.provider_hcaptcha',
     ],
     group: 'security',
 )]
@@ -77,6 +78,20 @@ use App\Core\Annotation\CpSetting;
 #[CpSetting(
     key: 'security.turnstile_secret_key',
     label: 'aacp.system_settings.security.turnstile_secret_key',
+    type: 'password',
+    default: '',
+    group: 'security',
+)]
+#[CpSetting(
+    key: 'security.hcaptcha_site_key',
+    label: 'aacp.system_settings.security.hcaptcha_site_key',
+    type: 'text',
+    default: '',
+    group: 'security',
+)]
+#[CpSetting(
+    key: 'security.hcaptcha_secret_key',
+    label: 'aacp.system_settings.security.hcaptcha_secret_key',
     type: 'password',
     default: '',
     group: 'security',

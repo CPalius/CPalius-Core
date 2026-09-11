@@ -20,31 +20,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
 
 /**
- * AACP "Dil Yönetimi" ekranı (/aacp/localization) — sistemdeki tüm çeviri
- * YAML dosyalarını (çekirdek + modüller, tüm domain'ler) tek bir
- * Translation Explorer tablosunda listeler, AJAX ile inline düzenlemeye
- * izin verir, tam matrisin JSON/YAML dışa aktarımını ve toplu içe
- * aktarımını sağlar.
- *
- * FAZ 3: sütunlar artık SABİT tr/en DEĞİLDİR — LocaleProvider'dan gelen
- * aktif dil listesine göre üretilir. Tablo üstündeki sekmeler dil
- * odaklıdır: bir sekme seçildiğinde o dilde ÇEVRİLMEMİŞ anahtarlar öne
- * çıkarılabilir (bkz. aacp-localization.js).
- *
- * AACPApiKeyController ile AYNI iskelet: plain class + inject edilen
- * Twig\Environment, index() normal bir sayfa render eder, mutasyon
- * action'ları (update/import) AJAX ile çağrılıp JsonResponse döner.
- *
- * Güvenlik: 'system.localization.manage' capability'sine sahip TEK rol
- * "admin"dir (bkz. cp-content/config/sync/user.role.admin.yaml, '*' joker
- * capability). Dosya sistemine yazma yetkisi olan bir panel olduğu için
- * bilinçli olarak en dar yetki kapsamında tutulur.
- *
- * Ana AACP menüsünde ARTIK AYRI BİR ÖĞE DEĞİLDİR (#[CpAdminMenu] kasıtlı
- * olarak kaldırıldı) — birincil giriş noktası "Yönetim" sayfasındaki
- * (AACPPlaceholderController::advancedManagement()) Diller listesindeki
- * "Dili Yönet" linkidir; ?locale= query param'ı geldiyse tablo o dile
- * odaklı açılır.
+ * Translation explorer: inline edit, import/export; columns follow active locales (Phase 3).
+ * Plain Twig controller; requires system.localization.manage; entry via management page link.
  */
 final class AACPLocalizationController
 {
@@ -180,7 +157,7 @@ final class AACPLocalizationController
     }
 
     /**
-     * Tablonun grup (domain) filtresi için benzersiz grup etiketleri.
+     * Unique group labels for the table domain filter.
      *
      * @param list<array{group: string, key: string, values: array<string, string>, incomplete: bool}> $entries
      *

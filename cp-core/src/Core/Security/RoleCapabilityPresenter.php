@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Core\Security;
 
+use Symfony\Contracts\Translation\TranslatorInterface;
+
 /**
  * Read-only role → module → capability summary for AACP. Authorization stays in CPaliusVoter.
  */
@@ -12,6 +14,7 @@ final class RoleCapabilityPresenter
     public function __construct(
         private readonly RoleConfigManager $roleConfigManager,
         private readonly CapabilityRegistry $capabilityRegistry,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -28,7 +31,7 @@ final class RoleCapabilityPresenter
         foreach ($this->roleConfigManager->getAllRoleIds() as $roleId) {
             $capabilities = $this->roleConfigManager->getCapabilitiesForRole($roleId);
             $catalog[$roleId] = [
-                'label' => $this->roleConfigManager->getLabel($roleId) ?? $roleId,
+                'label' => $this->translator->trans($this->roleConfigManager->getLabel($roleId) ?? $roleId),
                 'modules' => $this->groupByModule($capabilities),
                 'fullAccess' => $totalCapabilities > 0 && \count($capabilities) >= $totalCapabilities,
             ];

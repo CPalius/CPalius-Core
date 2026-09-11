@@ -14,23 +14,12 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Throwable;
 
 /**
- * Kod tabanlı (Attribute veya Flat-File kulvarı) bir "Sanal Cron Görevi"nin
- * TEK OS-seviyesi giriş noktası — DB-tabanlı görevlerin "php bin/console
- * cp:xyz" ile doğrudan kendi komutlarını subprocess olarak çalıştırmasının
- * (bkz. CronCommandProcessFactory) kod tabanlı görevler için KARŞILIĞI.
- *
- * Kod tabanlı bir görevin arkasında kendi #[AsCommand]'ı YOKTUR (sadece bir
- * servis metodu veya flat-file closure'ı) — bu komut, jobName argümanını
- * alıp CronManager::runVirtualTask() üzerinden doğru kulvara yönlendiren
- * TEK KÖPRÜDÜR. Böylece hem otomatik dispatcher (RunDueCronJobsCommand) hem
- * de AACP'nin "Şimdi Çalıştır" ucu, kod tabanlı görevleri de AYNI izole
- * subprocess mekanizmasıyla (Process component, ayrı PHP process'i)
- * çalıştırabilir — bir kod görevinin çökmesi/sonsuz döngüye girmesi bu
- * dispatcher'ın kendisini asla etkilemez (Manifesto Law 2.1 ruhu).
+ * OS entry point for code-based virtual cron tasks (Attribute or flat-file); bridges to CronManager::runVirtualTask().
+ * Runs in an isolated subprocess so a failing task cannot crash the dispatcher (Manifesto Law 2.1).
  */
 #[AsCommand(
     name: 'cp:cron:run-virtual',
-    description: 'Kod tabanlı (Attribute/Flat-File) bir sanal cron görevini jobName ile çalıştırır.',
+    description: 'Runs a code-based (Attribute/Flat-File) virtual cron job by jobName.',
 )]
 final class RunVirtualCronJobCommand extends Command
 {
@@ -42,7 +31,7 @@ final class RunVirtualCronJobCommand extends Command
 
     protected function configure(): void
     {
-        $this->addArgument('jobName', InputArgument::REQUIRED, 'CronManager::findDefinitionByJobName() ile eşleşen sanal görev adı (ör. "blog.publish_scheduled").');
+        $this->addArgument('jobName', InputArgument::REQUIRED, 'Virtual job name matched by CronManager::findDefinitionByJobName() (e.g. "blog.publish_scheduled").');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -62,7 +51,7 @@ final class RunVirtualCronJobCommand extends Command
             $output->writeln($result);
         }
 
-        $io->success(sprintf('"%s" sanal cron görevi çalıştırıldı.', $jobName));
+        $io->success(sprintf('Virtual cron job "%s" executed.', $jobName));
 
         return Command::SUCCESS;
     }

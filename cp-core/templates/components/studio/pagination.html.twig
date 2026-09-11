@@ -1,15 +1,9 @@
 {#
     <twig:studio:pagination result="{{ posts }}" route="admin_posts_index" />
 
-    App\Core\Pagination\PaginatedResult ile üretilen bir sonuç kümesi için
-    Studio'nun sayfa numarası şeridi. AACP paletiyle bilinçli olarak
-    paylaşılmaz (bkz. studio/card.html.twig'in izolasyon notu) — AACP kendi
-    pagination'ını ayrı tutmalıdır.
+    Page-number strip for PaginatedResult; not shared with AACP (see studio/card isolation note).
 
-    Props:
-      result      (App\Core\Pagination\PaginatedResult)  Zorunlu.
-      route       (string)                                path() için route adı.
-      routeParams (array)                                 route'un {page} dışındaki diğer parametreleri (ör. kategori slug'ı).
+    Props: result, route, routeParams
 #}
 {% props result, route, routeParams = {} %}
 

@@ -35,7 +35,7 @@ final class ForumStatsAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Forum Analiz', icon: 'heroicons:chart-bar', panel: 'studio', priority: 30, capability: 'forum.section.manage', group: 'İçerik', parent: 'admin_forum_dashboard')]
+    #[CpAdminMenu(label: 'studio.forum.menu.stats', icon: 'heroicons:chart-bar', panel: 'studio', priority: 30, capability: 'forum.section.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
     public function index(): Response
     {
         $totalTopics = (int) $this->entityManager->createQueryBuilder()

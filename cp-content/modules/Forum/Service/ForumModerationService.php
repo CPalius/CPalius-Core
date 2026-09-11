@@ -123,6 +123,20 @@ final class ForumModerationService
         }
     }
 
+    public function approvePost(ForumPost $post): void
+    {
+        $this->topicService->publishHeldPost($post);
+    }
+
+    public function rejectHeldPost(ForumPost $post): void
+    {
+        $topic = $post->getTopic();
+        $this->topicService->deletePost($post);
+        if ($topic->isModerated() && $this->entityManager->contains($topic)) {
+            $this->topicService->deleteTopic($topic, false);
+        }
+    }
+
     /**
      * @param list<ForumTopic> $sources
      */
@@ -135,5 +149,23 @@ final class ForumModerationService
 
             $this->topicService->mergeTopics($source, $target);
         }
+    }
+
+    /**
+     * @param list<ForumPost> $posts
+     */
+    public function bulkDeletePosts(array $posts): void
+    {
+        foreach ($posts as $post) {
+            $this->topicService->deletePost($post);
+        }
+    }
+
+    /**
+     * @param list<ForumPost> $posts
+     */
+    public function mergePosts(array $posts, User $editor): ForumPost
+    {
+        return $this->topicService->mergePosts($posts, $editor);
     }
 }

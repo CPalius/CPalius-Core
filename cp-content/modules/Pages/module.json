@@ -1,0 +1,16 @@
+{
+    "name": "Pages",
+    "version": "1.0.0",
+    "description": "Static pages with per-page custom fields, CSS and JS.",
+    "author": "CPalius",
+    "bundle": "Modules\\Pages\\PagesModule",
+    "core_version": "^1.0",
+    "requires": {
+        "Media": "^1.0"
+    },
+    "conflicts": {},
+    "provides": [
+        "pages",
+        "static-content"
+    ]
+}

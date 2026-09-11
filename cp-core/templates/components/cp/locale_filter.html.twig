@@ -1,15 +1,10 @@
 {#
     <twig:cp:locale_filter locales="{{ locales }}" current="{{ currentLocale }}" route="admin_forum_sections_index" />
 
-    <twig:studio:locale_filter>'in AACP (koyu palet) karşılığı — aynı prop
-    sözleşmesi, aynı davranış. Ayrı dosya olma gerekçesi için bkz.
-    components/studio/card.html.twig.
+    AACP (dark palette) counterpart of twig:studio:locale_filter — same props/behavior.
+    Separate file rationale: see components/studio/card.html.twig.
 
-    Props:
-      locales     (list<LocaleDefinition>) Aktif diller (LocaleProvider::getLocales()).
-      current     (string)                 Şu an listelenen dil kodu.
-      route       (string)                 Filtre linklerinin rotası.
-      extraParams (array)                  Rota üretimine eklenecek ek parametreler.
+    Props: locales, current, route, extraParams
 #}
 {% props locales = [], current = null, route = null, extraParams = {} %}
 

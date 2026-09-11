@@ -1,6 +1,5 @@
 {#
-    CPalius Forum Engine — avatar (görsel veya baş harf).
-    Beklenen: name (string), size (xs|sm|md|lg|xl), user (User|null), avatarUrl (string|null), online (bool)
+    CPalius Forum Engine avatar (image or initial). Expects: name, size, user, avatarUrl, online.
 #}
 {% set resolvedUrl = avatarUrl|default(user is defined and user ? forum_user_avatar_url(user) : null) %}
 {% set palette = ['#4A7C9B', '#4AADE4', '#C8A86E', '#8B9DAF', '#3A6A87', '#a371f7', '#e8590c'] %}

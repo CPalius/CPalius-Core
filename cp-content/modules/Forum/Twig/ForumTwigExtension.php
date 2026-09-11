@@ -7,9 +7,9 @@ namespace Modules\Forum\Twig;
 use App\Core\Account\UserAvatarService;
 use App\Entity\User;
 use App\Repository\UserRepository;
-use Modules\Forum\Entity\ForumNotification;
 use Modules\Forum\Entity\ForumSection;
-use Modules\Forum\Repository\ForumNotificationRepository;
+use Modules\Forum\Notification\ForumInboxItem;
+use Modules\Forum\Service\ForumBodyPresenter;
 use Modules\Forum\Service\ForumNotificationService;
 use Modules\Forum\Service\ForumPresenceService;
 use Modules\Forum\Service\ForumReputationService;
@@ -29,13 +29,13 @@ use Twig\TwigFunction;
 final class ForumTwigExtension extends AbstractExtension
 {
     public function __construct(
+        private readonly ForumBodyPresenter $bodyPresenter,
         private readonly ForumNotificationService $notificationService,
         private readonly ForumReputationService $reputationService,
         private readonly ForumSectionHierarchyService $hierarchyService,
         private readonly UserAvatarService $avatarService,
         private readonly Security $security,
         private readonly TranslatorInterface $translator,
-        private readonly ?ForumNotificationRepository $notificationRepository = null,
         private readonly ?ForumPresenceService $presenceService = null,
         private readonly ?UserRepository $userRepository = null,
         private readonly ?RequestStack $requestStack = null,
@@ -55,6 +55,7 @@ final class ForumTwigExtension extends AbstractExtension
             new TwigFunction('forum_reputation_enabled', [$this, 'reputationEnabled']),
             new TwigFunction('forum_section_children', [$this, 'sectionChildren']),
             new TwigFunction('forum_user_avatar_url', [$this, 'userAvatarUrl']),
+            new TwigFunction('forum_studio_desk_tabs', [$this, 'studioDeskTabs']),
         ];
     }
 
@@ -63,6 +64,7 @@ final class ForumTwigExtension extends AbstractExtension
         return [
             new TwigFilter('forum_relative_time', [$this, 'relativeTime']),
             new TwigFilter('forum_number', [$this, 'formatNumber']),
+            new TwigFilter('forum_body', [$this, 'presentBody'], ['is_safe' => ['html']]),
         ];
     }
 
@@ -77,24 +79,22 @@ final class ForumTwigExtension extends AbstractExtension
     }
 
     /**
-     * @return list<ForumNotification>
+     * @return list<ForumInboxItem>
      */
     public function recentNotifications(int $limit = 6): array
     {
         $user = $this->security->getUser();
-        if (!$user instanceof User || $this->notificationRepository === null) {
+        if (!$user instanceof User) {
             return [];
         }
 
-        return $this->notificationRepository->findRecentForUser($user, $limit);
+        return $this->notificationService->recentForUser($user, $limit);
     }
 
     /** @return array{topics: int, posts: int, users: int} */
     public function boardStats(): array
     {
-        $locale = $this->requestStack?->getCurrentRequest()?->getLocale() ?? 'tr';
-
-        return $this->hierarchyService->aggregateStats($locale);
+        return $this->hierarchyService->aggregateStats();
     }
 
     /**
@@ -133,11 +133,10 @@ final class ForumTwigExtension extends AbstractExtension
             return null;
         }
 
-        $username = trim((string) ($user->getUsername() ?? ''));
-        $fullName = trim($user->getFullName());
-        $name = $username !== ''
-            ? $username
-            : ($fullName !== '' && $fullName !== $user->getEmail() ? $fullName : $user->getEmail());
+        $name = $user->getPublicDisplayName();
+        if ($name === '') {
+            $name = '#'.(string) $user->getId();
+        }
 
         return [
             'name' => $name,
@@ -162,6 +161,28 @@ final class ForumTwigExtension extends AbstractExtension
     public function userAvatarUrl(?User $user): ?string
     {
         return $this->avatarService->resolveUrl($user);
+    }
+
+    /**
+     * @return list<array{id: string, label: string, icon: string, route: string, active: bool}>
+     */
+    public function studioDeskTabs(): array
+    {
+        $route = $this->requestStack?->getCurrentRequest()?->attributes->get('_route');
+        $route = \is_string($route) ? $route : '';
+        $active = \Modules\Forum\Admin\ForumDesk::tabForRoute($route);
+        $tabs = [];
+        foreach (\Modules\Forum\Admin\ForumDesk::tabs() as $tab) {
+            $tab['active'] = $tab['id'] === $active;
+            $tabs[] = $tab;
+        }
+
+        return $tabs;
+    }
+
+    public function presentBody(?string $html): string
+    {
+        return $this->bodyPresenter->present((string) $html);
     }
 
     public function relativeTime(?\DateTimeInterface $date): string

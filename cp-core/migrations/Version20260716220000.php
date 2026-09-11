@@ -8,19 +8,13 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * cp_locales tablosunu oluşturur: sistemde aktif edilebilir dillerin
- * (WordPress/Drupal tarzı) tek doğruluk kaynağı (bkz. App\Entity\Locale).
- *
- * Seed: mevcut cp_settings.core.default_locale değeri varsa onu, yoksa
- * 'tr' varsayımıyla tek bir satır eklenir ve is_default=1 yapılır — bu
- * sayede migrate edilen sistemlerde LocaleRepository::findDefault() hiçbir
- * zaman boş dönmez.
+ * Creates cp_locales as the single source of truth for enabled languages; seeds default locale from settings or 'tr'.
  */
 final class Version20260716220000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'cp_locales tablosunu oluşturur ve mevcut core.default_locale ayarından seed eder.';
+        return 'Creates the cp_locales table and seeds it from the existing core.default_locale setting.';
     }
 
     public function up(Schema $schema): void

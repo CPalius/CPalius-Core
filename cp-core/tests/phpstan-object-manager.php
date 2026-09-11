@@ -3,21 +3,8 @@
 declare(strict_types=1);
 
 /*
- * PHPStan Doctrine eklentisi için EntityManager yükleyicisi.
- *
- * Eklenti bu dosyadan bir ObjectManager alır ve entity metadata'sını
- * okuyarak repository metotlarının GERÇEK dönüş tiplerini çözer:
- * NodeRepository::find() -> ?Node, findAll() -> list<Node>, DQL
- * alanlarının var olup olmadığı vb. Bu olmadan seviye 6'da her
- * repository çağrısı "mixed" döner.
- *
- * Ortam "dev": phpstan.neon'daki containerXmlPath ve konsol yükleyicisi
- * ile aynı ortam olmalıdır (bkz. phpstan-console-loader.php).
- *
- * Bu dosya veritabanına BAĞLANMAZ — Doctrine yalnızca metadata sürücüsünü
- * (attribute okuyucu) kullanır, bağlantı ilk sorguda kurulur ve burada
- * hiç sorgu çalıştırılmaz. Dolayısıyla PHPStan çalışan bir veritabanı
- * olmadan da analiz yapabilir.
+ * EntityManager loader for PHPStan Doctrine extension (resolves repository return types from metadata).
+ * Uses dev kernel; connects to DB only on first query — not during PHPStan bootstrap.
  */
 
 use App\Kernel;

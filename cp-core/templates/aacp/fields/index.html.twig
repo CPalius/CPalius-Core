@@ -1,0 +1,48 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.fields.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <p class="text-fs-sm !text-slate-500">{{ 'aacp.fields.intro'|trans }}</p>
+
+        <twig:cp:card title="{{ 'aacp.fields.add_bundle'|trans }}">
+            <form method="get" action="" class="flex items-end gap-3"
+                  onsubmit="this.action = '/aacp/fields/' + encodeURIComponent(this.bundle.value.trim().toLowerCase()); return this.bundle.value.trim() !== '';">
+                <div class="flex-1">
+                    <label class="form-label !text-slate-400" for="bundle-input">{{ 'aacp.fields.bundle_name'|trans }}</label>
+                    <input type="text" id="bundle-input" name="bundle" required pattern="[a-z][a-z0-9_-]{0,49}"
+                           placeholder="portfolio" class="form-control !border-white/10 !bg-dark-1 font-mono !text-slate-100">
+                    <p class="mt-1 text-fs-xs !text-slate-600">{{ 'aacp.fields.bundle_name_help'|trans }}</p>
+                </div>
+                <button type="submit" class="btn btn-primary">{{ 'aacp.fields.open'|trans }}</button>
+            </form>
+        </twig:cp:card>
+
+        <twig:cp:card title="{{ 'aacp.fields.bundles'|trans }}" padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.fields.column.bundle'|trans,
+                'aacp.fields.column.field_count'|trans,
+                '',
+            ] }}" empty="{{ bundles is empty }}" emptyText="{{ 'aacp.fields.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for id, bundle in bundles %}
+                        <tr>
+                            <td class="!text-slate-200">
+                                <a href="{{ path('aacp_fields_bundle', {bundle: id}) }}" class="hover:text-primary-400">
+                                    {{ bundle.label }} <span class="ml-1 font-mono text-fs-xs !text-slate-500">{{ id }}</span>
+                                </a>
+                            </td>
+                            <td class="text-fs-sm !text-slate-400">{{ bundle.count }}</td>
+                            <td class="text-right">
+                                <a href="{{ path('aacp_fields_new', {bundle: id}) }}" class="text-fs-xs font-medium !text-primary-400 hover:!text-success-300">
+                                    {{ 'aacp.fields.add_field'|trans }}
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+{% endblock %}

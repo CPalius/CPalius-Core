@@ -2,10 +2,21 @@
 framework:
     secret: '%env(APP_SECRET)%'
 
+    # Behind Varnish/nginx/Cloudflare the client IP arrives in X-Forwarded-For.
+    # Without this the ban list and every flood counter key off the proxy address,
+    # which both hides attackers and risks banning all traffic at once.
+    # Leave TRUSTED_PROXIES unset when PHP is directly exposed: an over-broad list
+    # lets a client forge its own IP. Accepts 'private_ranges' or a CIDR list.
+    trusted_proxies: '%env(default::TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-port', 'x-forwarded-proto', 'x-forwarded-prefix']
+
+    # Host header allowlist lives in security.trusted_hosts (AACP → Security Center)
+    # rather than here: framework.trusted_hosts is applied during boot, so a typo or
+    # an unresolved env var takes the whole site down with no way back in.
+
     # Note that the session will be started ONLY if you read or write from it.
-    # handler_id boş bırakılırsa PHP'nin varsayılan (dosya) session
-    # handler'ı kullanılır; Redis'e taşımak için cache.redis servisini
-    # session handler'ı olarak veriyoruz.
+    # Empty handler_id uses PHP's default file session handler;
+    # we point handler_id at session.handler.redis for Redis-backed sessions.
     session:
         handler_id: 'session.handler.redis'
         cookie_secure: auto
@@ -15,24 +26,19 @@ framework:
 
     form: true
 
-    # Varnish önde reverse-proxy olarak koşacağı için Symfony'nin ESI
-    # (Edge Side Includes) desteği açılır — Surrogate-Capable header'ını
-    # okuyup fragment'ları Varnish'e devredebilir.
+    # ESI enabled for Varnish reverse proxy — reads Surrogate-Capable and
+    # delegates fragments to Varnish.
     esi: true
     fragments: { path: /_fragment }
 
-    # http_cache.enabled BİLİNÇLİ OLARAK false: Symfony'nin dahili
-    # AppCache reverse-proxy'si DEĞİL, gerçek Varnish önde koşuyor. Bu
-    # blok sadece response header stratejisini (terminate_on_cache_hit)
-    # ayarlar — Varnish TCP bağlantısını PHP-FPM/worker beklemeden
-    # kapatabilsin diye cache-hit'lerde PHP süreci erken sonlanır.
+    # http_cache.enabled deliberately false: Varnish runs in front, not Symfony AppCache.
+    # terminate_on_cache_hit lets PHP exit early on cache hits so Varnish can close TCP.
     http_cache:
         enabled: false
         terminate_on_cache_hit: true
 
-# Redis kapalı local kurulumlarda Failover handler her session
-# read/write'ta önce Redis'e bağlanmayı dener → saniyelerce bekler.
-# Dev'de doğrudan native dosya session kullan.
+# When Redis is down locally, Failover handler waits on every session read/write.
+# Dev uses native file sessions directly.
 when@dev:
     framework:
         session:
@@ -43,18 +49,8 @@ when@test:
         test: true
         session:
             storage_factory_id: session.storage.factory.mock_file
-            # handler_id: null ZORUNLUDUR (FAZ 2'de tespit edildi).
+            # handler_id: null is required (Phase 2): mock_file alone still resolves
+            # session.handler.redis and triggers Redis on schema operations.
             #
-            # storage_factory_id'yi mock_file yapmak YETMİYOR: kök
-            # yapılandırmadaki "handler_id: session.handler.redis" hâlâ
-            # geçerli kalıyor ve FailoverRedisSessionHandler -> Redis
-            # servisi container'da tanımlı olmayı sürdürüyor. Doctrine'in
-            # PdoSessionHandlerSchemaListener'ı, şema işlemleri sırasında
-            # session handler servisini ÇÖZÜMLÜYOR ve o anda Redis
-            # bağlantısı kurulmaya çalışılıyor.
-            #
-            # Redis PHP eklentisi kurulu olmayan bir CI koşucusunda bu,
-            # testlerle hiç ilgisi olmayan bir CacheException'a dönüşür:
-            # "Cannot find the redis extension nor the relay extension".
-            # when@dev bloğu aynı sorunu aynı satırla çözüyor.
+            # Without this, CI fails with "Cannot find the redis extension" — same fix as when@dev.
             handler_id: null

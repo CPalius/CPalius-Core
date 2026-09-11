@@ -1,17 +1,9 @@
 {#
-    <twig:studio:table headers="['Başlık', 'Durum', '']">
-        <twig:block name="rows">
-            <tr>...</tr>
-        </twig:block>
-    </twig:studio:table>
+    <twig:studio:table headers="['Title', 'Status', '']">...</twig:studio:table>
 
-    <twig:cp:table>'ın Studio (aydınlık tema) karşılığı — bkz. studio/card.html.twig
-    üstündeki izolasyon notu.
+    Studio (light theme) counterpart of twig:cp:table — see studio/card isolation note.
 
-    Props:
-      headers   (array)  Başlık hücrelerinin metinleri (sırayla).
-      empty     (bool)   Satır yoksa true geçilir; "rows" bloğu yerine boş-durum mesajı gösterilir.
-      emptyText (string) Boş durumda gösterilecek metin.
+    Props: headers, empty, emptyText
 #}
 {% props headers = [], empty = false, emptyText = null %}
 

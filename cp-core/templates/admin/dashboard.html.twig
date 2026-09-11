@@ -2,278 +2,133 @@
 
 {% block header %}{{ 'studio.dashboard.header'|trans }}{% endblock %}
 
-{% block header_actions %}
-    {{ parent() }}
-    <button type="button" data-studio-widget-settings-trigger
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-neutral-500 transition hover:border-primary-600 hover:text-primary-600"
-            title="{{ 'studio.dashboard.widget_settings'|trans }}">
-        <twig:ux:icon name="tabler:layout-dashboard" class="h-4 w-4" />
-    </button>
-{% endblock %}
-
 {% block javascripts %}
-    {{ parent() }}
-    {{ importmap(['app', 'studio-dashboard']) }}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'studio-dashboard']) }}
 {% endblock %}
 
 {% block body %}
-    <div class="studio-dash" data-studio-dashboard>
-        {# Hero özet — provider'lardan gelen metrikler #}
-        <div data-studio-widget-id="hero.summary" class="studio-dash-widget {{ 'hero.summary' in hiddenWidgetIds ? 'hidden' : '' }}">
-            <div class="studio-dash-hero">
-                <div class="studio-dash-hero-glow"></div>
-                <div class="relative z-10 grid grid-cols-2 gap-x-sp-sm gap-y-sp-xs sm:grid-cols-3 lg:grid-cols-6">
-                    <div class="studio-dash-hero-stat">
-                        <span class="studio-dash-hero-label">{{ 'studio.dashboard.overview.total_content'|trans }}</span>
-                        <span class="studio-dash-hero-value">{{ overview.totalContent }}</span>
-                    </div>
-                    {% for metric in overview.heroMetrics %}
-                        <div class="studio-dash-hero-stat">
-                            <span class="studio-dash-hero-label">{{ metric.labelKey|trans }}</span>
-                            <span class="studio-dash-hero-value">{{ metric.value }}</span>
-                        </div>
-                    {% endfor %}
-                </div>
+    {% set displayName = app.user.fullName|default(app.user.userIdentifier|default('')) %}
+    <div class="studio-cmd" data-studio-dashboard>
+        <div class="studio-cmd-actionbar">
+            <div>
+                <h2 class="studio-cmd-welcome">{{ 'studio.dashboard.welcome'|trans({name: displayName}) }}</h2>
+                <p class="studio-cmd-welcome-sub">{{ 'studio.dashboard.welcome_sub'|trans }}</p>
             </div>
-        </div>
-
-        {# İçerik analizi — tüm provider mix/trend/status birleşimi #}
-        <section class="studio-dash-section" data-studio-section="content">
-            <button type="button" class="studio-dash-section-toggle" data-studio-section-toggle="content">
-                <twig:ux:icon name="tabler:chart-donut-3" class="h-5 w-5 text-primary-600" />
-                <span>{{ 'studio.dashboard.section.content'|trans }}</span>
-                <twig:ux:icon name="tabler:chevron-down" class="studio-dash-chevron ml-auto h-4 w-4" />
-            </button>
-            <div class="studio-dash-section-body" data-studio-section-body="content">
-                <div class="studio-dash-grid">
-                    <div data-studio-widget-id="content.mix_doughnut" class="studio-dash-widget studio-dash-widget--tall {{ 'content.mix_doughnut' in hiddenWidgetIds ? 'hidden' : '' }}">
-                        <div class="studio-dash-panel">
-                            <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.by_kind'|trans }}</h3>
-                            <div class="studio-dash-chart studio-dash-chart--center">
-                                <canvas data-studio-chart="doughnut-center"
-                                        data-center="{{ overview.totalContent }}"
-                                        data-center-label="{{ 'studio.dashboard.overview.total_content'|trans }}"
-                                        data-labels="{{ charts.contentMix|map(row => row.label|trans)|json_encode }}"
-                                        data-values="{{ charts.contentMix|map(row => row.count)|json_encode }}"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div data-studio-widget-id="content.mix_bar" class="studio-dash-widget studio-dash-widget--tall {{ 'content.mix_bar' in hiddenWidgetIds ? 'hidden' : '' }}">
-                        <div class="studio-dash-panel">
-                            <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.by_kind_bar'|trans }}</h3>
-                            <div class="studio-dash-chart">
-                                <canvas data-studio-chart="bar-h"
-                                        data-labels="{{ charts.contentMix|map(row => row.label|trans)|json_encode }}"
-                                        data-values="{{ charts.contentMix|map(row => row.count)|json_encode }}"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div data-studio-widget-id="content.capacity_gauge" class="studio-dash-widget studio-dash-widget--tall {{ 'content.capacity_gauge' in hiddenWidgetIds ? 'hidden' : '' }}">
-                        <div class="studio-dash-panel">
-                            <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.content_capacity'|trans }}</h3>
-                            <div class="studio-dash-chart studio-dash-chart--center">
-                                <canvas data-studio-chart="gauge"
-                                        data-value="{{ charts.contentCapacity.value }}"
-                                        data-max="{{ charts.contentCapacity.max }}"
-                                        data-center="{{ charts.contentCapacity.percent }}%"
-                                        data-center-label="{{ 'studio.dashboard.chart.capacity_center'|trans }}"></canvas>
-                            </div>
-                            <p class="mt-1 text-center text-fs-xs text-neutral-500">
-                                {{ 'studio.dashboard.chart.content_capacity_footer'|trans({
-                                    current: charts.contentCapacity.value,
-                                    max: charts.contentCapacity.max,
-                                }) }}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div data-studio-widget-id="content.trend_line" class="studio-dash-widget studio-dash-widget--wide {{ 'content.trend_line' in hiddenWidgetIds ? 'hidden' : '' }}">
-                        <div class="studio-dash-panel">
-                            <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.trend'|trans }}</h3>
-                            <div class="studio-dash-chart studio-dash-chart--wide">
-                                <canvas data-studio-chart="line-multi"
-                                        data-labels="{{ charts.contentTrend.labels|json_encode }}"
-                                        data-series="{{ charts.contentTrend.series|map(s => { label: s.label|trans, values: s.values })|json_encode }}"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div data-studio-widget-id="content.status_doughnut" class="studio-dash-widget studio-dash-widget--tall {{ 'content.status_doughnut' in hiddenWidgetIds ? 'hidden' : '' }}">
-                        <div class="studio-dash-panel">
-                            <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.by_status'|trans }}</h3>
-                            <div class="studio-dash-chart studio-dash-chart--center">
-                                {% set statusTotal = charts.contentByStatus|reduce((sum, row) => sum + row.count, 0) %}
-                                <canvas data-studio-chart="doughnut-center"
-                                        data-center="{{ statusTotal }}"
-                                        data-center-label="{{ 'studio.dashboard.overview.total_content'|trans }}"
-                                        data-labels="{{ charts.contentByStatus is not empty ? charts.contentByStatus|map(row => ('studio.dashboard.status.' ~ row.status)|trans)|json_encode : ['studio.dashboard.chart.no_status_data'|trans]|json_encode }}"
-                                        data-values="{{ charts.contentByStatus is not empty ? charts.contentByStatus|map(row => row.count)|json_encode : [1]|json_encode }}"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        {# Modül özeti radar/bar #}
-        <section class="studio-dash-section" data-studio-section="modules">
-            <button type="button" class="studio-dash-section-toggle" data-studio-section-toggle="modules">
-                <twig:ux:icon name="tabler:chart-radar" class="h-5 w-5 text-primary-600" />
-                <span>{{ 'studio.dashboard.section.modules'|trans }}</span>
-                <twig:ux:icon name="tabler:chevron-down" class="studio-dash-chevron ml-auto h-4 w-4" />
-            </button>
-            <div class="studio-dash-section-body" data-studio-section-body="modules">
-                <div class="studio-dash-grid">
-                    <div data-studio-widget-id="modules.radar" class="studio-dash-widget studio-dash-widget--tall {{ 'modules.radar' in hiddenWidgetIds ? 'hidden' : '' }}">
-                        <div class="studio-dash-panel">
-                            <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.module_radar'|trans }}</h3>
-                            <div class="studio-dash-chart">
-                                <canvas data-studio-chart="radar"
-                                        data-labels="{{ charts.moduleRadar|map(row => row.label|trans)|json_encode }}"
-                                        data-values="{{ charts.moduleRadar|map(row => row.value)|json_encode }}"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div data-studio-widget-id="modules.bar" class="studio-dash-widget studio-dash-widget--tall {{ 'modules.bar' in hiddenWidgetIds ? 'hidden' : '' }}">
-                        <div class="studio-dash-panel">
-                            <h3 class="studio-dash-panel-title">{{ 'studio.dashboard.chart.module_overview'|trans }}</h3>
-                            <div class="studio-dash-chart">
-                                <canvas data-studio-chart="bar-v"
-                                        data-labels="{{ charts.moduleOverview|map(row => row.label|trans)|json_encode }}"
-                                        data-values="{{ charts.moduleOverview|map(row => row.count)|json_encode }}"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        {# Her aktif modülün kendi panelleri #}
-        {% for mod in modules %}
-            <section class="studio-dash-section" data-studio-section="{{ mod.key }}">
-                <button type="button" class="studio-dash-section-toggle" data-studio-section-toggle="{{ mod.key }}">
-                    <twig:ux:icon name="{{ mod.icon }}" class="h-5 w-5 text-primary-600" />
-                    <span>{{ mod.name|trans }}</span>
-                    <twig:ux:icon name="tabler:chevron-down" class="studio-dash-chevron ml-auto h-4 w-4" />
-                </button>
-                <div class="studio-dash-section-body" data-studio-section-body="{{ mod.key }}">
-                    <div class="studio-dash-grid">
-                        {% for panel in mod.panels %}
-                            <div data-studio-widget-id="{{ panel.widgetId }}"
-                                 class="studio-dash-widget studio-dash-widget--{{ panel.layout|default('tall') }} {{ panel.widgetId in hiddenWidgetIds ? 'hidden' : '' }}">
-                                <div class="studio-dash-panel{{ panel.links is defined and panel.links ? ' studio-dash-panel--links' : '' }}">
-                                    <h3 class="studio-dash-panel-title">{{ panel.titleKey|trans }}</h3>
-
-                                    {% if panel.links is defined and panel.links %}
-                                        <div class="studio-dash-links">
-                                            {% for link in mod.links %}
-                                                <a href="{{ path(link.routeName) }}" class="studio-dash-link">
-                                                    <twig:ux:icon name="{{ link.icon }}" class="h-4 w-4" />
-                                                    {{ link.label|trans }}
-                                                </a>
-                                            {% endfor %}
-                                        </div>
-                                    {% elseif panel.chart is defined %}
-                                        {% set chart = panel.chart %}
-                                        <div class="studio-dash-chart{{ chart.type in ['line-multi'] ? ' studio-dash-chart--wide' : (chart.type in ['gauge', 'gauge-reports', 'doughnut-center'] ? ' studio-dash-chart--center' : '') }}">
-                                            {% if chart.type == 'gauge' %}
-                                                <canvas data-studio-chart="gauge"
-                                                        data-value="{{ chart.value }}"
-                                                        data-max="{{ chart.max }}"
-                                                        data-center="{{ chart.center }}"
-                                                        data-center-label="{{ chart.centerLabelKey|trans }}"></canvas>
-                                            {% elseif chart.type == 'gauge-reports' %}
-                                                <canvas data-studio-chart="gauge"
-                                                        data-open="{{ chart.open }}"
-                                                        data-total="{{ chart.total }}"
-                                                        data-center="{{ chart.center }}"
-                                                        data-center-label="{{ chart.centerLabelKey|trans }}"></canvas>
-                                            {% elseif chart.type == 'radar' %}
-                                                <canvas data-studio-chart="radar"
-                                                        data-labels="{{ (chart.labelKeys|default([])|map(k => k|trans))|json_encode }}"
-                                                        data-values="{{ chart.values|json_encode }}"></canvas>
-                                            {% elseif chart.type == 'pie' %}
-                                                <canvas data-studio-chart="pie"
-                                                        data-labels="{{ (chart.labelKeys is defined ? chart.labelKeys|map(k => k|trans) : chart.labels)|json_encode }}"
-                                                        data-values="{{ chart.values|json_encode }}"></canvas>
-                                            {% elseif chart.type == 'polar' %}
-                                                <canvas data-studio-chart="polar"
-                                                        data-labels="{{ chart.labels|json_encode }}"
-                                                        data-values="{{ chart.values|json_encode }}"></canvas>
-                                            {% elseif chart.type == 'bar-v' %}
-                                                <canvas data-studio-chart="bar-v"
-                                                        data-labels="{{ chart.labels|json_encode }}"
-                                                        data-values="{{ chart.values|json_encode }}"
-                                                        {% if chart.datasetLabelKey is defined %}data-dataset-label="{{ chart.datasetLabelKey|trans }}"{% endif %}></canvas>
-                                            {% elseif chart.type == 'line-multi' %}
-                                                <canvas data-studio-chart="line-multi"
-                                                        data-labels="{{ chart.labels|json_encode }}"
-                                                        data-series="{{ chart.series|map(s => { label: (s.labelKey is defined ? s.labelKey : (s.label is defined ? s.label : ''))|trans, values: s.values })|json_encode }}"></canvas>
-                                            {% elseif chart.type == 'doughnut-center' %}
-                                                <canvas data-studio-chart="doughnut-center"
-                                                        data-center="{{ chart.center }}"
-                                                        data-center-label="{{ chart.centerLabelKey|trans }}"
-                                                        data-labels="{{ (chart.labelKeys|default([])|map(k => k|trans))|json_encode }}"
-                                                        data-values="{{ chart.values|json_encode }}"></canvas>
-                                            {% endif %}
-                                        </div>
-                                        {% if panel.footerTrans is defined %}
-                                            <p class="mt-2 text-center text-fs-sm text-neutral-500">
-                                                {{ panel.footerTrans.count }} {{ panel.footerTrans.key|trans }}
-                                            </p>
-                                        {% endif %}
-                                    {% endif %}
-                                </div>
-                            </div>
+            {% if quickCreate is not empty %}
+                <div class="studio-cmd-dropdown" data-studio-create>
+                    <button type="button" class="btn btn-sm btn-primary" data-studio-create-toggle>
+                        <twig:ux:icon name="heroicons:plus" class="h-4 w-4" />
+                        {{ 'studio.dashboard.create'|trans }}
+                    </button>
+                    <div hidden class="studio-cmd-dropdown-menu" data-studio-create-menu>
+                        {% for item in quickCreate %}
+                            <a href="{{ path(item.routeName) }}" class="studio-cmd-dropdown-item">
+                                <twig:ux:icon name="{{ item.icon }}" class="h-4 w-4" />
+                                {{ item.labelKey|trans }}
+                            </a>
                         {% endfor %}
                     </div>
                 </div>
-            </section>
-        {% endfor %}
-    </div>
-
-    {# Widget görünürlük paneli #}
-    <div data-studio-widget-settings-panel
-         data-studio-widget-visibility-url="{{ path('admin_dashboard_widget_visibility') }}"
-         data-csrf-token="{{ widget_visibility_csrf_token }}"
-         hidden
-         class="studio-dash-settings">
-        <div class="mb-sp-md flex items-center justify-between">
-            <h2 class="text-fs-base font-semibold text-neutral-900">{{ 'studio.dashboard.widget_settings'|trans }}</h2>
-            <button type="button" data-studio-widget-settings-close class="text-neutral-400 hover:text-neutral-600">
-                <twig:ux:icon name="tabler:x" class="h-5 w-5" />
-            </button>
+            {% endif %}
         </div>
 
-        <button type="button" data-studio-widget-settings-show-all class="mb-sp-sm text-fs-xs font-medium text-primary-600 hover:text-primary-700">
-            {{ 'studio.dashboard.widget_settings.show_all'|trans }}
-        </button>
-
-        {% set catalogBySection = {} %}
-        {% for entry in widgetCatalog %}
-            {% set catalogBySection = catalogBySection|merge({ (entry.section): (catalogBySection[entry.section] ?? [])|merge([entry]) }) %}
-        {% endfor %}
-
-        {% for sectionKey, entries in catalogBySection %}
-            <div class="mb-sp-md">
-                <h3 class="mb-2 text-fs-xs font-semibold uppercase tracking-wide text-neutral-500">
-                    {% set sectionTrans = 'studio.dashboard.section.' ~ sectionKey %}
-                    {{ sectionTrans|trans == sectionTrans ? sectionKey|capitalize : sectionTrans|trans }}
-                </h3>
-                <div class="space-y-1.5">
-                    {% for entry in entries %}
-                        <label class="flex items-center gap-2 text-fs-sm text-neutral-700">
-                            <input type="checkbox" data-studio-widget-toggle="{{ entry.widgetId }}"
-                                   {{ entry.widgetId in hiddenWidgetIds ? '' : 'checked' }}
-                                   class="form-check-input h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500/40">
-                            {{ entry.titleKey|trans }}
-                        </label>
-                    {% endfor %}
-                </div>
+        <div class="studio-cmd-kpis">
+            <div class="studio-cmd-kpi">
+                <span class="studio-cmd-kpi-label">{{ 'studio.dashboard.kpi.published'|trans }}</span>
+                <span class="studio-cmd-kpi-value">{{ kpis.published }}</span>
             </div>
-        {% endfor %}
+            <div class="studio-cmd-kpi studio-cmd-kpi--action">
+                <span class="studio-cmd-kpi-label">{{ 'studio.dashboard.kpi.drafts'|trans }}</span>
+                <span class="studio-cmd-kpi-value">{{ kpis.drafts }}</span>
+            </div>
+            <div class="studio-cmd-kpi">
+                <span class="studio-cmd-kpi-label">{{ 'studio.dashboard.kpi.media'|trans }}</span>
+                <span class="studio-cmd-kpi-value">{{ kpis.mediaLabel }}</span>
+            </div>
+            {% for extra in kpis.extraKpis|default([]) %}
+                <div class="studio-cmd-kpi">
+                    <span class="studio-cmd-kpi-label">{{ extra.labelKey|trans }}</span>
+                    <span class="studio-cmd-kpi-value">{{ extra.value }}</span>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="studio-cmd-grid">
+            <section class="studio-cmd-panel">
+                <h3 class="studio-cmd-panel-title">{{ 'studio.dashboard.recent.title'|trans }}</h3>
+                <div class="table-responsive">
+                    <table class="table table-compact">
+                        <thead>
+                            <tr>
+                                <th>{{ 'studio.dashboard.recent.col.title'|trans }}</th>
+                                <th>{{ 'studio.dashboard.recent.col.type'|trans }}</th>
+                                <th>{{ 'studio.dashboard.recent.col.author'|trans }}</th>
+                                <th>{{ 'studio.dashboard.recent.col.updated'|trans }}</th>
+                                <th>{{ 'studio.dashboard.recent.col.status'|trans }}</th>
+                                <th>{{ 'studio.dashboard.recent.col.actions'|trans }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if recentActivity is empty %}
+                                <tr>
+                                    <td colspan="6" class="py-6 text-center text-fs-sm text-neutral-500">
+                                        {{ 'studio.dashboard.recent.empty'|trans }}
+                                    </td>
+                                </tr>
+                            {% else %}
+                                {% for row in recentActivity %}
+                                    <tr>
+                                        <td class="font-medium text-neutral-900">{{ row.title }}</td>
+                                        <td>{{ row.typeKey|trans }}</td>
+                                        <td>{{ row.author }}</td>
+                                        <td class="whitespace-nowrap text-neutral-500">{{ row.updatedAt|date('d.m.Y H:i') }}</td>
+                                        <td><twig:studio:badge status="{{ row.status }}" /></td>
+                                        <td class="whitespace-nowrap">
+                                            <span class="inline-flex items-center gap-2">
+                                                {% if row.editUrl %}
+                                                    <a href="{{ row.editUrl }}" class="text-fs-xs font-medium text-primary-600 hover:text-primary-700">{{ 'studio.dashboard.action.edit'|trans }}</a>
+                                                {% endif %}
+                                                {% if row.viewUrl %}
+                                                    <a href="{{ row.viewUrl }}" class="text-fs-xs font-medium text-neutral-500 hover:text-neutral-800">{{ 'studio.dashboard.action.view'|trans }}</a>
+                                                {% endif %}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <aside class="studio-cmd-side">
+                <section class="studio-cmd-panel">
+                    <h3 class="studio-cmd-panel-title">{{ 'studio.dashboard.mix.title'|trans }}</h3>
+                    <div class="studio-cmd-donut">
+                        <canvas data-studio-chart="doughnut-center"
+                                data-center="{{ mix|reduce((sum, row) => sum + row.count, 0) }}"
+                                data-center-label="{{ 'studio.dashboard.mix.center'|trans }}"
+                                data-labels="{{ mix|map(row => row.labelKey|trans)|json_encode }}"
+                                data-values="{{ mix|map(row => row.count)|json_encode }}"></canvas>
+                    </div>
+                </section>
+
+                <section class="studio-cmd-panel">
+                    <h3 class="studio-cmd-panel-title">{{ 'studio.dashboard.shortcuts.title'|trans }}</h3>
+                    {% if quickLinks is empty %}
+                        <p class="text-fs-sm text-neutral-500">{{ 'studio.dashboard.shortcuts.empty'|trans }}</p>
+                    {% else %}
+                        <div class="studio-cmd-shortcuts">
+                            {% for link in quickLinks %}
+                                <a href="{{ path(link.routeName) }}" class="studio-cmd-shortcut">
+                                    <twig:ux:icon name="{{ link.icon }}" class="h-4 w-4" />
+                                    {{ link.labelKey|trans }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </section>
+            </aside>
+        </div>
     </div>
 {% endblock %}

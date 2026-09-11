@@ -1,5 +1,5 @@
 /**
- * AACP kullanıcı formu — seçili rollere göre modül yetki önizlemesi.
+ * AACP user form — module capability preview for selected roles.
  */
 (function () {
     'use strict';

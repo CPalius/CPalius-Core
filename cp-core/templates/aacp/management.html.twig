@@ -8,6 +8,7 @@
     {% set localeDefault = locales|filter(l => l.default)|first %}
     {% set providerKeys = ['security.recaptcha_site_key', 'security.recaptcha_secret_key', 'security.recaptcha_version', 'security.recaptcha_score_threshold'] %}
     {% set turnstileKeys = ['security.turnstile_site_key', 'security.turnstile_secret_key'] %}
+    {% set hcaptchaKeys = ['security.hcaptcha_site_key', 'security.hcaptcha_secret_key'] %}
 
     <div class="space-y-sp-md" data-system-settings-root>
         {% if app.request.query.get('saved') %}
@@ -45,6 +46,21 @@
             <p class="mt-1 text-fs-sm !text-slate-400">{{ activeTabMeta.description|trans }}</p>
         </twig:cp:card>
 
+        {% if activeTab == 'security' and is_granted('system.security.manage') %}
+            <twig:cp:card padded="{{ true }}">
+                <div class="flex flex-wrap items-center justify-between gap-sp-sm">
+                    <div>
+                        <p class="text-fs-sm font-semibold !text-slate-200">{{ 'aacp.security.center_cta_title'|trans }}</p>
+                        <p class="mt-1 text-fs-sm !text-slate-400">{{ 'aacp.security.center_cta_desc'|trans }}</p>
+                    </div>
+                    <a href="{{ path('aacp_security_center') }}" class="btn btn-primary btn-sm">
+                        <twig:ux:icon name="heroicons:shield-check" class="h-4 w-4" />
+                        {{ 'aacp.security.center_cta_link'|trans }}
+                    </a>
+                </div>
+            </twig:cp:card>
+        {% endif %}
+
         <div class="flex flex-wrap gap-1 border-b border-white/10 pb-sp-xs" role="tablist" aria-label="{{ 'aacp.system_settings.tabs_aria'|trans }}">
             {% for tabId, tabMeta in tabs %}
                 <a href="{{ path('aacp_advanced_management', {tab: tabId}) }}"
@@ -59,7 +75,7 @@
         </div>
 
         {% if activeTab == 'locales' %}
-            <div data-locales-root data-locales-csrf="{{ locales_csrf_token }}">
+            <div data-locales-root data-locales-csrf="{{ locales_csrf_token }}" data-i18n-error="{{ 'aacp.system_settings.js.error'|trans }}">
                 <div class="mb-sp-sm grid grid-cols-1 gap-sp-xs sm:grid-cols-3">
                     <div class="rounded-lg border border-white/10 !bg-dark-1/50 px-sp-sm py-3">
                         <p class="text-fs-xs font-medium uppercase tracking-wider !text-slate-500">{{ 'aacp.system_settings.locales.stat_total'|trans }}</p>
@@ -135,6 +151,42 @@
                     </twig:cp:table>
                 </twig:cp:card>
             </div>
+        {% elseif tabs[activeTab].grouped|default(false) %}
+            {% set groups = tabGroups[activeTab]|default({}) %}
+            {% set values = tabValues[activeTab]|default({}) %}
+
+            {% if groups is empty %}
+                <twig:cp:card>
+                    <p class="text-fs-sm !text-slate-500">{{ 'aacp.settings.no_settings'|trans }}</p>
+                </twig:cp:card>
+            {% else %}
+                <form method="post" action="{{ path('aacp_advanced_management_update') }}" class="space-y-sp-sm">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="_tab" value="{{ activeTab }}">
+
+                    {% for groupName, settingDefs in groups %}
+                        <twig:cp:card title="{{ groupName|capitalize }}">
+                            <div class="space-y-sp-sm">
+                                {% for setting in settingDefs %}
+                                    {% include 'aacp/partials/_system_setting_field.html.twig' with {
+                                        setting: setting,
+                                        value: values[setting.key]|default(null),
+                                        compact: false,
+                                    } only %}
+                                {% endfor %}
+                            </div>
+                        </twig:cp:card>
+                    {% endfor %}
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 !bg-dark-1/60 px-sp-sm py-3">
+                        <p class="text-fs-xs !text-slate-500">{{ 'aacp.system_settings.save_hint'|trans }}</p>
+                        <button type="submit" class="btn btn-primary">
+                            <twig:ux:icon name="heroicons:check" class="h-4 w-4" />
+                            {{ 'aacp.settings.save'|trans }}
+                        </button>
+                    </div>
+                </form>
+            {% endif %}
         {% else %}
             {% set definitions = tabDefinitions[activeTab]|default([]) %}
             {% set values = tabValues[activeTab]|default([]) %}
@@ -168,6 +220,13 @@
                                             value: values[setting.key],
                                             rowClass: values['security.captcha_provider'] != 'turnstile' ? 'hidden' : '',
                                             captchaRow: 'turnstile',
+                                        } %}
+                                    {% elseif activeTab == 'security' and setting.key in hcaptchaKeys %}
+                                        {% include 'aacp/partials/_system_setting_row.html.twig' with {
+                                            setting: setting,
+                                            value: values[setting.key],
+                                            rowClass: values['security.captcha_provider'] != 'hcaptcha' ? 'hidden' : '',
+                                            captchaRow: 'hcaptcha',
                                         } %}
                                     {% else %}
                                         {% include 'aacp/partials/_system_setting_row.html.twig' with {

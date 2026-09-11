@@ -6,7 +6,7 @@ namespace Modules\Menu\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Localization\LocaleProvider;
-use App\Core\Localization\TranslationTab;
+use App\Core\OriginCache\OriginCachePurger;
 use Modules\Menu\Twig\FrontMenuRuntime;
 use Modules\Menu\Entity\Menu;
 use Modules\Menu\Entity\MenuItem;
@@ -40,6 +40,7 @@ final class MenuAdminController extends AbstractController
         private readonly CacheInterface $cacheApp,
         private readonly LocaleProvider $localeProvider,
         private readonly TranslatorInterface $translator,
+        private readonly OriginCachePurger $originCachePurger,
     ) {
     }
 
@@ -80,6 +81,7 @@ final class MenuAdminController extends AbstractController
             $menu = new Menu($name, $identifier);
             $this->entityManager->persist($menu);
             $this->entityManager->flush();
+        $this->originCachePurger->purgeAll();
 
             $this->addFlash('success', $this->translator->trans('menu.admin.flash.created', ['name' => $name]));
 
@@ -97,15 +99,14 @@ final class MenuAdminController extends AbstractController
         $menu = $this->findMenuOrFail($id);
 
         $items = $this->menuItemRepository->findAllByMenu($menu);
-        $tree = $this->buildAdminTree($items, null);
+        $defaultLocale = $this->localeProvider->getDefaultCode();
 
         return $this->render('@MenuModule/admin/menus/edit.html.twig', [
             'menu' => $menu,
-            'tree' => $tree,
-            'allItems' => $items,
+            'tree' => $this->buildGroupedTree($items, $defaultLocale),
+            'parentChoices' => $this->parentChoiceRows($items, $defaultLocale),
             'locales' => $this->localeProvider->getLocales(),
-            'defaultLocale' => $this->localeProvider->getDefaultCode(),
-            'translationMap' => $this->buildTranslationMap($items),
+            'defaultLocale' => $defaultLocale,
         ]);
     }
 
@@ -115,36 +116,68 @@ final class MenuAdminController extends AbstractController
         $menu = $this->findMenuOrFail($id);
         $this->assertValidCsrf($request, 'admin_menu_form');
 
-        $label = trim((string) $request->request->get('label'));
-        $locale = $this->localeProvider->resolve(trim((string) $request->request->get('locale')));
-        $url = trim((string) $request->request->get('url'));
-        $nodeId = $this->parseNullableInt($request->request->get('node_id'));
-        $parentId = $this->parseNullableInt($request->request->get('parent_id'));
-        $openInNewTab = $request->request->getBoolean('open_in_new_tab');
+        $labels = $this->collectLocaleValues($request, 'labels');
+        $urls = $this->collectLocaleUrls($request);
 
-        if ($label === '') {
+        if ($labels === []) {
             $this->addFlash('error', $this->translator->trans('menu.admin.error.label_required'));
 
             return $this->redirectToRoute('admin_menus_edit', ['id' => $id]);
         }
 
-        $parent = $parentId !== null ? $this->menuItemRepository->find($parentId) : null;
+        $nodeId = $this->parseNullableInt($request->request->get('node_id'));
+        $parentId = $this->parseNullableInt($request->request->get('parent_id'));
+        $openInNewTab = $request->request->getBoolean('open_in_new_tab');
 
-        $siblingCount = \count($this->menuItemRepository->findByMenuParentAndLocale($menu, $parent?->getId(), $locale));
+        $allItems = $this->menuItemRepository->findAllByMenu($menu);
+        $parentCanonical = null;
+        if ($parentId !== null) {
+            $found = $this->menuItemRepository->find($parentId);
+            if ($found instanceof MenuItem && $found->getMenu()->getId() === $menu->getId()) {
+                $parentCanonical = $found;
+            }
+        }
 
-        $item = new MenuItem($menu, $label, $locale);
-        $item->setParent($parent);
-        $item->setUrl($url !== '' ? $url : null);
-        $item->setNodeId($nodeId);
-        $item->setOpenInNewTab($openInNewTab);
-        $item->setSortOrder($siblingCount);
+        $anchor = null;
+        $firstLabel = '';
+        $writtenLocales = [];
 
-        $this->entityManager->persist($item);
+        foreach ($this->localeProvider->getLocales() as $localeDef) {
+            $code = $localeDef->code;
+            if (!isset($labels[$code])) {
+                continue;
+            }
+
+            $parent = $this->localeParent($parentCanonical, $code, $allItems);
+            $siblingCount = \count($this->menuItemRepository->findByMenuParentAndLocale($menu, $parent?->getId(), $code));
+
+            $item = new MenuItem($menu, $labels[$code], $code);
+            $item->setParent($parent);
+            $item->setUrl($urls[$code] ?? null);
+            $item->setNodeId($nodeId);
+            $item->setOpenInNewTab($openInNewTab);
+            $item->setSortOrder($siblingCount);
+
+            if ($anchor instanceof MenuItem) {
+                $item->joinTranslationGroup($anchor->ensureTranslationGroup());
+            } else {
+                $item->ensureTranslationGroup();
+                $anchor = $item;
+                $firstLabel = $labels[$code];
+            }
+
+            $this->entityManager->persist($item);
+            $writtenLocales[] = $code;
+        }
+
         $this->entityManager->flush();
+        $this->originCachePurger->purgeAll();
 
-        $this->invalidateMenuCache($menu, $locale);
+        foreach ($writtenLocales as $locale) {
+            $this->invalidateMenuCache($menu, $locale);
+        }
 
-        $this->addFlash('success', $this->translator->trans('menu.admin.flash.item_added', ['label' => $label]));
+        $this->addFlash('success', $this->translator->trans('menu.admin.flash.item_added', ['label' => $firstLabel]));
 
         return $this->redirectToRoute('admin_menus_edit', ['id' => $id]);
     }
@@ -195,6 +228,7 @@ final class MenuAdminController extends AbstractController
 
         $this->entityManager->persist($translation);
         $this->entityManager->flush();
+        $this->originCachePurger->purgeAll();
 
         $this->invalidateMenuCache($menu, $target);
 
@@ -247,73 +281,72 @@ final class MenuAdminController extends AbstractController
         return $siblings;
     }
 
-    /**
-     * Language-badge data for the edit tree: item id => TranslationTab list. Computed in memory.
-     *
-     * @param list<MenuItem> $items
-     *
-     * @return array<int, list<TranslationTab>>
-     */
-    private function buildTranslationMap(array $items): array
-    {
-        $locales = $this->localeProvider->getLocales();
-        $map = [];
-
-        foreach ($items as $item) {
-            $id = $item->getId();
-
-            if ($id === null) {
-                continue;
-            }
-
-            $siblings = $this->translationSiblings($item, $items);
-            $tabs = [];
-
-            foreach ($locales as $locale) {
-                $sibling = $siblings[$locale->code] ?? null;
-
-                $tabs[] = new TranslationTab(
-                    code: $locale->code,
-                    nativeName: $locale->nativeName,
-                    exists: $sibling instanceof MenuItem,
-                    id: $sibling?->getId(),
-                    isCurrent: $locale->code === $item->getLocale(),
-                    label: $sibling?->getLabel(),
-                );
-            }
-
-            $map[$id] = $tabs;
-        }
-
-        return $map;
-    }
-
     #[Route('/items/{itemId}/update', name: 'update_item', methods: ['POST'], requirements: ['itemId' => '\d+'])]
     public function updateItem(int $itemId, Request $request): Response
     {
         $item = $this->findMenuItemOrFail($itemId);
         $this->assertValidCsrf($request, 'admin_menu_form');
 
-        $label = trim((string) $request->request->get('label'));
-        if ($label === '') {
+        $labels = $this->collectLocaleValues($request, 'labels');
+        $urls = $this->collectLocaleUrls($request);
+
+        if ($labels === []) {
             $this->addFlash('error', $this->translator->trans('menu.admin.error.label_required'));
 
             return $this->redirectToRoute('admin_menus_edit', ['id' => $item->getMenu()->getId()]);
         }
 
-        $item->setLabel($label);
-        $url = trim((string) $request->request->get('url'));
-        $item->setUrl($url !== '' ? $url : null);
-        $item->setNodeId($this->parseNullableInt($request->request->get('node_id')));
-        $item->setOpenInNewTab($request->request->getBoolean('open_in_new_tab'));
+        $menu = $item->getMenu();
+        $allItems = $this->menuItemRepository->findAllByMenu($menu);
+        $siblings = $this->translationSiblings($item, $allItems);
+        $groupId = $item->ensureTranslationGroup();
+        $nodeId = $this->parseNullableInt($request->request->get('node_id'));
+        $openInNewTab = $request->request->getBoolean('open_in_new_tab');
+        $canonicalParent = $item->getParent();
+        $writtenLocales = [];
+
+        foreach ($this->localeProvider->getLocales() as $localeDef) {
+            $code = $localeDef->code;
+            $label = $labels[$code] ?? null;
+            $existing = $siblings[$code] ?? null;
+
+            if ($label === null) {
+                continue;
+            }
+
+            if ($existing instanceof MenuItem) {
+                $existing->setLabel($label);
+                if (\array_key_exists($code, $urls)) {
+                    $existing->setUrl($urls[$code]);
+                }
+                $existing->setNodeId($nodeId);
+                $existing->setOpenInNewTab($openInNewTab);
+                $writtenLocales[] = $code;
+                continue;
+            }
+
+            $parent = $this->localeParent($canonicalParent, $code, $allItems);
+            $translation = new MenuItem($menu, $label, $code);
+            $translation->setParent($parent);
+            $translation->setUrl($urls[$code] ?? $item->getUrl());
+            $translation->setNodeId($nodeId);
+            $translation->setOpenInNewTab($openInNewTab);
+            $translation->setSortOrder($item->getSortOrder());
+            $translation->joinTranslationGroup($groupId);
+            $this->entityManager->persist($translation);
+            $writtenLocales[] = $code;
+        }
 
         $this->entityManager->flush();
+        $this->originCachePurger->purgeAll();
 
-        $this->invalidateMenuCache($item->getMenu(), $item->getLocale());
+        foreach (array_unique($writtenLocales) as $locale) {
+            $this->invalidateMenuCache($menu, $locale);
+        }
 
         $this->addFlash('success', $this->translator->trans('menu.admin.flash.item_updated'));
 
-        return $this->redirectToRoute('admin_menus_edit', ['id' => $item->getMenu()->getId()]);
+        return $this->redirectToRoute('admin_menus_edit', ['id' => $menu->getId()]);
     }
 
     #[Route('/items/{itemId}/delete', name: 'delete_item', methods: ['POST'], requirements: ['itemId' => '\d+'])]
@@ -323,12 +356,20 @@ final class MenuAdminController extends AbstractController
         $this->assertValidCsrf($request, 'admin_menu_form');
 
         $menu = $item->getMenu();
-        $locale = $item->getLocale();
+        $allItems = $this->menuItemRepository->findAllByMenu($menu);
+        $locales = [];
 
-        $this->entityManager->remove($item);
+        foreach ($this->translationSiblings($item, $allItems) as $sibling) {
+            $locales[] = $sibling->getLocale();
+            $this->entityManager->remove($sibling);
+        }
+
         $this->entityManager->flush();
+        $this->originCachePurger->purgeAll();
 
-        $this->invalidateMenuCache($menu, $locale);
+        foreach (array_unique($locales) as $locale) {
+            $this->invalidateMenuCache($menu, $locale);
+        }
 
         $this->addFlash('success', $this->translator->trans('menu.admin.flash.item_deleted'));
 
@@ -352,6 +393,7 @@ final class MenuAdminController extends AbstractController
         $payload = json_decode((string) $request->getContent(), true, flags: \JSON_THROW_ON_ERROR);
 
         $affectedLocales = [];
+        $allItems = $this->menuItemRepository->findAllByMenu($menu);
 
         foreach ($payload as $row) {
             $item = $this->menuItemRepository->find($row['itemId']);
@@ -359,14 +401,20 @@ final class MenuAdminController extends AbstractController
                 continue;
             }
 
-            $parent = $row['parentId'] !== null ? $this->menuItemRepository->find($row['parentId']) : null;
-            $item->setParent($parent);
-            $item->setSortOrder((int) $row['sortOrder']);
+            $parentCanonical = $row['parentId'] !== null ? $this->menuItemRepository->find($row['parentId']) : null;
+            if ($parentCanonical instanceof MenuItem && $parentCanonical->getMenu()->getId() !== $menu->getId()) {
+                $parentCanonical = null;
+            }
 
-            $affectedLocales[$item->getLocale()] = true;
+            foreach ($this->translationSiblings($item, $allItems) as $sibling) {
+                $sibling->setParent($this->localeParent($parentCanonical, $sibling->getLocale(), $allItems));
+                $sibling->setSortOrder((int) $row['sortOrder']);
+                $affectedLocales[$sibling->getLocale()] = true;
+            }
         }
 
         $this->entityManager->flush();
+        $this->originCachePurger->purgeAll();
 
         foreach (array_keys($affectedLocales) as $locale) {
             $this->invalidateMenuCache($menu, $locale);
@@ -376,27 +424,187 @@ final class MenuAdminController extends AbstractController
     }
 
     /**
+     * One row per translation group for the Studio tree (all locale labels on that row).
+     *
      * @param list<MenuItem> $items
      *
-     * @return list<array{item: MenuItem, children: array}>
+     * @return list<array{canonical: MenuItem, byLocale: array<string, MenuItem>, children: array}>
      */
-    private function buildAdminTree(array $items, ?int $parentId): array
+    private function buildGroupedTree(array $items, string $defaultCode): array
     {
-        $tree = [];
+        $groups = $this->groupByTranslation($items);
+        $itemIdToGroupKey = [];
 
-        foreach ($items as $item) {
-            $currentParentId = $item->getParent()?->getId();
-            if ($currentParentId !== $parentId) {
-                continue;
+        foreach ($groups as $key => $byLocale) {
+            foreach ($byLocale as $member) {
+                $id = $member->getId();
+                if ($id !== null) {
+                    $itemIdToGroupKey[$id] = $key;
+                }
             }
-
-            $tree[] = [
-                'item' => $item,
-                'children' => $this->buildAdminTree($items, $item->getId()),
-            ];
         }
 
-        return $tree;
+        $childrenKeys = [];
+        foreach ($groups as $key => $byLocale) {
+            $canonical = $this->pickCanonical($byLocale, $defaultCode);
+            $parent = $canonical->getParent();
+            $parentKey = 'root';
+            if ($parent instanceof MenuItem && $parent->getId() !== null) {
+                $parentKey = $itemIdToGroupKey[$parent->getId()] ?? 'root';
+                if ($parentKey === $key) {
+                    $parentKey = 'root';
+                }
+            }
+            $childrenKeys[$parentKey][] = $key;
+        }
+
+        $build = function (string $parentKey) use (&$build, $groups, $childrenKeys, $defaultCode): array {
+            $nodes = [];
+            foreach ($childrenKeys[$parentKey] ?? [] as $key) {
+                $byLocale = $groups[$key];
+                $canonical = $this->pickCanonical($byLocale, $defaultCode);
+                $nodes[] = [
+                    'canonical' => $canonical,
+                    'byLocale' => $byLocale,
+                    'sortOrder' => $canonical->getSortOrder(),
+                    'children' => $build($key),
+                ];
+            }
+            usort($nodes, static fn (array $a, array $b): int => $a['sortOrder'] <=> $b['sortOrder']);
+            foreach ($nodes as &$node) {
+                unset($node['sortOrder']);
+            }
+            unset($node);
+
+            return $nodes;
+        };
+
+        return $build('root');
+    }
+
+    /**
+     * @param list<MenuItem> $items
+     *
+     * @return array<string, array<string, MenuItem>>
+     */
+    private function groupByTranslation(array $items): array
+    {
+        $groups = [];
+        foreach ($items as $item) {
+            $id = $item->getId();
+            if ($id === null) {
+                continue;
+            }
+            $groupId = $item->getTranslationGroupId();
+            $key = $groupId !== null ? 'g:'.$groupId : 'i:'.$id;
+            $groups[$key][$item->getLocale()] = $item;
+        }
+
+        return $groups;
+    }
+
+    /**
+     * @param array<string, MenuItem> $byLocale
+     */
+    private function pickCanonical(array $byLocale, string $defaultCode): MenuItem
+    {
+        return $byLocale[$defaultCode] ?? array_values($byLocale)[0];
+    }
+
+    /**
+     * @param list<MenuItem> $items
+     *
+     * @return list<array{id: int, label: string}>
+     */
+    private function parentChoiceRows(array $items, string $defaultCode): array
+    {
+        $rows = [];
+        foreach ($this->groupByTranslation($items) as $byLocale) {
+            $canonical = $this->pickCanonical($byLocale, $defaultCode);
+            $id = $canonical->getId();
+            if ($id === null) {
+                continue;
+            }
+            $parts = [];
+            foreach ($byLocale as $code => $member) {
+                $parts[] = $member->getLabel().' ('.$code.')';
+            }
+            $rows[] = ['id' => $id, 'label' => implode(' · ', $parts)];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param list<MenuItem> $allItems
+     */
+    private function localeParent(?MenuItem $canonicalParent, string $locale, array $allItems): ?MenuItem
+    {
+        if (!$canonicalParent instanceof MenuItem) {
+            return null;
+        }
+        if ($canonicalParent->getLocale() === $locale) {
+            return $canonicalParent;
+        }
+
+        return $this->translationSiblings($canonicalParent, $allItems)[$locale] ?? null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function collectLocaleValues(Request $request, string $field): array
+    {
+        $raw = $request->request->all($field);
+        if (!\is_array($raw)) {
+            return [];
+        }
+
+        $supported = [];
+        foreach ($this->localeProvider->getLocales() as $locale) {
+            $supported[$locale->code] = true;
+        }
+
+        $out = [];
+        foreach ($raw as $code => $value) {
+            if (!\is_string($code) || !isset($supported[$code])) {
+                continue;
+            }
+            $trimmed = trim((string) $value);
+            if ($trimmed === '') {
+                continue;
+            }
+            $out[$code] = $trimmed;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array<string, string|null>
+     */
+    private function collectLocaleUrls(Request $request): array
+    {
+        $raw = $request->request->all('urls');
+        if (!\is_array($raw)) {
+            return [];
+        }
+
+        $supported = [];
+        foreach ($this->localeProvider->getLocales() as $locale) {
+            $supported[$locale->code] = true;
+        }
+
+        $out = [];
+        foreach ($raw as $code => $value) {
+            if (!\is_string($code) || !isset($supported[$code])) {
+                continue;
+            }
+            $trimmed = trim((string) $value);
+            $out[$code] = $trimmed !== '' ? $trimmed : null;
+        }
+
+        return $out;
     }
 
     /**

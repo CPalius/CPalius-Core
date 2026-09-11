@@ -8,15 +8,13 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * url_aliases tablosunu oluşturur — Node/Category'lerin mevcut otomatik
- * slug+locale URL'inin YERİNE GEÇMEYEN, üstüne EK özel/manuel yol tanımlama
- * imkanı (bkz. App\Entity\UrlAlias, Core\Routing\UrlAliasListener).
+ * Creates url_aliases for optional manual paths alongside canonical slug+locale URLs.
  */
 final class Version20260717120000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'url_aliases tablosunu oluşturur (Node/Category için ek özel URL tanımlama).';
+        return 'Creates the url_aliases table (additional custom URL definitions for Node/Category).';
     }
 
     public function up(Schema $schema): void

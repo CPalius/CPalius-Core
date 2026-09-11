@@ -7,6 +7,7 @@
 {% endblock %}
 
 {% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
     <h2 class="text-fs-lg font-semibold mb-3">{{ 'studio.forum.moderation.reports.header'|trans({}, 'forums') }}</h2>
     <twig:studio:card padded="{{ false }}">
         <twig:studio:table headers="{{ [
@@ -152,5 +153,65 @@
                 <button type="submit" class="btn btn-sm btn-primary mb-0.5">{{ 'studio.forum.moderation.bulk.apply'|trans }}</button>
             </div>
         </form>
+    </div>
+
+    <div class="mt-8">
+        <h2 class="text-fs-lg font-semibold mb-3">{{ 'studio.forum.moderation.queue.header'|trans }}</h2>
+        <twig:studio:card padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'studio.forum.moderation.column.post'|trans,
+                'studio.forum.moderation.column.topic_section'|trans,
+                'studio.forum.dashboard.column.author'|trans,
+                'studio.forum.dashboard.column.date'|trans,
+                '',
+            ] }}" empty="{{ heldPosts is empty }}" emptyText="{{ 'studio.forum.moderation.queue.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for post in heldPosts %}
+                        <tr>
+                            <td class="max-w-xs"><p class="text-fs-sm line-clamp-3">{{ post.body|striptags|slice(0, 160) }}</p></td>
+                            <td>
+                                <a href="{{ path('forum_topic', {topicId: post.topic.id, slug: post.topic.slug, _locale: post.topic.section.locale}) }}#post{{ post.id }}" target="_blank">{{ post.topic.title }}</a>
+                                <div class="text-fs-xs text-neutral-500">{{ post.section.title }}</div>
+                            </td>
+                            <td>{{ post.posterName }}</td>
+                            <td class="text-fs-xs text-neutral-500">{{ post.createdAt|date('d.m.Y H:i') }}</td>
+                            <td class="text-right">
+                                <form method="post" action="{{ path('admin_forum_moderation_approve_post', {id: post.id}) }}" class="inline">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_moderation') }}">
+                                    <button class="btn btn-sm btn-primary">{{ 'studio.forum.moderation.action.approve'|trans }}</button>
+                                </form>
+                                <form method="post" action="{{ path('admin_forum_moderation_reject_post', {id: post.id}) }}" class="inline" onsubmit="return confirm({{ 'studio.forum.moderation.reject_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_moderation') }}">
+                                    <button class="btn btn-sm btn-outline-danger">{{ 'studio.forum.moderation.action.reject'|trans }}</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
+    </div>
+
+    <div class="mt-8">
+        <h2 class="text-fs-lg font-semibold mb-3">{{ 'studio.forum.moderation.log.header'|trans }}</h2>
+        <twig:studio:card padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'studio.forum.dashboard.column.date'|trans,
+                'studio.forum.moderation.log.actor'|trans,
+                'studio.forum.moderation.log.action'|trans,
+                'studio.forum.moderation.log.target'|trans,
+            ] }}" empty="{{ moderationLogs is empty }}" emptyText="{{ 'studio.forum.moderation.log.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for log in moderationLogs %}
+                        <tr>
+                            <td class="text-fs-xs text-neutral-500">{{ log.createdAt|date('d.m.Y H:i') }}</td>
+                            <td>{{ log.actor ? log.actor.fullName : '—' }}</td>
+                            <td><code>{{ log.action }}</code></td>
+                            <td class="text-fs-xs">{{ log.targetType }} #{{ log.targetId }}</td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
     </div>
 {% endblock %}

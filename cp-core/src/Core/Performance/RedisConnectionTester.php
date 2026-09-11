@@ -5,11 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Performance;
 
 /**
- * Redis'e phpredis (ext-redis) üzerinden gerçek bir round-trip (PING) atarak
- * bağlantıyı doğrular. Predis (composer kütüphanesi) BİLİNÇLİ OLARAK
- * desteklenmez: proje composer.json'da böyle bir bağımlılık yok ve tek
- * amaç "sunucuda Redis çalışıyor mu" sorusuna PHP-native, ekstra bağımlılık
- * gerektirmeyen bir cevap vermek (YAGNI).
+ * Probes Redis via phpredis PING round-trip; Predis is intentionally unsupported (YAGNI).
  */
 final class RedisConnectionTester implements PerformanceBackendCheckerInterface
 {
@@ -73,7 +69,7 @@ final class RedisConnectionTester implements PerformanceBackendCheckerInterface
             try {
                 $redis->close();
             } catch (\Throwable) {
-                // Bağlantı hiç kurulamadıysa close() da hata verebilir — yok sayılır.
+                // Ignore close errors when the connection was never established.
             }
         }
     }

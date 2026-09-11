@@ -1,6 +1,6 @@
 {#
-    create.html.twig ve edit.html.twig tarafından paylaşılan form gövdesi.
-    Bekler: formAction, formValues, locales, nodes, categories.
+    Shared form body for create.html.twig and edit.html.twig.
+    Expects: formAction, formValues, locales, nodes, categories.
 #}
 <form method="post" action="{{ formAction }}" class="space-y-sp-sm">
     <input type="hidden" name="_token" value="{{ csrf_token('aacp_url_alias_form') }}">
@@ -73,7 +73,7 @@
     <div data-target-panel="route" class="{{ formValues.targetType != 'route' ? 'hidden' : '' }}">
         <label for="target_route_name" class="form-label !text-slate-400">{{ 'aacp.url_alias.form.route_name'|trans }}</label>
         <input type="text" id="target_route_name" name="target_route_name" value="{{ formValues.targetRouteName }}"
-               placeholder="blog_index"
+               placeholder="route_name"
                class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
     </div>
 

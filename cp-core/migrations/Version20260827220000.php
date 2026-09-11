@@ -11,7 +11,7 @@ final class Version20260827220000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Forum bildirimleri ve kullanıcı reputation tabloları (MegaforBB tarzı).';
+        return 'Forum notifications and user reputation tables (MegaforBB-style).';
     }
 
     public function up(Schema $schema): void

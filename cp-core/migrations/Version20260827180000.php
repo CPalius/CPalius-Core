@@ -8,7 +8,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Forum demo: 6 kullanıcı, 12 panoda 250+ kelimelik konular ve çoklu yanıtlar.
+ * Forum demo: 6 users, 250+ word topics across 12 boards, and multiple replies.
  */
 final class Version20260827180000 extends AbstractMigration
 {
@@ -16,7 +16,7 @@ final class Version20260827180000 extends AbstractMigration
 
     public function getDescription(): string
     {
-        return 'Forum demo kullanıcıları, 250+ kelimelik konular ve çoklu yanıtlar ekler.';
+        return 'Adds forum demo users, 250+ word topics, and multiple replies.';
     }
 
     public function up(Schema $schema): void

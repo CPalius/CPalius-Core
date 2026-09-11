@@ -1,0 +1,83 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.logs.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <p class="text-fs-sm !text-slate-500">{{ 'aacp.logs.intro'|trans }}</p>
+            <div class="flex gap-2">
+                <a href="{{ path('aacp_logs_index') }}" class="btn btn-sm btn-primary">{{ 'aacp.logs.tab.app'|trans }}</a>
+                <a href="{{ path('aacp_logs_mail') }}" class="btn btn-sm">{{ 'aacp.logs.tab.mail'|trans }}</a>
+            </div>
+        </div>
+
+        <twig:cp:card>
+            <form method="get" class="mb-sp-sm grid gap-3 md:grid-cols-4">
+                <div>
+                    <label class="form-label" for="level">{{ 'aacp.logs.filter.level'|trans }}</label>
+                    <select id="level" name="level" class="form-select !border-white/10 !bg-dark-1 !text-slate-100">
+                        <option value="">{{ 'aacp.logs.filter.any'|trans }}</option>
+                        {% for level in levels %}
+                            <option value="{{ level }}" {{ filters.level == level ? 'selected' : '' }}>{{ level }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label" for="channel">{{ 'aacp.logs.filter.channel'|trans }}</label>
+                    <select id="channel" name="channel" class="form-select !border-white/10 !bg-dark-1 !text-slate-100">
+                        <option value="">{{ 'aacp.logs.filter.any'|trans }}</option>
+                        {% for channel in channels %}
+                            <option value="{{ channel }}" {{ filters.channel == channel ? 'selected' : '' }}>{{ channel }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label" for="q">{{ 'aacp.logs.filter.q'|trans }}</label>
+                    <div class="flex gap-2">
+                        <input id="q" type="search" name="q" value="{{ filters.q }}" class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                        <button type="submit" class="btn btn-primary">{{ 'aacp.logs.filter.submit'|trans }}</button>
+                    </div>
+                </div>
+            </form>
+
+            <twig:cp:table headers="{{ [
+                'aacp.logs.column.created'|trans,
+                'aacp.logs.column.level'|trans,
+                'aacp.logs.column.channel'|trans,
+                'aacp.logs.column.message'|trans,
+                '',
+            ] }}" empty="{{ items is empty }}">
+                <twig:block name="rows">
+                    {% for entry in items %}
+                        <tr>
+                            <td class="text-fs-xs !text-slate-500 whitespace-nowrap">{{ entry.createdAt|date('d.m.Y H:i:s') }}</td>
+                            <td><code class="text-fs-xs">{{ entry.level }}</code></td>
+                            <td class="!text-slate-400">{{ entry.channel }}</td>
+                            <td class="!text-slate-200 max-w-xl truncate">{{ entry.message }}</td>
+                            <td>
+                                <a href="{{ path('aacp_logs_show', {id: entry.id}) }}" class="text-fs-sm !text-primary-400 hover:!text-primary-300">
+                                    {{ 'aacp.logs.view'|trans }}
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+
+            {% if items.totalPages > 1 %}
+                <nav class="mt-sp-md flex items-center justify-between border-t border-white/10 pt-sp-sm" aria-label="{{ 'aacp.pagination.aria_label'|trans }}">
+                    <span class="text-fs-sm !text-slate-500">{{ items.currentPage }} / {{ items.totalPages }}</span>
+                    <div class="flex gap-2">
+                        {% if items.hasPreviousPage %}
+                            <a class="btn btn-sm" href="{{ path('aacp_logs_index', filters|merge({page: items.currentPage - 1})) }}">‹ {{ 'aacp.pagination.previous'|trans }}</a>
+                        {% endif %}
+                        {% if items.hasNextPage %}
+                            <a class="btn btn-sm" href="{{ path('aacp_logs_index', filters|merge({page: items.currentPage + 1})) }}">{{ 'aacp.pagination.next'|trans }} ›</a>
+                        {% endif %}
+                    </div>
+                </nav>
+            {% endif %}
+        </twig:cp:card>
+    </div>
+{% endblock %}

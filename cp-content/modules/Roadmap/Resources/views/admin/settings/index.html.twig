@@ -15,7 +15,7 @@
                 <div class="grid gap-4 md:grid-cols-2">
                     {% for definition in groupDefs %}
                         <div class="{{ definition.type == 'textarea' ? 'md:col-span-2' : '' }}">
-                            <label class="form-label">{{ definition.label }}</label>
+                            <label class="form-label">{{ definition.label|trans }}</label>
 
                             {% if definition.type in ['checkbox', 'boolean'] %}
                                 <label class="mt-1 flex items-center gap-2">

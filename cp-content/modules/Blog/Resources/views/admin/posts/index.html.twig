@@ -28,7 +28,7 @@
                         </td>
                         <td>
                             <span class="badge badge-neutral">
-                                {{ ('blog.posts.sub_type.'~post.getDataValue('post_sub_type', 'makale'))|trans }}
+                                {{ blog_post_sub_type_label(post.getDataValue('post_sub_type', 'makale')) }}
                             </span>
                         </td>
                         <td>

@@ -13,67 +13,8 @@ use League\Flysystem\FilesystemOperator;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
- * Yüklenen dosyaları cpalius_storage (Flysystem) diskine hash tabanlı bir
- * isimlendirmeyle kaydeder ve karşılığında bir Asset entity'si kalıcı hale
- * getirir. Asset, Node'dan bağımsız 1. sınıf bir vatandaştır (bkz. Asset
- * entity doc-block'u) — bu servis onun TEK yazma kapısıdır.
- *
- * ══ GÜVENLİK SÖZLEŞMESİ (denetim bulguları SEC-01 / SEC-02) ══════════════
- *
- * Bu metot bir GÜVENLİK SINIRIDIR. Manifesto Law 5: "Developer discipline
- * is not trusted; security is enforced by default." Buradan geçen her
- * dosya, çağıranın kim olduğuna bakılmaksızın doğrulanır — Media modülü,
- * başka bir modül, bir tema, bir CLI komutu ya da gelecekte yazılacak bir
- * içe aktarıcı fark etmez.
- *
- * Daha önce durum böyle DEĞİLDİ ve iki ayrı açık vardı:
- *
- *   SEC-02 (katman hatası). Tek doğrulama (finfo + MIME ön ek listesi)
- *   cp-content/modules/Media/Controller/Admin/MediaAdminController içinde,
- *   yani KULLANICI ALANINDAYDI. Bu metot hiçbir kontrol yapmıyordu; onu
- *   doğrudan çağıran herhangi bir kod tüm doğrulamayı atlıyordu.
- *
- *   SEC-01 (istemci kontrollü dosya adı). Uzantı
- *   getClientOriginalExtension() ile İSTEMCİDEN alınıyordu. finfo dosyanın
- *   İÇERİĞİNE bakar, ADINA değil — dolayısıyla içeriği geçerli bir GIF
- *   olan ama "evil.php" adıyla gönderilen bir poliglot dosya doğrulamadan
- *   geçip diske "<hash>.php" olarak yazılıyordu. public/uploads doğrudan
- *   web kökünün altında olduğu için sonuç uzaktan kod çalıştırmaydı.
- *
- * Yeni akış, her iki açığı da kaynağında kapatır:
- *
- *   1. PHP yükleme hatası var mı?            -> InvalidUploadException
- *   2. finfo ile GERÇEK MIME tespiti          -> InvalidUploadException
- *   3. MimeTypeAllowlist kontrolü (fail-closed) -> UnsupportedAssetTypeException
- *   4. İçerik hash'i (sha256) + tekrar kontrolü
- *   5. Uzantı DOĞRULANMIŞ MIME'dan türetilir  <- istemciden ASLA
- *   6. Diske yaz + Asset'i persist et
- *
- * Sıra önemlidir: doğrulama hash'lemeden ÖNCE gelir, böylece reddedilecek
- * bir dosya için gereksiz I/O yapılmaz (büyük dosyalarda ucuz bir DoS
- * yüzeyi olurdu).
- *
- * ══ DERİNLEMESİNE SAVUNMA ════════════════════════════════════════════════
- *
- * Bu metot tek başına yeterli SAYILMAZ. public/uploads/.htaccess (ve Nginx
- * karşılığı, bkz. cp-core/docs/security/uploads-hardening.md) dizini
- * çalıştırılamaz kılar. İki katman birbirinden bağımsızdır: uygulama
- * katmanındaki bir regresyon sunucu katmanı tarafından, sunucu
- * yapılandırmasındaki bir eksiklik uygulama katmanı tarafından yakalanır.
- *
- * NOT (geçmiş veri): bu düzeltmeden ÖNCE yüklenmiş dosyalar diskte hâlâ
- * istemciden gelen uzantıyla durabilir. Onları koruyan şey FAZ 0'da
- * eklenen sunucu yapılandırmasıdır. Geçmiş Asset satırlarının yeniden
- * adlandırılması ayrı bir bakım görevidir ve bu değişikliğin kapsamı
- * dışındadır.
- *
- * ══ TEKRAR ÖNLEME (dedup) ════════════════════════════════════════════════
- *
- * Dosya İÇERİĞİNİN sha256 hash'i hesaplanır. Aynı hash zaten varsa (bkz.
- * AssetRepository::findOneByHash), dosya diske TEKRAR yazılmaz ve yeni bir
- * Asset satırı oluşturulmaz — var olan Asset doğrudan döndürülür. Bu hem
- * depolamada tekrarı önler hem de "aynı görseli iki kez yükledim"
- * durumunda veritabanının şişmesini engeller.
+ * Persists uploads to cpalius_storage (Flysystem) with hash-based names and returns Asset entities (sole write gateway; SEC-01/SEC-02).
+ * Validates finfo MIME, MimeTypeAllowlist, content-hash dedup, and server-side extension mapping before write.
  */
 final class AssetManager
 {
@@ -86,15 +27,12 @@ final class AssetManager
     }
 
     /**
-     * @throws InvalidUploadException        Dosya sağlam ulaşmadıysa veya içeriği tespit edilemediyse.
-     * @throws UnsupportedAssetTypeException Gerçek MIME tipi çekirdek izin listesinde değilse.
+     * @throws InvalidUploadException Upload failed or MIME could not be detected from content.
+     * @throws UnsupportedAssetTypeException Detected MIME is not on the core allowlist.
      */
     public function upload(UploadedFile $uploadedFile): Asset
     {
-        // ── 1) Dosya bize sağlam ulaştı mı? ──────────────────────────────
-        // isValid(), PHP'nin UPLOAD_ERR_* kodlarını kontrol eder: boyut
-        // aşımı, kısmi yükleme, eksik geçici dizin. Bu kontrol olmadan
-        // kesik bir dosyanın hash'ini alıp "geçerli" bir Asset üretebiliriz.
+        // Step 1: reject broken PHP uploads (size limit, partial transfer, missing temp dir).
         if (!$uploadedFile->isValid()) {
             throw new InvalidUploadException(sprintf(
                 'Upload failed before validation (PHP error code %d): %s',
@@ -109,23 +47,17 @@ final class AssetManager
             throw new InvalidUploadException(sprintf('Uploaded temporary file is not readable: "%s".', $pathname));
         }
 
-        // ── 2) GERÇEK MIME tipini içerikten tespit et ────────────────────
-        // finfo BİLİNÇLİ olarak doğrudan kullanılır, UploadedFile::
-        // getMimeType() yerine. İkisi de içerik tabanlıdır, ancak
-        // Symfony'nin MimeTypes tahmincisi finfo eklentisi yoksa
-        // UZANTIYA dayalı bir tahminciye geri düşebilir — tam da
-        // kapatmaya çalıştığımız açık. Burada finfo yoksa yükleme
-        // reddedilir (fail-closed), sessizce zayıf bir yola düşmez.
+        // Step 2: detect real MIME from content via finfo (fail-closed; never fall back to extension guessing).
         $detectedMimeType = $this->detectMimeType($pathname);
 
-        // ── 3) İzin listesi — fail-closed ────────────────────────────────
+        // Step 3: core allowlist — fail-closed.
         $extension = $this->mimeTypeAllowlist->extensionFor($detectedMimeType);
 
         if ($extension === null) {
             throw new UnsupportedAssetTypeException($detectedMimeType);
         }
 
-        // ── 4) İçerik hash'i + tekrar kontrolü ───────────────────────────
+        // Step 4: content hash and dedup lookup.
         $hash = hash_file('sha256', $pathname);
 
         if ($hash === false) {
@@ -140,16 +72,12 @@ final class AssetManager
             return $existing;
         }
 
-        // ── 5) Dosya adı: uzantı DOĞRULANMIŞ MIME'dan gelir ──────────────
-        // İstemcinin gönderdiği ad yalnızca Asset::$originalName alanında,
-        // salt görüntüleme amacıyla saklanır ve dosya sistemine ASLA
-        // yansımaz. Hash + kanonik uzantı, adın tamamen bizim
-        // kontrolümüzde olan iki parçasıdır.
+        // Step 5: storage extension comes from validated MIME; client name is display-only.
         $filename = $hash.'.'.$extension;
         $path = date('Y/m');
         $storageKey = $path.'/'.$filename;
 
-        // ── 6) Diske yaz ─────────────────────────────────────────────────
+        // Step 6: write to disk.
         $stream = fopen($pathname, 'r');
         if ($stream === false) {
             throw new InvalidUploadException(sprintf('Could not open uploaded file for reading: "%s".', $pathname));
@@ -167,8 +95,7 @@ final class AssetManager
             filename: $filename,
             originalName: $this->sanitizeOriginalName($uploadedFile->getClientOriginalName()),
             path: $path,
-            // Depolanan MIME tipi de tespit EDİLEN değerdir; istemcinin
-            // gönderdiği Content-Type başlığı hiçbir aşamada güvenilmez.
+            // Persist finfo-detected MIME; never trust client Content-Type headers.
             mimeType: $detectedMimeType,
             fileSize: $uploadedFile->getSize() ?: (filesize($pathname) ?: 0),
             hash: $hash,
@@ -181,11 +108,7 @@ final class AssetManager
     }
 
     /**
-     * Yüklenen dosyanın MIME tipini İÇERİĞİNDEN tespit eder.
-     *
-     * finfo eklentisi yoksa veya içerik tespit edilemezse istisna
-     * fırlatılır — "bilinmiyorsa geçir" (fail-open) davranışı bu sınıfta
-     * kabul edilemez.
+     * Detect MIME type from file content; throws if fileinfo is missing or detection fails (fail-closed).
      */
     private function detectMimeType(string $pathname): string
     {
@@ -206,26 +129,14 @@ final class AssetManager
     }
 
     /**
-     * Orijinal dosya adı yalnızca görüntüleme/indirme amaçlıdır ve dosya
-     * sistemine hiç dokunmaz — yine de veritabanına yazılmadan önce
-     * temizlenir.
-     *
-     * Gerekçe: bu değer yönetim arayüzünde (medya listesi, seçici modal)
-     * ve silme onay mesajlarında gösterilir. Twig otomatik kaçışı orayı
-     * zaten korur, ancak dizin geçişi karakterlerinin (../) ve yeni satır
-     * / NUL baytlarının veritabanına hiç girmemesi, bu alanın ileride
-     * yanlışlıkla bir dosya yolu üretmek için kullanılması riskini
-     * kaynağında ortadan kaldırır (ör. Content-Disposition başlığı).
-     *
-     * Asset::$originalName kolonu 255 karakterdir; kesme burada yapılır ki
-     * uzun bir ad Doctrine seviyesinde bir hataya yol açmasın.
+     * Sanitize client filename for display metadata only (strip path components and control chars; max 255).
      */
     private function sanitizeOriginalName(string $originalName): string
     {
-        // Yalnızca dosya adı bileşenini al (dizin bileşenlerini at).
+        // Basename only — drop directory components.
         $name = basename(str_replace('\\', '/', $originalName));
 
-        // Kontrol karakterlerini ve NUL'u kaldır.
+        // Strip control characters and NUL bytes.
         $name = preg_replace('/[\x00-\x1F\x7F]/u', '', $name) ?? '';
 
         $name = trim($name);

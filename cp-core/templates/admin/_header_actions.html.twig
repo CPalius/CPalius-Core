@@ -1,9 +1,8 @@
 {#
-    Studio header'ının ortak sağ blok içeriği: profil dropdown'u (önceden
-    sidebar altında düz metin olarak duran kullanıcı adı + logout linki
-    buraya taşındı, bkz. admin/layout.html.twig sidebar footer'ı).
+    Studio chrome: profile dropdown. layout.html.twig includes this outside
+    header_actions so page buttons cannot hide the menu.
 #}
-<div class="dropdown">
+<div class="dropdown shrink-0">
     <button type="button" data-dropdown-trigger="studio-profile-menu"
             class="flex items-center gap-2 rounded-full border border-neutral-300 py-1 pe-3 ps-1 hover:bg-neutral-50">
         <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-fs-xs font-semibold text-primary-700">

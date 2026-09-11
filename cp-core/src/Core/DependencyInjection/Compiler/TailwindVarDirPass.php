@@ -6,12 +6,7 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
- * Pristine Root: symfonycasts/tailwind-bundle, derlenmiş CSS önbelleğini
- * varsayılan olarak proje kökünde var/tailwind altına yazar (bundle'ın
- * kendi servis tanımında sabitlenmiştir, config ile değiştirilemez).
- * Bu pass, servis tanımı bundle'ın loadExtension() metodu tarafından
- * kurulduktan SONRA çalışıp 3. argümanı (tailwindVarDir) cp-core/var
- * altına yönlendirir; böylece tüm var/ içeriği tek bir kök altında kalır.
+ * Pristine Root: redirects symfonycasts/tailwind-bundle compiled CSS cache from project var/tailwind to cp-core/var/tailwind.
  */
 final class TailwindVarDirPass implements CompilerPassInterface
 {

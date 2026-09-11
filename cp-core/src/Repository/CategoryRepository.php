@@ -1,71 +1,122 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repository;
 
-use App\Entity\Category;
+use App\Core\Taxonomy\DefaultVocabularies;
+use App\Core\Taxonomy\Entity\Term;
+use App\Core\Taxonomy\Entity\Vocabulary;
+use App\Core\Taxonomy\Repository\TermRepository;
+use App\Core\Taxonomy\Repository\VocabularyRepository;
 use App\Entity\Node;
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * @extends ServiceEntityRepository<Category>
+ * Blog category access over Vocabulary terms (machine_name = blog_category).
+ * Keeps the historical CategoryRepository API used by Blog/SEO/AACP.
  */
-class CategoryRepository extends ServiceEntityRepository
+class CategoryRepository
 {
-    public function __construct(ManagerRegistry $registry)
-    {
-        parent::__construct($registry, Category::class);
+    public function __construct(
+        private readonly TermRepository $terms,
+        private readonly VocabularyRepository $vocabularies,
+        private readonly EntityManagerInterface $entityManager,
+    ) {
     }
 
-    public function findOneBySlug(string $slug, string $locale): ?Category
+    public function find(int|string $id): ?Term
     {
-        return $this->findOneBy(['slug' => $slug, 'locale' => $locale]);
+        $term = $this->terms->find((int) $id);
+
+        return $this->isCategory($term) ? $term : null;
+    }
+
+    public function findOneBySlug(string $slug, string $locale): ?Term
+    {
+        return $this->terms->findOneBySlug($this->vocabulary(), $slug, $locale);
     }
 
     /**
-     * AACP Dashboard "Kategoriler" kartı için toplam sayı (tüm diller).
+     * @return list<Term>
      */
-    public function countAll(): int
+    public function findByLocale(string $locale): array
     {
-        return (int) $this->createQueryBuilder('c')
-            ->select('COUNT(c.id)')
-            ->getQuery()
-            ->getSingleScalarResult();
+        return $this->terms->findByVocabulary($this->vocabulary(), $locale);
     }
 
     /**
-     * Locale için kök kategoriler + çocukları (tek sorguda eager).
+     * Resolves several ids at once, keeping the vocabulary guard that find()
+     * applies to a single id.
      *
-     * @return list<Category>
+     * The guard is not cosmetic: these ids arrive from a submitted form. Without
+     * it, a crafted POST carrying a tag's id — or any other vocabulary's term id
+     * — would attach that term to a node as if it were a category.
+     *
+     * @param list<int|string> $ids
+     *
+     * @return list<Term>
      */
-    public function findTreeByLocale(string $locale): array
+    public function findByIds(array $ids): array
     {
-        /** @var list<Category> $all */
-        $all = $this->createQueryBuilder('c')
-            ->leftJoin('c.children', 'ch')
-            ->addSelect('ch')
-            ->andWhere('c.locale = :locale')
-            ->setParameter('locale', $locale)
-            ->orderBy('c.name', 'ASC')
-            ->addOrderBy('ch.name', 'ASC')
-            ->getQuery()
-            ->getResult();
+        $ids = array_values(array_filter(array_map(
+            static fn (int|string $id): int => (int) $id,
+            $ids,
+        ), static fn (int $id): bool => $id > 0));
+
+        if ($ids === []) {
+            return [];
+        }
 
         return array_values(array_filter(
-            $all,
-            static fn (Category $category): bool => $category->getParent() === null
+            $this->terms->findByIds($ids),
+            fn (Term $term): bool => $this->isCategory($term),
         ));
     }
 
     /**
-     * Yayınlanmış yazı sayısı (many-to-many), kategori id → adet.
+     * Every category across every locale, ordered by name.
      *
+     * Used by target pickers that deliberately span locales (the URL alias
+     * admin shows the locale next to each name), which is why this cannot be
+     * expressed with findByLocale().
+     *
+     * @return list<Term>
+     */
+    public function findAllSorted(int $limit = 200): array
+    {
+        $terms = $this->terms->findByVocabulary($this->vocabulary());
+
+        usort($terms, static fn (Term $a, Term $b): int => strcasecmp($a->getName(), $b->getName()));
+
+        return array_slice($terms, 0, max(1, $limit));
+    }
+
+    public function countAll(): int
+    {
+        return $this->terms->countByVocabulary($this->vocabulary());
+    }
+
+    /**
+     * @return list<Term>
+     */
+    public function findTreeByLocale(string $locale): array
+    {
+        $all = $this->terms->findByVocabulary($this->vocabulary(), $locale);
+
+        return array_values(array_filter(
+            $all,
+            static fn (Term $term): bool => $term->getParent() === null,
+        ));
+    }
+
+    /**
      * @return array<int, int>
      */
     public function countPublishedPostsByLocale(string $type, string $locale): array
     {
         /** @var list<array{id: int, cnt: string|int}> $rows */
-        $rows = $this->getEntityManager()->createQueryBuilder()
+        $rows = $this->entityManager->createQueryBuilder()
             ->select('c.id AS id, COUNT(DISTINCT n.id) AS cnt')
             ->from(Node::class, 'n')
             ->innerJoin('n.categories', 'c')
@@ -74,9 +125,11 @@ class CategoryRepository extends ServiceEntityRepository
             ->andWhere('n.status = :status')
             ->andWhere('n.deletedAt IS NULL')
             ->andWhere('c.locale = :locale')
+            ->andWhere('c.vocabulary = :vocabulary')
             ->setParameter('type', $type)
             ->setParameter('locale', $locale)
             ->setParameter('status', Node::STATUS_PUBLISHED)
+            ->setParameter('vocabulary', $this->vocabulary())
             ->groupBy('c.id')
             ->getQuery()
             ->getArrayResult();
@@ -87,5 +140,20 @@ class CategoryRepository extends ServiceEntityRepository
         }
 
         return $counts;
+    }
+
+    public function vocabulary(): Vocabulary
+    {
+        $vocabulary = $this->vocabularies->findOneByMachineName(DefaultVocabularies::BLOG_CATEGORY);
+        if (!$vocabulary instanceof Vocabulary) {
+            throw new \RuntimeException('Vocabulary blog_category is missing — run migrations / Blog install.');
+        }
+
+        return $vocabulary;
+    }
+
+    private function isCategory(?Term $term): bool
+    {
+        return $term instanceof Term && $term->getVocabulary()->getMachineName() === DefaultVocabularies::BLOG_CATEGORY;
     }
 }

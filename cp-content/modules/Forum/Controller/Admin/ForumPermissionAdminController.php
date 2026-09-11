@@ -31,23 +31,31 @@ final class ForumPermissionAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET', 'POST'])]
-    #[CpAdminMenu(label: 'Forum İzinleri', icon: 'heroicons:key', panel: 'studio', priority: 27, capability: 'forum.permissions.manage', group: 'İçerik', parent: 'admin_forum_dashboard')]
+    #[CpAdminMenu(label: 'studio.forum.menu.permissions', icon: 'heroicons:key', panel: 'studio', priority: 27, capability: 'forum.permissions.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
     public function index(Request $request): Response
     {
+        $locale = $this->localeProvider->resolve(
+            \is_string($request->request->get('locale') ?? $request->query->get('locale'))
+                ? (string) ($request->request->get('locale') ?? $request->query->get('locale'))
+                : null,
+        );
+
         if ($request->isMethod('POST')) {
             $this->assertValidCsrf($request);
             $matrix = $this->parsePostedMatrix($request);
-            $this->permissionService->persistMatrix($matrix, $this->localeProvider->getDefaultCode());
+            $this->permissionService->persistMatrix($matrix, $locale);
             $this->addFlash('success', $this->translator->trans('studio.forum.permissions.saved', [], 'forums'));
 
-            return $this->redirectToRoute('admin_forum_permissions_index');
+            return $this->redirectToRoute('admin_forum_permissions_index', ['locale' => $locale]);
         }
 
         return $this->render('@ForumModule/admin/permissions/index.html.twig', [
-            'matrix' => $this->permissionService->buildAdminMatrix($this->localeProvider->getDefaultCode()),
-            'groups' => $this->permissionService->buildAdminMatrixGrouped($this->localeProvider->getDefaultCode()),
-            'roles' => ForumNodePermission::ROLES,
+            'matrix' => $this->permissionService->buildAdminMatrix($locale),
+            'groups' => $this->permissionService->buildAdminMatrixGrouped($locale),
+            'roles' => $this->permissionService->matrixRoles(),
             'permissions' => ForumNodePermission::PERMISSIONS,
+            'locales' => $this->localeProvider->getLocales(),
+            'currentLocale' => $locale,
         ]);
     }
 
@@ -68,7 +76,7 @@ final class ForumPermissionAdminController extends AbstractController
                 continue;
             }
             foreach ($roles as $role => $perms) {
-                if (!\is_array($perms) || !\in_array($role, ForumNodePermission::ROLES, true)) {
+                if (!\is_array($perms) || !$this->permissionService->isMatrixRole((string) $role)) {
                     continue;
                 }
                 foreach ($perms as $perm => $value) {

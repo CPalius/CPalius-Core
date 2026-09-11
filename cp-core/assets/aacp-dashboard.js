@@ -1,183 +1,29 @@
 import Chart from 'chart.js/auto';
 
 /**
- * AACP Genel Bakış: eskiden ayrı bir sayfa olan "Sistem Monitörü" ile
- * birleştirilmiş, Chart.js destekli canlı komuta merkezi.
- *
- * data-aacp-dashboard-* attribute'ları ile bağlanır, bulunamazsa sessizce
- * hiçbir şey yapmaz. AACP çekirdeğin kurtarma konsolu olduğu için burada
- * Stimulus/Turbo kullanılmaz — sadece core importmap girişi (app.js) ve
- * Chart.js üzerinden yüklenen düz vanilla JS.
+ * AACP command desk: health poll, live telemetry feed, and threat charts.
  */
-const PRIMARY = '#458EFF';
-const WARNING = '#FACC15';
-const DANGER = '#EF4444';
-const TRACK = 'rgba(255, 255, 255, 0.08)';
-const HISTORY_LENGTH = 30;
-const PALETTE = ['#458EFF', '#22C55E', '#FACC15', '#F87171', '#A78BFA', '#94A3B8'];
 
-function colorForPercent(pct) {
-    if (pct > 85) {
-        return DANGER;
-    }
-    if (pct > 60) {
-        return WARNING;
-    }
-    return PRIMARY;
-}
+const SEV_CLASS = {
+    info: 'aacp-sev-info',
+    warning: 'aacp-sev-warning',
+    critical: 'aacp-sev-critical',
+    threat: 'aacp-sev-threat',
+};
 
-function createDoughnut(canvas) {
-    const max = parseFloat(canvas.dataset.chartMax || '100');
+const VECTOR_LABELS = {
+    sqli_attempt: 'SQLi',
+    xss_attempt: 'XSS',
+    scanner_detected: 'Scanner',
+    path_traversal: 'LFI',
+    login_attempt: 'Login',
+};
 
-    return new Chart(canvas, {
-        type: 'doughnut',
-        data: {
-            datasets: [{
-                data: [0, max],
-                backgroundColor: [PRIMARY, TRACK],
-                borderWidth: 0,
-                circumference: 270,
-                rotation: 225,
-            }],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '78%',
-            animation: { duration: 400 },
-            plugins: {
-                legend: { display: false },
-                tooltip: { enabled: false },
-            },
-        },
-    });
-}
-
-function updateDoughnut(chart, value, max) {
-    if (!chart || value === null || value === undefined) {
-        return;
-    }
-    const clamped = Math.max(0, Math.min(max, value));
-    chart.data.datasets[0].data = [clamped, max - clamped];
-    chart.data.datasets[0].backgroundColor[0] = colorForPercent((clamped / max) * 100);
-    chart.update('none');
-}
-
-function createHistoryChart(canvas) {
-    return new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels: new Array(HISTORY_LENGTH).fill(''),
-            datasets: [{
-                data: new Array(HISTORY_LENGTH).fill(null),
-                borderColor: PRIMARY,
-                backgroundColor: 'rgba(69, 142, 255, 0.12)',
-                borderWidth: 2,
-                pointRadius: 0,
-                tension: 0.35,
-                fill: true,
-            }],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false,
-            scales: {
-                x: { display: false },
-                y: { display: false, beginAtZero: true },
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: { enabled: false },
-            },
-        },
-    });
-}
-
-function pushHistory(chart, value) {
-    if (!chart || value === null || value === undefined) {
-        return;
-    }
-    const data = chart.data.datasets[0].data;
-    data.push(value);
-    data.shift();
-    chart.update('none');
-}
-
-/**
- * İçerik/Altyapı/Modül bölümlerindeki yatay mini bar chart'lar — statik
- * veri (data-chart-labels/data-chart-values, sunucu-taraflı bir kez
- * render edilir), polling'e dahil DEĞİLDİR (bkz. AACPController::
- * buildContentReport() docblock'u — nadiren değişen sayılar için 4
- * saniyede bir sorgu atmanın maliyeti yok).
- */
-function createBarChart(canvas) {
-    const labels = (canvas.dataset.chartLabels || '').split(',').filter(Boolean);
-    const values = (canvas.dataset.chartValues || '').split(',').map(Number);
-
-    return new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                data: values,
-                backgroundColor: labels.map((_, i) => PALETTE[i % PALETTE.length]),
-                borderRadius: 4,
-            }],
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 300 },
-            scales: {
-                x: { display: false },
-                y: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } },
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: { enabled: true },
-            },
-        },
-    });
-}
-
-/**
- * createDoughnut()'un aksine tek bir "yüzde" değil, birden fazla
- * kategoriyi (ör. duruma göre içerik sayısı) gösteren, statik/tek
- * seferlik bir doughnut — polling'e dahil değildir.
- */
-function createStaticDoughnut(canvas) {
-    const labels = (canvas.dataset.chartLabels || '').split(',').filter(Boolean);
-    const values = (canvas.dataset.chartValues || '').split(',').map(Number);
-
-    return new Chart(canvas, {
-        type: 'doughnut',
-        data: {
-            labels,
-            datasets: [{
-                data: values,
-                backgroundColor: labels.map((_, i) => PALETTE[i % PALETTE.length]),
-                borderWidth: 0,
-            }],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '65%',
-            animation: { duration: 300 },
-            plugins: {
-                legend: { display: true, position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 8 } },
-                tooltip: { enabled: true },
-            },
-        },
-    });
-}
+const VECTOR_COLORS = ['#F87171', '#FACC15', '#FB923C', '#A78BFA', '#64748B'];
 
 function initAacpDashboard(root) {
     const url = root.dataset.aacpDashboardUrl;
     const interval = parseInt(root.dataset.aacpDashboardInterval || '4000', 10);
-
     if (!url) {
         return;
     }
@@ -185,75 +31,28 @@ function initAacpDashboard(root) {
     const statusEl = root.querySelector('[data-aacp-dashboard-target="status"]');
     const dotEl = root.querySelector('[data-aacp-dashboard-target="dot"]');
     const pulseEl = root.querySelector('[data-aacp-dashboard-target="pulse"]');
-    const updatedAtEl = root.querySelector('[data-aacp-dashboard-target="updatedAt"]');
+    const uptimeEl = root.querySelector('[data-aacp-dashboard-target="uptime"]');
+    const cronEl = root.querySelector('[data-aacp-dashboard-target="cronLastRun"]');
+    const phpEl = root.querySelector('[data-aacp-dashboard-target="phpVersion"]');
+    const barEl = root.querySelector('[data-aacp-opcache-bar]');
 
     const setField = (target, field, value) => {
-        const el = root.querySelector(`[data-aacp-dashboard-target="${target}"] [data-field="${field}"]`);
+        const el = root.querySelector(`[data-aacp-dashboard-target="${target}"][data-field="${field}"]`)
+            || root.querySelector(`[data-aacp-dashboard-target="${target}"] [data-field="${field}"]`);
         if (el) {
             el.textContent = value;
         }
-    };
-
-    const charts = {};
-    let staticChartIndex = 0;
-    root.querySelectorAll('[data-aacp-chart]').forEach((canvas) => {
-        const key = canvas.dataset.aacpChart;
-        if (key.endsWith('-history')) {
-            charts[key] = createHistoryChart(canvas);
-        } else if (key === 'bar') {
-            charts[`bar-${staticChartIndex++}`] = createBarChart(canvas);
-        } else if (key === 'doughnut-static') {
-            charts[`doughnut-static-${staticChartIndex++}`] = createStaticDoughnut(canvas);
-        } else {
-            charts[key] = createDoughnut(canvas);
-        }
-    });
-
-    /**
-     * Kritik Uyarı Şeridi'ni canlı tutar — Twig'deki aynı seviye/renk
-     * eşlemesini (level==='danger' → border-danger-500/60 bg-danger-500/10
-     * text-danger-200, 'warning' için warning-* karşılıkları) tekrarlar.
-     * Liste boşsa container boşaltılır, doluysa yeniden basılır.
-     */
-    const alertsContainer = document.querySelector('[data-aacp-critical-alerts]');
-    const renderCriticalAlerts = (alerts) => {
-        if (!alertsContainer) {
-            return;
-        }
-        if (!Array.isArray(alerts) || alerts.length === 0) {
-            alertsContainer.innerHTML = '';
-            return;
-        }
-
-        alertsContainer.innerHTML = alerts.map((alert) => {
-            const isDanger = alert.level === 'danger';
-            const borderBg = isDanger ? 'border-danger-500/60 bg-danger-500/10' : 'border-warning-500/60 bg-warning-500/10';
-            const iconColor = isDanger ? 'text-danger-400' : 'text-warning-400';
-            const textColor = isDanger ? 'text-danger-200' : 'text-warning-200';
-            const message = alert.message || alert.messageKey || '';
-
-            return `<div class="flex items-center gap-3 rounded-lg border ${borderBg} px-sp-sm py-sp-xs">
-                <span class="h-5 w-5 shrink-0 ${iconColor}">⚠</span>
-                <p class="text-fs-sm font-medium ${textColor}">${message}</p>
-            </div>`;
-        }).join('');
     };
 
     const setLive = (isLive) => {
         if (!statusEl) {
             return;
         }
-        statusEl.textContent = isLive ? 'canlı' : 'bağlantı hatası';
-        statusEl.classList.toggle('text-primary-400', isLive);
-        statusEl.classList.toggle('text-danger-400', !isLive);
+        statusEl.classList.toggle('is-down', !isLive);
         [dotEl, pulseEl].forEach((el) => {
-            if (!el) {
-                return;
+            if (el) {
+                el.classList.toggle('is-down', !isLive);
             }
-            el.classList.toggle('bg-primary-500', isLive);
-            el.classList.toggle('bg-primary-400', isLive);
-            el.classList.toggle('bg-danger-500', !isLive);
-            el.classList.toggle('bg-danger-400', !isLive);
         });
     };
 
@@ -265,40 +64,60 @@ function initAacpDashboard(root) {
             }
             const data = await response.json();
 
-            if (data.load && data.load.available) {
-                setField('load', 'one', data.load.one);
-                setField('load', 'five', data.load.five);
-                setField('load', 'fifteen', data.load.fifteen);
-                updateDoughnut(charts.load, data.load.one, 4);
-                pushHistory(charts['load-history'], data.load.one);
+            if (phpEl && data.phpVersion) {
+                phpEl.textContent = data.phpVersion;
             }
-
-            setField('memory', 'phpUsageMiB', `${data.memory.phpUsageMiB} MiB`);
-            setField('memory', 'phpPeakMiB', `${data.memory.phpPeakMiB} MiB`);
-            setField('memory', 'limit', data.memory.limit);
-            if (data.memory.memoryUsagePercent !== null && data.memory.memoryUsagePercent !== undefined) {
-                setField('memory', 'memoryUsagePercent', `${data.memory.memoryUsagePercent}%`);
-                updateDoughnut(charts.memory, data.memory.memoryUsagePercent, 100);
+            if (uptimeEl && data.uptime && data.uptime.label) {
+                uptimeEl.textContent = data.uptime.label;
             }
-
-            if (data.opcache.enabled) {
-                setField('opcache', 'hitRate', `%${data.opcache.hitRate}`);
-                setField('opcache', 'usedMemoryMiB', `${data.opcache.usedMemoryMiB} MiB`);
-                setField('opcache', 'freeMemoryMiB', `${data.opcache.freeMemoryMiB} MiB`);
-                setField('opcache', 'numCachedScripts', data.opcache.numCachedScripts);
-                updateDoughnut(charts.opcache, data.opcache.hitRate, 100);
+            if (cronEl && data.cron && data.cron.lastRunLabel) {
+                cronEl.textContent = data.cron.lastRunLabel;
             }
-
-            if (data.database.connected) {
-                setField('database', 'platform', data.database.platform);
-            } else {
-                setField('database', 'error', data.database.error);
+            if (data.memory) {
+                setField('memory', 'phpUsageMiB', `${data.memory.phpUsageMiB} MiB`);
+                setField('memory', 'limit', data.memory.limit);
             }
-
-            if (updatedAtEl) {
-                updatedAtEl.textContent = data.generatedAt;
+            if (data.opcache) {
+                const hit = data.opcache.hitRate;
+                setField('opcache', 'hitRate', hit === null || hit === undefined ? '—' : `${hit}%`);
+                if (barEl) {
+                    barEl.style.width = `${Math.max(0, Math.min(100, hit || 0))}%`;
+                }
             }
-            renderCriticalAlerts(data.criticalAlerts);
+            if (data.queue) {
+                setField('queue', 'pending', data.queue.pending === null || data.queue.pending === undefined ? '—' : String(data.queue.pending));
+            }
+            if (data.load) {
+                setField('load', 'label', data.load.label || '—');
+            }
+            if (data.requestDurationMs !== null && data.requestDurationMs !== undefined) {
+                const reqEl = root.querySelector('[data-aacp-dashboard-target="requestDurationMs"]');
+                if (reqEl) {
+                    reqEl.textContent = `${data.requestDurationMs} ms`;
+                }
+            }
+            if (data.database) {
+                const db = data.database;
+                setField('database', 'latencyMs', db.latencyMs === null || db.latencyMs === undefined ? '—' : `${db.latencyMs} ms`);
+                setField('database', 'name', db.name || '—');
+                setField('database', 'version', db.version || '—');
+                setField('database', 'sizeLabel', db.sizeLabel || '—');
+                setField('database', 'tableCount', db.tableCount === null || db.tableCount === undefined ? '—' : String(db.tableCount));
+                setField('database', 'charset', db.charset || '—');
+                setField('database', 'slowQueries', db.slowQueries === null || db.slowQueries === undefined ? '—' : String(db.slowQueries));
+                setField('database', 'serverUptime', db.serverUptime || '—');
+                let connections = '—';
+                if (db.threadsConnected !== null && db.threadsConnected !== undefined) {
+                    connections = db.maxConnections ? `${db.threadsConnected} / ${db.maxConnections}` : String(db.threadsConnected);
+                }
+                setField('database', 'connections', connections);
+            }
+            if (statusEl && data.statusLabel) {
+                statusEl.textContent = data.statusLabel;
+            }
+            if (data.performance) {
+                updatePerformance(root, data.performance);
+            }
             setLive(true);
         } catch (error) {
             setLive(false);
@@ -307,90 +126,534 @@ function initAacpDashboard(root) {
 
     refresh();
     setInterval(refresh, Number.isFinite(interval) && interval > 0 ? interval : 4000);
+
+    initCyberButtons(root);
+    initTelemetry(root);
 }
 
-/**
- * Widget aç/kapa paneli — bağımsız çalışır (initAacpDashboard'un
- * data-aacp-dashboard root'undan bağımsız), gear butonuna tıklayınca
- * paneli açar/kapatır, her checkbox değişikliğinde (a) ilgili
- * [data-widget-id] elementini anında gizler/gösterir, (b) fire-and-forget
- * bir AJAX çağrısıyla User::data'ya kalıcılaştırır. Başarısız olursa
- * checkbox+DOM durumu geri alınır (setLive(false) ile aynı fail-soft
- * felsefe).
- */
-function initWidgetSettings() {
-    const trigger = document.querySelector('[data-aacp-widget-settings-trigger]');
-    const panel = document.querySelector('[data-aacp-widget-settings-panel]');
-    if (!trigger || !panel) {
+function updatePerformance(root, performance) {
+    const onLabel = root.dataset.labelPerfOn || 'ON';
+    const offLabel = root.dataset.labelPerfOff || 'OFF';
+    const naLabel = root.dataset.labelPerfNa || 'n/a';
+
+    ['cpalius', 'redis', 'memcached', 'varnish', 'pagespeed', 'opcache'].forEach((key) => {
+        const row = performance[key];
+        const card = root.querySelector(`[data-perf-backend="${key}"]`);
+        if (!row || !card) {
+            return;
+        }
+        const status = card.querySelector('[data-perf-field="status"]');
+        if (status) {
+            status.textContent = row.online ? onLabel : offLabel;
+            status.classList.toggle('is-on', !!row.online);
+            status.classList.toggle('is-off', !row.online);
+        }
+        const count = card.querySelector('[data-perf-field="count"]');
+        if (count) {
+            count.textContent = row.countUnavailable ? naLabel : (row.count === null || row.count === undefined ? '—' : String(row.count));
+        }
+        const size = card.querySelector('[data-perf-field="size"]');
+        if (size) {
+            size.textContent = row.sizeLabel || '—';
+        }
+        const meta = card.querySelector('[data-perf-field="meta"]');
+        if (meta) {
+            meta.textContent = row.meta || '';
+        }
+    });
+
+    const body = root.querySelector('[data-perf-pages]');
+    if (!body || !performance.cpalius || !Array.isArray(performance.cpalius.pages)) {
+        return;
+    }
+    const pages = performance.cpalius.pages;
+    if (!pages.length) {
+        const emptyLabel = root.dataset.labelPerfPagesEmpty || '—';
+        body.innerHTML = `<tr data-perf-pages-empty><td colspan="3" class="!text-slate-500">${escapeHtml(emptyLabel)}</td></tr>`;
+        return;
+    }
+    body.innerHTML = pages.map((page) => `<tr><td class="!break-all">${escapeHtml(page.path || '')}</td><td>${escapeHtml(page.sizeLabel || '—')}</td><td>${escapeHtml(page.mtimeLabel || '')}</td></tr>`).join('');
+}
+
+function initCyberButtons(root) {
+    const csrf = root.dataset.cacheRebuildCsrf;
+    const urls = {
+        cache: root.dataset.cacheRebuildClearUrl,
+        opcache: root.dataset.cacheRebuildOpcacheUrl,
+    };
+
+    root.querySelectorAll('[data-aacp-action]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const action = button.dataset.aacpAction;
+            const url = urls[action];
+            if (!url || !csrf) {
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                const formData = new FormData();
+                formData.append('_token', csrf);
+                const response = await fetch(url, { method: 'POST', body: formData });
+                await response.json();
+            } catch (error) {
+                // Keep the console usable; the next poll refreshes telemetry.
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
+}
+
+function readJson(el, attr, fallback) {
+    try {
+        return JSON.parse(el.getAttribute(attr) || 'null') ?? fallback;
+    } catch (e) {
+        return fallback;
+    }
+}
+
+function truncateUri(uri) {
+    const value = String(uri || '');
+    return value.length > 48 ? `${value.slice(0, 48)}…` : value;
+}
+
+function parseRowPayload(tr) {
+    const field = tr?.querySelector('[data-telemetry-json]');
+    if (!field) {
+        return null;
+    }
+    try {
+        return JSON.parse(field.value || '{}');
+    } catch (e) {
+        return null;
+    }
+}
+
+function createFeedRow(row, detailsLabel, securityMode) {
+    const tr = document.createElement('tr');
+    tr.dataset.telemetryId = String(row.id);
+
+    const time = document.createElement('td');
+    time.textContent = row.time || '';
+    tr.appendChild(time);
+
+    if (securityMode) {
+        const sevTd = document.createElement('td');
+        const sev = document.createElement('span');
+        sev.className = `aacp-sev ${SEV_CLASS[row.severity] || 'aacp-sev-info'}`;
+        sev.textContent = row.severity || '';
+        sevTd.appendChild(sev);
+        tr.appendChild(sevTd);
+    }
+
+    const ip = document.createElement('td');
+    ip.textContent = row.ip || '';
+    tr.appendChild(ip);
+
+    const user = document.createElement('td');
+    user.textContent = row.user || '—';
+    tr.appendChild(user);
+
+    const path = document.createElement('td');
+    path.textContent = `${row.method || ''} ${truncateUri(row.uri)}`.trim();
+    tr.appendChild(path);
+
+    if (securityMode) {
+        const score = document.createElement('td');
+        score.textContent = String(row.threatScore ?? 0);
+        tr.appendChild(score);
+    }
+
+    const actions = document.createElement('td');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'aacp-cyber-btn !py-0.5';
+    button.dataset.telemetryOpen = '';
+    button.textContent = detailsLabel;
+    const payload = document.createElement('textarea');
+    payload.hidden = true;
+    payload.setAttribute('data-telemetry-json', '');
+    payload.value = JSON.stringify(row);
+    actions.append(button, payload);
+    tr.appendChild(actions);
+
+    return tr;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function chartDefaults() {
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
+    Chart.defaults.font.family = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+    Chart.defaults.font.size = 10;
+}
+
+function initTelemetry(root) {
+    const feedUrl = root.dataset.aacpTelemetryUrl;
+    const detailsLabel = root.dataset.labelDetails || 'Details';
+    const securityMode = root.dataset.telemetryMode === 'security';
+    if (!feedUrl) {
         return;
     }
 
-    const closeBtn = panel.querySelector('[data-aacp-widget-settings-close]');
-    const showAllBtn = panel.querySelector('[data-aacp-widget-settings-show-all]');
-    const visibilityUrl = panel.dataset.aacpWidgetVisibilityUrl;
-    const csrfToken = panel.dataset.csrfToken;
+    chartDefaults();
 
-    trigger.addEventListener('click', () => {
-        panel.hidden = !panel.hidden;
-    });
+    const body = root.querySelector('[data-telemetry-body]');
+    const topList = root.querySelector('[data-telemetry-top-ips]');
+    const topPages = root.querySelector('[data-telemetry-top-pages]');
+    const trendCanvas = root.querySelector('[data-telemetry-chart="trend"]');
+    const vectorCanvas = root.querySelector('[data-telemetry-chart="vectors"]');
+    const uniqueEl = root.querySelector('[data-visitor-unique-ips]');
+    const viewsEl = root.querySelector('[data-visitor-page-views]');
+    const interval = parseInt(root.dataset.aacpTelemetryInterval || '3000', 10);
 
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            panel.hidden = true;
+    let lastId = 0;
+    if (body) {
+        body.querySelectorAll('[data-telemetry-id]').forEach((row) => {
+            lastId = Math.max(lastId, parseInt(row.getAttribute('data-telemetry-id') || '0', 10));
         });
     }
 
-    const setWidgetHidden = (widgetId, hidden) => {
-        const el = document.querySelector(`[data-widget-id="${widgetId}"]`);
-        if (el) {
-            el.classList.toggle('hidden', hidden);
-        }
-    };
+    const trendSeed = readJson(root, 'data-telemetry-trend', { labels: [], hits: [], normal: [], threats: [] });
+    const vectorSeed = readJson(root, 'data-telemetry-vectors', []);
 
-    const persistVisibility = async (widgetId, hidden) => {
-        try {
-            const response = await fetch(visibilityUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ widgetId, hidden: hidden ? '1' : '', _token: csrfToken }),
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            return true;
-        } catch (error) {
-            return false;
-        }
-    };
+    let trendChart = null;
+    let vectorChart = null;
 
-    panel.querySelectorAll('[data-widget-toggle]').forEach((checkbox) => {
-        checkbox.addEventListener('change', async () => {
-            const widgetId = checkbox.dataset.widgetToggle;
-            const hidden = !checkbox.checked;
+    if (trendCanvas) {
+        const datasets = securityMode
+            ? [
+                {
+                    label: root.dataset.labelNormal || 'Normal',
+                    data: trendSeed.normal || [],
+                    borderColor: '#34d399',
+                    backgroundColor: 'rgba(52,211,153,0.12)',
+                    tension: 0.35,
+                    fill: true,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                },
+                {
+                    label: root.dataset.labelThreat || 'Threat',
+                    data: trendSeed.threats || [],
+                    borderColor: '#f87171',
+                    backgroundColor: 'rgba(248,113,113,0.12)',
+                    tension: 0.35,
+                    fill: true,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                },
+            ]
+            : [
+                {
+                    label: root.dataset.labelTraffic || 'Traffic',
+                    data: trendSeed.hits || [],
+                    borderColor: '#34d399',
+                    backgroundColor: 'rgba(52,211,153,0.12)',
+                    tension: 0.35,
+                    fill: true,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                },
+            ];
 
-            setWidgetHidden(widgetId, hidden);
-
-            const success = await persistVisibility(widgetId, hidden);
-            if (!success) {
-                checkbox.checked = !checkbox.checked;
-                setWidgetHidden(widgetId, !hidden);
-            }
+        trendChart = new Chart(trendCanvas, {
+            type: 'line',
+            data: { labels: trendSeed.labels || [], datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { boxWidth: 8, padding: 8 } } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { precision: 0 } },
+                },
+            },
         });
-    });
+    }
 
-    if (showAllBtn) {
-        showAllBtn.addEventListener('click', async () => {
-            const checkboxes = panel.querySelectorAll('[data-widget-toggle]');
-            for (const checkbox of checkboxes) {
-                if (!checkbox.checked) {
-                    checkbox.checked = true;
-                    setWidgetHidden(checkbox.dataset.widgetToggle, false);
-                    await persistVisibility(checkbox.dataset.widgetToggle, false);
+    if (vectorCanvas && securityMode) {
+        vectorChart = new Chart(vectorCanvas, {
+            type: 'doughnut',
+            data: vectorChartData(vectorSeed),
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '68%',
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 10 }, padding: 8 } } },
+            },
+        });
+    }
+
+    initModal(root);
+    initBanButtons(root);
+
+    async function poll() {
+        try {
+            const response = await fetch(`${feedUrl}?after_id=${lastId}`, { headers: { Accept: 'application/json' } });
+            if (!response.ok) {
+                return;
+            }
+            const data = await response.json();
+            if (Array.isArray(data.rows) && data.rows.length && body) {
+                const empty = body.querySelector('[data-telemetry-empty]');
+                if (empty) {
+                    empty.remove();
+                }
+                const incoming = [...data.rows].sort((a, b) => a.id - b.id);
+                incoming.forEach((row) => {
+                    if (row.id <= lastId) {
+                        return;
+                    }
+                    lastId = row.id;
+                    body.prepend(createFeedRow(row, detailsLabel, securityMode));
+                });
+                while (body.querySelectorAll('tr').length > 40) {
+                    body.lastElementChild.remove();
                 }
             }
-        });
+            if (data.trend && trendChart) {
+                trendChart.data.labels = data.trend.labels || [];
+                if (securityMode) {
+                    trendChart.data.datasets[0].data = data.trend.normal || [];
+                    if (trendChart.data.datasets[1]) {
+                        trendChart.data.datasets[1].data = data.trend.threats || [];
+                    }
+                } else {
+                    trendChart.data.datasets[0].data = data.trend.hits || [];
+                }
+                trendChart.update('none');
+            }
+            if (data.vectors && vectorChart) {
+                const next = vectorChartData(data.vectors);
+                vectorChart.data.labels = next.labels;
+                vectorChart.data.datasets[0].data = next.datasets[0].data;
+                vectorChart.data.datasets[0].backgroundColor = next.datasets[0].backgroundColor;
+                vectorChart.update('none');
+            }
+            if (Array.isArray(data.topIps) && topList) {
+                if (securityMode) {
+                    renderTopIps(topList, data.topIps, root);
+                } else {
+                    renderVisitorIps(topList, data.topIps);
+                }
+            }
+            if (Array.isArray(data.topPages) && topPages) {
+                renderTopPages(topPages, data.topPages);
+            }
+            if (uniqueEl && data.uniqueIps !== undefined) {
+                uniqueEl.textContent = String(data.uniqueIps);
+            }
+            if (viewsEl && data.pageViews !== undefined) {
+                viewsEl.textContent = String(data.pageViews);
+            }
+        } catch (error) {
+            // Feed is best-effort; health poll still runs.
+        }
+    }
+
+    poll();
+    setInterval(poll, Number.isFinite(interval) && interval > 0 ? interval : 3000);
+}
+
+function vectorChartData(vectors) {
+    const list = Array.isArray(vectors) ? vectors : [];
+    const labels = list.map((item) => VECTOR_LABELS[item.eventType] || item.eventType);
+    const data = list.map((item) => item.count || 0);
+    const total = data.reduce((sum, n) => sum + n, 0);
+    if (total === 0) {
+        return {
+            labels: ['—'],
+            datasets: [{ data: [1], backgroundColor: ['#334155'], borderWidth: 0 }],
+        };
+    }
+
+    return {
+        labels,
+        datasets: [{ data, backgroundColor: VECTOR_COLORS, borderWidth: 0 }],
+    };
+}
+
+function renderTopIps(list, ips, root) {
+    if (!ips.length) {
+        list.innerHTML = `<li class="!text-slate-500">—</li>`;
+        return;
+    }
+
+    const banLabel = root.dataset.labelBan || 'Ban IP';
+    const bannedLabel = root.dataset.labelBanned || 'BANNED';
+    list.innerHTML = ips.map((ip) => {
+        const action = ip.banned
+            ? `<span class="aacp-sev aacp-sev-threat">${escapeHtml(bannedLabel)}</span>`
+            : `<button type="button" class="aacp-cyber-btn !py-0.5" data-ban-ip="${escapeHtml(ip.ip)}">${escapeHtml(banLabel)}</button>`;
+        return `<li data-ip="${escapeHtml(ip.ip)}"><div><span class="font-mono text-slate-100">${escapeHtml(ip.ip)}</span><span class="ms-2 font-mono text-slate-500">${ip.score} · ${ip.hits}</span></div>${action}</li>`;
+    }).join('');
+}
+
+function renderVisitorIps(list, ips) {
+    if (!ips.length) {
+        list.innerHTML = `<li class="!text-slate-500">—</li>`;
+        return;
+    }
+    list.innerHTML = ips.map((ip) => `<li data-ip="${escapeHtml(ip.ip)}"><span class="font-mono text-slate-100">${escapeHtml(ip.ip)}</span><span class="font-mono text-slate-500">${ip.hits}</span></li>`).join('');
+}
+
+function renderTopPages(list, pages) {
+    if (!pages.length) {
+        list.innerHTML = `<li class="!text-slate-500">—</li>`;
+        return;
+    }
+    list.innerHTML = pages.map((page) => {
+        const path = escapeHtml(page.path || '');
+        return `<li><span class="min-w-0 truncate font-mono text-slate-100" title="${path}">${path}</span><span class="shrink-0 font-mono text-slate-500">${page.hits}</span></li>`;
+    }).join('');
+}
+
+function initBanButtons(root) {
+    if (root.dataset.banDelegate === '1') {
+        return;
+    }
+    root.dataset.banDelegate = '1';
+    const url = root.dataset.aacpBanUrl;
+    const csrf = root.dataset.aacpBanCsrf;
+
+    root.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-ban-ip], [data-telemetry-modal-ban]');
+        if (!button || !root.contains(button)) {
+            return;
+        }
+        if (!url || !csrf) {
+            return;
+        }
+
+        const ip = button.getAttribute('data-ban-ip') || '';
+        if (!ip) {
+            return;
+        }
+
+        button.disabled = true;
+        try {
+            const formData = new FormData();
+            formData.append('_token', csrf);
+            formData.append('ip', ip);
+            const response = await fetch(url, { method: 'POST', body: formData });
+            const data = await response.json();
+            if (data.success) {
+                const modal = button.closest('[data-telemetry-modal]');
+                if (modal) {
+                    button.hidden = true;
+                    const badge = modal.querySelector('[data-telemetry-modal-banned]');
+                    if (badge) {
+                        badge.hidden = false;
+                    }
+                    return;
+                }
+                button.replaceWith(Object.assign(document.createElement('span'), {
+                    className: 'aacp-sev aacp-sev-threat',
+                    textContent: root.dataset.labelBanned || 'BANNED',
+                }));
+            } else {
+                button.disabled = false;
+            }
+        } catch (error) {
+            button.disabled = false;
+        }
+    });
+}
+
+function formatDetails(details) {
+    if (!details || (typeof details === 'object' && Object.keys(details).length === 0)) {
+        return '—';
+    }
+    try {
+        return JSON.stringify(details, null, 2);
+    } catch (e) {
+        return String(details);
     }
 }
 
+function isBannableSeverity(severity) {
+    return severity === 'critical' || severity === 'threat';
+}
+
+function initModal(root) {
+    const modal = root.querySelector('[data-telemetry-modal]');
+    if (!modal) {
+        return;
+    }
+    const banWrap = modal.querySelector('[data-telemetry-modal-ban-wrap]');
+    const banBtn = modal.querySelector('[data-telemetry-modal-ban]');
+    const close = () => {
+        modal.classList.remove('is-open');
+        if (banBtn) {
+            banBtn.removeAttribute('data-ban-ip');
+        }
+    };
+
+    const fill = (selector, value) => {
+        const el = modal.querySelector(`[data-modal-field="${selector}"]`);
+        if (el) {
+            el.textContent = value == null || value === '' ? '—' : String(value);
+        }
+    };
+
+    root.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-telemetry-open]');
+        if (trigger) {
+            const row = parseRowPayload(trigger.closest('tr'));
+            if (!row) {
+                return;
+            }
+            fill('time', row.time || row.createdAt);
+            fill('ip', row.ip);
+            fill('user', row.user);
+            fill('method', row.method);
+            fill('uri', row.uri);
+            fill('severity', row.severity);
+            fill('eventType', row.eventType);
+            fill('threatScore', row.threatScore);
+            fill('userAgent', row.userAgent);
+            fill('details', formatDetails(row.details));
+            if (banWrap && banBtn) {
+                const bannedBadge = modal.querySelector('[data-telemetry-modal-banned]');
+                if (isBannableSeverity(row.severity) && row.ip) {
+                    banWrap.hidden = false;
+                    banBtn.hidden = false;
+                    banBtn.disabled = false;
+                    banBtn.setAttribute('data-ban-ip', row.ip);
+                    banBtn.textContent = root.dataset.labelBan || 'Ban IP';
+                    if (bannedBadge) {
+                        bannedBadge.hidden = true;
+                    }
+                } else {
+                    banWrap.hidden = true;
+                    banBtn.removeAttribute('data-ban-ip');
+                    if (bannedBadge) {
+                        bannedBadge.hidden = true;
+                    }
+                }
+            }
+            modal.classList.add('is-open');
+            return;
+        }
+        if (event.target.closest('[data-telemetry-modal-close]') || event.target === modal) {
+            close();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            close();
+        }
+    });
+}
+
 document.querySelectorAll('[data-aacp-dashboard]').forEach(initAacpDashboard);
-initWidgetSettings();

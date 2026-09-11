@@ -1,0 +1,57 @@
+{% extends '@Theme/layout.html.twig' %}
+
+{% block title %}{{ term ? 'site.search.title_query'|trans({'term': term}) : 'site.search.title_default'|trans }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
+{% block meta_description %}{{ term ? 'site.search.meta_description'|trans({'term': term}) : 'site.search.meta_description_empty'|trans }}{% endblock %}
+{% block meta_robots %}noindex, follow{% endblock %}
+
+{% block content %}
+<section class="section site-search-page" id="site-search">
+    <div class="container">
+        <div class="section-header fade-in">
+            <span class="section-label">{{ 'site.search.eyebrow'|trans }}</span>
+            <h1 class="section-title">{{ term ? 'site.search.title_query'|trans({'term': term}) : 'site.search.title_default'|trans }}</h1>
+        </div>
+
+        <form class="site-search-form fade-in" action="{{ path('site_search', {_locale: app.request.locale}) }}" method="get" role="search">
+            <label class="visually-hidden" for="site-search-q">{{ 'website.nav.search_aria'|trans }}</label>
+            <input id="site-search-q" type="search" name="q" value="{{ term }}" placeholder="{{ 'website.nav.search_placeholder'|trans }}" autocomplete="off">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> {{ 'site.search.submit'|trans }}</button>
+        </form>
+
+        {% if term == '' %}
+            <p class="section-desc fade-in">{{ 'site.search.empty_prompt'|trans }}</p>
+        {% elseif groups is empty %}
+            <p class="section-desc fade-in">{{ 'site.search.no_results'|trans({'term': term}) }}</p>
+        {% else %}
+            <p class="site-search-summary fade-in">{{ 'site.search.results_count'|trans({'count': totalHits}) }}</p>
+
+            {% for group in groups %}
+                <section class="site-search-group fade-in" aria-labelledby="search-group-{{ group.key }}">
+                    <div class="site-search-group__head">
+                        <h2 id="search-group-{{ group.key }}" class="site-search-group__title">
+                            <i class="bi {{ group.icon }}"></i>
+                            {{ group.label|trans }}
+                        </h2>
+                        {% if group.moreUrl %}
+                            <a class="site-search-group__more" href="{{ group.moreUrl }}">{{ 'site.search.more'|trans }}</a>
+                        {% endif %}
+                    </div>
+                    <ul class="site-search-hits">
+                        {% for hit in group.hits %}
+                            <li class="site-search-hit">
+                                <a href="{{ hit.url }}">{{ hit.title }}</a>
+                                {% if hit.excerpt %}
+                                    <p>{{ hit.excerpt }}</p>
+                                {% endif %}
+                                {% if hit.date %}
+                                    <time datetime="{{ hit.date|date('c') }}">{{ hit.date|date('d.m.Y') }}</time>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endfor %}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

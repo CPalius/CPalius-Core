@@ -23,14 +23,11 @@ final class SecurityController extends AbstractController
     }
 
     /**
-     * Gövde boş bırakılır: gerçek çıkış işlemi Symfony'nin security
-     * firewall'ı (logout anahtarı, security.yaml) tarafından bu rotaya
-     * ulaşılmadan ÖNCE ele alınır. Metot sadece rota tanımının var olması
-     * (URL üretimi) için gereklidir.
+     * Empty body: logout is handled by the firewall before this route. Exists for URL generation.
      */
     #[Route('/logout', name: 'admin_logout', methods: ['GET'])]
     public function logout(): never
     {
-        throw new \LogicException('Bu metoda asla ulaşılmamalı; logout, security firewall tarafından ele alınır.');
+        throw new \LogicException('This method should never be reached; logout is handled by the security firewall.');
     }
 }

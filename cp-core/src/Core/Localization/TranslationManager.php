@@ -111,7 +111,7 @@ final class TranslationManager
         $json = json_encode($this->exportMatrix(), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES);
 
         if ($json === false) {
-            throw new TranslationManagerException('Çeviri matrisi JSON formatına dönüştürülemedi.');
+            throw new TranslationManagerException('Translation matrix could not be converted to JSON.');
         }
 
         return $json;
@@ -172,16 +172,16 @@ final class TranslationManager
             $decoded = match ($format) {
                 'json' => json_decode($content, true, 512, \JSON_THROW_ON_ERROR),
                 'yaml' => Yaml::parse($content),
-                default => throw new TranslationManagerException(sprintf('Desteklenmeyen içe aktarma formatı: "%s".', $format)),
+                default => throw new TranslationManagerException(sprintf('Unsupported import format: "%s".', $format)),
             };
         } catch (TranslationManagerException $e) {
             throw $e;
         } catch (Throwable $e) {
-            throw new TranslationManagerException('Dosya okunamadı: içerik geçerli bir '.strtoupper($format).' değil. ('.$e->getMessage().')');
+            throw new TranslationManagerException('Could not read file: content is not valid '.strtoupper($format).'. ('.$e->getMessage().')');
         }
 
         if (!\is_array($decoded) || $decoded === []) {
-            throw new TranslationManagerException('Dosya beklenen yapıda değil: en üst seviyede bir anahtar-değer eşlemesi (obje/map) olmalıdır.');
+            throw new TranslationManagerException('File has unexpected structure: top level must be a key-value map.');
         }
 
         return $decoded;
@@ -216,7 +216,7 @@ final class TranslationManager
 
         foreach ($decoded as $group => $localeData) {
             if (!\is_string($group) || !\is_array($localeData)) {
-                throw new TranslationManagerException('Dosya beklenen yapıda değil: her grup, dil kodlarından oluşan bir obje içermelidir.');
+                throw new TranslationManagerException('File has unexpected structure: each group must be an object of locale codes.');
             }
 
             foreach ($localeData as $locale => $keyValues) {
@@ -226,7 +226,7 @@ final class TranslationManager
                 }
 
                 if (!\is_array($keyValues)) {
-                    throw new TranslationManagerException(sprintf('"%s" grubunun "%s" bloğu anahtar-değer eşlemesi olmalıdır.', $group, $locale));
+                    throw new TranslationManagerException(sprintf('Group "%s" block "%s" must be a key-value map.', $group, $locale));
                 }
 
                 $result[$group][$locale] = $this->assertKeyValueMap($keyValues);
@@ -234,7 +234,7 @@ final class TranslationManager
         }
 
         if ($result === []) {
-            throw new TranslationManagerException('Dosyada içe aktarılabilecek hiçbir aktif dil bloğu bulunamadı.');
+            throw new TranslationManagerException('File contains no importable active locale blocks.');
         }
 
         return $result;
@@ -263,7 +263,7 @@ final class TranslationManager
             }
 
             if (!\is_array($decoded[$locale])) {
-                throw new TranslationManagerException(sprintf('"%s" alanı anahtar-değer eşlemesi (obje/map) olmalıdır.', $locale));
+                throw new TranslationManagerException(sprintf('Field "%s" must be a key-value map.', $locale));
             }
 
             foreach ($this->assertKeyValueMap($decoded[$locale]) as $key => $value) {
@@ -273,7 +273,7 @@ final class TranslationManager
         }
 
         if ($result === []) {
-            throw new TranslationManagerException('Dosyada içe aktarılabilecek hiçbir aktif dil bloğu bulunamadı.');
+            throw new TranslationManagerException('File contains no importable active locale blocks.');
         }
 
         return $result;
@@ -292,11 +292,11 @@ final class TranslationManager
 
         foreach ($map as $key => $value) {
             if (!\is_string($key) || trim($key) === '') {
-                throw new TranslationManagerException('Geçersiz çeviri anahtarı: anahtarlar boş olmayan metinler olmalıdır.');
+                throw new TranslationManagerException('Invalid translation key: keys must be non-empty strings.');
             }
 
             if (!\is_string($value)) {
-                throw new TranslationManagerException(sprintf('Geçersiz çeviri girdisi: "%s" alanı metin (string) olmalıdır.', $key));
+                throw new TranslationManagerException(sprintf('Invalid translation entry: field "%s" must be a string.', $key));
             }
 
             $result[$key] = $value;
@@ -320,7 +320,7 @@ final class TranslationManager
         $path = $this->locator->resolveFilePath($group, $locale);
 
         if ($path === null) {
-            throw new TranslationManagerException(sprintf('"%s" çeviri grubu çözümlenemedi.', $group));
+            throw new TranslationManagerException(sprintf('Translation group "%s" could not be resolved.', $group));
         }
 
         return $path;
@@ -376,7 +376,7 @@ final class TranslationManager
             $this->filesystem->dumpFile($tmpPath, $yaml);
             $this->filesystem->rename($tmpPath, $filePath, true);
         } catch (Throwable $e) {
-            throw new TranslationManagerException(sprintf('"%s" dosyasına yazılamadı: %s', basename($filePath), $e->getMessage()), previous: $e);
+            throw new TranslationManagerException(sprintf('Could not write to file "%s": %s', basename($filePath), $e->getMessage()), previous: $e);
         }
     }
 
@@ -410,7 +410,7 @@ final class TranslationManager
     private function assertValidLocale(string $locale): void
     {
         if (!\in_array($locale, $this->locales(), true)) {
-            throw new TranslationManagerException(sprintf('Geçersiz veya aktif olmayan dil kodu: "%s".', $locale));
+            throw new TranslationManagerException(sprintf('Invalid or inactive locale code: "%s".', $locale));
         }
     }
 
@@ -420,7 +420,7 @@ final class TranslationManager
     private function assertValidKey(string $key): void
     {
         if (trim($key) === '') {
-            throw new TranslationManagerException('Çeviri anahtarı boş olamaz.');
+            throw new TranslationManagerException('Translation key cannot be empty.');
         }
     }
 }

@@ -33,6 +33,8 @@
         {% include '@Theme/forum/partials/activity_panel.html.twig' %}
     {% endif %}
 
+    {% include '@Theme/forum/partials/_user_rail.html.twig' %}
+
     {% if indexTree is empty %}
         <div class="forum-empty">
             <i class="bi bi-inboxes"></i>
@@ -89,4 +91,6 @@
             {% endif %}
         </section>
     {% endfor %}
+
+    {% include '@Theme/forum/partials/_stats_bar.html.twig' %}
 {% endblock %}

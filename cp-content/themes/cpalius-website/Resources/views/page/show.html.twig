@@ -1,0 +1,122 @@
+{% extends '@Theme/layout.html.twig' %}
+
+{% set seo = page.getDataValue('seo') %}
+{% set pageBody = page.getDataValue('body') %}
+{% set layout = template|default('default') %}
+
+{% block title %}{{ page.title }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
+{% block meta_description %}{{ seo is not null and seo.meta_description is defined ? seo.meta_description : '' }}{% endblock %}
+{% block meta_robots %}{{ seo is not null and seo.noindex is defined and seo.noindex ? 'noindex, nofollow' : 'index, follow' }}{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .page-acf { display: grid; gap: 1.75rem; margin-top: 2.5rem; }
+        .page-acf-label { font-size: 0.85rem; letter-spacing: .08em; text-transform: uppercase; opacity: .7; margin-bottom: .5rem; }
+        .page-acf-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: .75rem; }
+        .page-acf-gallery img, .page-acf-item--image img { width: 100%; border-radius: .5rem; }
+        .page-acf-text { white-space: pre-wrap; }
+        .page-show--landing .page-body, .page-show--landing .page-acf { max-width: 44rem; margin-inline: auto; }
+    </style>
+    {% if customCss|default('') is not empty %}
+        <style>{{ customCss|raw }}</style>
+    {% endif %}
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {% if customJs|default('') is not empty %}
+        <script>{{ customJs|raw }}</script>
+    {% endif %}
+{% endblock %}
+
+{% block body_class %}page-{{ layout }} page-{{ page.slug }}{% endblock %}
+
+{% block content %}
+<section class="post-hero page-hero page-hero--{{ layout }}" id="page-hero">
+    <div class="container{% if layout == 'landing' %} container-narrow{% endif %}">
+        {% if layout != 'landing' %}
+            <ul class="slw-breadcrumb fade-in">
+                <li><a href="{{ path('theme_cpalius_website_home') }}">~/</a></li>
+                <li>{{ page.slug }}</li>
+            </ul>
+        {% endif %}
+
+        <h1 class="post-hero-title fade-in">{{ page.title }}</h1>
+
+        {% if page.getDataValue('excerpt') %}
+            <p class="post-hero-excerpt fade-in">{{ page.getDataValue('excerpt') }}</p>
+        {% endif %}
+
+        {% if featuredImageUrl %}
+            <div class="post-hero-image fade-in">
+                <img src="{{ featuredImageUrl }}" alt="{{ page.title }}" loading="eager">
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+<section class="section page-show page-show--{{ layout }}" id="page-detail">
+    <div class="container{% if layout == 'fullwidth' or layout == 'landing' %}{% else %}{% endif %}">
+        {% if pageBody %}
+            <div class="post-body post-body--editorial page-body">
+                {{ pageBody|raw }}
+            </div>
+        {% endif %}
+
+        {% if customFields|default([]) is not empty %}
+            <div class="page-acf page-acf--{{ layout }}">
+                {% for field in customFields %}
+                    {% if field.type == 'checkbox' %}
+                        {% if field.value %}
+                            <div class="page-acf-item page-acf-item--{{ field.type }}" data-field="{{ field.key }}">
+                                <h3 class="page-acf-label">{{ field.label }}</h3>
+                            </div>
+                        {% endif %}
+                    {% elseif field.type == 'image' and field.url %}
+                        <div class="page-acf-item page-acf-item--image" data-field="{{ field.key }}">
+                            <h3 class="page-acf-label">{{ field.label }}</h3>
+                            <img src="{{ field.url }}" alt="{{ field.label }}">
+                        </div>
+                    {% elseif field.type == 'gallery' and field.urls is not empty %}
+                        <div class="page-acf-item page-acf-item--gallery" data-field="{{ field.key }}">
+                            <h3 class="page-acf-label">{{ field.label }}</h3>
+                            <div class="page-acf-gallery">
+                                {% for url in field.urls %}
+                                    <img src="{{ url }}" alt="{{ field.label }}">
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% elseif field.type == 'wysiwyg' and field.value %}
+                        <div class="page-acf-item page-acf-item--wysiwyg" data-field="{{ field.key }}">
+                            <h3 class="page-acf-label">{{ field.label }}</h3>
+                            <div class="post-body">{{ field.value|raw }}</div>
+                        </div>
+                    {% elseif field.type == 'url' and field.value %}
+                        <div class="page-acf-item page-acf-item--url" data-field="{{ field.key }}">
+                            <h3 class="page-acf-label">{{ field.label }}</h3>
+                            <a href="{{ field.value }}" rel="noopener noreferrer">{{ field.value }}</a>
+                        </div>
+                    {% elseif field.type == 'email' and field.value %}
+                        <div class="page-acf-item page-acf-item--email" data-field="{{ field.key }}">
+                            <h3 class="page-acf-label">{{ field.label }}</h3>
+                            <a href="mailto:{{ field.value }}">{{ field.value }}</a>
+                        </div>
+                    {% elseif field.value %}
+                        <div class="page-acf-item page-acf-item--{{ field.type }}" data-field="{{ field.key }}">
+                            <h3 class="page-acf-label">{{ field.label }}</h3>
+                            {% if field.type == 'textarea' %}
+                                <p class="page-acf-text">{{ field.value|nl2br }}</p>
+                            {% else %}
+                                <p>{{ field.value }}</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {{ cp_hook('page.render.content', { page: page, locale: page.locale }) }}
+    </div>
+</section>
+{% endblock %}

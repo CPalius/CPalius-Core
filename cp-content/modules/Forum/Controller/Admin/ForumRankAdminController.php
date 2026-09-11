@@ -40,7 +40,7 @@ final class ForumRankAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Kullanıcı Rütbeleri', icon: 'heroicons:star', panel: 'studio', priority: 28, capability: 'forum.ranks.manage', group: 'İçerik', parent: 'admin_forum_dashboard')]
+    #[CpAdminMenu(label: 'aacp.menu.forums_ranks', icon: 'heroicons:star', panel: 'studio', priority: 28, capability: 'forum.ranks.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
     public function index(): Response
     {
         return $this->render('@ForumModule/admin/ranks/index.html.twig', [

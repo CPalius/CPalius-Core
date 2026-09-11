@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Core\Field\Form\FieldableFormBuilder;
 use App\Entity\User;
 use App\Form\DTO\UserFormModel;
 use Symfony\Component\Form\AbstractType;
@@ -15,23 +16,18 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
- * AACP "Kullanıcı Ekle/Düzenle" formu — UserFormModel DTO'suna maplenir
- * (create/edit ikisinde de AACPUserController tarafından kullanılır).
- *
- * Tasarım kararları PostType (Modules\Blog\Form\PostType) ile birebir
- * aynı felsefeyi izler:
- * - data_class UserFormModel::class'tır, User DEĞİL: User'a yazım her
- *   zaman controller'daki mapDtoToUser() üzerinden yapılır.
- * - 'roles' seçenekleri sabit/hardcoded DEĞİLDİR: controller, 'role_choices'
- *   option'ı içinde RoleConfigManager::getAllRoleIds()'dan üretilen
- *   [label => id] haritasını enjekte eder — yeni bir rol YAML dosyası
- *   eklendiğinde form KOD DEĞİŞİKLİĞİ olmadan otomatik günceller.
- * - plainPassword required: false'tur (edit ekranında boş bırakılırsa
- *   şifre değişmez) — zorunluluk controller seviyesinde "yeni kullanıcı
- *   mı" bilgisine göre değerlendirilir, form seviyesinde sabit değildir.
+ * AACP user create/edit form for UserFormModel (PostType-style DTO mapping).
+ * Role choices from RoleConfigManager; password optional on edit (controller decides).
+ * Custom fields defined for the "user" bundle (/aacp/fields) bolt on as an
+ * unmapped "fields" child — no-op until an admin defines one.
  */
 final class UserType extends AbstractType
 {
+    public function __construct(
+        private readonly FieldableFormBuilder $fieldableFormBuilder,
+    ) {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
@@ -104,6 +100,8 @@ final class UserType extends AbstractType
                 ],
             ])
         ;
+
+        $this->fieldableFormBuilder->add($builder, 'user', (string) $options['field_locale']);
     }
 
     public function configureOptions(OptionsResolver $resolver): void
@@ -113,9 +111,11 @@ final class UserType extends AbstractType
             'csrf_token_id' => 'aacp_user_form',
             'role_choices' => [],
             'is_edit' => false,
+            'field_locale' => 'und',
         ]);
 
         $resolver->setAllowedTypes('role_choices', 'array');
         $resolver->setAllowedTypes('is_edit', 'bool');
+        $resolver->setAllowedTypes('field_locale', 'string');
     }
 }

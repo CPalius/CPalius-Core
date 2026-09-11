@@ -18,36 +18,31 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
 
 /**
- * Faz 7B: AACP "API Yönetimi" ekranı — REST API anahtarlarının üretilmesi,
- * listelenmesi ve silinmesi/pasif edilmesi. AACPCronController ile aynı
- * iskelet: plain class + inject edilen Twig\Environment, index() normal
- * bir sayfa render eder, mutasyon action'ları (create/toggle/delete) AJAX
- * ile çağrılıp JsonResponse döner.
- *
- * Güvenlik: bu controller'ın kendisi form_login firewall'ının (IS_AUTHENTICATED_FULLY,
- * ^/aacp access_control kuralı) ARKASINDADIR — yani "kim API anahtarı
- * üretebilir" sorusu normal AACP oturum kimlik doğrulamasıyla + CPaliusVoter
- * (system.api.manage) ile cevaplanır. Üretilen anahtarların KENDİSİ ise
- * ApiGatewayController üzerinden TAMAMEN AYRI, stateless bir X-CP-API-KEY
- * header doğrulamasıyla korunur (bkz. ApiKeyService::isValid()).
+ * Phase 7B API key admin (plain Twig + AJAX mutations).
+ * Session + system.api.manage gate creation; keys authenticate via X-CP-API-KEY separately.
  */
 final class AACPApiKeyController
 {
+    /**
+     * @param list<array{path: string, methods: list<string>, public: bool, capability?: ?string, serviceId: string, method: string}> $apiDefinitions
+     */
     public function __construct(
         private readonly Environment $twig,
         private readonly CsrfTokenManagerInterface $csrfTokenManager,
         private readonly ApiKeyService $apiKeyService,
         private readonly TranslatorInterface $translator,
+        private readonly array $apiDefinitions = [],
     ) {
     }
 
     #[Route('/aacp/api-keys', name: 'aacp_api_keys', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.api_keys', icon: 'heroicons:key', panel: 'aacp', priority: 23, capability: 'system.api.manage', group: 'aacp.group.system')]
+    #[CpAdminMenu(label: 'aacp.menu.api_keys', icon: 'heroicons:key', panel: 'aacp', priority: 24, capability: 'system.api.manage', parent: 'aacp_tools')]
     #[IsGranted('system.api.manage')]
     public function index(): Response
     {
         $html = $this->twig->render('aacp/api_keys/index.html.twig', [
             'apiKeys' => $this->apiKeyService->findAll(),
+            'knownCapabilities' => $this->knownCapabilities(),
             'csrf_token' => $this->csrfTokenManager->getToken('aacp_api_keys')->getValue(),
         ]);
 
@@ -66,11 +61,31 @@ final class AACPApiKeyController
             return new JsonResponse(['error' => $this->translator->trans('aacp.api_keys.label_required')], Response::HTTP_BAD_REQUEST);
         }
 
-        $result = $this->apiKeyService->generate($label);
+        $capabilities = $this->splitLines((string) $request->request->get('capabilities'));
+        $ipAllowlist = $this->splitLines((string) $request->request->get('ip_allowlist'));
+        $tenantId = trim((string) $request->request->get('tenant_id'));
+
+        $expiresAt = null;
+        $expiresRaw = trim((string) $request->request->get('expires_at'));
+        if ($expiresRaw !== '') {
+            try {
+                $expiresAt = new \DateTimeImmutable($expiresRaw);
+            } catch (\Exception) {
+                return new JsonResponse(['error' => $this->translator->trans('aacp.api_keys.invalid_expiry')], Response::HTTP_BAD_REQUEST);
+            }
+        }
+
+        $result = $this->apiKeyService->generate(
+            $label,
+            $capabilities,
+            $tenantId !== '' ? $tenantId : null,
+            $ipAllowlist,
+            $expiresAt,
+        );
 
         return new JsonResponse([
             'key' => $result['key'],
-            'apiKey' => $result['apiKey']->toArray(),
+            'apiKey' => $result['apiKey']->toPublicArray(),
         ], Response::HTTP_CREATED);
     }
 
@@ -86,7 +101,7 @@ final class AACPApiKeyController
             return new JsonResponse(['error' => $this->translator->trans('aacp.api_keys.not_found')], Response::HTTP_NOT_FOUND);
         }
 
-        return new JsonResponse(['apiKey' => $updated->toArray()]);
+        return new JsonResponse(['apiKey' => $updated->toPublicArray()]);
     }
 
     #[Route('/aacp/api-keys/{id}/delete', name: 'aacp_api_keys_delete', methods: ['POST'])]
@@ -108,5 +123,37 @@ final class AACPApiKeyController
         if (!$this->csrfTokenManager->isTokenValid(new CsrfToken('aacp_api_keys', $submittedToken))) {
             throw new BadRequestHttpException($this->translator->trans('aacp.api_keys.invalid_csrf'));
         }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function splitLines(string $raw): array
+    {
+        $parts = preg_split('/[\r\n,]+/', trim($raw)) ?: [];
+
+        return array_values(array_filter(array_map('trim', $parts), static fn (string $p): bool => $p !== ''));
+    }
+
+    /**
+     * Concrete (non-templated) capabilities declared by registered #[CpApi] endpoints,
+     * offered in the admin form as a datalist. Templated ones like "{name}.view" are skipped.
+     *
+     * @return list<string>
+     */
+    private function knownCapabilities(): array
+    {
+        $capabilities = [];
+        foreach ($this->apiDefinitions as $definition) {
+            $capability = $definition['capability'] ?? null;
+            if (\is_string($capability) && $capability !== '' && !str_contains($capability, '{')) {
+                $capabilities[$capability] = true;
+            }
+        }
+
+        $names = array_keys($capabilities);
+        sort($names);
+
+        return $names;
     }
 }

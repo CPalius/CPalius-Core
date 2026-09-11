@@ -1,10 +1,8 @@
 {#
     <twig:cp:badge status="active" />
-    <twig:cp:badge status="quarantined" label="Karantinada" />
+    <twig:cp:badge status="quarantined" />
 
-    Props:
-      status  (string)       'active' | 'inactive' | 'quarantined' | 'unknown'
-      label   (string|null)  Özel metin; verilmezse status'e göre çevrilmiş etiket kullanılır.
+    Props: status, label (optional override)
 #}
 {% props status = 'unknown', label = null %}
 

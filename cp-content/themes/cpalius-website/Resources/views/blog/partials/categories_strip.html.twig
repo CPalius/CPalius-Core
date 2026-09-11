@@ -1,6 +1,5 @@
 {#
-    Kategori haritası — kök + alt kategori ağacı.
-    Beklenen: blogCategories = { roots: list<Category>, postCounts: array<int, int> }
+    Category map — root + child tree. Expects: blogCategories { roots, postCounts }.
 #}
 {% set roots = blogCategories.roots|default([]) %}
 {% set postCounts = blogCategories.postCounts|default({}) %}

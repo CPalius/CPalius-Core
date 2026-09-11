@@ -22,6 +22,9 @@ final class ForumTopicRepository extends ServiceEntityRepository
         parent::__construct($registry, ForumTopic::class);
     }
 
+    /**
+     * @param list<int>|null $sectionIds Translation-group board ids. Defaults to this section only.
+     */
     public function createSectionTopicsQueryBuilder(
         ForumSection $section,
         ?User $viewer,
@@ -29,14 +32,30 @@ final class ForumTopicRepository extends ServiceEntityRepository
         string $filter = 'all',
         bool $canModerate = false,
         ?string $sortOverride = null,
+        ?array $sectionIds = null,
+        ?string $contentLocale = null,
     ): QueryBuilder {
+        $ids = $sectionIds ?? [$section->getId() ?? 0];
+        $ids = array_values(array_filter(
+            array_map(static fn (mixed $id): int => (int) $id, $ids),
+            static fn (int $id): bool => $id > 0,
+        ));
+        if ($ids === []) {
+            $ids = [$section->getId() ?? 0];
+        }
+
         $qb = $this->createQueryBuilder('t')
             ->leftJoin('t.prefix', 'prefix')->addSelect('prefix')
             ->leftJoin('t.lastPoster', 'lp')->addSelect('lp')
             ->leftJoin('t.firstPoster', 'fp')->addSelect('fp')
-            ->andWhere('t.section = :section')
+            ->andWhere('IDENTITY(t.section) IN (:sectionIds)')
             ->andWhere('t.movedToTopic IS NULL')
-            ->setParameter('section', $section);
+            ->setParameter('sectionIds', $ids);
+
+        if ($contentLocale !== null && $contentLocale !== '') {
+            $qb->andWhere('t.locale = :contentLocale')
+                ->setParameter('contentLocale', $contentLocale);
+        }
 
         $this->applyDiscussionVisibility($qb, $viewer, $canModerate);
 
@@ -96,12 +115,68 @@ final class ForumTopicRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
+    public function countVisiblePublic(?string $contentLocale = null): int
+    {
+        $qb = $this->createQueryBuilder('t')
+            ->select('COUNT(t.id)')
+            ->andWhere('t.movedToTopic IS NULL')
+            ->andWhere('t.mode = :normal')
+            ->andWhere('t.discussionState = :visible')
+            ->setParameter('normal', ForumTopic::MODE_NORMAL)
+            ->setParameter('visible', ForumDiscussionState::Visible);
+
+        if ($contentLocale !== null && $contentLocale !== '') {
+            $qb->andWhere('t.locale = :contentLocale')
+                ->setParameter('contentLocale', $contentLocale);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * Visible topic counts in a translation group, keyed by content locale.
+     *
+     * @param list<int> $sectionIds
+     *
+     * @return array<string, int>
+     */
+    public function countVisibleBySectionIdsGroupedByLocale(array $sectionIds): array
+    {
+        $sectionIds = array_values(array_filter(
+            array_map(static fn (mixed $id): int => (int) $id, $sectionIds),
+            static fn (int $id): bool => $id > 0,
+        ));
+        if ($sectionIds === []) {
+            return [];
+        }
+
+        $rows = $this->createQueryBuilder('t')
+            ->select('t.locale AS locale, COUNT(t.id) AS cnt')
+            ->andWhere('IDENTITY(t.section) IN (:ids)')
+            ->andWhere('t.movedToTopic IS NULL')
+            ->andWhere('t.discussionState = :visible')
+            ->andWhere('t.mode = :normal')
+            ->setParameter('ids', $sectionIds)
+            ->setParameter('visible', ForumDiscussionState::Visible)
+            ->setParameter('normal', ForumTopic::MODE_NORMAL)
+            ->groupBy('t.locale')
+            ->getQuery()
+            ->getArrayResult();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(string) $row['locale']] = (int) $row['cnt'];
+        }
+
+        return $out;
+    }
+
     /**
      * @return list<ForumTopic>
      */
-    public function findLatest(int $limit = 10, int $offset = 0): array
+    public function findLatest(int $limit = 10, int $offset = 0, ?string $contentLocale = null): array
     {
-        return $this->createPublicTopicListQuery()
+        return $this->createPublicTopicListQuery($contentLocale)
             ->orderBy('t.updatedAt', 'DESC')
             ->setFirstResult(max(0, $offset))
             ->setMaxResults($limit)
@@ -112,9 +187,9 @@ final class ForumTopicRepository extends ServiceEntityRepository
     /**
      * @return list<ForumTopic>
      */
-    public function findNewestOpened(int $limit = 10, int $offset = 0): array
+    public function findNewestOpened(int $limit = 10, int $offset = 0, ?string $contentLocale = null): array
     {
-        return $this->createPublicTopicListQuery()
+        return $this->createPublicTopicListQuery($contentLocale)
             ->orderBy('t.createdAt', 'DESC')
             ->addOrderBy('t.id', 'DESC')
             ->setFirstResult(max(0, $offset))
@@ -126,9 +201,9 @@ final class ForumTopicRepository extends ServiceEntityRepository
     /**
      * @return list<ForumTopic>
      */
-    public function findLatestReplied(int $limit = 10, int $offset = 0): array
+    public function findLatestReplied(int $limit = 10, int $offset = 0, ?string $contentLocale = null): array
     {
-        return $this->createPublicTopicListQuery()
+        return $this->createPublicTopicListQuery($contentLocale)
             ->andWhere('t.postCount > 1')
             ->orderBy('t.lastPostDate', 'DESC')
             ->addOrderBy('t.updatedAt', 'DESC')
@@ -205,9 +280,9 @@ final class ForumTopicRepository extends ServiceEntityRepository
         return $qb;
     }
 
-    private function createPublicTopicListQuery(): QueryBuilder
+    private function createPublicTopicListQuery(?string $contentLocale = null): QueryBuilder
     {
-        return $this->createQueryBuilder('t')
+        $qb = $this->createQueryBuilder('t')
             ->leftJoin('t.section', 's')->addSelect('s')
             ->leftJoin('t.firstPoster', 'fp')->addSelect('fp')
             ->leftJoin('t.lastPoster', 'lp')->addSelect('lp')
@@ -216,14 +291,21 @@ final class ForumTopicRepository extends ServiceEntityRepository
             ->andWhere('t.discussionState = :visible')
             ->setParameter('normal', ForumTopic::MODE_NORMAL)
             ->setParameter('visible', ForumDiscussionState::Visible);
+
+        if ($contentLocale !== null && $contentLocale !== '') {
+            $qb->andWhere('t.locale = :contentLocale')
+                ->setParameter('contentLocale', $contentLocale);
+        }
+
+        return $qb;
     }
 
     /**
      * @return list<ForumTopic>
      */
-    public function findPopular(int $limit = 10): array
+    public function findPopular(int $limit = 10, ?string $contentLocale = null): array
     {
-        return $this->createPublicTopicListQuery()
+        return $this->createPublicTopicListQuery($contentLocale)
             ->orderBy('t.viewCount', 'DESC')
             ->addOrderBy('t.postCount', 'DESC')
             ->addOrderBy('t.updatedAt', 'DESC')
@@ -361,7 +443,7 @@ final class ForumTopicRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('t')
             ->innerJoin('t.section', 's')
-            ->andWhere('s.locale = :locale')
+            ->andWhere('t.locale = :locale')
             ->andWhere('t.discussionState = :visible')
             ->andWhere('t.mode = :normal')
             ->andWhere('t.movedToTopic IS NULL')

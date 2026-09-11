@@ -12,18 +12,12 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * CPalius'un Birleşik Otomasyon Motoru'nun TEK gerçek OS-seviyesi giriş
- * noktası. Gerçek dispatch mantığı BURADA DEĞİL, CronDispatcher::runDueTasks()
- * içinde yaşar (bkz. o sınıfın docblock'u) — bu komut sadece sonuçları
- * SymfonyStyle ile terminale basar. Aynı CronDispatcher, HTTP pseudo-cron
- * ucu (/cron/execute, bkz. CronExecuteController) tarafından da kullanılır.
- *
- * Gerçek sunucuda BİR TEK crontab/Task Scheduler girdisi (ör. her dakika)
- * bu komutu (veya HTTP ucunu) tetikler.
+ * Single OS-level entry point for CPalius unified automation; dispatch logic lives in CronDispatcher::runDueTasks().
+ * One crontab/Task Scheduler entry should invoke this command (or the HTTP /cron/execute endpoint).
  */
 #[AsCommand(
     name: 'cp:cron:run',
-    description: 'DB (cp_cron_jobs) VE kod tabanlı (Attribute/Flat-File) TÜM cron görevlerinden zamanı gelmiş olanları çalıştırır.',
+    description: 'Runs all due cron jobs from DB (cp_cron_jobs) and code-based (Attribute/Flat-File) sources.',
 )]
 final class RunDueCronJobsCommand extends Command
 {
@@ -40,13 +34,13 @@ final class RunDueCronJobsCommand extends Command
         $results = $this->cronDispatcher->runDueTasks();
 
         if ($results === []) {
-            $io->comment('Çalışma zamanı gelmiş aktif cron görevi yok.');
+            $io->comment('No active cron jobs are due to run.');
 
             return Command::SUCCESS;
         }
 
         foreach ($results as $result) {
-            $prefix = $result['sourceType'] === 'code' ? '[KOD] ' : '';
+            $prefix = $result['sourceType'] === 'code' ? '[CODE] ' : '';
             $label = $prefix.$result['jobName'];
 
             if ($result['success']) {

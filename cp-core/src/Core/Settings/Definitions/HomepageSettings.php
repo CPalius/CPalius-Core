@@ -9,14 +9,12 @@ use App\Core\Annotation\CpSetting;
 /**
  * Homepage mode and portal-block layout JSON (edited via Studio drag-and-drop).
  */
-#[CpSetting(key: 'homepage.mode', label: 'Ana Sayfa Modu', type: 'select', default: 'portal', variants: [
-    'portal' => 'Portal (blok vitrin)',
-    'forum' => 'Forum Ana Sayfası',
-    'blog' => 'Blog Ana Sayfası',
+#[CpSetting(key: 'homepage.mode', label: 'studio.homepage.mode_card', type: 'select', default: 'portal', variants: [
+    'portal' => 'studio.homepage.mode.portal',
 ], module: 'studio_homepage', group: 'homepage')]
 #[CpSetting(
     key: 'homepage.portal.layout',
-    label: 'Portal Blok Düzeni',
+    label: 'studio.homepage.layout_field',
     type: 'textarea',
     default: '',
     module: 'studio_homepage',

@@ -9,7 +9,7 @@
 
 {% block body %}
     {% import '@MenuModule/admin/menus/_macros.html.twig' as menuMacros %}
-    {% set treeHtml = tree is not empty ? menuMacros.renderItems(tree, translationMap) : '' %}
+    {% set treeHtml = tree is not empty ? menuMacros.renderItems(tree, locales) : '' %}
 
     <div class="flex flex-col gap-sp-md lg:flex-row lg:items-start">
         <div class="min-w-0 space-y-sp-md lg:w-[61.8%]">
@@ -27,26 +27,15 @@
                 <form method="post" action="{{ path('admin_menus_add_item', {id: menu.id}) }}" class="space-y-sp-sm">
                     <input type="hidden" name="_token" value="{{ csrf_token('admin_menu_form') }}">
 
-                    <div>
-                        <label class="form-label">{{ 'menu.edit.label_field'|trans }}</label>
-                        <input type="text" name="label" required class="form-control">
-                    </div>
+                    <p class="text-fs-xs text-neutral-500">{{ 'menu.edit.labels_help'|trans }}</p>
 
-                    <div>
-                        <label class="form-label">{{ 'menu.edit.locale_field'|trans }}</label>
-                        {# Phase 3: locale list comes from LocaleProvider; no hard-coded list. #}
-                        <select name="locale" class="form-select">
-                            {% for locale in locales %}
-                                <option value="{{ locale.code }}" {{ locale.code == defaultLocale ? 'selected' : '' }}>{{ locale.nativeName }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="form-label">{{ 'menu.edit.external_url_field'|trans }}</label>
-                        <input type="text" name="url" placeholder="{{ 'menu.edit.external_url_placeholder'|trans }}"
-                               class="form-control">
-                    </div>
+                    {% for locale in locales %}
+                        <div>
+                            <label class="form-label">{{ 'menu.edit.label_field'|trans }} — {{ locale.nativeName }} ({{ locale.code }})</label>
+                            <input type="text" name="labels[{{ locale.code }}]" class="form-control">
+                            <input type="text" name="urls[{{ locale.code }}]" placeholder="{{ 'menu.edit.external_url_placeholder'|trans }}" class="form-control mt-1">
+                        </div>
+                    {% endfor %}
 
                     <div>
                         <label class="form-label">{{ 'menu.edit.node_id_field'|trans }}</label>
@@ -58,8 +47,8 @@
                         <label class="form-label">{{ 'menu.edit.parent_field'|trans }}</label>
                         <select name="parent_id" class="form-select">
                             <option value="">— {{ 'menu.edit.parent_none'|trans }} —</option>
-                            {% for existing in allItems %}
-                                <option value="{{ existing.id }}">{{ existing.label }} ({{ existing.locale }})</option>
+                            {% for choice in parentChoices %}
+                                <option value="{{ choice.id }}">{{ choice.label }}</option>
                             {% endfor %}
                         </select>
                     </div>

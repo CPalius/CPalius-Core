@@ -1,0 +1,59 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ group ? 'pages.field_groups.form.header_edit'|trans : 'pages.field_groups.form.header_create'|trans }}{% endblock %}
+
+{% block javascripts %}
+    {{ importmap(['app', 'admin-page-form', 'media-picker']) }}
+{% endblock %}
+
+{% block body %}
+    <div data-page-form-root
+         data-acf-schema-only="1"
+         data-acf-i18n="{{ {
+            active: 'pages.acf.active'|trans,
+            pick_image: 'pages.form.select_image'|trans,
+            asset_id: 'pages.acf.asset_id'|trans,
+            label: 'pages.acf.label'|trans,
+            key: 'pages.acf.key'|trans,
+            required: 'pages.acf.required'|trans,
+            choices: 'pages.acf.choices'|trans,
+            value: 'pages.acf.value'|trans,
+            gallery_placeholder: 'pages.acf.gallery_placeholder'|trans,
+         }|json_encode|e('html_attr') }}">
+    {{ form_start(form) }}
+    <div class="space-y-sp-md">
+        <twig:studio:card title="{{ 'pages.field_groups.form.section_info'|trans }}">
+            <div class="space-y-sp-sm">
+                {{ form_row(form.title) }}
+                {{ form_row(form.slug) }}
+            </div>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'pages.field_groups.form.section_fields'|trans }}">
+            <p class="mb-sp-sm text-fs-xs text-neutral-500">{{ 'pages.field_groups.form.hint'|trans }}</p>
+            <div data-page-acf-list class="space-y-sp-sm"></div>
+            <div class="mt-sp-sm flex flex-wrap gap-2">
+                <select data-page-acf-new-type class="form-control w-auto min-w-[10rem]">
+                    {% for labelKey, type in fieldTypeChoices %}
+                        <option value="{{ type }}">{{ labelKey|trans }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="btn btn-sm btn-primary" data-page-acf-add>
+                    {{ 'pages.form.add_field'|trans }}
+                </button>
+            </div>
+            {{ form_widget(form.fieldsJson) }}
+        </twig:studio:card>
+
+        <div class="flex items-center gap-3">
+            <button type="submit" class="btn btn-primary">
+                {{ group ? 'aacp.users.form.submit_edit'|trans : 'pages.field_groups.form.submit_create'|trans }}
+            </button>
+            <a href="{{ path('admin_page_field_groups_index') }}" class="text-fs-sm font-medium text-neutral-500 hover:text-neutral-900">
+                {{ 'aacp.users.form.cancel'|trans }}
+            </a>
+        </div>
+    </div>
+    {{ form_end(form) }}
+    </div>
+{% endblock %}

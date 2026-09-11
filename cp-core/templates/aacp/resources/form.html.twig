@@ -1,0 +1,67 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ id ? 'aacp.resources.form.edit'|trans({'name': definition.name, 'id': id}) : 'aacp.resources.form.new'|trans({'name': definition.name}) }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md lg:w-[61.8%]">
+        {% if app.request.query.get('saved') %}<div class="toast toast-success">{{ 'aacp.resources.saved'|trans }}</div>{% endif %}
+        {% if app.request.query.get('transitioned') %}<div class="toast toast-success">{{ 'aacp.moderation.applied'|trans }}</div>{% endif %}
+        {% if app.request.query.get('error') %}<div class="toast toast-error">{{ app.request.query.get('error') }}</div>{% endif %}
+
+        {% if workflow and marking %}
+            <twig:cp:card title="{{ 'aacp.moderation.state'|trans }}">
+                <div class="flex flex-wrap items-center gap-2">
+                    {% for place in workflow.places %}
+                        <span class="badge {{ place == marking ? 'badge-success' : 'badge-neutral' }}">{{ workflow.placeLabel(place) }}</span>
+                        {% if not loop.last %}<span class="!text-slate-600">&rarr;</span>{% endif %}
+                    {% endfor %}
+                </div>
+                {% if transitions is not empty %}
+                    <div class="mt-sp-sm flex flex-wrap gap-2">
+                        {% for t in transitions %}
+                            <form method="post" action="{{ path('aacp_resource_transition', {name: definition.name, id: id, transition: t.name}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-secondary text-fs-xs">{{ t.label ?? t.name }} &rarr; {{ workflow.placeLabel(t.to) }}</button>
+                            </form>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </twig:cp:card>
+        {% endif %}
+
+        <twig:cp:card title="{{ 'aacp.resources.form.section'|trans }}">
+            {{ form_start(form, {action: path('aacp_resource_save', {name: definition.name}), attr: {class: 'space-y-sp-sm'}}) }}
+                {% if id %}<input type="hidden" name="id" value="{{ id }}">{% endif %}
+                {{ form_errors(form) }}
+                {% for child in form %}
+                    {{ form_row(child) }}
+                {% endfor %}
+                <div class="flex items-center gap-3 pt-sp-xs">
+                    <button type="submit" class="btn btn-primary">{{ 'aacp.settings.save'|trans }}</button>
+                    <a href="{{ path('aacp_resource_index', {name: definition.name}) }}" class="text-fs-sm !text-slate-400 hover:!text-slate-200">{{ 'aacp.cron.form.cancel'|trans }}</a>
+                </div>
+            {{ form_end(form) }}
+        </twig:cp:card>
+
+        {% if history is not empty %}
+            <twig:cp:card title="{{ 'aacp.resources.form.history'|trans }}" padded="{{ false }}">
+                <twig:cp:table headers="{{ ['aacp.revisions.column.when'|trans, 'aacp.revisions.column.author'|trans, 'aacp.resources.form.action'|trans, ''] }}" empty="{{ false }}">
+                    <twig:block name="rows">
+                        {% for log in history %}
+                            <tr>
+                                <td class="text-fs-xs !text-slate-400">{{ log.createdAt|date('d.m.Y H:i:s') }}</td>
+                                <td class="text-fs-xs !text-slate-500">{{ log.userId ?? '—' }}</td>
+                                <td class="text-fs-xs !text-slate-400">{{ log.action }}</td>
+                                <td class="text-right">
+                                    <details><summary class="cursor-pointer text-fs-xs !text-slate-500 hover:!text-slate-300">{{ 'aacp.cron.form.output'|trans }}</summary>
+                                        <pre class="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-lg bg-dark-1 p-sp-xs font-mono text-fs-xs !text-slate-400">{{ log.changes|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                                    </details>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+            </twig:cp:card>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -1,0 +1,219 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.security.header'|trans }}{% endblock %}
+
+{% block body %}
+    {% set severityStyle = {
+        'critical': '!border-danger-500/30 !bg-danger-500/10 !text-danger-300',
+        'high': '!border-danger-500/20 !bg-danger-500/5 !text-danger-200',
+        'medium': '!border-warning-500/30 !bg-warning-500/10 !text-warning-300',
+        'low': '!border-white/10 !bg-white/5 !text-slate-300',
+        'pass': '!border-success-500/30 !bg-success-500/10 !text-success-300',
+    } %}
+    {% set scoreTone = score >= 90 ? '!text-success-300' : (score >= 70 ? '!text-warning-300' : '!text-danger-300') %}
+
+    <div class="space-y-sp-md">
+        {% if app.request.query.get('saved') %}
+            <div class="rounded-lg border border-success-500/30 bg-success-500/10 px-sp-sm py-3 text-fs-sm !text-success-300">
+                {{ 'aacp.system_settings.saved'|trans }}
+            </div>
+        {% endif %}
+        {% if app.request.query.get('invalid_setting') %}
+            <div class="rounded-lg border border-danger-500/30 bg-danger-500/10 px-sp-sm py-3 text-fs-sm !text-danger-300">
+                {{ 'aacp.settings.invalid_value'|trans({key: app.request.query.get('invalid_setting')}) }}
+            </div>
+        {% endif %}
+        {% if app.request.query.get('ban_error') %}
+            <div class="rounded-lg border border-danger-500/30 bg-danger-500/10 px-sp-sm py-3 text-fs-sm !text-danger-300">
+                {{ 'aacp.security.ban_rejected'|trans }}
+            </div>
+        {% endif %}
+
+        <twig:cp:card padded="{{ true }}">
+            <div class="flex flex-wrap items-center justify-between gap-sp-sm">
+                <div>
+                    <p class="text-fs-sm font-semibold !text-slate-200">{{ 'aacp.security.posture_title'|trans }}</p>
+                    <p class="mt-1 text-fs-sm !text-slate-400">{{ 'aacp.security.posture_desc'|trans }}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-fs-xs font-medium uppercase tracking-wider !text-slate-500">{{ 'aacp.security.posture_score'|trans }}</p>
+                    <p class="text-fs-2xl font-bold {{ scoreTone }}">{{ score }}<span class="text-fs-sm !text-slate-500">/100</span></p>
+                </div>
+            </div>
+
+            <div class="mt-sp-sm grid grid-cols-2 gap-sp-xs sm:grid-cols-5">
+                {% for severity, count in summary %}
+                    <div class="rounded-lg border px-sp-sm py-2 {{ severityStyle[severity]|default('!border-white/10 !bg-white/5 !text-slate-300') }}">
+                        <p class="text-fs-xs font-medium uppercase tracking-wider opacity-80">{{ ('aacp.security.severity.' ~ severity)|trans }}</p>
+                        <p class="mt-0.5 text-fs-lg font-semibold">{{ count }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </twig:cp:card>
+
+        <twig:cp:card title="{{ 'aacp.security.findings_title'|trans }}" padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.security.column.severity'|trans,
+                'aacp.security.column.check'|trans,
+                'aacp.security.column.detail'|trans,
+            ] }}" empty="{{ findings is empty }}" emptyText="{{ 'aacp.security.findings_empty'|trans }}">
+                <twig:block name="rows">
+                    {% for finding in findings %}
+                        <tr>
+                            <td class="align-top">
+                                <span class="badge rounded-md border px-2 py-0.5 text-fs-xs {{ severityStyle[finding.severity]|default('') }}">
+                                    {{ ('aacp.security.severity.' ~ finding.severity)|trans }}
+                                </span>
+                            </td>
+                            <td class="align-top">
+                                <span class="block font-medium !text-slate-200">{{ finding.titleKey|trans }}</span>
+                                <span class="mt-0.5 block font-mono text-fs-xs !text-slate-500">{{ finding.id }}</span>
+                            </td>
+                            <td class="align-top !text-slate-400">{{ finding.detailKey|trans(finding.parameters) }}</td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+
+        <form method="post" action="{{ path('aacp_security_center_update') }}" class="space-y-sp-sm">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+            {% for group in sectionOrder %}
+                {% if sections[group] is defined %}
+                    <twig:cp:card title="{{ ('aacp.security.section.' ~ group)|trans }}">
+                        <p class="mb-sp-sm text-fs-sm !text-slate-400">{{ ('aacp.security.section_desc.' ~ group)|trans }}</p>
+                        <div class="space-y-sp-sm">
+                            {% for setting in sections[group] %}
+                                {% include 'aacp/partials/_system_setting_field.html.twig' with {
+                                    setting: setting,
+                                    value: values[setting.key]|default(null),
+                                    compact: false,
+                                } only %}
+                            {% endfor %}
+                        </div>
+                    </twig:cp:card>
+                {% endif %}
+            {% endfor %}
+
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 !bg-dark-1/60 px-sp-sm py-3">
+                <p class="text-fs-xs !text-slate-500">{{ 'aacp.security.save_hint'|trans }}</p>
+                <button type="submit" class="btn btn-primary">
+                    <twig:ux:icon name="heroicons:check" class="h-4 w-4" />
+                    {{ 'aacp.settings.save'|trans }}
+                </button>
+            </div>
+        </form>
+
+        <twig:cp:card title="{{ 'aacp.security.twofactor_self_title'|trans }}">
+            <p class="text-fs-sm !text-slate-400">
+                {{ twoFactorEnrolled ? 'aacp.security.twofactor_self_on'|trans : 'aacp.security.twofactor_self_off'|trans }}
+            </p>
+            <p class="mt-sp-sm">
+                <a href="/hesap/iki-adimli-kurulum" class="btn btn-secondary btn-sm">
+                    <twig:ux:icon name="heroicons:device-phone-mobile" class="h-4 w-4" />
+                    {{ twoFactorEnrolled ? 'aacp.security.twofactor_manage'|trans : 'aacp.security.twofactor_enroll'|trans }}
+                </a>
+            </p>
+        </twig:cp:card>
+
+        <div id="bans">
+            <twig:cp:card title="{{ 'aacp.security.bans_title'|trans }}">
+                <p class="mb-sp-sm text-fs-sm !text-slate-400">
+                    {{ 'aacp.security.bans_desc'|trans({'total': banStats.total, 'automatic': banStats.automatic, 'expiring': banStats.expiring}) }}
+                </p>
+
+                <form method="post" action="{{ path('aacp_security_center_ban') }}" class="mb-sp-sm flex flex-wrap items-end gap-3">
+                    <input type="hidden" name="_token" value="{{ action_token }}">
+                    <div class="min-w-[200px] flex-1">
+                        <label class="form-label !text-slate-400" for="ban-pattern">{{ 'aacp.security.ban_pattern'|trans }}</label>
+                        <input type="text" id="ban-pattern" name="pattern" required placeholder="203.0.113.7 / 203.0.113.0/24"
+                               class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                    </div>
+                    <div class="w-32">
+                        <label class="form-label !text-slate-400" for="ban-minutes">{{ 'aacp.security.ban_minutes'|trans }}</label>
+                        <input type="number" id="ban-minutes" name="minutes" min="0" step="1" value="0"
+                               class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                    </div>
+                    <div class="min-w-[160px] flex-1">
+                        <label class="form-label !text-slate-400" for="ban-reason">{{ 'aacp.security.ban_reason'|trans }}</label>
+                        <input type="text" id="ban-reason" name="reason" maxlength="255"
+                               class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                    </div>
+                    <button type="submit" class="btn btn-danger">
+                        <twig:ux:icon name="heroicons:no-symbol" class="h-4 w-4" />
+                        {{ 'aacp.security.ban_submit'|trans }}
+                    </button>
+                </form>
+
+                <twig:cp:table headers="{{ [
+                    'aacp.security.column.pattern'|trans,
+                    'aacp.security.column.source'|trans,
+                    'aacp.security.column.reason'|trans,
+                    'aacp.security.column.hits'|trans,
+                    'aacp.security.column.expires'|trans,
+                    'aacp.security.column.actions'|trans,
+                ] }}" empty="{{ bans is empty }}" emptyText="{{ 'aacp.security.bans_empty'|trans }}">
+                    <twig:block name="rows">
+                        {% for ban in bans %}
+                            <tr>
+                                <td><span class="font-mono text-fs-xs !text-slate-200">{{ ban.ip_address }}</span></td>
+                                <td>
+                                    <span class="badge rounded-md border px-2 py-0.5 text-fs-xs {{ ban.source == 'auto' ? '!border-warning-500/30 !bg-warning-500/10 !text-warning-300' : '!border-white/10 !bg-white/5 !text-slate-300' }}">
+                                        {{ ('aacp.security.source.' ~ ban.source)|trans }}
+                                    </span>
+                                </td>
+                                <td class="!text-slate-400">{{ ban.reason|default('—') }}</td>
+                                <td class="!text-slate-400">{{ ban.hit_count }}</td>
+                                <td class="!text-slate-400">{{ ban.expires_at ?? 'aacp.security.ban_permanent'|trans }}</td>
+                                <td>
+                                    <form method="post" action="{{ path('aacp_security_center_unban', {id: ban.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ action_token }}">
+                                        <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-success-300">
+                                            {{ 'aacp.security.unban'|trans }}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+            </twig:cp:card>
+        </div>
+
+        <div id="sessions">
+            <twig:cp:card title="{{ 'aacp.security.sessions_title'|trans }}">
+                <p class="mb-sp-sm text-fs-sm !text-slate-400">
+                    {{ 'aacp.security.sessions_desc'|trans({'count': sessionCount}) }}
+                </p>
+
+                <twig:cp:table headers="{{ [
+                    'aacp.security.column.user'|trans,
+                    'aacp.security.column.ip'|trans,
+                    'aacp.security.column.agent'|trans,
+                    'aacp.security.column.last_seen'|trans,
+                    'aacp.security.column.actions'|trans,
+                ] }}" empty="{{ sessions is empty }}" emptyText="{{ 'aacp.security.sessions_empty'|trans }}">
+                    <twig:block name="rows">
+                        {% for session in sessions %}
+                            <tr>
+                                <td class="!text-slate-200">{{ session.email|default('—') }}</td>
+                                <td><span class="font-mono text-fs-xs !text-slate-400">{{ session.ip_address }}</span></td>
+                                <td class="max-w-[280px] truncate !text-slate-500" title="{{ session.user_agent }}">{{ session.user_agent }}</td>
+                                <td class="!text-slate-400">{{ session.last_seen_at }}</td>
+                                <td>
+                                    <form method="post" action="{{ path('aacp_security_center_revoke_session', {id: session.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ action_token }}">
+                                        <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
+                                            {{ 'aacp.security.revoke_session'|trans }}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+            </twig:cp:card>
+        </div>
+    </div>
+{% endblock %}

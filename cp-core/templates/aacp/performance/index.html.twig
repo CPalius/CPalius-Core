@@ -9,6 +9,23 @@
 {% block body %}
     <div class="space-y-sp-md">
         {{ include('aacp/performance/_backend_card.html.twig', {
+            backendId: 'cpalius',
+            title: 'aacp.performance.backend.cpalius'|trans,
+            intro: 'aacp.performance.backend.cpalius_intro'|trans,
+            fields: [
+                {key: 'ttl', label: 'aacp.performance.field.ttl'|trans, hint: 'aacp.performance.field.ttl_origin_hint'|trans},
+                {key: 'excludes', label: 'aacp.performance.field.excludes'|trans, type: 'textarea', hint: 'aacp.performance.field.excludes_origin_hint'|trans, wide: true},
+                {key: 'minify', label: 'aacp.performance.field.minify'|trans, type: 'checkbox', hint: 'aacp.performance.field.minify_hint'|trans, wide: true},
+                {key: 'compress_assets', label: 'aacp.performance.field.compress_assets'|trans, type: 'checkbox', hint: 'aacp.performance.field.compress_assets_hint'|trans, wide: true},
+                {key: 'compress_images', label: 'aacp.performance.field.compress_images'|trans, type: 'checkbox', hint: 'aacp.performance.field.compress_images_hint'|trans, wide: true},
+                {key: 'shield', label: 'aacp.performance.field.shield'|trans, type: 'checkbox', hint: 'aacp.performance.field.shield_hint'|trans, wide: true},
+            ],
+            config: sections.cpalius.config,
+            status: sections.cpalius.status,
+            csrf_token: csrf_token,
+            purgeUrl: path('aacp_performance_cpalius_purge'),
+        }) }}
+        {{ include('aacp/performance/_backend_card.html.twig', {
             backendId: 'redis',
             title: 'aacp.performance.backend.redis'|trans,
             fields: [

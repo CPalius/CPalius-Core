@@ -4,20 +4,32 @@ declare(strict_types=1);
 
 namespace App\Core\Mail;
 
+use App\Core\Mail\Entity\MailLog;
+use App\Core\Mail\Message\SendMailMessage;
+use App\Core\Mail\Repository\MailLogRepository;
 use App\Core\Settings\SettingsRegistry;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\Transport;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 
 /**
- * cp_settings üzerinden yapılandırılan dinamik SMTP gönderici.
+ * Dynamic SMTP sender configured via cp_settings.
+ *
+ * sendHtml() enqueues onto Messenger so the HTTP thread never waits on SMTP.
+ * sendNow() / sendTestEmail() deliver immediately (AACP test mail, worker handlers).
+ * Every outbound attempt is recorded in cp_mail_logs for AACP resend.
  */
 final class CpMailerService
 {
     public function __construct(
         private readonly SettingsRegistry $settingsRegistry,
+        private readonly MessageBusInterface $messageBus,
+        private readonly EntityManagerInterface $entityManager,
+        private readonly MailLogRepository $mailLogs,
     ) {
     }
 
@@ -39,29 +51,110 @@ final class CpMailerService
     }
 
     /**
-     * @throws TransportExceptionInterface
+     * Enqueue an HTML mail for async delivery. Prefer this from request threads.
+     *
+     * @throws \RuntimeException when mail is not configured
      */
-    public function sendHtml(string $to, string $subject, string $htmlBody, ?string $textBody = null): void
+    public function sendHtml(string $to, string $subject, string $htmlBody, ?string $textBody = null): MailLog
     {
         if (!$this->canSend()) {
             throw new \RuntimeException('Mail is not configured or disabled.');
         }
 
-        $fromEmail = (string) $this->settingsRegistry->get('mail.from_email');
-        $fromName = trim((string) ($this->settingsRegistry->get('mail.from_name') ?? ''));
+        $log = new MailLog($to, $subject, $htmlBody, $textBody, MailLog::STATUS_QUEUED);
+        $this->entityManager->persist($log);
+        $this->entityManager->flush();
 
-        $email = (new Email())
-            ->from(new Address($fromEmail, $fromName !== '' ? $fromName : $fromEmail))
-            ->to($to)
-            ->subject($subject)
-            ->html($htmlBody);
+        $this->messageBus->dispatch(new SendMailMessage(
+            $to,
+            $subject,
+            $htmlBody,
+            $textBody,
+            $log->getId(),
+        ));
 
-        if ($textBody !== null) {
-            $email->text($textBody);
+        return $log;
+    }
+
+    /**
+     * Deliver immediately over SMTP. Used by the Messenger worker and AACP test mail.
+     *
+     * @throws TransportExceptionInterface
+     * @throws \RuntimeException when mail is not configured
+     */
+    public function sendNow(
+        string $to,
+        string $subject,
+        string $htmlBody,
+        ?string $textBody = null,
+        ?int $mailLogId = null,
+    ): void {
+        if (!$this->canSend()) {
+            throw new \RuntimeException('Mail is not configured or disabled.');
         }
 
-        $mailer = new Mailer($this->createTransport());
-        $mailer->send($email);
+        $log = $this->resolveLog($mailLogId, $to, $subject, $htmlBody, $textBody);
+
+        try {
+            $fromEmail = (string) $this->settingsRegistry->get('mail.from_email');
+            $fromName = trim((string) ($this->settingsRegistry->get('mail.from_name') ?? ''));
+
+            $email = (new Email())
+                ->from(new Address($fromEmail, $fromName !== '' ? $fromName : $fromEmail))
+                ->to($to)
+                ->subject($subject)
+                ->html($htmlBody);
+
+            if ($textBody !== null) {
+                $email->text($textBody);
+            }
+
+            $mailer = new Mailer($this->createTransport());
+            $mailer->send($email);
+            $log->markSent();
+            $this->entityManager->flush();
+        } catch (\Throwable $e) {
+            $log->markFailed($e->getMessage());
+            $this->entityManager->flush();
+            throw $e;
+        }
+    }
+
+    /**
+     * Re-queue or re-send from a stored MailLog row.
+     *
+     * @throws \RuntimeException when mail is not configured
+     */
+    public function resend(MailLog $log, bool $immediate = false): MailLog
+    {
+        if (!$this->canSend()) {
+            throw new \RuntimeException('Mail is not configured or disabled.');
+        }
+
+        $log->markQueued();
+        $this->entityManager->flush();
+
+        if ($immediate) {
+            $this->sendNow(
+                $log->getTo(),
+                $log->getSubject(),
+                $log->getHtmlBody(),
+                $log->getTextBody(),
+                $log->getId(),
+            );
+
+            return $log;
+        }
+
+        $this->messageBus->dispatch(new SendMailMessage(
+            $log->getTo(),
+            $log->getSubject(),
+            $log->getHtmlBody(),
+            $log->getTextBody(),
+            $log->getId(),
+        ));
+
+        return $log;
     }
 
     /**
@@ -69,12 +162,33 @@ final class CpMailerService
      */
     public function sendTestEmail(string $to): void
     {
-        $this->sendHtml(
+        $this->sendNow(
             $to,
             'CPalius SMTP Test',
-            '<p>SMTP ayarlarınız çalışıyor.</p>',
-            'SMTP ayarlarınız çalışıyor.',
+            '<p>Your SMTP settings are working.</p>',
+            'Your SMTP settings are working.',
         );
+    }
+
+    private function resolveLog(
+        ?int $mailLogId,
+        string $to,
+        string $subject,
+        string $htmlBody,
+        ?string $textBody,
+    ): MailLog {
+        if ($mailLogId !== null) {
+            $existing = $this->mailLogs->find($mailLogId);
+            if ($existing instanceof MailLog) {
+                return $existing;
+            }
+        }
+
+        $log = new MailLog($to, $subject, $htmlBody, $textBody, MailLog::STATUS_QUEUED);
+        $this->entityManager->persist($log);
+        $this->entityManager->flush();
+
+        return $log;
     }
 
     private function createTransport(): Transport\TransportInterface

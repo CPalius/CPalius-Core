@@ -29,7 +29,7 @@ final class CpUserProvider implements UserProviderInterface, PasswordUpgraderInt
         $user = $this->userRepository->findOneByEmailOrUsername($identifier);
 
         if ($user === null) {
-            throw new UserNotFoundException(sprintf('"%s" kimlikli bir kullanıcı bulunamadı.', $identifier));
+            throw new UserNotFoundException(sprintf('No user found with identifier "%s".', $identifier));
         }
 
         return $user;
@@ -38,13 +38,13 @@ final class CpUserProvider implements UserProviderInterface, PasswordUpgraderInt
     public function refreshUser(UserInterface $user): UserInterface
     {
         if (!$user instanceof User) {
-            throw new UnsupportedUserException(sprintf('Geçersiz kullanıcı sınıfı "%s".', $user::class));
+            throw new UnsupportedUserException(sprintf('Invalid user class "%s".', $user::class));
         }
 
         $freshUser = $this->userRepository->find($user->getId());
 
         if ($freshUser === null) {
-            throw new UserNotFoundException(sprintf('#%d kimlikli kullanıcı artık mevcut değil.', $user->getId()));
+            throw new UserNotFoundException(sprintf('User with ID #%d no longer exists.', $user->getId()));
         }
 
         return $freshUser;

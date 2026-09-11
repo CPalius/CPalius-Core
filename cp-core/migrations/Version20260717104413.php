@@ -8,28 +8,14 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * cpalius-website temasının header.html.twig/footer.html.twig dosyalarında
- * BUGÜNE KADAR hardcode olarak yazılan gezinme linklerini (bkz. cp_menu()
- * çağrılarının {% else %} fallback dalları) gerçek Menu/MenuItem
- * kayıtlarına taşır — 'header', 'footer' ve yeni 'footer_contact'
- * identifier'larıyla üç Menu ve onların item'ları oluşturulur.
- *
- * Bu satır sonrası artık AACP > Görünüm > Menüler ekranından
- * düzenlenebilir/silinebilir hale gelirler; şablonlardaki hardcode
- * {% else %} dalları SADECE bu menüler bir şekilde tamamen silinirse
- * devreye giren bir fail-safe fallback olarak kalır (bkz. FrontMenuRuntime).
- *
- * '#' ile başlayan anchor linkler ('#about' vb.) kasıtlı olarak
- * '/#about' şeklinde ana sayfaya göre MUTLAK yazılır — eski şablondaki
- * {{ path('theme_cpalius_website_home') }}#about ifadesiyle birebir aynı
- * hedefe gitmesi için (menü öğeleri statik url alanı kullanır, route adı
- * çözümleyemez).
+ * Moves hardcoded cpalius-website header/footer nav links into Menu/MenuItem records (header, footer, footer_contact).
+ * Anchor links are stored as /#fragment absolute URLs; template {% else %} branches remain as fail-safe fallbacks.
  */
 final class Version20260717104413 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return "Tema navigasyonundaki hardcode linkleri 'header'/'footer'/'footer_contact' Menu kayıtlarına taşır.";
+        return "Moves hardcoded theme navigation links into 'header'/'footer'/'footer_contact' Menu records.";
     }
 
     public function up(Schema $schema): void
@@ -44,10 +30,7 @@ final class Version20260717104413 extends AbstractMigration
 
         $menuIds = [];
         foreach ($menus as $menu) {
-            // addSql() bu ifadeyi hemen ÇALIŞTIRMAZ, migration sonunda
-            // sıraya konmuş halde toplu çalıştırılır — bu yüzden hemen
-            // ardından lastInsertId() okumak yarış koşuluna girer.
-            // executeStatement() senkron çalışır, ID'yi güvenle okuyabiliriz.
+            // executeStatement() runs synchronously so lastInsertId() is safe (addSql() would queue until end).
             $this->connection->executeStatement(
                 'INSERT INTO menus (name, identifier) VALUES (?, ?)',
                 [$menu['name'], $menu['identifier']],

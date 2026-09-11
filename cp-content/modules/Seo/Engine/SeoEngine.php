@@ -109,6 +109,7 @@ final class SeoEngine implements SeoHeadRendererInterface
             'prevUrl' => $document->prevUrl,
             'nextUrl' => $document->nextUrl,
             'locale' => $locale,
+            'keywords' => trim($document->keywords),
         ]);
     }
 

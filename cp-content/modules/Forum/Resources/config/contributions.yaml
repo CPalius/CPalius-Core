@@ -1,0 +1,122 @@
+homepage_modes:
+    forum:
+        route: forum_index
+        label: studio.homepage.mode.forum
+        priority: 20
+
+account:
+    post_login_route: forum_index
+    post_login_priority: 50
+
+portal_blocks:
+    latest_forum_topics:
+        label: studio.homepage.blocks.latest_forum_topics
+        group: portal
+        supports_limit: true
+        supports_layout: true
+        hide_on_landing: true
+        requires_route: forum_index
+        legacy_widget_setting: homepage.widget.latest_forum_topics
+        default:
+            enabled: false
+            title: ''
+            limit: 6
+            layout: list
+    popular_forum_topics:
+        label: studio.homepage.blocks.popular_forum_topics
+        group: portal
+        supports_limit: true
+        supports_layout: true
+        requires_route: forum_index
+        legacy_widget_setting: homepage.widget.popular_forum_topics
+        default:
+            enabled: true
+            title: ''
+            limit: 5
+            layout: slider
+    forum_boards:
+        label: studio.homepage.blocks.forum_boards
+        group: portal
+        supports_limit: true
+        supports_layout: true
+        requires_route: forum_index
+        default:
+            enabled: true
+            title: ''
+            limit: 8
+            layout: cards
+    forum_stats:
+        label: studio.homepage.blocks.forum_stats
+        group: portal
+        requires_route: forum_index
+        default:
+            enabled: true
+            title: ''
+    latest_forum_posts:
+        label: studio.homepage.blocks.latest_forum_posts
+        group: portal
+        supports_limit: true
+        supports_layout: true
+        requires_route: forum_index
+        default:
+            enabled: true
+            title: ''
+            limit: 6
+            layout: list
+
+notification_types:
+    forum.reply:
+        label: notification.type.forum_reply
+        module: Forum
+        preference_key: forum_notif_reply
+        default_channels: [in_app]
+        mail_template: forum_reply
+        expose_in_account: true
+    forum.thread_reply:
+        label: notification.type.forum_thread_reply
+        module: Forum
+        preference_key: forum_notif_thread
+        default_channels: [in_app]
+        mail_template: forum_thread_reply
+        expose_in_account: true
+    forum.quote:
+        label: notification.type.forum_quote
+        module: Forum
+        preference_key: forum_notif_quote
+        default_channels: [in_app]
+        mail_template: forum_quote
+        expose_in_account: true
+    forum.reaction:
+        label: notification.type.forum_reaction
+        module: Forum
+        preference_key: forum_notif_reaction
+        default_channels: [in_app]
+        mail_template: forum_reaction
+        expose_in_account: true
+    forum.dislike:
+        label: notification.type.forum_dislike
+        module: Forum
+        preference_key: forum_notif_dislike
+        default_channels: [in_app]
+        mail_template: forum_dislike
+        expose_in_account: true
+    forum.mention:
+        label: notification.type.forum_mention
+        module: Forum
+        preference_key: forum_notif_mention
+        default_channels: [in_app]
+        mail_template: forum_mention
+        expose_in_account: true
+    forum.reputation:
+        label: notification.type.forum_reputation
+        module: Forum
+        default_channels: [in_app]
+        mail_template: forum_reputation
+        expose_in_account: false
+    forum.watch:
+        label: notification.type.forum_watch
+        module: Forum
+        preference_key: forum_notif_watch
+        default_channels: [in_app]
+        mail_template: forum_watch
+        expose_in_account: true

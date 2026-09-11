@@ -12,9 +12,9 @@ final class MaxQueriesExceededException extends \RuntimeException
     public static function forTable(string $table, int $count, int $limit): self
     {
         return new self(sprintf(
-            'N+1 sorgu tespit edildi: "%s" tablosuna bu istek içinde %d kez sorgu atıldı (limit: %d). '
-            .'Muhtemelen bir döngü içinde lazy-loading yapılıyor; ilişkiyi bir fetch-join (JOIN FETCH) '
-            .'veya batch sorgu ile önceden yükleyin.',
+            'N+1 query detected: table "%s" was queried %d times in this request (limit: %d). '
+            .'Lazy-loading is likely happening inside a loop; preload the relation with a fetch-join (JOIN FETCH) '
+            .'or a batch query.',
             $table,
             $count,
             $limit,

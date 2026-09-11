@@ -14,7 +14,7 @@ final class Version20260715204838 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Tag entity + Node coklu kategori/etiket iliskileri (node_category, node_tag join table).';
+        return 'Tag entity plus Node many-to-many category/tag relations (node_category, node_tag join tables).';
     }
 
     public function up(Schema $schema): void

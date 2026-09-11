@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace App\Core\Menu;
 
 /**
- * #[CpAdminMenu] ile işaretlenmiş TEK bir controller action'ının derleme
- * zamanında çözülmüş, değişmez tanımı. ResourceDefinition ile aynı ruhta:
- * saf veri taşıyıcısı, hiçbir davranış/filtreleme mantığı içermez.
+ * Immutable compile-time definition for one #[CpAdminMenu] controller action.
+ * Pure data carrier like ResourceDefinition; no behavior or filtering logic.
  */
 final class MenuItemDefinition
 {
     /**
-     * @param string $module Bu action'ı barındıran modülün bundle FQCN'i
-     *   (ör. "Modules\Blog\BlogModule"), çekirdek controller'lar için "core".
+     * @param string $module Hosting module bundle FQCN (e.g. Modules\Blog\BlogModule) or "core".
      */
     public function __construct(
         public readonly string $label,

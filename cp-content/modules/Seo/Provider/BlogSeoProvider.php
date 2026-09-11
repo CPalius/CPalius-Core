@@ -11,6 +11,8 @@ use App\Repository\CategoryRepository;
 use App\Repository\NodeRepository;
 use App\Repository\TagRepository;
 use App\Core\Settings\SettingsRegistry;
+use App\Core\Token\TokenContext;
+use App\Core\Token\TokenReplacer;
 use Modules\Seo\Contract\SeoPageProviderInterface;
 use Modules\Seo\Document\SeoDocument;
 use Modules\Seo\Engine\SeoUrlBuilder;
@@ -25,6 +27,7 @@ final class BlogSeoProvider implements SeoPageProviderInterface
         private readonly AssetRepository $assets,
         private readonly SettingsRegistry $settings,
         private readonly SeoUrlBuilder $urls,
+        private readonly TokenReplacer $tokenReplacer,
     ) {
     }
 
@@ -74,7 +77,13 @@ final class BlogSeoProvider implements SeoPageProviderInterface
             $description = trim(strip_tags((string) $node->getDataValue('excerpt', '')));
         }
         if ($description === '') {
-            $description = (string) $this->settings->getForLocale('blog.meta_description_fallback', $locale, '');
+            // T2.4: the fallback setting may itself contain [node:...]/[site:...]
+            // tokens (e.g. "[node:title] — CPalius blog'unda en son gelişmeler.").
+            $description = $this->tokenReplacer->replace(
+                (string) $this->settings->getForLocale('blog.meta_description_fallback', $locale, ''),
+                TokenContext::for($node),
+                true,
+            );
         }
 
         $images = $this->images($node, $seo, $locale);
@@ -88,7 +97,10 @@ final class BlogSeoProvider implements SeoPageProviderInterface
 
         $noindex = !empty($seo['noindex']);
         $author = $node->getAuthor();
-        $authorName = $author?->getDataValue('display_name', $author->getEmail());
+        $authorName = $author?->getPublicDisplayName();
+        if ($authorName === '') {
+            $authorName = null;
+        }
 
         $extra = [];
         if ($subType === 'yazilim' || $subType === 'proje') {
@@ -168,7 +180,11 @@ final class BlogSeoProvider implements SeoPageProviderInterface
 
         return new SeoDocument(
             headline: $headline,
-            description: (string) $this->settings->getForLocale('blog.meta_description_fallback', $locale, ''),
+            description: $this->tokenReplacer->replace(
+                (string) $this->settings->getForLocale('blog.meta_description_fallback', $locale, ''),
+                [],
+                true,
+            ),
             canonicalPath: $url,
             ogType: 'website',
             contentKind: 'blog',

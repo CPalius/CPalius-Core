@@ -13,8 +13,32 @@
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
+    # CPalius origin HTML cache (anonymous GET, empty query, sentinel present).
+    # Prefer locale-aware GC1 path: page-cache/_ctx/{locale}/anon/{uri}/index.html
+    RewriteCond %{DOCUMENT_ROOT}/page-cache/.enabled -f
+    RewriteCond %{REQUEST_METHOD} GET
+    RewriteCond %{QUERY_STRING} ^$
+    RewriteCond %{HTTP_COOKIE} !PHPSESSID [NC]
+    RewriteCond %{HTTP_COOKIE} !REMEMBERME [NC]
+    RewriteCond %{REQUEST_URI} ^/([a-z]{2})(/|$) [NC]
+    RewriteCond %{DOCUMENT_ROOT}/page-cache/_ctx/%1/anon%{REQUEST_URI}/index.html -f
+    RewriteRule ^(.*)$ page-cache/_ctx/%1/anon/$1/index.html [L]
+
+    # Legacy pre-GC1 snapshots (no _ctx prefix) — kept until they age out.
+    RewriteCond %{DOCUMENT_ROOT}/page-cache/.enabled -f
+    RewriteCond %{REQUEST_METHOD} GET
+    RewriteCond %{QUERY_STRING} ^$
+    RewriteCond %{HTTP_COOKIE} !PHPSESSID [NC]
+    RewriteCond %{HTTP_COOKIE} !REMEMBERME [NC]
+    RewriteCond %{DOCUMENT_ROOT}/page-cache%{REQUEST_URI}/index.html -f
+    RewriteRule ^(.*)$ page-cache/$1/index.html [L]
+
     # Geri kalan tüm istekleri index.php dosyasına gönder (Symfony Router devralır)
     RewriteRule ^ %{ENV:BASE}/index.php [L]
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json image/svg+xml
 </IfModule>
 
 <IfModule !mod_rewrite.c>

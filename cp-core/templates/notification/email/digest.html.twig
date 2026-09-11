@@ -1,0 +1,11 @@
+<p>{{ 'notification.mail.body.digest'|trans({'count': items|length}) }}</p>
+<ul>
+{% for item in items %}
+    {% set n = item.notification %}
+    <li>
+        {{ ('notification.event.' ~ n.eventKey)|trans(n.data) }}
+        {% if n.data.title is defined %} — {{ n.data.title }}{% endif %}
+    </li>
+{% endfor %}
+</ul>
+<p><a href="{{ absolute_url(path('account_notifications')) }}">{{ 'notification.mail.open_inbox'|trans }}</a></p>

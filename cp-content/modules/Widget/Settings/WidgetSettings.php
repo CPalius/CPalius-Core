@@ -12,7 +12,7 @@ use App\Core\Annotation\CpSetting;
  */
 #[CpSetting(
     key: 'widget.sidebar_enabled',
-    label: 'Kenar Çubuğunu Göster',
+    label: 'widget.settings.sidebar_enabled',
     type: 'checkbox',
     default: true,
     module: 'widget',
@@ -21,12 +21,12 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'widget.sidebar_position',
-    label: 'Kenar Çubuğu Konumu',
+    label: 'widget.settings.sidebar_position',
     type: 'select',
     default: 'right',
     variants: [
-        'left' => 'Sol',
-        'right' => 'Sağ',
+        'left' => 'widget.settings.position.left',
+        'right' => 'widget.settings.position.right',
     ],
     module: 'widget',
     group: 'widget',
@@ -34,7 +34,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'widget.sidebar_title',
-    label: 'Kenar Çubuğu Başlığı',
+    label: 'widget.settings.sidebar_title',
     type: 'text',
     default: '',
     module: 'widget',
@@ -44,7 +44,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'widget.max_items_per_widget',
-    label: 'Widget Başına Maksimum Öğe',
+    label: 'widget.settings.max_items_per_widget',
     type: 'integer',
     default: 5,
     module: 'widget',
@@ -53,7 +53,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'widget.footer_enabled',
-    label: 'Alt Bilgi Widget Alanını Göster',
+    label: 'widget.settings.footer_enabled',
     type: 'checkbox',
     default: true,
     module: 'widget',
@@ -62,7 +62,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'widget.footer_columns',
-    label: 'Alt Bilgi Sütun Sayısı',
+    label: 'widget.settings.footer_columns',
     type: 'select',
     default: '3',
     variants: [
@@ -77,7 +77,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'widget.footer_note',
-    label: 'Alt Bilgi Notu',
+    label: 'widget.settings.footer_note',
     type: 'textarea',
     default: '',
     module: 'widget',

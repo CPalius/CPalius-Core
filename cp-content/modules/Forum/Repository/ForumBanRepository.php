@@ -89,4 +89,30 @@ final class ForumBanRepository extends ServiceEntityRepository
 
         return array_values(array_filter($bans, static fn (ForumBan $ban) => $ban->isActive()));
     }
+
+    /** @return ForumBan[] */
+    public function findActiveForIp(string $ip): array
+    {
+        $bans = $this->createQueryBuilder('b')
+            ->andWhere('b.ipAddress = :ip')
+            ->andWhere('b.revokedAt IS NULL')
+            ->setParameter('ip', $ip)
+            ->getQuery()
+            ->getResult();
+
+        return array_values(array_filter($bans, static fn (ForumBan $ban) => $ban->isActive()));
+    }
+
+    /** @return ForumBan[] */
+    public function findActiveForEmail(string $email): array
+    {
+        $bans = $this->createQueryBuilder('b')
+            ->andWhere('b.email = :email')
+            ->andWhere('b.revokedAt IS NULL')
+            ->setParameter('email', mb_strtolower($email))
+            ->getQuery()
+            ->getResult();
+
+        return array_values(array_filter($bans, static fn (ForumBan $ban) => $ban->isActive()));
+    }
 }

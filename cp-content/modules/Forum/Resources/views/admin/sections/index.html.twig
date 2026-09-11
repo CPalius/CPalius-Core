@@ -4,10 +4,13 @@
 
 {% block header_actions %}
     <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.sections.index.action.dashboard'|trans }}</a>
-    <a href="{{ path('admin_forum_sections_create') }}" class="btn btn-sm btn-primary">{{ 'studio.forum.sections.index.action.new'|trans }}</a>
+    <a href="{{ path('admin_forum_sections_create', {locale: currentLocale}) }}" class="btn btn-sm btn-primary">{{ 'studio.forum.sections.index.action.new'|trans }}</a>
 {% endblock %}
 
 {% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+    <twig:studio:locale_filter locales="{{ locales }}" current="{{ currentLocale }}" route="admin_forum_sections_index" />
+
     <div class="mb-sp-sm rounded-lg border border-primary-200 bg-primary-50 px-sp-sm py-sp-xs text-fs-sm text-primary-800">
         <strong>{{ 'studio.forum.sections.index.hierarchy_hint_label'|trans }}</strong> {{ 'studio.forum.sections.index.hierarchy_hint'|trans|raw }}
     </div>
@@ -43,7 +46,7 @@
                         <td>
                             <span class="inline-flex rounded-full px-2 py-0.5 text-fs-xs font-medium
                                 {{ row.type.value == 'division' ? 'bg-primary-100 text-primary-700' : (row.type.value == 'category' ? 'bg-neutral-100 text-neutral-700' : 'bg-success-50 text-success-700') }}">
-                                {{ row.type.label() }}
+                                {{ row.type.label()|trans }}
                             </span>
                         </td>
                         <td><code>{{ section.slug }}</code></td>

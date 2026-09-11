@@ -7,6 +7,7 @@
 {% endblock %}
 
 {% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
     <twig:studio:card>
         <form method="post">
             <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_member') }}">

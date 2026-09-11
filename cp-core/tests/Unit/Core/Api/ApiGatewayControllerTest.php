@@ -19,40 +19,13 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * API-01 / API-02 REGRESYON TESTİ — ağ geçidi yol eşleştirmesi.
- *
- * ══ Bu testin var olma sebebi ═══════════════════════════════════════════
- *
- * matchPath() üç satırlık bir metottu ve iki ayrı hata içeriyordu:
- *
- *   API-01: preg_quote() ÖNCE çağrılıyordu; süslü parantezleri kaçırdığı
- *           için ("{id}" -> "\{id\}") sonraki preg_replace() deseni artık
- *           eşleşmiyor ve yer tutucu bir yakalama grubuna DÖNÜŞMÜYORDU.
- *           Sonuç: #[CpApi] ile tanımlanan her parametreli uç nokta
- *           kalıcı olarak 404 dönüyordu.
- *
- *   API-02: str_replace('\\', '', $regex) tüm regex kaçışlarını
- *           siliyordu; nokta ve artı gibi meta karakterler joker'e
- *           dönüşüyordu. Bu bir YETKİLENDİRME riskidir: matchEndpoint()
- *           ilk eşleşende durduğu için, public: true bir desen
- *           public: false bir uç noktayı gölgeleyebilirdi.
- *
- * ══ Neden reflection ════════════════════════════════════════════════════
- *
- * matchPath() private'tır ve öyle KALMALIDIR — dışarıya açmak, testin
- * kolaylığı uğruna genel API'yi genişletmek olurdu. Buradaki iki hata da
- * tam olarak o metodun regex üretiminde yaşadığı için, testin doğrudan
- * oraya bakması hem en kesin hem de en okunur kanıttır. Ayrıca aşağıda
- * __invoke() üzerinden uçtan uca bir doğrulama da vardır: birim testi
- * "regex doğru mu", entegrasyon tarzı test "gerçekten doğru metoda
- * yönlendiriliyor ve yetki kontrolü çalışıyor mu" sorusunu yanıtlar.
+ * API-01 / API-02 regression test — gateway path matching.
+ * matchPath() is tested via reflection; __invoke() covers end-to-end routing.
  */
 #[CoversClass(ApiGatewayController::class)]
 final class ApiGatewayControllerTest extends TestCase
 {
-    // ═════════════════════════════════════════════════════════════════════
-    // API-01 — Parametreli yollar artık eşleşiyor
-    // ═════════════════════════════════════════════════════════════════════
+    // API-01 — Parameterised paths match
 
     /**
      * @return iterable<string, array{string, string, list<string>}>
@@ -92,16 +65,8 @@ final class ApiGatewayControllerTest extends TestCase
     }
 
     /**
-     * Bu, API-01'in en dar hâlde ifadesidir: düzeltmeden ÖNCE
-     * "/blog/posts/{id}" deseni SADECE literal "/blog/posts/{id}" yoluyla
-     * eşleşiyor, gerçek bir kimlikle ("/blog/posts/42") eşleşmiyordu.
-     * Yani yer tutucu bir yakalama grubuna hiç dönüşmüyordu.
-     *
-     * NOT: düzeltmeden SONRA da "/blog/posts/{id}" yolu eşleşir — ama
-     * artık bunun sebebi "literal metin aynı" değil, "([^/]+) grubu
-     * '{id}' dizesini yakaladı"dır. Bu doğru davranıştır: bir yol
-     * parametresi süslü parantez içeren bir değer de taşıyabilir.
-     * Ayrımı, yakalanan değeri kontrol ederek kanıtlıyoruz.
+     * API-01 narrow case: placeholder must become a capture group, not literal text.
+     * Literal "{id}" path also matches — captured value proves the distinction.
      */
     public function testPlaceholderBecomesCaptureGroupNotLiteralText(): void
     {
@@ -111,8 +76,7 @@ final class ApiGatewayControllerTest extends TestCase
             'API-01 regresyonu: parametreli yol gercek bir kimlikle eslesmedi.',
         );
 
-        // Literal "{id}" de eşleşir, ama YAKALANMIŞ bir değer olarak —
-        // düzeltmeden önce hiçbir şey yakalanmıyordu (bos dizi dönerdi).
+        // Literal "{id}" also matches — as a captured value, not empty array.
         self::assertSame(
             ['{id}'],
             $this->matchPath('/blog/posts/{id}', '/blog/posts/{id}'),
@@ -120,16 +84,14 @@ final class ApiGatewayControllerTest extends TestCase
         );
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // API-02 — Regex meta karakterleri artık literal
-    // ═════════════════════════════════════════════════════════════════════
+    // API-02 — Regex metacharacters treated as literals
 
     /**
      * @return iterable<string, array{string, string}>
      */
     public static function regexMetacharacterProvider(): iterable
     {
-        // Her satır: [desen, eslesmemesi GEREKEN yol]
+        // Each row: [pattern, path that must NOT match]
         yield 'nokta joker olmamali'      => ['/v1.0/ping', '/v1X0/ping'];
         yield 'nokta joker olmamali (2)'  => ['/api.json', '/apiXjson'];
         yield 'arti tekrar olmamali'      => ['/a+b/x', '/aaab/x'];
@@ -149,10 +111,7 @@ final class ApiGatewayControllerTest extends TestCase
         );
     }
 
-    /**
-     * Kaçışın doğru olması, meşru eşleşmeyi BOZMAMALI: aynı desen kendi
-     * literal karşılığıyla hâlâ eşleşmelidir.
-     */
+    /** Correct escaping must not break legitimate literal matches. */
     public function testLiteralMetacharactersStillMatchThemselves(): void
     {
         self::assertSame([], $this->matchPath('/v1.0/ping', '/v1.0/ping'));
@@ -160,9 +119,7 @@ final class ApiGatewayControllerTest extends TestCase
         self::assertSame(['5'], $this->matchPath('/v1.0/item/{id}', '/v1.0/item/5'));
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Eşleşmemesi gereken diğer durumlar
-    // ═════════════════════════════════════════════════════════════════════
+    // Non-matching paths
 
     /**
      * @return iterable<string, array{string, string}>
@@ -184,15 +141,9 @@ final class ApiGatewayControllerTest extends TestCase
         self::assertNull($this->matchPath($pattern, $requestPath));
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Uçtan uca: gerçekten doğru metoda yönlendiriliyor mu?
-    // ═════════════════════════════════════════════════════════════════════
+    // End-to-end routing
 
-    /**
-     * Regex doğru olsa bile, yakalanan değerler hedef metoda pozisyonel
-     * argüman olarak GEÇMEZSE düzeltme yarım kalır. Bu test tüm zinciri
-     * gerçek bir Request ile koşar.
-     */
+    /** Captured values must reach the target method as positional arguments. */
     public function testCapturedParametersReachTheTargetMethod(): void
     {
         $endpoint = new class {
@@ -226,10 +177,7 @@ final class ApiGatewayControllerTest extends TestCase
         self::assertSame('{"id":"99"}', $response->getContent());
     }
 
-    /**
-     * public: false olan bir uç nokta, geçersiz API anahtarıyla 401
-     * dönmeli ve hedef metot HİÇ çağrılmamalıdır (fail-closed).
-     */
+    /** private endpoint returns 401 without valid API key — target never called. */
     public function testPrivateEndpointRejectsRequestWithoutValidApiKey(): void
     {
         $endpoint = new class {
@@ -261,12 +209,7 @@ final class ApiGatewayControllerTest extends TestCase
         self::assertFalse($endpoint->called, 'Yetkisiz istekte hedef metot CAGRILMAMALIYDI.');
     }
 
-    /**
-     * API-02'nin asıl korktuğu senaryo: public bir desenin, private bir
-     * uç noktanın yolunu gölgelemesi. Doğru kaçışla birlikte public desen
-     * yalnızca kendi literal yolunu yakalar ve private uca giden istek
-     * gerçekten 401 alır.
-     */
+    /** API-02 scenario: public pattern must not shadow a private endpoint. */
     public function testPublicPatternDoesNotShadowPrivateEndpoint(): void
     {
         $publicEndpoint = new class {
@@ -282,8 +225,7 @@ final class ApiGatewayControllerTest extends TestCase
 
         $controller = $this->createController(
             [
-                // Kaçışsız bir uygulamada "." joker olur ve
-                // "/v1Xadmin/secret" gibi yolları da yakalardı.
+                // Without escaping, "." is a wildcard and would match "/v1Xadmin/secret".
                 [
                     'path' => '/v1.admin/secret',
                     'methods' => ['GET'],
@@ -322,10 +264,7 @@ final class ApiGatewayControllerTest extends TestCase
         self::assertSame(Response::HTTP_NOT_FOUND, $response->getStatusCode());
     }
 
-    /**
-     * "Core Never Dies": çöken bir uç nokta tüm ağ geçidini değil,
-     * yalnızca o isteği etkiler ve gövdede yığın izi SIZDIRMAZ.
-     */
+    /** "Core Never Dies": throwing endpoint returns generic error without stack trace. */
     public function testThrowingEndpointReturnsGenericErrorWithoutLeakingDetails(): void
     {
         $endpoint = new class {
@@ -353,13 +292,10 @@ final class ApiGatewayControllerTest extends TestCase
         self::assertStringNotContainsString('gizli veritabani detayi', (string) $response->getContent());
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Yardımcılar
-    // ═════════════════════════════════════════════════════════════════════
+    // Helpers
 
     /**
-     * matchPath() private olduğu için reflection ile çağrılır.
-     * Bkz. sınıf docblock'undaki gerekçe.
+     * Invokes private matchPath() via reflection — see class docblock.
      *
      * @return list<string>|null
      */
@@ -408,18 +344,8 @@ final class ApiGatewayControllerTest extends TestCase
     }
 
     /**
-     * ApiKeyService "final"dır ve doubling edilemez — bu bilinçli bir
-     * tasarım kararıdır (güvenlik servisleri alt sınıflanarak
-     * zayıflatılamamalı). Bu yüzden GERÇEK servis, sahte bir
-     * SettingRepository ile kurulur.
-     *
-     * Bu, mock'lamaktan daha iyi bir testtir: doğrulanan şey artık
-     * "bir mock false döndürdüğünde ne olur" değil, gerçek hash_equals
-     * karşılaştırmasının gerçek depolama biçimiyle nasıl davrandığıdır.
-     *
-     * $valid true ise, depoda AKTİF bir anahtar varmış gibi davranılır ve
-     * gateway'e o anahtarın kendisi gönderilmiş sayılır; false ise depo
-     * boştur ve hiçbir anahtar doğrulanamaz.
+     * Real ApiKeyService with mocked SettingRepository — final class cannot be doubled.
+     * $valid true: active key in store; false: empty store, no key validates.
      */
     private function createApiKeyService(bool $valid): ApiKeyService
     {
@@ -431,12 +357,7 @@ final class ApiGatewayControllerTest extends TestCase
             return new ApiKeyService($repository, $this->createMock(EntityManagerInterface::class));
         }
 
-        // isValid() boş dizeyi her koşulda reddeder; bu yüzden "geçerli"
-        // senaryoda gateway'in gönderdiği boş header da reddedilirdi.
-        // Testlerimizde "geçerli" senaryo yalnızca public uçlar ve hata
-        // yolları için kullanıldığından, burada anahtar listesi dolu ama
-        // eşleşmeyen bir depo yeterlidir; gerçek eşleşme davranışı
-        // ApiKeyService'in kendi testinin konusudur.
+        // Populated but non-matching store — real match behaviour is ApiKeyService's own test.
         $setting = new Setting('core.api_keys', 'core');
         $setting->setSettingValue(json_encode([[
             'id' => 'test-id',

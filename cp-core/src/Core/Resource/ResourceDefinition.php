@@ -5,23 +5,14 @@ declare(strict_types=1);
 namespace App\Core\Resource;
 
 /**
- * Bir entity üzerindeki #[CpResource] attribute'unun, container derleme
- * zamanında donmuş (immutable) anlık görüntüsü. ResourceRegistry bu
- * DTO'ları taşır — reflection'ı tekrar tekrar çalıştırmamak için attribute
- * çözümlemesi sadece CompilerPass aşamasında bir kez yapılır.
- *
- * $auditable, hem #[CpResource(auditable: true)] hem de bağımsız
- * #[Auditable] attribute'undan gelebilir (ikisi OR'lanır) — bkz.
- * ResourceRegistrationPass::detectBehaviors(). $publishable ve
- * $softDeletable ise SADECE ilgili kompozisyonel davranış attribute'unun
- * (#[Publishable], #[SoftDeletable]) varlığından gelir; #[CpResource]'un
- * bunlarla ilgili bir eşdeğeri yoktur.
+ * Immutable compile-time snapshot of #[CpResource] and behavior flags on an entity.
+ * $auditable ORs CpResource and #[Auditable]; $publishable/$softDeletable come from behavior attributes only.
  */
 final class ResourceDefinition
 {
     /**
      * @param class-string $entityClass
-     * @param list<string> $capabilities Kısa eylem adları (ör. "create").
+     * @param list<string> $capabilities Short action names (e.g. create).
      */
     public function __construct(
         public readonly string $entityClass,
@@ -37,8 +28,7 @@ final class ResourceDefinition
     }
 
     /**
-     * Bu kaynağın kısa yeteneklerini "<name>.<capability>" biçiminde tam
-     * yetenek isimlerine genişletir (ör. "vehicle.create").
+     * Expands short capabilities to full names like vehicle.create.
      *
      * @return list<string>
      */

@@ -1,0 +1,43 @@
+{% set displayName = comment.displayName %}
+{% if displayName == '#' %}
+    {% set displayName = 'blog.author.anonymous'|trans %}
+{% endif %}
+{% set author = comment.author %}
+{% set avatarUrl = author ? blog_user_avatar_url(author) : null %}
+{% set profileUrl = author ? blog_author_profile_url(author) : null %}
+{% set canEdit = ctx.authorEditAllowed and currentUser and author and author.id == currentUser.id %}
+<article class="blog-comment{{ isReply ? ' blog-comment--reply' : '' }}" id="comment-{{ comment.id }}">
+    <div class="blog-comment__avatar" aria-hidden="true">
+        {% if avatarUrl %}
+            <img src="{{ avatarUrl }}" alt="" loading="lazy" decoding="async">
+        {% else %}
+            <span>{{ displayName|trim|first|upper }}</span>
+        {% endif %}
+    </div>
+    <div class="blog-comment__main">
+        <header class="blog-comment__meta">
+            {% if profileUrl %}
+                <a href="{{ profileUrl }}" class="blog-comment__name">{{ displayName }}</a>
+            {% else %}
+                <strong class="blog-comment__name">{{ displayName }}</strong>
+            {% endif %}
+            <time datetime="{{ comment.createdAt|date('c') }}">{{ comment.createdAt|date('d.m.Y H:i') }}</time>
+        </header>
+        <div class="blog-comment__body">{{ comment.body|nl2br }}</div>
+        <div class="blog-comment__tools">
+            {% if not isReply and ctx.repliesAllowed and ctx.canSubmit %}
+                <a href="#comments-form" class="blog-comment__reply" data-comment-reply="{{ comment.id }}">{{ 'blog.comments.action.reply'|trans }}</a>
+            {% endif %}
+            {% if canEdit %}
+                <details class="blog-comment__edit">
+                    <summary>{{ 'blog.comments.action.edit'|trans }}</summary>
+                    <form method="post" action="{{ path('blog_comment_update', {_locale: post.locale, slug: post.slug, id: comment.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('blog_comment') }}">
+                        <textarea name="body" rows="4" required maxlength="{{ ctx.maxLength }}" class="form-control">{{ comment.body }}</textarea>
+                        <button type="submit" class="btn btn-sm btn-primary">{{ 'blog.comments.action.save'|trans }}</button>
+                    </form>
+                </details>
+            {% endif %}
+        </div>
+    </div>
+</article>

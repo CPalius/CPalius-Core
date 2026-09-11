@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Core\Portal;
 
 /**
- * Portal landing block catalog — fixed IDs and default configuration.
+ * Core marketing/hero blocks only. Live module feeds are declared in
+ * Resources/config/contributions.yaml and merged by PortalLayoutService.
  */
 final class PortalBlockCatalog
 {
@@ -49,34 +50,6 @@ final class PortalBlockCatalog
                     'title' => '',
                 ],
             ],
-            'latest_forum_topics' => [
-                'label' => 'studio.homepage.blocks.latest_forum_topics',
-                'group' => self::GROUP_PORTAL,
-                'supportsLimit' => true,
-                'supportsLayout' => true,
-                'supportsHeroFields' => false,
-                'default' => [
-                    'id' => 'latest_forum_topics',
-                    'enabled' => true,
-                    'title' => 'Son Forum Konuları',
-                    'limit' => 6,
-                    'layout' => self::LAYOUT_LIST,
-                ],
-            ],
-            'latest_blog_posts' => [
-                'label' => 'studio.homepage.blocks.latest_blog_posts',
-                'group' => self::GROUP_PORTAL,
-                'supportsLimit' => true,
-                'supportsLayout' => true,
-                'supportsHeroFields' => false,
-                'default' => [
-                    'id' => 'latest_blog_posts',
-                    'enabled' => true,
-                    'title' => 'Son Yazılar',
-                    'limit' => 6,
-                    'layout' => self::LAYOUT_CARDS,
-                ],
-            ],
             'about' => [
                 'label' => 'studio.homepage.blocks.about',
                 'group' => self::GROUP_MARKETING,
@@ -84,20 +57,6 @@ final class PortalBlockCatalog
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
                 'default' => ['id' => 'about', 'enabled' => true, 'title' => ''],
-            ],
-            'popular_forum_topics' => [
-                'label' => 'studio.homepage.blocks.popular_forum_topics',
-                'group' => self::GROUP_PORTAL,
-                'supportsLimit' => true,
-                'supportsLayout' => true,
-                'supportsHeroFields' => false,
-                'default' => [
-                    'id' => 'popular_forum_topics',
-                    'enabled' => true,
-                    'title' => 'Popüler Konular',
-                    'limit' => 5,
-                    'layout' => self::LAYOUT_SLIDER,
-                ],
             ],
             'features' => [
                 'label' => 'studio.homepage.blocks.features',
@@ -107,53 +66,13 @@ final class PortalBlockCatalog
                 'supportsHeroFields' => false,
                 'default' => ['id' => 'features', 'enabled' => true, 'title' => ''],
             ],
-            'forum_boards' => [
-                'label' => 'studio.homepage.blocks.forum_boards',
-                'group' => self::GROUP_PORTAL,
-                'supportsLimit' => true,
-                'supportsLayout' => true,
-                'supportsHeroFields' => false,
-                'default' => [
-                    'id' => 'forum_boards',
-                    'enabled' => true,
-                    'title' => 'Forum Panoları',
-                    'limit' => 8,
-                    'layout' => self::LAYOUT_CARDS,
-                ],
-            ],
-            'forum_stats' => [
-                'label' => 'studio.homepage.blocks.forum_stats',
-                'group' => self::GROUP_PORTAL,
-                'supportsLimit' => false,
-                'supportsLayout' => false,
-                'supportsHeroFields' => false,
-                'default' => [
-                    'id' => 'forum_stats',
-                    'enabled' => true,
-                    'title' => 'Topluluk Özeti',
-                ],
-            ],
-            'latest_forum_posts' => [
-                'label' => 'studio.homepage.blocks.latest_forum_posts',
-                'group' => self::GROUP_PORTAL,
-                'supportsLimit' => true,
-                'supportsLayout' => true,
-                'supportsHeroFields' => false,
-                'default' => [
-                    'id' => 'latest_forum_posts',
-                    'enabled' => true,
-                    'title' => 'Son Forum Mesajları',
-                    'limit' => 6,
-                    'layout' => self::LAYOUT_LIST,
-                ],
-            ],
             'architecture' => [
                 'label' => 'studio.homepage.blocks.architecture',
                 'group' => self::GROUP_MARKETING,
                 'supportsLimit' => false,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'architecture', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'architecture', 'enabled' => false, 'title' => ''],
             ],
             'core' => [
                 'label' => 'studio.homepage.blocks.core',
@@ -161,7 +80,7 @@ final class PortalBlockCatalog
                 'supportsLimit' => false,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'core', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'core', 'enabled' => false, 'title' => ''],
             ],
             'techstack' => [
                 'label' => 'studio.homepage.blocks.techstack',
@@ -177,7 +96,7 @@ final class PortalBlockCatalog
                 'supportsLimit' => false,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'entity', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'entity', 'enabled' => false, 'title' => ''],
             ],
             'security' => [
                 'label' => 'studio.homepage.blocks.security',
@@ -185,7 +104,7 @@ final class PortalBlockCatalog
                 'supportsLimit' => false,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'security', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'security', 'enabled' => false, 'title' => ''],
             ],
             'stats' => [
                 'label' => 'studio.homepage.blocks.stats',
@@ -217,7 +136,7 @@ final class PortalBlockCatalog
                 'supportsLimit' => false,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'audit', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'audit', 'enabled' => false, 'title' => ''],
             ],
             'platform' => [
                 'label' => 'studio.homepage.blocks.platform',
@@ -225,7 +144,7 @@ final class PortalBlockCatalog
                 'supportsLimit' => false,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'platform', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'platform', 'enabled' => false, 'title' => ''],
             ],
             'aacp' => [
                 'label' => 'studio.homepage.blocks.aacp',
@@ -233,7 +152,7 @@ final class PortalBlockCatalog
                 'supportsLimit' => false,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'aacp', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'aacp', 'enabled' => false, 'title' => ''],
             ],
             'modules' => [
                 'label' => 'studio.homepage.blocks.modules',
@@ -241,7 +160,7 @@ final class PortalBlockCatalog
                 'supportsLimit' => false,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'modules', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'modules', 'enabled' => false, 'title' => ''],
             ],
             'forum_engine' => [
                 'label' => 'studio.homepage.blocks.forum_engine',
@@ -249,7 +168,7 @@ final class PortalBlockCatalog
                 'supportsLimit' => false,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'forum_engine', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'forum_engine', 'enabled' => false, 'title' => ''],
             ],
             'media_pipeline' => [
                 'label' => 'studio.homepage.blocks.media_pipeline',
@@ -257,7 +176,7 @@ final class PortalBlockCatalog
                 'supportsLimit' => false,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'media_pipeline', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'media_pipeline', 'enabled' => false, 'title' => ''],
             ],
             'localization' => [
                 'label' => 'studio.homepage.blocks.localization',
@@ -265,7 +184,7 @@ final class PortalBlockCatalog
                 'supportsLimit' => false,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'localization', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'localization', 'enabled' => false, 'title' => ''],
             ],
             'manifesto' => [
                 'label' => 'studio.homepage.blocks.manifesto',
@@ -273,26 +192,21 @@ final class PortalBlockCatalog
                 'supportsLimit' => false,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'manifesto', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'manifesto', 'enabled' => false, 'title' => ''],
             ],
         ];
     }
 
     /**
-     * Marketing showcase order restored from the original cpalius-website.
+     * Deep-dive marketing blocks belong on the whitepaper, not the landing page.
      *
-     * @return list<array<string, mixed>>
+     * @return list<string>
      */
-    public static function defaultLayout(): array
+    public static function whitepaperOnlyIds(): array
     {
-        $defs = self::definitions();
-        $order = [
-            'hero',
-            'about',
+        return [
             'architecture',
             'core',
-            'features',
-            'techstack',
             'entity',
             'audit',
             'platform',
@@ -303,9 +217,37 @@ final class PortalBlockCatalog
             'localization',
             'security',
             'manifesto',
+        ];
+    }
+
+    /**
+     * Landing spotlight plus optional whitepaper-depth blocks (off by default).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function defaultLayout(): array
+    {
+        $defs = self::definitions();
+        $order = [
+            'hero',
+            'about',
+            'features',
+            'techstack',
             'stats',
             'roadmap',
             'community',
+            'architecture',
+            'core',
+            'entity',
+            'audit',
+            'platform',
+            'aacp',
+            'modules',
+            'forum_engine',
+            'media_pipeline',
+            'localization',
+            'security',
+            'manifesto',
         ];
 
         $layout = [];

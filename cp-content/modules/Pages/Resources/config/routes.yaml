@@ -1,0 +1,14 @@
+pages_module_front:
+    resource: ../../Controller/
+    type: attribute
+    prefix: /{_locale}
+    requirements:
+        _locale: '%cpalius.locales_pattern%'
+    defaults:
+        _locale: '%cpalius.default_locale%'
+    exclude:
+        - ../../Controller/Admin/
+
+pages_module_admin:
+    resource: ../../Controller/Admin/
+    type: attribute

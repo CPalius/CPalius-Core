@@ -6,6 +6,7 @@ namespace Modules\Forum\Service;
 
 use App\Entity\User;
 use Modules\Forum\Entity\ForumPresence;
+use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\Repository\ForumPresenceRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -23,47 +24,60 @@ final class ForumPresenceService
     ) {
     }
 
-    public function touch(string $sessionHash, ?User $user): void
+    public function touch(string $sessionHash, ?User $user, ?int $topicId = null): void
     {
         if ($sessionHash === '') {
             return;
         }
 
         try {
-            $this->doTouch($sessionHash, $user);
+            $this->doTouch($sessionHash, $user, $topicId);
         } catch (\Throwable) {
             return;
         }
     }
 
-    private function doTouch(string $sessionHash, ?User $user): void
+    private function doTouch(string $sessionHash, ?User $user, ?int $topicId): void
     {
         $now = new \DateTimeImmutable();
         $presence = $this->presenceRepository->findOneBySessionHash($sessionHash);
+        $topic = $this->resolveTopic($topicId);
 
         if ($presence === null) {
             $presence = new ForumPresence($sessionHash, $user);
+            $presence->setTopic($topic);
             $this->entityManager->persist($presence);
             $this->entityManager->flush();
 
             return;
         }
 
-        if ($user !== null && $presence->getUser()?->getId() !== $user->getId()) {
-            $presence->setUser($user);
-            $presence->touch();
-            $this->entityManager->flush();
-
-            return;
-        }
-
+        $userChanged = $presence->getUser()?->getId() !== $user?->getId();
+        $topicChanged = $presence->getTopic()?->getId() !== $topicId;
         $elapsed = $now->getTimestamp() - $presence->getLastSeenAt()->getTimestamp();
-        if ($elapsed < self::TOUCH_THROTTLE_SECONDS) {
+        $stale = $elapsed >= self::TOUCH_THROTTLE_SECONDS;
+
+        if (!$userChanged && !$topicChanged && !$stale) {
             return;
         }
 
+        if ($userChanged) {
+            $presence->setUser($user);
+        }
+        if ($topicChanged) {
+            $presence->setTopic($topic);
+        }
         $presence->touch();
         $this->entityManager->flush();
+    }
+
+    private function resolveTopic(?int $topicId): ?ForumTopic
+    {
+        if ($topicId === null || $topicId <= 0) {
+            return null;
+        }
+
+        return $this->entityManager->getReference(ForumTopic::class, $topicId);
     }
 
     /**
@@ -123,23 +137,83 @@ final class ForumPresenceService
         ];
     }
 
+    /**
+     * Who is currently viewing this thread (online window only).
+     *
+     * @return array{
+     *     members: list<array{id: int, name: string, slug: string, user: User}>,
+     *     memberCount: int,
+     *     guestCount: int
+     * }
+     */
+    public function currentOnTopic(ForumTopic $topic, int $limit = 16): array
+    {
+        try {
+            return $this->fetchCurrentOnTopic($topic, $limit);
+        } catch (\Throwable) {
+            return ['members' => [], 'memberCount' => 0, 'guestCount' => 0];
+        }
+    }
+
+    /**
+     * @return array{
+     *     members: list<array{id: int, name: string, slug: string, user: User}>,
+     *     memberCount: int,
+     *     guestCount: int
+     * }
+     */
+    private function fetchCurrentOnTopic(ForumTopic $topic, int $limit): array
+    {
+        $since = (new \DateTimeImmutable())->modify('-'.self::ONLINE_WINDOW_SECONDS.' seconds');
+        $seen = [];
+        $members = [];
+        $guestCount = 0;
+
+        foreach ($this->presenceRepository->findActiveOnTopic($topic, $since) as $presence) {
+            $user = $presence->getUser();
+            if ($user === null) {
+                ++$guestCount;
+                continue;
+            }
+            if (!$user->isActive()) {
+                continue;
+            }
+            $id = $user->getId();
+            if ($id === null || isset($seen[$id])) {
+                continue;
+            }
+            $seen[$id] = true;
+            $members[] = [
+                'id' => $id,
+                'name' => $this->memberLabel($user),
+                'slug' => $user->getProfileSlug(),
+                'user' => $user,
+            ];
+        }
+
+        $memberCount = \count($members);
+
+        return [
+            'members' => \array_slice($members, 0, max(0, $limit)),
+            'memberCount' => $memberCount,
+            'guestCount' => $guestCount,
+        ];
+    }
+
     public function hashSessionId(string $sessionId): string
     {
         return hash('sha256', $sessionId);
     }
 
+    public function hashAnonymousVisitor(string $ip, string $userAgent): string
+    {
+        return hash('sha256', 'anon|'.$ip.'|'.$userAgent);
+    }
+
     private function memberLabel(User $user): string
     {
-        $username = trim((string) ($user->getUsername() ?? ''));
-        if ($username !== '') {
-            return $username;
-        }
+        $label = $user->getPublicDisplayName();
 
-        $fullName = trim($user->getFullName());
-        if ($fullName !== '' && $fullName !== $user->getEmail()) {
-            return $fullName;
-        }
-
-        return $username !== '' ? $username : $user->getEmail();
+        return $label !== '' ? $label : ('#'.(string) $user->getId());
     }
 }

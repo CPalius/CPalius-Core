@@ -8,7 +8,12 @@ use App\Core\Account\AccountRegistrationService;
 use App\Core\Account\UserAvatarService;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Content\RichTextSanitizer;
+use App\Core\Field\FieldDefinitionRegistry;
+use App\Core\Field\FieldValuePersister;
 use App\Core\Pagination\Paginator;
+use App\Core\Pagination\PaginatedResult;
+use App\Core\Security\Password\PasswordChanger;
+use App\Core\Security\Password\PasswordPolicy;
 use App\Core\Security\RoleCapabilityPresenter;
 use App\Core\Security\RoleConfigManager;
 use App\Core\Security\UserRoleGuardService;
@@ -33,20 +38,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * AACP "Kullanıcı Yönetimi" ve "Profilim" ekranları.
- *
- * PostAdminController (Modules\Blog\Controller\Admin\PostAdminController)
- * ile AYNI iskelet: AbstractController extend eder (form/flash/redirect
- * kısayolları için), DTO tabanlı form akışı, User'a yazım TEK bir
- * yardımcı metotta (mapDtoToUser()) toplanır.
- *
- * Yetkilendirme her zaman CPaliusVoter üzerinden dinamik capability ile
- * yapılır (ROLE_* YASAK, bkz. Manifesto Law 4 ve CPaliusVoter docblock'u):
- *   - Listeleme/Düzenleme/Oluşturma: system.users.view / system.users.manage
- *   - Profilim: capability GEREKMEZ — sadece IS_AUTHENTICATED_FULLY
- *     (security.yaml ^/aacp kuralı) yeterlidir, çünkü her kullanıcı kendi
- *     profiline erişebilmelidir; bu ekran başka bir kullanıcının verisine
- *     hiçbir zaman erişmez (her zaman $this->getUser() üzerinden çalışır).
+ * AACP user management and "My profile" screens (PostAdminController-style DTO flow).
+ * Auth via CPaliusVoter capabilities; profile uses only the current user.
  */
 final class AACPUserController extends AbstractController
 {
@@ -59,12 +52,16 @@ final class AACPUserController extends AbstractController
         private readonly UserRoleGuardService $userRoleGuard,
         private readonly RoleCapabilityPresenter $roleCapabilityPresenter,
         private readonly UserPasswordHasherInterface $passwordHasher,
+        private readonly PasswordPolicy $passwordPolicy,
+        private readonly PasswordChanger $passwordChanger,
         private readonly RichTextSanitizer $richTextSanitizer,
         private readonly AssetRepository $assetRepository,
         private readonly Paginator $paginator,
         private readonly TranslatorInterface $translator,
         private readonly AccountRegistrationService $registrationService,
         private readonly UserAvatarService $avatarService,
+        private readonly FieldValuePersister $fieldValuePersister,
+        private readonly FieldDefinitionRegistry $fieldDefinitions,
     ) {
     }
 
@@ -97,34 +94,58 @@ final class AACPUserController extends AbstractController
     }
 
     /**
-     * Kullanıcı listesi: genel AACP flat tablo standardında (twig:cp:table),
-     * durum rozetleri (twig:cp:badge) ile. Blog'un index() aksiyonundaki
-     * QueryScopeApplier own/any daraltması burada ANLAMSIZDIR — kullanıcı
-     * kaydının bir "sahibi" (author) yoktur, bu yüzden sadece kaba
-     * system.users.view kapı kontrolü yeterlidir.
+     * User list (flat AACP table); no own/any scope — users have no author owner.
      */
     #[Route('/aacp/users', name: 'aacp_users', methods: ['GET'])]
     #[CpAdminMenu(label: 'aacp.menu.users', icon: 'heroicons:users', panel: 'aacp', priority: 60, capability: 'system.users.view', group: 'aacp.group.user')]
     #[IsGranted('system.users.view')]
     public function index(Request $request): Response
     {
-        $qb = $this->userRepository->createAdminListQueryBuilder($request->query->get('q'));
+        return $this->renderUserList($request, null);
+    }
 
-        $result = $this->paginator->paginate($qb, $request->query->getInt('page', 1), self::ADMIN_PER_PAGE);
+    #[Route('/aacp/users/role/admin', name: 'aacp_users_admin', methods: ['GET'])]
+    #[CpAdminMenu(label: 'aacp.menu.administrators', icon: 'heroicons:shield-check', panel: 'aacp', priority: 61, capability: 'system.users.view', parent: 'aacp_users')]
+    #[IsGranted('system.users.view')]
+    public function administrators(Request $request): Response
+    {
+        return $this->renderUserList($request, 'admin');
+    }
 
-        return $this->render('aacp/users/index.html.twig', [
-            'users' => $result,
-            'search' => (string) $request->query->get('q', ''),
-            'roleLabels' => $this->userRoleGuard->roleLabelMap(),
-        ]);
+    #[Route('/aacp/users/role/member', name: 'aacp_users_member', methods: ['GET'])]
+    #[CpAdminMenu(label: 'aacp.menu.members', icon: 'heroicons:user-group', panel: 'aacp', priority: 62, capability: 'system.users.view', parent: 'aacp_users')]
+    #[IsGranted('system.users.view')]
+    public function members(Request $request): Response
+    {
+        return $this->renderUserList($request, 'member');
+    }
+
+    #[Route('/aacp/users/role/editor', name: 'aacp_users_editor', methods: ['GET'])]
+    #[CpAdminMenu(label: 'aacp.menu.editors', icon: 'heroicons:pencil-square', panel: 'aacp', priority: 63, capability: 'system.users.view', parent: 'aacp_users')]
+    #[IsGranted('system.users.view')]
+    public function editors(Request $request): Response
+    {
+        return $this->renderUserList($request, 'editor');
+    }
+
+    #[Route('/aacp/administrators', name: 'aacp_administrators', methods: ['GET'])]
+    public function administratorsLegacy(): Response
+    {
+        return $this->redirectToRoute('aacp_users_admin', status: 301);
+    }
+
+    #[Route('/aacp/isolation', name: 'aacp_isolation', methods: ['GET'])]
+    public function isolationLegacy(): Response
+    {
+        return $this->redirectToRoute('aacp_users', status: 301);
     }
 
     #[Route('/aacp/users/create', name: 'aacp_users_create', methods: ['GET', 'POST'])]
-    #[IsGranted('system.users.manage', message: 'Kullanıcı oluşturma yetkiniz yok.', statusCode: 403)]
+    #[IsGranted('system.users.manage', message: 'You are not allowed to create users.', statusCode: 403)]
     public function create(Request $request): Response
     {
         $dto = new UserFormModel();
-        $form = $this->createUserForm($dto, isEdit: false);
+        $form = $this->createUserForm($dto, isEdit: false, request: $request);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -139,17 +160,23 @@ final class AACPUserController extends AbstractController
             } else {
                 $draftUser = new User($dto->email);
                 if (!$this->applySecureUserRoles($dto, $draftUser, $this->getUser() instanceof User ? $this->getUser() : null, $form)) {
-                    // applySecureUserRoles forma hata ekledi.
+                    // applySecureUserRoles added form errors.
+                } elseif (!$this->validateAssignedPassword($dto, $draftUser, $form)) {
+                    // validateAssignedPassword added form errors.
                 } else {
                 $user = new User($dto->email);
                 $this->mapDtoToUser($dto, $user);
 
-                $this->entityManager->persist($user);
-                $this->entityManager->flush();
+                if (!$this->persistUserFields($user, $form)) {
+                    // persistUserFields added violations to the "fields" sub-form.
+                } else {
+                    $this->entityManager->persist($user);
+                    $this->entityManager->flush();
 
-                $this->addFlash('success', $this->translator->trans('aacp.users.create_success', ['email' => $user->getEmail()]));
+                    $this->addFlash('success', $this->translator->trans('aacp.users.create_success', ['email' => $user->getEmail()]));
 
-                return $this->redirectToRoute('aacp_users');
+                    return $this->redirectToRoute('aacp_users');
+                }
                 }
             }
         }
@@ -158,12 +185,15 @@ final class AACPUserController extends AbstractController
     }
 
     #[Route('/aacp/users/{id}/edit', name: 'aacp_users_edit', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
-    #[IsGranted('system.users.manage', message: 'Kullanıcı düzenleme yetkiniz yok.', statusCode: 403)]
+    #[IsGranted('system.users.manage', message: 'You are not allowed to edit users.', statusCode: 403)]
     public function edit(int $id, Request $request): Response
     {
         $user = $this->findUserOrFail($id);
         $dto = UserFormModel::fromUser($user);
-        $form = $this->createUserForm($dto, isEdit: true);
+        $form = $this->createUserForm($dto, isEdit: true, request: $request);
+        if ($form->has('fields')) {
+            $form->get('fields')->setData($this->currentUserFieldValues($user));
+        }
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -180,7 +210,11 @@ final class AACPUserController extends AbstractController
                 if ($statusError !== null) {
                     $form->get('status')->addError(new FormError($this->translator->trans($statusError)));
                 } elseif (!$this->applySecureUserRoles($dto, $user, $this->getUser() instanceof User ? $this->getUser() : null, $form)) {
-                    // applySecureUserRoles forma hata ekledi.
+                    // applySecureUserRoles added form errors.
+                } elseif (!$this->persistUserFields($user, $form)) {
+                    // persistUserFields added violations to the "fields" sub-form.
+                } elseif (!$this->validateAssignedPassword($dto, $user, $form)) {
+                    // validateAssignedPassword added form errors.
                 } else {
                     $user->setEmail($dto->email);
                     $this->mapDtoToUser($dto, $user);
@@ -198,14 +232,10 @@ final class AACPUserController extends AbstractController
     }
 
     /**
-     * Kalıcı silme: User entity SoftDeletable DEĞİLDİR (PostAdminController'ın
-     * Node'ları gibi bir çöp kutusu akışı yok), bu yüzden gerçek DELETE
-     * uygulanır. Kendi hesabını silme her zaman engellenir — aksi halde bir
-     * yönetici oturumu açıkken kendini silip AACP'den kilitlenebilir veya
-     * (tek admin olduğu senaryoda) sistemi yöneticisiz bırakabilir.
+     * Hard delete (User is not soft-deletable); self-delete is always blocked.
      */
     #[Route('/aacp/users/{id}/delete', name: 'aacp_users_delete', methods: ['POST'], requirements: ['id' => '\d+'])]
-    #[IsGranted('system.users.manage', message: 'Kullanıcı silme yetkiniz yok.', statusCode: 403)]
+    #[IsGranted('system.users.manage', message: 'You are not allowed to delete users.', statusCode: 403)]
     public function delete(int $id, Request $request): Response
     {
         $user = $this->findUserOrFail($id);
@@ -230,15 +260,7 @@ final class AACPUserController extends AbstractController
     }
 
     /**
-     * "Profilim": giriş yapmış yöneticinin kendi bilgilerini güncellediği
-     * ekran. Biyografi alanı CKEditor 5 (data-cpeditor) ile zenginleştirilir
-     * (bkz. ProfileType::$bio, cp-core/assets/cp-editor-init.js).
-     *
-     * Bilinçli olarak #[CpAdminMenu] TAŞIMAZ: bu ekrana artık sidebar'dan
-     * değil, header'daki profil dropdown'undan (bkz.
-     * templates/aacp/_header_actions.html.twig) erişilir — sidebar'da ayrı
-     * bir "Hesap" grubu olarak tekrar listelenmesi gereksiz kalabalık
-     * yaratırdı.
+     * My profile for the signed-in admin (CKEditor bio); linked from header dropdown, not sidebar.
      */
     #[Route('/aacp/profile', name: 'aacp_users_profile', methods: ['GET', 'POST'])]
     public function profile(Request $request): Response
@@ -254,7 +276,7 @@ final class AACPUserController extends AbstractController
                     new FormError($this->translator->trans('aacp.users.email_taken')),
                 );
             } elseif (!$this->applyPasswordChangeIfRequested($dto, $user, $form)) {
-                // applyPasswordChangeIfRequested() zaten forma hata eklemiştir.
+                // applyPasswordChangeIfRequested() already added form errors.
             } else {
                 $this->mapProfileDtoToUser($dto, $user);
 
@@ -273,12 +295,7 @@ final class AACPUserController extends AbstractController
     }
 
     /**
-     * newPassword doldurulmuşsa, currentPassword'ün DOĞRU olduğunu
-     * doğrulamadan asla User::setPassword() çağrılmaz — aksi halde
-     * oturumu ele geçirilmiş (ama şifresi bilinmeyen) bir saldırgan tek
-     * bir form gönderimiyle şifreyi değiştirip hesabı tamamen ele
-     * geçirebilirdi. currentPassword boş/yanlışsa forma hata eklenir ve
-     * false döner; mapProfileDtoToUser() çağrılmadan akış durur.
+     * Requires valid currentPassword before setPassword(); otherwise adds form errors and stops.
      */
     private function applyPasswordChangeIfRequested(ProfileFormModel $dto, User $user, FormInterface $form): bool
     {
@@ -295,29 +312,79 @@ final class AACPUserController extends AbstractController
             return false;
         }
 
-        $user->setPassword($this->passwordHasher->hashPassword($user, $newPassword));
+        $violations = $this->passwordPolicy->validate($newPassword, $this->passwordChanger->identityOf($user), $user);
+        if ($violations !== []) {
+            foreach ($violations as $violation) {
+                $form->get('newPassword')->addError(new FormError($violation));
+            }
+
+            return false;
+        }
+
+        $this->passwordChanger->change($user, $newPassword);
 
         return true;
     }
 
-    private function createUserForm(UserFormModel $dto, bool $isEdit): FormInterface
+    private function createUserForm(UserFormModel $dto, bool $isEdit, Request $request): FormInterface
     {
         $roleChoices = [];
         foreach ($this->roleConfigManager->getAllRoleIds() as $roleId) {
-            $roleChoices[$this->roleConfigManager->getLabel($roleId) ?? $roleId] = $roleId;
+            $roleChoices[$this->translator->trans($this->roleConfigManager->getLabel($roleId) ?? $roleId)] = $roleId;
         }
 
         return $this->createForm(UserType::class, $dto, [
             'role_choices' => $roleChoices,
             'is_edit' => $isEdit,
+            'field_locale' => $request->getLocale(),
         ]);
     }
 
     /**
-     * UserFormModel DTO'sundaki doğrulanmış veriyi User entity'sine güvenli
-     * biçimde aktarır — create()/edit() arasında paylaşılan TEK yazma yolu
-     * (Manifesto Law 5.3 mass assignment allowlist ilkesiyle aynı desen,
-     * bkz. PostAdminController::mapDtoToNode()).
+     * Existing "user" bundle field values, keyed by field name, for form pre-fill.
+     *
+     * @return array<string, mixed>
+     */
+    private function currentUserFieldValues(User $user): array
+    {
+        $data = $user->getFieldableData();
+        $values = [];
+        foreach ($this->fieldDefinitions->getFieldsForBundle('user') as $definition) {
+            if (\array_key_exists($definition->getName(), $data)) {
+                $values[$definition->getName()] = $data[$definition->getName()];
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * Runs FieldValuePersister for the "user" bundle and mirrors any violations
+     * back onto the "fields" sub-form. Returns true when the entity is clean.
+     */
+    private function persistUserFields(User $user, FormInterface $form): bool
+    {
+        if (!$form->has('fields')) {
+            return true;
+        }
+
+        $submitted = $form->get('fields')->getData();
+        $errors = $this->fieldValuePersister->persist($user, \is_array($submitted) ? $submitted : []);
+
+        foreach ($errors as $fieldName => $violations) {
+            if (!$form->get('fields')->has($fieldName)) {
+                continue;
+            }
+            foreach ($violations as $violation) {
+                $form->get('fields')->get($fieldName)->addError(new FormError($this->translator->trans($violation)));
+            }
+        }
+
+        return $errors === [];
+    }
+
+    /**
+     * Single shared write path from UserFormModel to User (Law 5.3 allowlist pattern).
      */
     private function mapDtoToUser(UserFormModel $dto, User $user): void
     {
@@ -329,13 +396,43 @@ final class AACPUserController extends AbstractController
 
         $plainPassword = trim((string) $dto->plainPassword);
         if ($plainPassword !== '') {
-            $user->setPassword($this->passwordHasher->hashPassword($user, $plainPassword));
+            $this->passwordChanger->change($user, $plainPassword);
         }
     }
 
     /**
-     * Rol atamasını RoleConfigManager beyaz listesinden geçirir; CPaliusVoter
-     * dışında ek güvenlik kurallarını (son admin, kendi rolünü düşürme) uygular.
+     * An operator-assigned password goes through the same policy as a self-service
+     * change: "the admin set it" is not a reason to allow a breached password.
+     */
+    private function validateAssignedPassword(UserFormModel $dto, User $user, FormInterface $form): bool
+    {
+        $plainPassword = trim((string) $dto->plainPassword);
+        if ($plainPassword === '') {
+            return true;
+        }
+
+        $identity = array_values(array_filter([
+            $dto->email,
+            (string) $dto->username,
+            (string) $dto->firstName,
+            (string) $dto->lastName,
+        ], static fn (string $value): bool => trim($value) !== ''));
+
+        $violations = $this->passwordPolicy->validate(
+            $plainPassword,
+            $identity,
+            $user->getId() === null ? null : $user,
+        );
+
+        foreach ($violations as $violation) {
+            $form->get('plainPassword')->addError(new FormError($violation));
+        }
+
+        return $violations === [];
+    }
+
+    /**
+     * Sanitizes roles via RoleConfigManager and enforces last-admin/self-demotion rules.
      */
     private function applySecureUserRoles(UserFormModel $dto, User $user, ?User $actor, FormInterface $form): bool
     {
@@ -375,11 +472,7 @@ final class AACPUserController extends AbstractController
     }
 
     /**
-     * ProfileFormModel -> User yazım yolu. 'bio' RichTextSanitizer'dan
-     * GEÇMEDEN asla User::setBio()'ya yazılmaz (Manifesto Law 5.3), tıpkı
-     * PostAdminController::mapDtoToNode()'un 'body' için yaptığı gibi.
-     * 'status'/'roles' BİLİNÇLİ OLARAK burada YOKTUR (bkz. ProfileFormModel
-     * sınıf üstü doküman).
+     * ProfileFormModel -> User; bio is sanitized (Law 5.3). No status/roles here.
      */
     private function mapProfileDtoToUser(ProfileFormModel $dto, User $user): void
     {
@@ -411,5 +504,65 @@ final class AACPUserController extends AbstractController
         }
 
         return $user;
+    }
+
+    private function renderUserList(Request $request, ?string $role): Response
+    {
+        $search = (string) $request->query->get('q', '');
+        $page = $request->query->getInt('page', 1);
+
+        if ($role === null) {
+            $result = $this->paginator->paginate(
+                $this->userRepository->createAdminListQueryBuilder($search),
+                $page,
+                self::ADMIN_PER_PAGE,
+            );
+        } else {
+            $result = $this->paginateRoleList($role, $search, $page);
+        }
+
+        $listRoute = match ($role) {
+            'admin' => 'aacp_users_admin',
+            'member' => 'aacp_users_member',
+            'editor' => 'aacp_users_editor',
+            default => 'aacp_users',
+        };
+
+        $header = match ($role) {
+            'admin' => 'aacp.menu.administrators',
+            'member' => 'aacp.menu.members',
+            'editor' => 'aacp.menu.editors',
+            default => 'aacp.users.header',
+        };
+
+        return $this->render('aacp/users/index.html.twig', [
+            'users' => $result,
+            'search' => $search,
+            'roleLabels' => $this->userRoleGuard->roleLabelMap(),
+            'filterRole' => $role,
+            'listRoute' => $listRoute,
+            'listHeader' => $header,
+        ]);
+    }
+
+    private function paginateRoleList(string $role, string $search, int $page): PaginatedResult
+    {
+        $needle = mb_strtolower(trim($search));
+        $filtered = [];
+        foreach ($this->userRepository->findByRole($role) as $user) {
+            if ($needle === '' || str_contains(mb_strtolower($user->getEmail()), $needle)) {
+                $filtered[] = $user;
+            }
+        }
+
+        $page = max(1, $page);
+        $offset = ($page - 1) * self::ADMIN_PER_PAGE;
+
+        return new PaginatedResult(
+            array_values(array_slice($filtered, $offset, self::ADMIN_PER_PAGE)),
+            \count($filtered),
+            $page,
+            self::ADMIN_PER_PAGE,
+        );
     }
 }

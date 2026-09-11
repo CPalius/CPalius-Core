@@ -1,16 +1,9 @@
 {#
-    FAZ 4 — SEO hreflang etiketleri (<head> içine basılır).
+    Phase 4 — SEO hreflang tags for <head>.
 
-    Her aktif dil için bir rel="alternate", ardından TEK bir x-default.
-    Adresler LocaleSwitchService'ten gelir; yani bir sayfanın hedef
-    dildeki GERÇEK karşılığını gösterirler, çevirisi yoksa o dilin ana
-    sayfasına düşerler (asla kırık/404 bir hreflang üretilmez — Google
-    kırık alternate adreslerini tüm hreflang kümesini yok sayacak kadar
-    ciddi bir hata olarak değerlendirir).
+    One rel="alternate" per locale plus x-default; URLs from LocaleSwitchService (never 404).
 
-    Beklenen değişkenler:
-      links      (list)   {code, url, isCurrent, isDefault, nativeName}
-      defaultUrl (string) x-default hedefi (varsayılan dilin karşılığı)
+    Expects: links, defaultUrl
 #}
 {% for link in links %}
     <link rel="alternate" hreflang="{{ link.code }}" href="{{ link.url }}">

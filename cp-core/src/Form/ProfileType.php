@@ -15,15 +15,8 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
- * AACP "Profilim" formu — ProfileFormModel DTO'suna maplenir, giriş yapmış
- * yöneticinin kendi bilgilerini güncellediği tek yer (bkz. ProfileFormModel
- * sınıf üstü doküman — 'status'/'roles' BİLİNÇLİ OLARAK burada yoktur).
- *
- * 'bio' alanı PostType::$body ile AYNI 'data-cpeditor' attribute'unu taşır:
- * cp-core/assets/cp-editor-init.js bu attribute'u [data-cpeditor] seçicisiyle
- * bulup CKEditor 5 Classic ile zenginleştirir (initCpEditor()). Avatar seçimi
- * de Blog formundaki "Öne Çıkan Görsel" ile aynı window.CPaliusMediaPicker
- * köprüsünü kullanır (bkz. media-picker.js, data-media-picker-trigger).
+ * AACP profile form mapped to ProfileFormModel (no status/roles fields).
+ * Bio uses data-cpeditor; avatar uses CPaliusMediaPicker like blog featured image.
  */
 final class ProfileType extends AbstractType
 {

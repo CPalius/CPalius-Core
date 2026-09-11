@@ -8,14 +8,13 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Blog menü öğelerinin URL'lerini locale'siz /blog'dan kanonik /tr/blog
- * yoluna taşır (bkz. Blog modülü routes.yaml {_locale} prefix'i).
+ * Moves Blog menu item URLs from locale-less /blog to canonical /tr/blog (Blog routes.yaml {_locale} prefix).
  */
 final class Version20260825120000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return "Menüdeki Blog linklerini /blog'dan /tr/blog'a günceller.";
+        return "Updates Blog menu links from /blog to /tr/blog.";
     }
 
     public function up(Schema $schema): void

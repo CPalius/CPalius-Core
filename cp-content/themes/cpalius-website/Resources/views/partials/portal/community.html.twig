@@ -9,7 +9,10 @@
                     {{ 'community.desc'|trans({}, t) }}
                 </p>
                 <div class="hero-actions" style="justify-content:center;">
-                    <a href="https://github.com/slaweally" target="_blank" rel="noopener" class="btn btn-primary">
+                    <a href="{{ path('theme_whitepaper', {_locale: app.request.locale}) }}" class="btn btn-primary">
+                        <i class="bi bi-book"></i> {{ 'whitepaper.cta'|trans({}, t) }}
+                    </a>
+                    <a href="https://github.com/slaweally" target="_blank" rel="noopener" class="btn btn-outline">
                         <i class="bi bi-github"></i> {{ 'community.cta_github'|trans({}, t) }}
                     </a>
                     <a href="{{ path('forum_index') }}" class="btn btn-outline">

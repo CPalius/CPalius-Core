@@ -37,6 +37,15 @@
                 </div>
             </twig:cp:card>
 
+            {% if form.fields is defined and form.fields|length > 0 %}
+                <twig:cp:card title="{{ 'aacp.users.form.section_custom_fields'|trans }}">
+                    <div class="space-y-sp-sm">
+                        {{ form_widget(form.fields) }}
+                        {{ form_errors(form.fields) }}
+                    </div>
+                </twig:cp:card>
+            {% endif %}
+
             <twig:cp:card title="{{ 'aacp.users.form.section_effective_access'|trans }}">
                 <p class="mb-3 text-fs-xs !text-slate-500">{{ 'aacp.users.form.effective_access_hint'|trans }}</p>
                 <div data-aacp-role-preview>

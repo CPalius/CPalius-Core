@@ -62,19 +62,13 @@ import 'ckeditor5/dist/ckeditor5.css';
 import 'ckeditor5/translations/tr';
 
 /**
- * CPalius-CMF CKEditor 5 baslatici.
+ * CPalius-CMF CKEditor 5 bootstrapper.
  *
- * [data-cpeditor] attribute'lu tum textarea'lari CKEditor 5 Classic ile
- * zenginlestirir. Medya Kutuphanesi entegrasyonu icin window.CPaliusMediaPicker
- * koprusu kullanilir.
- *
- * Node.js bagımlılıgı yok: tum paketler Symfony Asset Mapper uzerinden
- * yerel vendor dosyalarina indirilmis durumdadir.
+ * Enriches [data-cpeditor] textareas via ClassicEditor and CPaliusMediaPicker.
+ * Zero Node.js — packages served locally via Asset Mapper.
  */
 
-// CKEditor 5 minimum yukseklik ayari + "required" alan bos birakildiginda
-// gosterilen manuel hata durumu (bkz. initCpEditor() icindeki submit
-// listener'i).
+// Min editor height + manual invalid state for empty required fields (see submit listener).
 const cpEditorStyle = document.createElement('style');
 cpEditorStyle.innerHTML = `
     .ck-editor__editable_inline {
@@ -222,7 +216,7 @@ async function initCpEditor(textarea) {
         },
     });
 
-    // Medya Kutuphanesi — toolbar'a DOM butonu olarak enjekte edilir
+    // Media Library — injected as a DOM button on the toolbar
     if (window.CPaliusMediaPicker) {
         const toolbarEl = editor.ui.view.toolbar.element;
         if (toolbarEl) {
@@ -257,20 +251,8 @@ async function initCpEditor(textarea) {
         }
     }
 
-    // CKEditor, orijinal <textarea>'yı DOM'dan gizleyip yerine kendi
-    // "contenteditable" arayüzünü koyar. Bu textarea Symfony Form
-    // tarafından "required" olarak render edildiği için (bkz. PostType.php
-    // 'body' alanı), tarayıcının native constraint validation'ı submit
-    // anında gizli/boş bu alana odaklanmaya çalışıyor ve bunu YAPAMADIĞI
-    // İÇİN TÜM SUBMIT'İ SESSİZCE İPTAL EDİYORDU ("can't focus invalid
-    // form control" konsol hatası, buton hiçbir şey yapmıyormuş gibi
-    // görünüyordu — CKEditor'ın submit handler'ı senkronizasyonu YAPMADAN
-    // ÖNCE tarayıcı zaten submit'i durdurmuş oluyordu).
-    //
-    // Çözüm: required attribute'u DOM'dan kaldırılır (tarayıcı artık bu
-    // alanı denetlemez), gerçek "boş içerik" kontrolü CKEditor'ın kendi
-    // verisiyle submit anında elle yapılır — boşsa submit iptal edilip
-    // editöre görsel bir hata durumu (kırmızı çerçeve) uygulanır.
+    // CKEditor hides the required textarea; native validation blocks submit silently.
+    // Remove required from DOM and validate editor data on submit with a red border if empty.
     const wasRequired = textarea.hasAttribute('required');
     if (wasRequired) {
         textarea.removeAttribute('required');

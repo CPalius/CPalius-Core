@@ -115,4 +115,33 @@ final class ForumPostLikeRepository extends ServiceEntityRepository
             ->setParameter('visible', ForumDiscussionState::Visible)
             ->orderBy('l.createdAt', 'DESC');
     }
+
+    /**
+     * Last like timestamp per user in this thread — one grouped query (Law 6.1).
+     *
+     * @return array<int, int> userId => unix timestamp
+     */
+    public function findUserLastActivityByTopic(ForumTopic $topic): array
+    {
+        $rows = $this->createQueryBuilder('l')
+            ->select('IDENTITY(l.user) AS userId, MAX(l.createdAt) AS lastAt')
+            ->innerJoin('l.post', 'p')
+            ->andWhere('p.topic = :topic')
+            ->setParameter('topic', $topic)
+            ->groupBy('l.user')
+            ->getQuery()
+            ->getArrayResult();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $id = (int) $row['userId'];
+            if ($id <= 0) {
+                continue;
+            }
+            $at = $row['lastAt'];
+            $map[$id] = $at instanceof \DateTimeInterface ? $at->getTimestamp() : (strtotime((string) $at) ?: 0);
+        }
+
+        return $map;
+    }
 }

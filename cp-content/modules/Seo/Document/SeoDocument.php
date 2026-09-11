@@ -34,6 +34,7 @@ final class SeoDocument
         public ?string $prevUrl = null,
         public ?string $nextUrl = null,
         public bool $forceNoindex = false,
+        public string $keywords = '',
     ) {
     }
 }

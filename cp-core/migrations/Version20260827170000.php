@@ -8,7 +8,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Forum yapısını sadeleştirir: 3 bölüm, 12 alt kategori (pano).
+ * Simplifies forum structure to 3 divisions and 12 board subcategories.
  */
 final class Version20260827170000 extends AbstractMigration
 {
@@ -22,7 +22,7 @@ final class Version20260827170000 extends AbstractMigration
 
     public function getDescription(): string
     {
-        return 'Forum yapısını 3 bölüm ve 12 alt kategoriye sadeleştirir.';
+        return 'Simplifies the forum structure to 3 sections and 12 subcategories.';
     }
 
     public function up(Schema $schema): void

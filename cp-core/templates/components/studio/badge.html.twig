@@ -1,12 +1,10 @@
 {#
     <twig:studio:badge status="published" />
-    <twig:studio:badge status="draft" label="Taslak" />
+    <twig:studio:badge status="draft" />
 
-    <twig:cp:badge>'ın Studio (aydınlık tema) karşılığı.
+    Studio (light theme) counterpart of twig:cp:badge.
 
-    Props:
-      status  (string)       'published' | 'draft' | 'scheduled' | 'deleted'
-      label   (string|null)  Özel metin; verilmezse status'e göre çevrilmiş etiket kullanılır.
+    Props: status, label (optional override)
 #}
 {% props status = 'draft', label = null %}
 

@@ -1,14 +1,8 @@
 {#
-    Studio (AACP olmayan yönetim paneli) formları için kurumsal "flat"
-    tasarım form teması. Bloklar bilinçli olarak MINIMAL tutulur: gerçek
-    görsel stil (border, focus ring, spacing) zaten her alanın kendi
-    PostType::buildForm() 'attr' seçeneklerinde tanımlanır (bkz.
-    Modules\Blog\Form\PostType) — bu tema sadece label/hata/help
-    markup'ının Studio kart bileşenleriyle (twig:studio:card) tutarlı bir
-    iskelete oturmasını sağlar, çift stil tanımını önler.
+    Flat form theme for Studio (non-AACP) admin forms. Blocks stay minimal —
+    field styling lives in PostType 'attr' options; this theme aligns label/error/help markup.
 
-    Uygulama: framework.yaml -> form.twig.form_themes ile global kaydedilir,
-    tüm Studio formları (yalnızca Blog değil) bunu otomatik miras alır.
+    Registered globally via framework.yaml form.themes; all Studio forms inherit it.
 #}
 {% block form_row %}
     <div class="mb-sp-sm">
@@ -48,10 +42,8 @@
 {% endblock form_errors %}
 
 {#
-    Kategori checkbox listesi: EntityType(multiple: true, expanded: true)
-    varsayılan olarak her <input> için ayrı bir form_row üretir — Studio'nun
-    mevcut "Kategoriler" kartındaki tek sütunlu checkbox listesi görünümünü
-    korumak için choice_widget_expanded override edilir.
+    Category checkbox list: overrides choice_widget_expanded to preserve
+    Studio's single-column checkbox layout for EntityType(multiple, expanded).
 #}
 {% block choice_widget_expanded %}
     <div {{ block('widget_container_attributes') }} class="space-y-1.5">

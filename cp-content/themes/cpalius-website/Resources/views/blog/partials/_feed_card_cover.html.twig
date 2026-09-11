@@ -1,6 +1,5 @@
 {#
-    Kapak görseli — blog_featured_image_url() ile çözülür.
-    Beklenen değişken: post
+    Cover image via blog_featured_image_url(). Expects: post.
 #}
 {% set coverUrl = blog_featured_image_url(post) %}
 {% if coverUrl %}

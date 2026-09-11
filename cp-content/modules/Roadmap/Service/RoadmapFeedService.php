@@ -329,9 +329,9 @@ final class RoadmapFeedService
             return [$fallbackName, null, null];
         }
 
-        $name = $user->getFullName();
-        if (trim($name) === '') {
-            $name = (string) ($user->getDataValue('display_name') ?? $user->getEmail() ?? $fallbackName ?? '');
+        $name = $user->getPublicDisplayName();
+        if ($name === '') {
+            $name = (string) ($fallbackName ?? '');
         }
 
         $avatarUrl = null;

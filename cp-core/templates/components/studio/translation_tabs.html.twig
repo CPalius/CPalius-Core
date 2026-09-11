@@ -5,14 +5,10 @@
         createRoute="admin_categories_create"
         sourceId="{{ category.id }}" />
 
-    <twig:cp:translation_tabs>'ın Studio (aydınlık tema) karşılığı.
+    Studio (light theme) counterpart of twig:cp:translation_tabs.
 
-    cp/card.html.twig ↔ studio/card.html.twig ikilisiyle AYNI gerekçeyle
-    ayrı bir dosyadır: AACP'nin koyu paleti Studio'ya sızmamalı, Studio'nun
-    tema değişiklikleri de AACP izolasyonuna dokunmamalıdır. Davranış ve
-    prop sözleşmesi birebir aynıdır.
-
-    Props: bkz. components/cp/translation_tabs.html.twig
+    Separate file like cp/card ↔ studio/card — AACP and Studio palettes stay isolated.
+    Props: see components/cp/translation_tabs.html.twig
 #}
 {% props tabs = [], editRoute = null, createRoute = null, sourceId = null, extraParams = {} %}
 

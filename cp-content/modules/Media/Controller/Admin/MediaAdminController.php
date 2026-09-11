@@ -38,7 +38,7 @@ final class MediaAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Medya', icon: 'heroicons:photo', panel: 'studio', priority: 25, capability: 'media.view', group: 'İçerik')]
+    #[CpAdminMenu(label: 'media.index.header', icon: 'heroicons:photo', panel: 'studio', priority: 25, capability: 'media.view', group: 'studio.group.content')]
     #[IsGranted('media.view')]
     public function index(Request $request): Response
     {

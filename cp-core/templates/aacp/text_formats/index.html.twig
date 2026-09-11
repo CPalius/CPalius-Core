@@ -1,0 +1,68 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.text_format.index.header'|trans }}{% endblock %}
+
+{% block body %}
+    <p class="text-fs-sm !text-slate-400 mb-4">{{ 'aacp.text_format.index.intro'|trans }}</p>
+
+    <div class="space-y-6">
+        {% for id, format in formats %}
+            <twig:cp:card>
+                <form method="post" action="{{ path('aacp_text_format_save', {id: id}) }}" class="space-y-4">
+                    <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <div>
+                            <h3 class="text-fs-sm font-semibold !text-slate-100">{{ format.label|trans }}</h3>
+                            <p class="text-fs-xs !text-slate-500 font-mono">{{ id }} · {{ format.capability }}</p>
+                            {% if format.description %}
+                                <p class="text-fs-xs !text-slate-400 mt-1">{{ format.description|trans }}</p>
+                            {% endif %}
+                        </div>
+                        <span class="badge {{ format.wysiwyg ? 'badge-success' : 'badge-neutral' }}">
+                            {{ format.wysiwyg ? 'aacp.text_format.wysiwyg_on'|trans : 'aacp.text_format.wysiwyg_off'|trans }}
+                        </span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table !border-white/10 text-fs-xs">
+                            <thead>
+                                <tr class="!bg-white/5 !text-slate-400">
+                                    <th class="!border-white/10">{{ 'aacp.text_format.column.filter'|trans }}</th>
+                                    <th class="!border-white/10">{{ 'aacp.text_format.column.enabled'|trans }}</th>
+                                    <th class="!border-white/10">{{ 'aacp.text_format.column.weight'|trans }}</th>
+                                    <th class="!border-white/10">{{ 'aacp.text_format.column.settings'|trans }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for spec in format.filters %}
+                                    <tr>
+                                        <td class="!text-slate-200 font-mono">{{ spec.id }}</td>
+                                        <td>
+                                            <input type="checkbox" name="filters[{{ spec.id }}][enabled]" value="1"
+                                                   {{ spec.enabled ? 'checked' : '' }}
+                                                   class="form-check-input h-4 w-4 !border-white/10 !bg-dark-1 text-primary-500">
+                                        </td>
+                                        <td>
+                                            <input type="number" name="filters[{{ spec.id }}][weight]" value="{{ spec.weight }}"
+                                                   class="form-control !border-white/10 !bg-dark-1 !text-slate-100 !py-1 w-20">
+                                        </td>
+                                        <td>
+                                            {% if spec.id == 'html_restrict' %}
+                                                <input type="text" name="filters[{{ spec.id }}][allow_tags]"
+                                                       value="{{ spec.settings.allow_elements is defined ? spec.settings.allow_elements|keys|join(', ') : '' }}"
+                                                       class="form-control !border-white/10 !bg-dark-1 font-mono !text-slate-100 !py-1"
+                                                       placeholder="p, br, strong, em, a">
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <button type="submit" class="btn btn-sm btn-primary">{{ 'aacp.text_format.action.save'|trans }}</button>
+                </form>
+            </twig:cp:card>
+        {% endfor %}
+    </div>
+{% endblock %}

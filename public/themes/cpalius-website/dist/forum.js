@@ -1,10 +1,18 @@
-/* ================================================
-   CPalius Forum — front-end davranışları
-   Onay istemi, alıntılama ve mesaj metni için hafif biçimlendirme
-   araç çubuğu. Bağımlılıksız (main.js'in fade-in/navbar mantığına dokunmaz).
-   ================================================ */
+/* CPalius Forum front-end: confirm, quote, and lightweight post formatting.
+   No dependencies — does not touch main.js fade-in/navbar behavior. */
 (function () {
   'use strict';
+
+  function formUrl(form) {
+    return form.getAttribute('data-endpoint') || form.getAttribute('action') || '';
+  }
+
+  function forumI18n(key, fallback) {
+    var root = document.getElementById('forum') || document.querySelector('.forum-page');
+    if (!root) return fallback;
+    var value = root.getAttribute('data-i18n-' + key);
+    return value || fallback;
+  }
 
   document.addEventListener('DOMContentLoaded', function () {
     initConfirm();
@@ -18,9 +26,14 @@
     initThreadTools();
     initMultiQuote();
     initSharePostButtons();
+    initMoveForms();
+    initImodSelectAll();
+    initLightbox();
+    initUnfurl();
+    initMediaEmbeds();
   });
 
-  // ---- Silme/tehlikeli eylemler için onay ----
+  // ---- Confirmation for delete/dangerous actions ----
   function initConfirm() {
     document.addEventListener('click', function (e) {
       var el = e.target.closest('[data-confirm]');
@@ -34,11 +47,10 @@
     });
   }
 
-  // ---- "Alıntıla" butonları ----
-  // Yanıt kutusu CKEditor 5 ile zenginleştirilmiş olabilir (forum-editor-init.js,
-  // textarea.__cpForumEditor). Editör henüz hazır değilse ham textarea.value'ya
-  // yazılır — CKEditor init sırasında textarea'nın o anki değerini okuyacağı için
-  // bu durumda da veri kaybolmaz.
+  // ---- "Quote" buttons ----
+  // The reply box may be enriched with CKEditor 5 (forum-editor-init.js,
+  // textarea.__cpForumEditor). If the editor is not ready yet, write to raw textarea.value;
+  // CKEditor reads the textarea's current value during init, so data is not lost in that case.
   function initQuoteButtons() {
     var buttons = document.querySelectorAll('[data-quote-btn]');
     if (!buttons.length) return;
@@ -172,7 +184,7 @@
     return div.innerHTML;
   }
 
-  // ---- Reputation modal (profil + postbit) ----
+  // ---- Reputation modal (profile + postbit) ----
   function initReputationModal() {
     var modal = document.querySelector('[data-rep-modal]');
     if (!modal) return;
@@ -225,14 +237,14 @@
     });
   }
 
-  // ---- "Raporla" butonları — sebep sorup gizli forma yazıp gönderir ----
+  // ---- "Report" buttons — ask for reason, write to hidden form, submit ----
   function initReportButtons() {
     document.querySelectorAll('[data-report-btn]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var form = btn.closest('[data-report-form]');
         if (!form) return;
 
-        var reason = window.prompt('Bu mesajı neden bildiriyorsunuz? (kısaca açıklayın)');
+        var reason = window.prompt(forumI18n('report-prompt', 'Why are you reporting this post? (briefly explain)'));
         if (!reason || !reason.trim()) return;
 
         form.querySelector('input[name="reason"]').value = reason.trim();
@@ -241,9 +253,9 @@
     });
   }
 
-  // ---- Beğeni / beğenmeme — AJAX toggle ----
-  // Native form.submit() catch'te YAPILMAZ: fetch sunucuya ulaştıysa
-  // ikinci POST beğeniyi geri alır (sayfa yenilenir, kalp boş kalır).
+  // ---- Like / dislike — AJAX toggle ----
+  // Do NOT call native form.submit() in catch: if fetch reached the server,
+  // a second POST would undo the like (page reloads, heart appears empty).
   function initReactionForms(selector, options) {
     document.querySelectorAll(selector).forEach(function (form) {
       form.addEventListener('submit', function (e) {
@@ -261,7 +273,7 @@
 
         btn.disabled = true;
 
-        fetch(form.action, {
+      fetch(formUrl(form), {
           method: 'POST',
           headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -304,7 +316,7 @@
               }
             }
           })
-          .catch(function () { /* native yeniden gönderilmez */ })
+          .catch(function () { /* do not resubmit natively */ })
           .finally(function () {
             btn.disabled = false;
           });
@@ -342,7 +354,7 @@
     });
   }
 
-  // ---- Paylaş — Web Share API varsa native paylaşım, yoksa panoya kopyala ----
+  // ---- Share — native Web Share API when available, otherwise copy to clipboard ----
   function initShareButtons() {
     document.querySelectorAll('[data-share-btn]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -358,7 +370,7 @@
         if (navigator.clipboard) {
           navigator.clipboard.writeText(url).then(function () {
             var original = btn.innerHTML;
-            btn.innerHTML = '<i class="bi bi-check-lg"></i> Bağlantı kopyalandı';
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> ' + forumI18n('link-copied', 'Link copied');
             setTimeout(function () { btn.innerHTML = original; }, 2000);
           });
         }
@@ -366,7 +378,7 @@
     });
   }
 
-  // ---- Son olaylar panosu (sekme + AJAX load more) ----
+  // ---- Recent activity panel (tabs + AJAX load more) ----
   function initActivityPanel() {
     var root = document.querySelector('[data-forum-activity]');
     if (!root) return;
@@ -435,9 +447,195 @@
               moreBtn.removeAttribute('aria-hidden');
             }
           })
-          .catch(function () { /* sessiz */ })
+          .catch(function () { /* silent */ })
           .finally(function () { moreBtn.disabled = false; });
       });
+    });
+  }
+
+  var draftForm = document.querySelector('[data-forum-draft]');
+  if (draftForm) {
+    var timer = null;
+    var status = draftForm.querySelector('[data-draft-status]');
+    var saveDraft = function () {
+      var bodyEl = draftForm.querySelector('textarea[name="body"]');
+      var titleEl = draftForm.querySelector('input[name="title"]');
+      var data = new FormData();
+      data.append('_token', draftForm.getAttribute('data-draft-token') || '');
+      data.append('body', bodyEl ? bodyEl.value : '');
+      data.append('title', titleEl ? titleEl.value : '');
+      if (draftForm.getAttribute('data-draft-topic')) {
+        data.append('topic_id', draftForm.getAttribute('data-draft-topic'));
+      }
+      if (draftForm.getAttribute('data-draft-section')) {
+        data.append('section_id', draftForm.getAttribute('data-draft-section'));
+      }
+      fetch(draftForm.getAttribute('data-draft-url'), { method: 'POST', body: data, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (json) {
+          if (json && json.ok && status) {
+            status.hidden = false;
+          }
+        })
+        .catch(function () {});
+    };
+    draftForm.addEventListener('input', function () {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(saveDraft, 4000);
+    });
+  }
+
+  function initMoveForms() {
+    document.querySelectorAll('[data-move-form]').forEach(function (form) {
+      var target = form.querySelector('[data-move-target]');
+      var submit = form.querySelector('[data-move-submit]');
+      if (!target || !submit) return;
+      var sync = function () { submit.hidden = !target.value; };
+      target.addEventListener('change', sync);
+      sync();
+    });
+  }
+
+  function initImodSelectAll() {
+    var bar = document.querySelector('.forum-imod');
+    var sync = function () {
+      if (!bar) return;
+      bar.classList.toggle('is-open', !!document.querySelector('input[form="forum-imod-form"]:checked'));
+    };
+    document.addEventListener('change', function (e) {
+      if (!e.target) return;
+      if (e.target.hasAttribute('data-imod-select-all')) {
+        var on = e.target.checked;
+        document.querySelectorAll('input[form="forum-imod-form"][name="topic_ids[]"]').forEach(function (el) {
+          el.checked = on;
+        });
+      }
+      if (e.target.matches('input[form="forum-imod-form"], [data-imod-select-all]')) {
+        sync();
+      }
+    });
+    sync();
+  }
+
+  function loadExternalScript(src, id) {
+    if (document.getElementById(id)) return;
+    var s = document.createElement('script');
+    s.id = id;
+    s.async = true;
+    s.src = src;
+    document.body.appendChild(s);
+  }
+
+  function initMediaEmbeds() {
+    if (document.querySelector('blockquote.twitter-tweet')) {
+      loadExternalScript('https://platform.twitter.com/widgets.js', 'twitter-wjs');
+    }
+    if (document.querySelector('blockquote.instagram-media')) {
+      loadExternalScript('https://www.instagram.com/embed.js', 'instagram-embed-js');
+    }
+  }
+
+  function initUnfurl() {
+    var page = document.querySelector('.forum-page');
+    if (!page) return;
+    var endpoint = page.getAttribute('data-unfurl-endpoint');
+    var token = page.getAttribute('data-unfurl-token');
+    if (!endpoint || !token) return;
+
+    var queue = Array.prototype.slice.call(document.querySelectorAll('[data-unfurl-url]'));
+    var run = function () {
+      var el = queue.shift();
+      if (!el) return;
+      var url = el.getAttribute('data-unfurl-url');
+      el.removeAttribute('data-unfurl-url');
+      if (!url) {
+        run();
+        return;
+      }
+      var data = new FormData();
+      data.append('_token', token);
+      data.append('url', url);
+      fetch(endpoint, {
+        method: 'POST',
+        body: data,
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (json) {
+          if (json && json.ok && json.html) {
+            var wrap = document.createElement('div');
+            wrap.innerHTML = json.html;
+            var card = wrap.firstElementChild;
+            if (card && el.parentNode) {
+              el.parentNode.replaceChild(card, el);
+            }
+          }
+        })
+        .catch(function () {})
+        .finally(run);
+    };
+    run();
+  }
+
+  function initLightbox() {
+    var overlay = document.createElement('div');
+    overlay.className = 'forum-lightbox-overlay';
+    overlay.hidden = true;
+    overlay.innerHTML = '<button type="button" class="forum-lightbox-overlay__close" aria-label="' + forumI18n('close', 'Close') + '">&times;</button>'
+      + '<button type="button" class="forum-lightbox-overlay__nav forum-lightbox-overlay__prev" aria-label="' + forumI18n('prev', 'Previous') + '">‹</button>'
+      + '<img class="forum-lightbox-overlay__img" alt="">'
+      + '<button type="button" class="forum-lightbox-overlay__nav forum-lightbox-overlay__next" aria-label="' + forumI18n('next', 'Next') + '">›</button>';
+    document.body.appendChild(overlay);
+    var imgEl = overlay.querySelector('.forum-lightbox-overlay__img');
+    var items = [];
+    var index = 0;
+
+    var galleryFor = function (img) {
+      var post = img.closest('.forum-post');
+      var scope = post || document;
+      return Array.prototype.filter.call(scope.querySelectorAll('.forum-post__body img, .forum-attachments img'), function (node) {
+        return !node.closest('.forum-unfurl-card, .twitter-tweet, .instagram-media, iframe');
+      });
+    };
+    var show = function () {
+      if (!items[index]) return;
+      imgEl.src = items[index].currentSrc || items[index].getAttribute('src') || '';
+      imgEl.alt = items[index].getAttribute('alt') || '';
+      overlay.hidden = false;
+      document.body.classList.add('forum-lightbox-open');
+    };
+    var close = function () {
+      overlay.hidden = true;
+      imgEl.removeAttribute('src');
+      document.body.classList.remove('forum-lightbox-open');
+    };
+    var step = function (delta) {
+      if (!items.length) return;
+      index = (index + delta + items.length) % items.length;
+      show();
+    };
+
+    document.addEventListener('click', function (e) {
+      var img = e.target.closest('.forum-post__body img, .forum-attachments img');
+      if (!img || img.closest('.forum-unfurl-card, .twitter-tweet, .instagram-media')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      items = galleryFor(img);
+      index = Math.max(0, items.indexOf(img));
+      show();
+    }, true);
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay || e.target.closest('.forum-lightbox-overlay__close')) close();
+      else if (e.target.closest('.forum-lightbox-overlay__prev')) step(-1);
+      else if (e.target.closest('.forum-lightbox-overlay__next')) step(1);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (overlay.hidden) return;
+      if (e.key === 'Escape') close();
+      if (e.key === 'ArrowLeft') step(-1);
+      if (e.key === 'ArrowRight') step(1);
     });
   }
 })();

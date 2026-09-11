@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Core\Performance;
 
 use App\Core\Localization\LocaleProvider;
+use App\Core\OriginCache\OriginCacheStore;
 use App\Core\Performance\MemcachedConnectionTester;
 use App\Core\Performance\NginxPageSpeedStatusChecker;
+use App\Core\Performance\OriginCacheChecker;
 use App\Core\Performance\PerformanceBackendRegistry;
 use App\Core\Performance\RedisConnectionTester;
 use App\Core\Performance\VarnishStatusChecker;
@@ -78,11 +80,17 @@ final class PerformanceBackendRegistryTest extends TestCase
         $entityManager->expects(self::atLeastOnce())->method('flush');
         $entityManager->expects(self::atLeastOnce())->method('persist');
 
+        // OriginCacheChecker / OriginCacheStore are final and never exercised on the
+        // 'varnish' path; real instances over a temp dir keep the constructor satisfied.
+        $originCacheStore = new OriginCacheStore(sys_get_temp_dir());
+
         $registry = new PerformanceBackendRegistry(
             new RedisConnectionTester(),
             new MemcachedConnectionTester(),
             new VarnishStatusChecker(),
             new NginxPageSpeedStatusChecker(),
+            new OriginCacheChecker($originCacheStore),
+            $originCacheStore,
             $settingsRegistry,
             $settingRepository,
             $statusRepository,

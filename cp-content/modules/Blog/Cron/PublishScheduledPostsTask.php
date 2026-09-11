@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Blog\Cron;
 
 use App\Core\Cron\Attribute\CpCronJob;
+use App\Core\OriginCache\OriginCachePurger;
 use App\Repository\NodeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -17,16 +18,17 @@ final class PublishScheduledPostsTask
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly NodeRepository $nodeRepository,
+        private readonly OriginCachePurger $originCachePurger,
     ) {
     }
 
-    #[CpCronJob(schedule: '*/5 * * * *', name: 'blog.publish_scheduled', description: 'Zamanlanmış blog yazılarını otomatik yayınlar')]
+    #[CpCronJob(schedule: '*/5 * * * *', name: 'blog.publish_scheduled', description: 'Publish scheduled blog posts when their publish time is due')]
     public function execute(): string
     {
         $dueNodes = $this->nodeRepository->findDueScheduledNodes();
 
         if ($dueNodes === []) {
-            return 'Yayın zamanı gelmiş, zamanlanmış içerik yok.';
+            return 'No scheduled content is due for publication.';
         }
 
         $publishedTitles = [];
@@ -36,7 +38,14 @@ final class PublishScheduledPostsTask
         }
 
         $this->entityManager->flush();
+        $areas = ['blog', 'home', 'roadmap'];
+        foreach ($dueNodes as $node) {
+            if ($node->getType() === 'page') {
+                $areas[] = $node->getSlug();
+            }
+        }
+        $this->originCachePurger->purgeAreas(...array_values(array_unique($areas)));
 
-        return sprintf("%d içerik yayına alındı.\n%s", \count($dueNodes), implode("\n", $publishedTitles));
+        return sprintf("%d item(s) published.\n%s", \count($publishedTitles), implode("\n", $publishedTitles));
     }
 }

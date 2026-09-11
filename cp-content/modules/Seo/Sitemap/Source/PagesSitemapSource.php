@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace Modules\Seo\Sitemap\Source;
 
 use App\Core\Localization\LocaleProvider;
+use App\Entity\Node;
+use App\Repository\NodeRepository;
 use Modules\Seo\Contract\SeoSitemapSourceInterface;
 use Modules\Seo\Engine\SeoUrlBuilder;
 use Modules\Seo\Sitemap\SitemapUrl;
+use Symfony\Component\Uid\Uuid;
 
 final class PagesSitemapSource implements SeoSitemapSourceInterface
 {
     public function __construct(
         private readonly SeoUrlBuilder $urls,
         private readonly LocaleProvider $locales,
+        private readonly NodeRepository $nodes,
     ) {
     }
 
@@ -48,5 +52,43 @@ final class PagesSitemapSource implements SeoSitemapSourceInterface
                 continue;
             }
         }
+
+        $offset = 0;
+        do {
+            $batch = $this->nodes->findPublishedByTypeAndLocale('page', $locale, 200, $offset);
+            foreach ($batch as $node) {
+                try {
+                    yield $this->pageUrl($node, $locale);
+                } catch (\Throwable) {
+                    continue;
+                }
+            }
+            $offset += 200;
+        } while (\count($batch) === 200);
+    }
+
+    private function pageUrl(Node $node, string $locale): SitemapUrl
+    {
+        $alternates = [];
+        $groupId = $node->getTranslationGroupId();
+        if ($groupId instanceof Uuid) {
+            foreach ($this->nodes->findTranslations($groupId) as $translation) {
+                if ($translation->getType() !== 'page' || $translation->getStatus() !== Node::STATUS_PUBLISHED) {
+                    continue;
+                }
+                $alternates[$translation->getLocale()] = $this->urls->absolute('page_show', [
+                    '_locale' => $translation->getLocale(),
+                    'slug' => $translation->getSlug(),
+                ], $translation->getLocale());
+            }
+        }
+
+        return new SitemapUrl(
+            loc: $this->urls->absolute('page_show', ['_locale' => $locale, 'slug' => $node->getSlug()], $locale),
+            lastmod: $node->getUpdatedAt(),
+            changefreq: 'weekly',
+            priority: '0.7',
+            alternates: $alternates,
+        );
     }
 }

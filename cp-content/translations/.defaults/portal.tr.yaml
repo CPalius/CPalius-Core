@@ -3,8 +3,8 @@
 # extended with architecture features shipped after the whitepaper.
 
 meta:
-  title: "CPalius CMF — Yeni Nesil İçerik Yönetim Framework'ü | PHP 8.2+ & Symfony 7.4"
-  description: "CPalius CMF: PHP 8.2+ ve Symfony 7.4 LTS üzerine inşa edilmiş, kurumsal seviyede güvenli, modüler ve genişletilebilir içerik yönetim framework'ü. Açık kaynak, topluluk destekli."
+  title: "CPalius CMF — Yeni Nesil İçerik Yönetim Framework'ü | PHP 8.4+ & Symfony 7.4"
+  description: "CPalius CMF: PHP 8.4+ ve Symfony 7.4 LTS üzerine inşa edilmiş, kurumsal seviyede güvenli, modüler ve genişletilebilir içerik yönetim framework'ü. Açık kaynak, topluluk destekli."
 
 nav:
   about: "Hakkında"
@@ -36,7 +36,7 @@ hero:
   subtitle_line2: "Kurumsal Uygulama Framework'üne"
   desc: "Modern web ekosisteminde hazır eklenti sistemleriyle donatılmış ama hantal CMS'ler ile her şeye sıfırdan başlamayı gerektiren saf framework'ler arasındaki köprüyü kuran, dünya standartlarında optimize, güvenli ve genişletilebilir altyapı."
   cta_whitepaper: "Whitepaper'ı İncele"
-  cta_architecture: "Mimariyi Keşfet"
+  cta_features: "Öne çıkan özellikler"
   badge_opensource: "Açık Kaynak"
 
 about:
@@ -128,15 +128,25 @@ core:
     }
 
 features:
-  label: "Bölüm 3 — 4"
-  title: "Veri Modeli ve Platform Yetenekleri"
-  desc: "Hibrit veri modeli, yüksek performanslı indeksleme ve çok dilli yapı — tümü ilk günden çekirdeğin hücrelerine işlenmiştir."
+  label: "Öne çıkanlar"
+  title: "Kurumsal omurganın altı ayağı"
+  desc: "Landing'de yalnızca karar vermenizi sağlayan başlıklar var. Mimari derinliği, kod örnekleri ve son sprintlerin tamamı Whitepaper'da."
+  core_title: "Çökmeyen Çekirdek"
+  core_text: "Bozuk bir modül sistemi kilitlemez. Dört kademeli savunma, karantina ve Safe Mode — çekirdek her zaman ayakta kalır."
   hybrid_title: "Hibrit Veri Modeli"
-  hybrid_text: "Sık sorgulanan temel alanlar (ID, Başlık, Slug, Durum) gerçek sütunlarda; dinamik, esnek alanlar (gövde, SEO, galeri) tek bir JSON sütununda. EAV'ın JOIN cehenneminden ve WordPress'in meta karmaşasından kurtulun."
+  hybrid_text: "Sık sorgulanan alanlar gerçek sütunlarda; esnek içerik tek JSON kolonunda. EAV JOIN cehennemi ve WordPress meta karmaşası yok."
+  i18n_title: "Çok Dilli Çekirdek"
+  i18n_text: "Dil sonradan eklenen bir cila değil. Kompozit UNIQUE(slug, locale) ve translation_group_id ile kardeş kayıtlar ilk günden çekirdekte."
+  origin_title: "Origin Cache & Performans"
+  origin_text: "Statik HTML origin cache, Redis, Memcached, Varnish, PageSpeed ve OPcache — AACP dashboard'unda adet ve boyut özeti."
+  ops_title: "AACP Komuta Masası"
+  ops_text: "Canlı sistem sağlığı, Studio dashboard, güvenlik telemetrisi ve IP ban. Veritabanı düşse bile Recovery Console ayakta kalır."
+  extend_title: "Modül, API, Hook, Cron"
+  extend_text: "REST Gateway, izole hook'lar, birleşik cron ve ilk parti Blog/Forum/Medya/Menü/SEO — hepsi aynı Capability zırhıyla."
+  more_hint: "Config Sync, XSS sanitization, Schema.org, N+1 muhafızı, audit log ve forum motorunun ayrıntısı Whitepaper'da."
+  more_cta: "Tüm teknik ayrıntılar — Whitepaper"
   index_title: "Flat Field Index Motoru"
   index_text: "JSON verilerini veritabanı bağımsız sorgulayın. NodeFieldIndex tablosu ve Doctrine Event Listener ile tip-uygun kolonlara sahip indeks tablosu. SQLite, MySQL ve Postgres'te aynı DQL çalışır."
-  i18n_title: "Çok Dilli Yapı (i18n)"
-  i18n_text: "Çoklu dil ilk günden çekirdeğe işlendi. Kompozit benzersizlik kısıtları ile UNIQUE(slug, locale) ve UNIQUE(translation_group_id, locale) güvencesi. Dil sonradan eklenen bir cila değildir."
   config_title: "Config Sync Sistemi"
   config_text: "Drupal'ın config sync yaklaşımı, Symfony TreeBuilder ile birleştirildi. Roller ve yetenek matrisleri YAML dosyalarında tutulur, Git ile taşınır. Kullanıcı verileri ise veritabanında kalır."
   bundle_title: "Modüler Bundle Mimarisi"
@@ -515,7 +525,7 @@ stats:
 roadmap:
   label: "Bölüm 10"
   title: "Gelecek Yol Haritası"
-  desc: "İlk whitepaper'da vaat edilen maddelerden Safe Mode, anlık görsel pipeline'ı ve audit log tamamlandı. Sıradaki geliştirme sprintlerinde aşağıdaki sistemler inşa edilecek."
+  desc: "Safe Mode, origin cache, telemetri ve audit log teslim edildi. Sprint ayrıntıları ve kalan işler Whitepaper ile Yol Haritası sayfasında."
   sprint1: "Sprint 1"
   sprint1_title: "Workflow & State Machine"
   sprint1_text_html: "Fatura, araç, rezervasyon gibi iş kayıtlarının geçiş süreçlerini (draft → preparation → sold) YAML tanımlarıyla yöneten ve her geçişi otomatik audit log'a bağlayan mekanizma. <code class=\"code-inline\">CpResource::$workflow</code> alanı zaten deklare edilmiş durumda — sıradaki adım gerçek transition/guard motorunu bağlamak."
@@ -538,9 +548,9 @@ community:
 
 whitepaper:
   meta_title: "CPalius CMF Whitepaper — Teknik İnceleme & Mimari Yol Haritası"
-  meta_description: "CPalius CMF teknik whitepaper: Pristine Root, Core Never Dies, hibrit veri modeli, i18n, CBAC, SaaS tenant koruması ve yol haritası."
+  meta_description: "CPalius CMF teknik whitepaper: Pristine Root, Core Never Dies, yedek yönetimi, origin HTML cache, AACP telemetri, Pages, modül paketleri, i18n, CBAC ve yol haritası."
   back: "Ana sayfaya dön"
   badge: "Teknik İnceleme (Whitepaper) & Mimari Yol Haritası (RFC)"
-  version: "Sürüm: v1.0.0-draft"
+  version: "Sürüm: v1.2.0"
   toc_title: "İçindekiler"
   cta: "Whitepaper'ı İncele"

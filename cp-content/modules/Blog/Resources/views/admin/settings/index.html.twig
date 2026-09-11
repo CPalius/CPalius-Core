@@ -17,10 +17,23 @@
 
         {% for groupKey, groupDefs in grouped %}
             <twig:studio:card title="{{ (groupLabels[groupKey]|default(groupKey))|trans }}">
+                {% if groupKey == 'blog_comments' and captchaStatus is defined %}
+                    <div class="mb-4 rounded-lg border px-3 py-3 text-fs-sm {{ captchaStatus.ready ? 'border-success-200 bg-success-50 text-success-800' : 'border-neutral-200 bg-neutral-50 text-neutral-700' }}">
+                        {% if captchaStatus.ready %}
+                            <p class="font-medium">{{ 'studio.blog.settings.captcha.active'|trans({'name': captchaStatus.labelKey|trans}) }}</p>
+                        {% else %}
+                            <p class="font-medium">{{ 'studio.blog.settings.captcha.math'|trans }}</p>
+                        {% endif %}
+                        <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.blog.settings.captcha.hint'|trans }}</p>
+                        <a href="{{ path('aacp_advanced_management', {tab: 'security'}) }}" class="mt-2 inline-block text-fs-xs font-medium text-primary-600 hover:text-primary-700">
+                            {{ 'studio.blog.settings.captcha.configure'|trans }}
+                        </a>
+                    </div>
+                {% endif %}
                 <div class="grid gap-4 md:grid-cols-2">
                     {% for definition in groupDefs %}
                         <div class="{{ definition.type == 'textarea' or definition.key == 'blog.hero_image_asset_id' ? 'md:col-span-2' : '' }}">
-                            <label class="form-label">{{ definition.label }}</label>
+                            <label class="form-label">{{ definition.label|trans }}</label>
 
                             {% if definition.type in ['checkbox', 'boolean'] %}
                                 <label class="mt-1 flex items-center gap-2">
@@ -32,7 +45,7 @@
                             {% elseif definition.type == 'select' %}
                                 <select name="settings[{{ definition.key }}]" class="form-select">
                                     {% for value, label in definition.variants %}
-                                        <option value="{{ value }}" {{ values[definition.key] == value ? 'selected' : '' }}>{{ label }}</option>
+                                        <option value="{{ value }}" {{ values[definition.key] == value ? 'selected' : '' }}>{{ label|trans }}</option>
                                     {% endfor %}
                                 </select>
                             {% elseif definition.type == 'integer' %}

@@ -11,7 +11,7 @@ final class Version20260827210000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Forum mesaj beğenmeme (dislike) tablosu.';
+        return 'Forum post dislike table.';
     }
 
     public function up(Schema $schema): void

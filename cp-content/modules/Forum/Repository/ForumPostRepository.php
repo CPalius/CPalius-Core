@@ -24,12 +24,45 @@ final class ForumPostRepository extends ServiceEntityRepository
         parent::__construct($registry, ForumPost::class);
     }
 
-    public function createTopicPostsQueryBuilder(ForumTopic $topic): QueryBuilder
+    public function createTopicPostsQueryBuilder(ForumTopic $topic, bool $includeHeld = false): QueryBuilder
     {
-        return $this->createQueryBuilder('p')
+        $qb = $this->createQueryBuilder('p')
             ->andWhere('p.topic = :topic')
             ->setParameter('topic', $topic)
             ->orderBy('p.createdAt', 'ASC');
+
+        if (!$includeHeld) {
+            $qb->andWhere('p.discussionState = :visible')
+                ->setParameter('visible', ForumDiscussionState::Visible);
+        }
+
+        return $qb;
+    }
+
+    /** @return list<ForumPost> */
+    public function findHeld(int $limit = 80): array
+    {
+        return $this->createQueryBuilder('p')
+            ->innerJoin('p.topic', 't')->addSelect('t')
+            ->leftJoin('t.section', 's')->addSelect('s')
+            ->andWhere('p.discussionState = :held OR t.discussionState = :held')
+            ->setParameter('held', ForumDiscussionState::Moderated)
+            ->orderBy('p.createdAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countByAuthor(User $author): int
+    {
+        return (int) $this->createQueryBuilder('p')
+            ->select('COUNT(p.id)')
+            ->andWhere('p.author = :author')
+            ->andWhere('p.discussionState = :visible')
+            ->setParameter('author', $author)
+            ->setParameter('visible', ForumDiscussionState::Visible)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     public function countByTopic(ForumTopic $topic): int
@@ -97,14 +130,38 @@ final class ForumPostRepository extends ServiceEntityRepository
     }
 
     /** @return ForumPost[] */
-    public function findLatest(int $limit = 10): array
+    public function findLatest(int $limit = 10, ?string $contentLocale = null): array
     {
-        return $this->createQueryBuilder('p')
+        $qb = $this->createQueryBuilder('p')
             ->leftJoin('p.topic', 't')->addSelect('t')
             ->orderBy('p.createdAt', 'DESC')
-            ->setMaxResults($limit)
-            ->getQuery()
-            ->getResult();
+            ->setMaxResults($limit);
+
+        if ($contentLocale !== null && $contentLocale !== '') {
+            $qb->andWhere('t.locale = :contentLocale')
+                ->setParameter('contentLocale', $contentLocale);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    public function countVisiblePublic(?string $contentLocale = null): int
+    {
+        $qb = $this->createQueryBuilder('p')
+            ->select('COUNT(p.id)')
+            ->innerJoin('p.topic', 't')
+            ->andWhere('t.movedToTopic IS NULL')
+            ->andWhere('t.mode = :normal')
+            ->andWhere('t.discussionState = :visible')
+            ->setParameter('normal', ForumTopic::MODE_NORMAL)
+            ->setParameter('visible', ForumDiscussionState::Visible);
+
+        if ($contentLocale !== null && $contentLocale !== '') {
+            $qb->andWhere('t.locale = :contentLocale')
+                ->setParameter('contentLocale', $contentLocale);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
     }
 
     /** @return ForumPost[] */
@@ -211,6 +268,16 @@ final class ForumPostRepository extends ServiceEntityRepository
         }
 
         return $map;
+    }
+
+    public function countCreatedSince(\DateTimeInterface $since): int
+    {
+        return (int) $this->createQueryBuilder('p')
+            ->select('COUNT(p.id)')
+            ->andWhere('p.createdAt >= :since')
+            ->setParameter('since', $since)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     public function countDistinctAuthors(): int

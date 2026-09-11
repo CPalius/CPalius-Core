@@ -7,15 +7,29 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
-    # FAZ 3 fallback zincirinin SON halkası. LocaleProvider bu değeri
-    # yalnızca .env'de CPALIUS_LOCALES tanımlı DEĞİLSE ve veritabanı da
-    # erişilemezse kullanır — yani "hiçbir şey çalışmıyor" senaryosunda
-    # sitenin hangi dillerde ayakta kalacağını belirler.
+    # Phase 3 fallback chain terminus. LocaleProvider uses this only when
+    # CPALIUS_LOCALES is unset in .env and the database is unreachable.
     #
-    # Not: rota kısıtlarında kullanılan %cpalius.locales_pattern%
-    # parametresi BURADA DEĞİL, LocalesPatternPass tarafından derleme
-    # zamanında üretilir (bkz. Kernel::build()).
+    # Note: %cpalius.locales_pattern% for route constraints is built at
+    # compile time by LocalesPatternPass (see Kernel::build()), not here.
     cpalius.fallback_locales: 'tr,en'
+    cpalius.module.contributions:
+        node_show_routes: []
+        category_show_route: null
+        queryable_fields: []
+        studio:
+            type_labels: []
+            edit_routes: []
+            view_routes: []
+            quick_create: []
+            quick_links: []
+            hidden_node_types: []
+        homepage_modes: []
+        portal_blocks: []
+        schema_types: []
+        account:
+            post_login_route: null
+            post_login_priority: 0
 
 services:
     # default configuration for services in *this* file
@@ -25,17 +39,25 @@ services:
         bind:
             string $projectDir: '%kernel.project_dir%'
 
-    # Redis bağlantısı: framework.yaml'daki cache.default_redis_provider
-    # (app/Doctrine cache pool'ları) ile session.handler.redis burada
-    # AYNI bağlantıyı paylaşır — iki ayrı TCP bağlantısı açmaya gerek yok.
+    _instanceof:
+        # Async queue handlers → QueueWorker::$handlers (a broken one is skipped, not fatal).
+        App\Core\Queue\AsyncJobHandlerInterface:
+            tags: ['cp.async_job_handler']
+        # Config sync sources → ConfigManager.
+        App\Core\Config\ConfigProviderInterface:
+            tags: ['cp.config_provider']
+        # Token value resolvers (one per type: node/term/user/site) → TokenReplacer.
+        App\Core\Token\TokenValueProviderInterface:
+            tags: ['cp.token_value_provider']
+        App\Core\TextFormat\TextFilterInterface:
+            tags: ['cp.text_filter']
+        App\Core\Notification\NotificationChannelInterface:
+            tags: ['cpalius.notification.channel']
+
+    # Shared Redis connection for cache.default_redis_provider and session.handler.redis.
     #
-    # lazy: true ŞART — createConnection() servis INSTANTIATE edilir
-    # edilmez (container derlenirken değil ama ilk erişimde) TCP bağlantısı
-    # kurmaya çalışır ve başarısızsa InvalidArgumentException fırlatır. lazy
-    # olmadan bu, FailoverRedisSessionHandler'ın try/catch'ine hiç
-    # girmeden, servis grafiği kurulurken (session henüz devrede değilken)
-    # patlar — bkz. bugünkü canlı doğrulama: Redis kapalıyken /aacp 500
-    # verdi çünkü hata handler'ın DIŞINDA oluşuyordu.
+    # lazy: true is required — without it, createConnection() runs at instantiation
+    # and throws before FailoverRedisSessionHandler can fall back to file sessions.
     Redis:
         class: Redis
         lazy: true
@@ -48,10 +70,8 @@ services:
         arguments:
             - '@Redis'
 
-    # Redis erişilemez olduğunda (bağlantı kopması, RDB yazma reddi vb.)
-    # framework.yaml'daki session.handler_id BUNU kullanır — primary
-    # Redis handler'ı \Throwable fırlatırsa aynı istekte dosya tabanlı
-    # fallback'e düşer (bkz. FailoverRedisSessionHandler docblock'u).
+    # Used by framework.yaml session.handler_id when Redis is unreachable;
+    # falls back to file storage if the primary handler throws (see FailoverRedisSessionHandler).
     session.handler.redis:
         class: App\Core\Session\FailoverRedisSessionHandler
         arguments:
@@ -62,6 +82,9 @@ services:
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: '../src/'
+
+    App\Core\Logging\Monolog\DoctrineLogHandler:
+        public: true
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
@@ -75,7 +98,7 @@ services:
         arguments:
             $activeModulesFile: '%kernel.project_dir%/cp-core/config/active_modules.php'
 
-    # FAZ 6: module lifecycle services. Both need the modules directory and the
+    # Phase 6: module lifecycle services. Both need the modules directory and the
     # running core version, neither of which is autowirable.
     App\Core\Module\ModuleDependencyChecker:
         arguments:
@@ -95,18 +118,18 @@ services:
         arguments:
             $themesDir: '%kernel.project_dir%/cp-content/themes'
 
+    App\Core\Theme\ThemeFileEditor:
+        arguments:
+            $themesDir: '%kernel.project_dir%/cp-content/themes'
+
     App\Core\Routing\SafeModuleRouteLoader:
         tags:
             - { name: 'routing.loader' }
 
-    # FAZ 3 — Çoklu Dil Motoru'nun tek doğruluk kaynağı.
+    # Phase 3 — single source of truth for the multi-locale engine.
     #
-    # $fallbackLocales / $fallbackDefaultLocale SADECE veritabanı
-    # erişilemez olduğunda (veya cp_locales henüz boşken) devreye girer.
-    # env(default:...) sözdizimi sayesinde .env'de CPALIUS_LOCALES
-    # tanımlanmamış bir kurulumda bile container derlenir: değişken yoksa
-    # sırasıyla cpalius.locales_pattern'in ürettiği liste ve
-    # kernel.default_locale kullanılır.
+    # $fallbackLocales / $fallbackDefaultLocale apply only when the DB is unreachable
+    # or cp_locales is empty; env(default:...) keeps the container buildable without .env vars.
     App\Core\Localization\LocaleProvider:
         arguments:
             $cache: '@cache.app'
@@ -117,8 +140,16 @@ services:
         arguments:
             $cache: '@cache.app'
 
-    # LocaleListener artık sabit bir dil listesi ALMAZ: desteklenen diller
-    # LocaleProvider üzerinden çalışma zamanında çözülür.
+    App\Core\Taxonomy\VocabularyRegistry:
+        arguments:
+            $cache: '@cache.app'
+
+    App\Core\Display\EntityDisplayRegistry:
+        arguments:
+            $cache: '@cache.app'
+
+    # LocaleListener no longer receives a fixed locale list; supported locales
+    # are resolved at runtime via LocaleProvider.
     App\Core\EventListener\LocaleListener: ~
 
     App\Core\Security\RoleConfigManager:
@@ -131,6 +162,18 @@ services:
             $coreTranslationsDir: '%kernel.project_dir%/cp-content/translations'
             $modulesDir: '%kernel.project_dir%/cp-content/modules'
 
+    App\Core\Module\ModuleContributionCatalog:
+        arguments:
+            $data: '%cpalius.module.contributions%'
+
+    App\Core\Module\ModulePackageService:
+        arguments:
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+
+    App\Core\Theme\ThemePackageService:
+        arguments:
+            $themesDir: '%kernel.project_dir%/cp-content/themes'
+
     App\Core\Portal\PortalCopyService:
         arguments:
             $translationsDir: '%kernel.project_dir%/cp-content/translations'
@@ -139,60 +182,139 @@ services:
         arguments:
             $recoveryToken: '%env(AACP_RECOVERY_TOKEN)%'
 
-    # HookManager: $attributeHooks HookRegistrationPass::CONTAINER_PARAMETER'dan
-    # (derleme zamanında toplanan #[CpHook] listesi) beslenir. $serviceLocator
-    # HookRegistrationPass tarafından ServiceLocatorTagPass::register() ile
-    # üretilip setArgument() ile BURADAKİ null placeholder'ın üzerine yazılır —
-    # burada açıkça null verilmesinin sebebi, autowire'ın bu union-type
-    # olmayan parametre için bir servis tahmin etmeye ÇALIŞMAMASINI sağlamaktır.
+    # HookManager: $attributeHooks from HookRegistrationPass; $serviceLocator is
+    # injected by the same pass — null here prevents autowire from guessing a service.
     App\Core\Hook\HookManager:
         arguments:
             $serviceLocator: null
             $attributeHooks: '%cpalius.hook_definitions%'
 
-    # ApiGatewayController: $apiEndpoints ApiRegistrationPass::CONTAINER_PARAMETER'dan
-    # beslenir (derleme zamanında toplanan #[CpApi] listesi), $serviceLocator
-    # da aynı pass tarafından setArgument() ile bağlanır.
+    # ApiGatewayController: $apiEndpoints from ApiRegistrationPass (#[CpApi] list);
+    # $serviceLocator is wired by the same pass via setArgument().
     App\Core\Api\Controller\ApiGatewayController:
         arguments:
             $serviceLocator: null
             $apiEndpoints: '%cpalius.api_definitions%'
 
-    # CronManager: $cronDefinitions CronRegistrationPass::CONTAINER_PARAMETER'dan
-    # beslenir (derleme zamanında toplanan #[CpCronJob] + flat-file "cron.*.php"
-    # listesi), $serviceLocator da aynı pass tarafından setArgument() ile bağlanır.
+    # EntityTypeRegistry: $rawDefinitions is wired by EntityTypeRegistrationPass
+    # (#[CpEntityType] scan). Empty here so the container stays buildable.
+    App\Core\Entity\EntityTypeRegistry:
+        arguments:
+            $rawDefinitions: []
+
+    # FieldTypeRegistry: both args are wired by FieldTypeRegistrationPass
+    # (#[CpFieldType] scan → service locator + id map).
+    App\Core\Field\FieldTypeRegistry:
+        arguments:
+            $locator: null
+            $serviceByType: []
+
+    # Entity query API. Public so the compiler keeps it before a consumer lands.
+    App\Core\Entity\Query\CpEntityQueryFactory: { public: true }
+
+    # Field API surface for modules. Kept public so a fresh install (no module
+    # consuming them yet) does not let the compiler prune the entrypoints.
+    App\Core\Field\FieldDefinitionSeeder: { public: true }
+    App\Core\Field\FieldValueNormalizer: { public: true }
+    App\Core\Field\FieldValidator: { public: true }
+    App\Core\Field\FieldValuePersister: { public: true }
+    App\Core\Field\Form\FieldableFormBuilder: { public: true }
+    App\Core\Field\Display\FieldRenderer: { public: true }
+    App\Core\Field\Api\FieldValueSerializer: { public: true }
+
+    # Taxonomy surface for modules — same "no consumer yet" pruning guard.
+    App\Core\Taxonomy\VocabularySeeder: { public: true }
+
+    # AACPApiKeyController: $apiDefinitions feeds the "known capabilities" datalist
+    # in the key-create form (same #[CpApi] list the gateway matches against).
+    App\Controller\Admin\AACPApiKeyController:
+        arguments:
+            $apiDefinitions: '%cpalius.api_definitions%'
+
+    # CronManager: $cronDefinitions from CronRegistrationPass (#[CpCronJob] + cron.*.php);
+    # $serviceLocator is wired by the same pass via setArgument().
     App\Core\Cron\CronManager:
         arguments:
             $serviceLocator: null
             $cronDefinitions: '%cpalius.cron_definitions%'
 
-    # CronExecuteController: dışarıdan tetiklenen /cron/execute pseudo-cron
-    # ucunun tek yetkilendirme sırrı. AACP_RECOVERY_TOKEN ile AYNI desen
-    # (bkz. AACPController), ayrı bir env değişkeni kullanır çünkü ikisi
-    # birbirinden bağımsız güvenlik sınırlarıdır (biri kurtarma konsolu,
-    # diğeri cron tetikleme).
+    # Enqueue-only queue contract → the concrete Doctrine-backed bus.
+    App\Core\Queue\AsyncJobDispatcherInterface: '@App\Core\Queue\AsyncJobBus'
+
+    # WorkflowDefinitionLoader: config-as-code workflows under config/sync/workflow/.
+    App\Core\Workflow\WorkflowDefinitionLoader:
+        arguments:
+            $workflowDir: '%kernel.project_dir%/cp-content/config/sync/workflow'
+
+    # Config Management (CMI) — export/import DB config as YAML under config/sync/.
+    App\Core\Config\ConfigFile:
+        arguments:
+            $syncDir: '%kernel.project_dir%/cp-content/config/sync'
+
+    App\Core\Config\ConfigManager:
+        arguments:
+            $providers: !tagged_iterator cp.config_provider
+
+    App\Core\Token\TokenReplacer:
+        arguments:
+            $providers: !tagged_iterator cp.token_value_provider
+
+    App\Core\TextFormat\TextFormatProcessor:
+        arguments:
+            $filters: !tagged_iterator cp.text_filter
+
+    # Narrow hook-dispatch contract → the concrete isolated HookManager.
+    App\Core\Hook\HookDispatcherInterface: '@App\Core\Hook\HookManager'
+
+    # SecretBox: symmetric encryption for secrets at rest (webhook secrets, etc.),
+    # keyed off the application secret. Never expose the key or plaintext.
+    App\Core\Security\SecretBox:
+        arguments:
+            $appSecret: '%kernel.secret%'
+
+    # Recovery codes are HMAC'd with the same application secret, so rotating
+    # APP_SECRET invalidates them — the same trade-off SecretBox already makes.
+    App\Core\Security\TwoFactor\TwoFactorService:
+        arguments:
+            $appSecret: '%kernel.secret%'
+
+    # The audit reports on the running kernel, so it has to be told which kernel.
+    App\Core\Security\Audit\SecurityAuditor:
+        arguments:
+            $debug: '%kernel.debug%'
+            $environment: '%kernel.environment%'
+
+    # QueueWorker: $handlers is the tagged set of AsyncJobHandlerInterface services
+    # (core + module). Order is registration order; first supports() match wins.
+    App\Core\Queue\QueueWorker:
+        arguments:
+            $handlers: !tagged_iterator cp.async_job_handler
+
+    App\Core\Queue\MessengerConsumeTask:
+        arguments:
+            $environment: '%kernel.environment%'
+
+    App\Core\Notification\NotificationDispatcher:
+        arguments:
+            $channels: !tagged_iterator cpalius.notification.channel
+
+
+    # CronExecuteController: auth secret for externally triggered /cron/execute.
+    # Same pattern as AACP_RECOVERY_TOKEN but a separate env var (recovery vs cron).
     App\Controller\CronExecuteController:
         arguments:
             $cronToken: '%env(CRON_TOKEN)%'
 
 when@dev:
     services:
-        # Bu blok, kök `services:` altındaki `_defaults` (autowire/autoconfigure)
-        # ayarlarını miras ALMAZ — when@dev kendi bağımsız bir servis
-        # tanımlama alanıdır. _defaults'ı burada tekrar açıkça vermezsek
-        # QueryCounterMiddleware gibi sadece `tags:` belirten servisler
-        # autowire=false ile derlenir ve constructor argümanı enjekte
-        # edilmez (bkz. "Too few arguments" hatası).
+        # when@dev does not inherit root _defaults — redeclare autowire here or
+        # tag-only services like QueryCounterMiddleware fail with "Too few arguments".
         _defaults:
             autowire: true
             autoconfigure: true
 
-        # Manifesto Law 6.1 (Dev-Mode N+1 Exception Guard): bu tag SADECE
-        # dev ortamında eklenir, bu yüzden QueryCounterMiddleware sadece
-        # dev'de DBAL Driver zincirine girer. Sınıfların kendisi `App\:`
-        # wildcard'ı ile her ortamda TANIMLI olsa da, hiçbir yerden
-        # (middleware zinciri, event listener) çağrılmadıkları sürece
-        # prod'da hiç instantiate edilmezler — sıfır çalışma zamanı maliyeti.
+        # Manifesto Law 6.1: this tag is dev-only; classes stay registered via App\:
+        # but are never instantiated in prod unless pulled from the middleware chain.
         App\Core\Database\QueryCounter:
             arguments:
                 $maxQueriesPerTable: 10

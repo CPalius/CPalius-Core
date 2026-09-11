@@ -23,10 +23,10 @@ final class PostSubType
     public static function choices(): array
     {
         return [
-            'Makale' => self::ARTICLE,
-            'Proje' => self::PROJECT,
-            'Yazılım / Ürün' => self::SOFTWARE,
-            'Not' => self::NOTE,
+            'blog.posts.sub_type.article' => self::ARTICLE,
+            'blog.posts.sub_type.project' => self::PROJECT,
+            'blog.posts.sub_type.software' => self::SOFTWARE,
+            'blog.posts.sub_type.note' => self::NOTE,
         ];
     }
 
@@ -49,10 +49,10 @@ final class PostSubType
     public static function label(string $subType): string
     {
         return match ($subType) {
-            self::PROJECT => 'Proje',
-            self::SOFTWARE => 'Yazılım / Ürün',
-            self::NOTE => 'Not',
-            default => 'Makale',
+            self::PROJECT => 'blog.posts.sub_type.project',
+            self::SOFTWARE => 'blog.posts.sub_type.software',
+            self::NOTE => 'blog.posts.sub_type.note',
+            default => 'blog.posts.sub_type.article',
         };
     }
 }

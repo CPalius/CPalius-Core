@@ -6,11 +6,8 @@ use App\Repository\SettingRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * #[CpSetting] ile derleme zamanında tanımlanan ayarların çalışma zamanı
- * DEĞER deposu (Manifesto'nun "Cotonti tarzı" ayar motoru). Bu entity
- * kasıtlı olarak #[CpResource] TAŞIMAZ: ayar yönetimi tek bir
- * "system.settings.manage" yeteneğiyle korunur, Node/Resource'ların
- * sahip olduğu ince taneli own/any capability modeline ihtiyaç duymaz.
+ * Runtime value store for #[CpSetting] definitions (Cotonti-style settings engine).
+ * Not a #[CpResource]; guarded by system.settings.manage only.
  */
 #[ORM\Entity(repositoryClass: SettingRepository::class)]
 #[ORM\Table(name: 'cp_settings')]

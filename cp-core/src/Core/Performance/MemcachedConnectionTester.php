@@ -5,11 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Performance;
 
 /**
- * Memcached'e ext-memcached (modern \Memcached sınıfı, eski \Memcache DEĞİL)
- * üzerinden bağlanıp getStats() ile round-trip doğrulayan prob. getStats()
- * tercih edilir çünkü tek bir sunucudan gerçek bir yanıt gelip gelmediğini
- * (versiyon dahil) doğrudan gösterir — set/get ile geçici bir test anahtarı
- * yazmak gereksiz bir yan etki olurdu.
+ * Probes Memcached via ext-memcached getStats() round-trip (avoids temporary set/get side effects).
  */
 final class MemcachedConnectionTester implements PerformanceBackendCheckerInterface
 {

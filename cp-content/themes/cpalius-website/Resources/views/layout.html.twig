@@ -9,11 +9,15 @@
         {% set seo_title %}{% block title %}CPalius CMF{% endblock %}{% endset %}
         {% set seo_description %}{% block meta_description %}{{ 'website.layout.meta_description'|trans }}{% endblock %}{% endset %}
         {% set seo_robots %}{% block meta_robots %}index, follow{% endblock %}{% endset %}
+        {% set seo_keywords %}{% block meta_keywords %}{% endblock %}{% endset %}
         {{ cp_seo_head({
             title: seo_title,
             description: seo_description,
             robots: seo_robots,
         }) }}
+        {% if seo_keywords|trim %}
+            <meta name="keywords" content="{{ seo_keywords|trim|e('html_attr') }}">
+        {% endif %}
     {% endblock %}
 
     <link rel="icon" type="image/png" href="/CPalius.png">
@@ -34,6 +38,13 @@
 
     {% include '@Theme/partials/footer.html.twig' %}
 
+    <script type="application/json" id="cp-media-picker-i18n">{{ {
+        title: 'media.picker.title'|trans,
+        close: 'media.picker.close'|trans,
+        loading: 'media.picker.loading'|trans,
+        uploadFailed: 'media.picker.upload_failed'|trans,
+        listFailed: 'media.picker.list_failed'|trans,
+    }|json_encode|raw }}</script>
     <script src="/themes/cpalius-website/dist/main.js"></script>
     {% block javascripts %}{% endblock %}
 </body>

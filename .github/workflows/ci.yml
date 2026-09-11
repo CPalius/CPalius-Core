@@ -1,0 +1,153 @@
+# CPalius CMF — sürekli entegrasyon
+#
+# Bu dosyanın varlık sebebi: yol haritasında dört oturum boyunca
+# "bu oturumda phpunit koşulmadı" notu düşüldü. Testin koşulup koşulmadığı
+# bir insanın hatırlamasına bağlı olduğu sürece, er geç koşulmaz. Bu
+# workflow o kararı insandan alıp makineye verir.
+#
+# Tasarım ilkesi: her adım BAĞIMSIZ olarak anlamlı olmalı ve hangi kuralın
+# kırıldığı adımın adından anlaşılmalı. Tek dev bir "composer ci" adımı,
+# kırıldığında logun içine girmeyi gerektirir.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # Aynı dal için yeni bir push geldiğinde eskisini iptal et: CI kuyruğu
+  # birikmesin, geri bildirim hızlı kalsın.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint · PHPStan · Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # cs-check adımı "değişen dosyalar"ı hesaplayabilmek için bir
+          # önceki commit'e ihtiyaç duyar.
+          fetch-depth: 0
+
+      - name: PHP 8.4 kur
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: ctype, fileinfo, iconv, intl, pdo_sqlite, pdo_mysql, zip
+          coverage: none
+          tools: none
+          ini-values: memory_limit=2G
+
+      - name: Composer önbelleğini geri yükle
+        uses: actions/cache@v4
+        with:
+          # "Pristine Root": vendor standart yerinde değil.
+          path: cp-includes/vendor
+          key: composer-${{ runner.os }}-php8.4-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php8.4-
+
+      - name: Bağımlılıklar
+        # Flex'in auto-scripts adımı (cache:clear, assets:install) .env
+        # olmadan çalışamaz; env dosyası bir sonraki adımda kuruluyor, bu
+        # yüzden script'ler burada bilinçli olarak atlanıyor.
+        run: composer install --no-interaction --no-progress --no-scripts
+
+      - name: Ortam dosyası
+        # .env deposunda bilinçli olarak izlenmiyor (sır taşır). CI, örnek
+        # dosyadan üretir ve testin ihtiyaç duyduğu değerleri doldurur.
+        run: |
+          cp .env.example .env
+          {
+            echo "APP_SECRET=$(openssl rand -hex 32)"
+            echo "AACP_RECOVERY_TOKEN=$(openssl rand -hex 32)"
+            echo "CRON_TOKEN=$(openssl rand -hex 32)"
+            # Testler SQLite kullanır (bkz. cp-core/tests/bootstrap.php),
+            # bu yüzden CI'da bir MySQL servisine gerek yok.
+            echo 'DATABASE_URL="sqlite:///%kernel.project_dir%/cp-core/var/data.db"'
+          } >> .env
+
+      - name: Konteyneri derle
+        # PHPStan'in Symfony eklentisi derlenmiş konteyner XML'ini okur
+        # (bkz. phpstan.neon.dist → symfony.containerXmlPath). Bu adım onu
+        # analizden ÖNCE üretir; ayrıca konteynerin gerçekten derlenebildiğini
+        # de kanıtlar.
+        run: php cp-core/bin/console cache:warmup --env=dev
+
+      - name: Çekirdek izolasyon kuralı
+        # Manifesto kuralı: cp-core, cp-content altındaki modülleri ASLA
+        # import etmez. Bu bugüne kadar elle denetleniyordu.
+        run: |
+          if grep -rn --include='*.php' 'use Modules\\' cp-core/src; then
+            echo "::error::Çekirdek izolasyonu ihlal edildi: cp-core/src içinde 'use Modules\\' bulundu."
+            exit 1
+          fi
+          echo "Çekirdek temiz: cp-core/src içinde modül importu yok."
+
+      - name: Lint — konteyner (dev + prod)
+        run: |
+          php cp-core/bin/console lint:container --env=dev
+          php cp-core/bin/console lint:container --env=prod
+
+      - name: Lint — YAML
+        run: php cp-core/bin/console lint:yaml cp-core/config cp-content --parse-tags
+
+      - name: Lint — Twig
+        run: php cp-core/bin/console lint:twig cp-core/templates cp-content
+
+      - name: Doctrine mapping doğrulaması
+        # --skip-sync: şemanın veritabanıyla senkron olmasını değil, mapping
+        # tanımlarının kendi içinde tutarlı olmasını denetliyoruz.
+        run: php cp-core/bin/console doctrine:schema:validate --skip-sync --no-interaction
+
+      - name: PHPStan (level 6, baseline'lı)
+        run: php cp-includes/vendor/bin/phpstan analyse --no-progress --memory-limit=2G
+
+      - name: Kod stili (yalnızca değişen dosyalar)
+        # Kod tabanının tamamı henüz @Symfony stilinde değil (850 dosyanın
+        # ~450'si). Toplu bir format sweep'i tek bir ayrı commit olarak
+        # yapılmalı; o güne kadar kural YENİ yazılan koda uygulanıyor —
+        # phpstan-baseline.neon ile aynı "borcu dondur, büyümesini engelle"
+        # felsefesi.
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            echo "Karşılaştırılacak taban commit yok, adım atlanıyor."
+            exit 0
+          fi
+          CHANGED=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- '*.php' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "Değişen PHP dosyası yok."
+            exit 0
+          fi
+          echo "$CHANGED"
+          # --config ZORUNLU: php-cs-fixer, komut satırında birden fazla yol
+          # verildiğinde yapılandırmayı otomatik keşfetmeyi reddeder
+          # ("For multiple paths config parameter is required").
+          echo "$CHANGED" | xargs -r php cp-includes/vendor/bin/php-cs-fixer check \
+            --config=.php-cs-fixer.dist.php --path-mode=intersection \
+            --show-progress=none --diff
+
+      - name: Sağlık taraması
+        # cp:doctor'ın kendisi bir duman testidir: konteyner boot ediyor, her
+        # check servisi çözülüyor ve hiçbiri patlamıyor demektir. Eşik
+        # bilinçli olarak "critical": CI'da veritabanı boş bir SQLite olduğu
+        # için migration'lar doğal olarak "pending" (high) görünür — bu bir
+        # arıza değil, o ortamın gerçeği. Gerçek sunucuda --fail-on=high
+        # kullanılmalı.
+        run: php cp-core/bin/console cp:doctor --fail-on=critical --env=test
+
+      - name: Testler
+        run: php cp-includes/vendor/bin/phpunit --testsuite unit
+
+      - name: Testler — entegrasyon
+        run: php cp-includes/vendor/bin/phpunit --testsuite integration

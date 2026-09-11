@@ -8,35 +8,13 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * FAZ 4 — Çeviri grubu bütünlük kısıtı.
- *
- * Version20260903120000 translation_group_id kolonunu ve düz bir arama
- * indeksini eklemişti. Bu migration o indeksi UNIQUE(translation_group_id,
- * locale) kısıtıyla DEĞİŞTİRİR ve böylece nodes tablosundaki
- * uniq_node_translation_group_locale ile aynı garantiyi dört tabloya daha
- * taşır: BİR ÇEVİRİ GRUBUNDA HER DİLDEN EN FAZLA BİR KAYIT olabilir.
- *
- * Bu, uygulama katmanındaki kontrolün (bkz. CategoryAdminController,
- * ForumAacpController ve MenuAdminController::translateItem — hepsi
- * "bu dilde çeviri zaten var" kontrolü yapar) veritabanı seviyesindeki
- * karşılığıdır: iki eşzamanlı istek aynı anda aynı dilde çeviri
- * oluşturmaya çalışırsa PHP tarafındaki kontrol yarış koşuluna (race
- * condition) girebilir, bu kısıt ise giremez.
- *
- * DÜZ İNDEKS AYRICA GEREKMEZ: MySQL/PostgreSQL çok kolonlu bir indeksin
- * ÖNDEKİ kolonu (translation_group_id) üzerinden yapılan aramalarda o
- * indeksi kullanabilir — TranslationGroupResolver'ın "aynı gruptaki tüm
- * kayıtlar" sorgusu bu kısıttan tam olarak yararlanır.
- *
- * NULL GÜVENLİDİR: hem MySQL hem PostgreSQL, UNIQUE kısıtlarında birden
- * çok NULL'a izin verir. Yani "henüz hiçbir çeviri grubuna dahil olmayan"
- * (translation_group_id IS NULL) sınırsız sayıda kayıt aynı dilde var
- * olmaya devam eder — mevcut veri bu migration'dan etkilenmez.
+ * Phase 4 — replaces plain translation_group_id indexes with UNIQUE(translation_group_id, locale) on four tables.
+ * Enforces at most one row per locale per translation group; multiple NULL groups remain allowed.
  */
 final class Version20260903150000 extends AbstractMigration
 {
     /**
-     * @var array<string, array{0: string, 1: string}> tablo => [eski indeks, yeni unique kısıt]
+     * @var array<string, array{0: string, 1: string}> table => [old index, new unique constraint]
      */
     private const TABLES = [
         'categories' => ['idx_category_translation_group', 'uniq_category_translation_group_locale'],

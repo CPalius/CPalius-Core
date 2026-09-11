@@ -8,13 +8,8 @@ use Symfony\Component\HttpFoundation\Session\Storage\Handler\NativeFileSessionHa
 use Symfony\Component\HttpFoundation\Session\Storage\Handler\RedisSessionHandler;
 
 /**
- * RedisSessionHandler'ı sarar: Redis'e ulaşılamadığında (bağlantı kopması,
- * MISCONF/stop-writes-on-bgsave-error gibi yazma reddi vb.) SessionHandler
- * \RedisException fırlatır ve bu, session açan HER isteği 500'e düşürür
- * (bkz. plan — bugün canlıda yaşanan RDB persistence arızası tam bu senaryo).
- * Bu sınıf her çağrıda Redis'i dener, \RedisException/\Throwable
- * yakalarsa aynı istekte NativeFileSessionHandler'a (var/sessions) düşer —
- * kullanıcı session'ını kaybeder ama site ayakta kalır.
+ * Wraps RedisSessionHandler: on Redis failure, falls back to NativeFileSessionHandler (var/sessions) so requests stay up.
+ * Users may lose the session for that request, but the site does not return 500 for every session read/write.
  */
 final class FailoverRedisSessionHandler implements \SessionHandlerInterface, \SessionUpdateTimestampHandlerInterface
 {
@@ -29,13 +24,7 @@ final class FailoverRedisSessionHandler implements \SessionHandlerInterface, \Se
 
     public function open(string $path, string $name): bool
     {
-        // NativeFileSessionHandler (native \SessionHandler'ı extend eder)
-        // BAŞTAN open() edilmezse, read()/write() ilk kez fallback'e
-        // düştüğünde PHP "Parent session handler is not open" uyarısı
-        // verir. RedisSessionHandler::open() ise (AbstractSessionHandler)
-        // gerçek bir TCP round-trip yapmadan her zaman true döner — asıl
-        // bağlantı hatası doRead()/doWrite() içinde \RedisException olarak
-        // çıkar. Bu yüzden ikisini de burada açık tutuyoruz.
+        // Open both handlers up front; Redis errors surface on read/write, not on open().
         $this->primary->open($path, $name);
         $this->fallback->open($path, $name);
 
@@ -44,11 +33,10 @@ final class FailoverRedisSessionHandler implements \SessionHandlerInterface, \Se
 
     public function close(): bool
     {
-        // open() ile simetrik: ikisi de açıldığı için ikisi de kapatılır.
+        // Symmetric to open(): close both handlers; ignore primary close errors when fallback is active.
         try {
             $this->primary->close();
         } catch (\Throwable) {
-            // yok sayılır — fallback zaten devrede olabilir.
         }
 
         return $this->fallback->close();
@@ -76,10 +64,7 @@ final class FailoverRedisSessionHandler implements \SessionHandlerInterface, \Se
 
     public function validateId(string $id): bool
     {
-        // NativeFileSessionHandler native \SessionHandler'ı extend eder ve
-        // SessionUpdateTimestampHandlerInterface'i İMPLEMENT ETMEZ — fallback
-        // tarafında validateId() yoktur, PHP native handler'larda bunu
-        // read() sonucuna (boş mu değil mi) bakarak kendi içinde simüle eder.
+        // Native fallback has no validateId(); simulate it via non-empty read() result.
         try {
             return $this->primary->validateId($id);
         } catch (\Throwable) {
@@ -89,8 +74,7 @@ final class FailoverRedisSessionHandler implements \SessionHandlerInterface, \Se
 
     public function updateTimestamp(string $id, string $data): bool
     {
-        // Aynı gerekçe: fallback'te updateTimestamp() yok, native handler'da
-        // bunun karşılığı basitçe write()'dır.
+        // Fallback has no updateTimestamp(); native equivalent is write().
         try {
             return $this->primary->updateTimestamp($id, $data);
         } catch (\Throwable) {

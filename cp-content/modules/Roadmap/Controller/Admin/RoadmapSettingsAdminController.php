@@ -91,7 +91,7 @@ final class RoadmapSettingsAdminController extends AbstractController
 
             if ($definition->type === 'integer' && preg_match('/^-?\d+$/', $value) !== 1) {
                 $this->addFlash('error', $this->translator->trans('studio.roadmap.settings.invalid_number', [
-                    'label' => $definition->label,
+                    'label' => $this->translator->trans($definition->label),
                     'value' => $value,
                 ]));
 

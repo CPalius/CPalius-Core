@@ -5,15 +5,9 @@ security:
 
     # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
     #
-    # İki provider tanımlıdır:
-    #   - cpalius_users: Symfony'nin "entity provider" kısayolu (bkz.
-    #     UserRepository::loadUserByIdentifier), SADECE email property'sine
-    #     göre arar. "main" firewall'ının VARSAYILANIdır.
-    #   - cpalius_users_by_login: App\Core\Security\CpUserProvider servisi,
-    #     e-posta VEYA kullanıcı adı ile giriş yapılmasını destekler (bkz.
-    #     CpUserProvider sınıf üstü doküman). Kullanıcı adıyla giriş
-    #     desteği isteniyorsa "main" firewall'ının "provider:" anahtarı
-    #     "cpalius_users_by_login" olarak değiştirilebilir.
+    # Two providers:
+    #   - cpalius_users: entity provider, email only (UserRepository::loadUserByIdentifier).
+    #   - cpalius_users_by_login: CpUserProvider — email or username login.
     providers:
         cpalius_users:
             entity:
@@ -48,27 +42,13 @@ security:
             # https://symfony.com/doc/current/security/impersonating_user.html
             # switch_user: true
 
-    # Not: CPalius'ta ROLE_* sabit kontrolü YASAKTIR (bkz. CPaliusVoter,
-    # Manifesto Law 4). access_control burada SADECE "giriş yapılmış mı"
-    # (kimlik doğrulama) sınırını çizer; hangi kullanıcının hangi işlemi
-    # yapabileceği (yetkilendirme) her zaman controller/template seviyesinde
-    # is_granted('admin.access') gibi dinamik bir capability sorgusuyla
-    # CPaliusVoter üzerinden çözülür.
+    # Note: hard-coded ROLE_* checks are forbidden (CPaliusVoter, Manifesto Law 4).
+    # access_control only enforces authentication; authorization uses is_granted() capabilities.
     #
-    # /aacp/recovery BİLİNÇLİ olarak bu listenin DIŞINDA tutulur (yani
-    # PUBLIC_ACCESS): Manifesto Law 2.3 gereği bu uç, firewall/DB tamamen
-    # çökmüşken bile .env'deki AACP_RECOVERY_TOKEN ile erişilebilir olmalı
-    # (bkz. AACPController::recovery() - kendi token doğrulamasını yapar).
-    # Only the *first* matching rule is applied, bu yüzden recovery path'i
-    # genel /aacp kuralından ÖNCE tanımlanır.
+    # /aacp/recovery is PUBLIC_ACCESS (Manifesto Law 2.3) — token auth in AACPController.
+    # Recovery path must precede the general /aacp rule (first match wins).
     #
-    # /api BİLİNÇLİ olarak PUBLIC_ACCESS: Faz 7B REST API Gateway'i
-    # (App\Core\Api\Controller\ApiGatewayController) form_login/session
-    # tabanlı kimlik doğrulamayı KULLANMAZ, kendi stateless X-CP-API-KEY
-    # header doğrulamasını yapar (bkz. ApiKeyService::isValid()). Bu kural
-    # OLMADAN firewall, anahtarı geçerli bir isteği bile login sayfasına
-    # yönlendirirdi — "public: false" olan #[CpApi] uçlarının 401 döndürme
-    # sorumluluğu TAMAMEN ApiGatewayController'a aittir, firewall'a değil.
+    # /api is PUBLIC_ACCESS: ApiGatewayController uses X-CP-API-KEY, not form_login/session.
     access_control:
         - { path: ^/login, roles: PUBLIC_ACCESS }
         - { path: ^/aacp/recovery, roles: PUBLIC_ACCESS }

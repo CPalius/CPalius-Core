@@ -111,4 +111,33 @@ final class ForumPostDislikeRepository extends ServiceEntityRepository
             ->setParameter('visible', ForumDiscussionState::Visible)
             ->orderBy('d.createdAt', 'DESC');
     }
+
+    /**
+     * Last dislike timestamp per user in this thread — one grouped query (Law 6.1).
+     *
+     * @return array<int, int> userId => unix timestamp
+     */
+    public function findUserLastActivityByTopic(ForumTopic $topic): array
+    {
+        $rows = $this->createQueryBuilder('d')
+            ->select('IDENTITY(d.user) AS userId, MAX(d.createdAt) AS lastAt')
+            ->innerJoin('d.post', 'p')
+            ->andWhere('p.topic = :topic')
+            ->setParameter('topic', $topic)
+            ->groupBy('d.user')
+            ->getQuery()
+            ->getArrayResult();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $id = (int) $row['userId'];
+            if ($id <= 0) {
+                continue;
+            }
+            $at = $row['lastAt'];
+            $map[$id] = $at instanceof \DateTimeInterface ? $at->getTimestamp() : (strtotime((string) $at) ?: 0);
+        }
+
+        return $map;
+    }
 }

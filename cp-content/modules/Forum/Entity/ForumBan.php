@@ -15,6 +15,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: ForumBanRepository::class)]
 #[ORM\Table(name: 'forum_bans')]
 #[ORM\Index(columns: ['user_id'], name: 'idx_forum_ban_user')]
+#[ORM\Index(columns: ['ip_address'], name: 'idx_forum_ban_ip')]
+#[ORM\Index(columns: ['email'], name: 'idx_forum_ban_email')]
 class ForumBan
 {
     public const TYPE_BAN = 0;
@@ -26,8 +28,14 @@ class ForumBan
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(name: 'user_id', referencedColumnName: 'id', nullable: false, onDelete: 'CASCADE')]
-    private User $user;
+    #[ORM\JoinColumn(name: 'user_id', referencedColumnName: 'id', nullable: true, onDelete: 'CASCADE')]
+    private ?User $user = null;
+
+    #[ORM\Column(name: 'ip_address', type: 'string', length: 64, nullable: true)]
+    private ?string $ipAddress = null;
+
+    #[ORM\Column(type: 'string', length: 180, nullable: true)]
+    private ?string $email = null;
 
     #[ORM\Column(type: 'smallint')]
     private int $type = self::TYPE_MUTE;
@@ -48,13 +56,15 @@ class ForumBan
     #[ORM\Column(name: 'revoked_at', type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $revokedAt = null;
 
-    public function __construct(User $user, int $type, string $reason, ?User $createdBy, ?\DateTimeImmutable $expiresAt)
+    public function __construct(?User $user, int $type, string $reason, ?User $createdBy, ?\DateTimeImmutable $expiresAt, ?string $ipAddress = null, ?string $email = null)
     {
         $this->user = $user;
         $this->type = $type;
         $this->reason = $reason;
         $this->createdBy = $createdBy;
         $this->expiresAt = $expiresAt;
+        $this->ipAddress = $ipAddress !== null && $ipAddress !== '' ? $ipAddress : null;
+        $this->email = $email !== null && $email !== '' ? mb_strtolower($email) : null;
         $this->createdAt = new \DateTimeImmutable();
     }
 
@@ -63,9 +73,19 @@ class ForumBan
         return $this->id;
     }
 
-    public function getUser(): User
+    public function getUser(): ?User
     {
         return $this->user;
+    }
+
+    public function getIpAddress(): ?string
+    {
+        return $this->ipAddress;
+    }
+
+    public function getEmail(): ?string
+    {
+        return $this->email;
     }
 
     public function getType(): int

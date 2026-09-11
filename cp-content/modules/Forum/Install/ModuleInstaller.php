@@ -23,11 +23,21 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
     protected function tables(): array
     {
         return [
+            'forum_link_previews',
+            'forum_censor_words',
+            'forum_moderation_logs',
+            'forum_read_markers',
+            'forum_drafts',
+            'forum_topic_watches',
+            'forum_poll_votes',
+            'forum_poll_options',
+            'forum_polls',
+            'forum_post_attachments',
             'forum_post_likes',
             'forum_post_dislikes',
             'forum_post_reports',
-            'forum_notifications',
             'forum_presence',
+            'forum_topic_views',
             'forum_user_reputations',
             'forum_prefix_sections',
             'forum_posts',

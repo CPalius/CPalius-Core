@@ -11,7 +11,7 @@ use App\Core\Annotation\CpSetting;
  */
 #[CpSetting(
     key: 'blog_widget.recent_posts_limit',
-    label: 'Sidebar\'da Gösterilecek Son Yazı Sayısı',
+    label: 'blog.widget.recent_posts_limit',
     type: 'integer',
     default: 5,
     module: 'blog_widget',
@@ -19,7 +19,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'blog_widget.popular_tags_limit',
-    label: 'Sidebar\'da Gösterilecek Popüler Etiket Sayısı',
+    label: 'blog.widget.popular_tags_limit',
     type: 'integer',
     default: 10,
     module: 'blog_widget',
@@ -27,7 +27,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'blog_widget.social_github_url',
-    label: 'Yazar Kartı Github Adresi',
+    label: 'blog.widget.social_github_url',
     type: 'text',
     default: '',
     module: 'blog_widget',
@@ -35,7 +35,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'blog_widget.social_twitter_url',
-    label: 'Yazar Kartı Twitter Adresi',
+    label: 'blog.widget.social_twitter_url',
     type: 'text',
     default: '',
     module: 'blog_widget',

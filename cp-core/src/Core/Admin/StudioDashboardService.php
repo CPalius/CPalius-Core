@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace App\Core\Admin;
 
-use App\Core\Menu\Twig\AdminMenuRuntime;
-use App\Core\Module\ModuleRegistry;
+use App\Core\Module\ModuleContributionCatalog;
+use App\Core\Security\QueryScopeApplier;
+use App\Entity\Node;
+use App\Repository\AssetRepository;
+use App\Repository\NodeRepository;
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
+use Symfony\Component\Routing\Exception\RouteNotFoundException;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * Studio Genel Bakış — yalnızca çekirdek + tagged modül provider'ları.
- * Hiçbir Modules\* sınıfı import edilmez (Core Never Dies).
+ * Studio command desk — core nodes/assets plus tagged module providers
+ * and Resources/config/contributions.yaml (no hardcoded module names).
  */
 final class StudioDashboardService
 {
@@ -18,237 +23,98 @@ final class StudioDashboardService
      * @param iterable<StudioDashboardStatsProviderInterface> $statsProviders
      */
     public function __construct(
-        private readonly ModuleRegistry $moduleRegistry,
-        private readonly AdminMenuRuntime $adminMenuRuntime,
+        private readonly NodeRepository $nodeRepository,
+        private readonly AssetRepository $assetRepository,
+        private readonly QueryScopeApplier $queryScopeApplier,
+        private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly ModuleContributionCatalog $contributions,
         #[TaggedIterator('cpalius.studio.dashboard_stats_provider')]
         private readonly iterable $statsProviders,
     ) {
     }
 
     /**
-     * @return list<array{widgetId: string, titleKey: string, section: string}>
-     */
-    public function buildWidgetCatalog(): array
-    {
-        $catalog = [
-            ['widgetId' => 'hero.summary', 'titleKey' => 'studio.dashboard.widget.hero', 'section' => 'overview'],
-            ['widgetId' => 'content.mix_doughnut', 'titleKey' => 'studio.dashboard.chart.by_kind', 'section' => 'content'],
-            ['widgetId' => 'content.mix_bar', 'titleKey' => 'studio.dashboard.chart.by_kind_bar', 'section' => 'content'],
-            ['widgetId' => 'content.capacity_gauge', 'titleKey' => 'studio.dashboard.chart.content_capacity', 'section' => 'content'],
-            ['widgetId' => 'content.trend_line', 'titleKey' => 'studio.dashboard.chart.trend', 'section' => 'content'],
-            ['widgetId' => 'content.status_doughnut', 'titleKey' => 'studio.dashboard.chart.by_status', 'section' => 'content'],
-            ['widgetId' => 'modules.radar', 'titleKey' => 'studio.dashboard.chart.module_radar', 'section' => 'modules'],
-            ['widgetId' => 'modules.bar', 'titleKey' => 'studio.dashboard.chart.module_overview', 'section' => 'modules'],
-        ];
-
-        foreach ($this->sortedProviders() as $provider) {
-            try {
-                foreach ($provider->getWidgetCatalog() as $entry) {
-                    $catalog[] = [
-                        'widgetId' => $entry['widgetId'],
-                        'titleKey' => $entry['titleKey'],
-                        'section' => $provider->getKey(),
-                    ];
-                }
-            } catch (\Throwable) {
-                // Fail-safe: bozuk katalog tüm sayfayı düşürmez.
-            }
-        }
-
-        return $catalog;
-    }
-
-    /**
      * @return array{
-     *     overview: array{
-     *         totalContent: int,
-     *         activeModuleCount: int,
-     *         publishRate: int,
-     *         heroMetrics: list<array{key: string, labelKey: string, value: int|float}>,
-     *         publishedContent: int,
-     *         draftContent: int,
-     *         scheduledContent: int
+     *     kpis: array{
+     *         published: int,
+     *         drafts: int,
+     *         mediaBytes: int,
+     *         mediaLabel: string,
+     *         extraKpis: list<array{key: string, labelKey: string, value: int|string}>
      *     },
-     *     charts: array{
-     *         contentMix: list<array{key: string, label: string, count: int}>,
-     *         contentByStatus: list<array{status: string, count: int}>,
-     *         contentTrend: array{labels: list<string>, series: list<array{label: string, values: list<int>}>},
-     *         contentCapacity: array{value: int, max: int, percent: int},
-     *         moduleOverview: list<array{label: string, count: int}>,
-     *         moduleRadar: list<array{label: string, value: int}>
-     *     },
-     *     modules: list<array{
-     *         key: string,
-     *         name: string,
-     *         icon: string,
-     *         links: list<array{label: string, icon: string, routeName: string}>,
-     *         panels: list<array<string, mixed>>,
-     *         publishRate: int|null
-     *     }>
+     *     mix: list<array{key: string, labelKey: string, count: int}>,
+     *     recentActivity: list<array{
+     *         title: string,
+     *         typeKey: string,
+     *         author: string,
+     *         updatedAt: \DateTimeImmutable,
+     *         status: string,
+     *         editUrl: ?string,
+     *         viewUrl: ?string
+     *     }>,
+     *     quickCreate: list<array{labelKey: string, routeName: string, icon: string}>,
+     *     quickLinks: list<array{labelKey: string, routeName: string, icon: string}>
      * }
      */
     public function build(): array
     {
-        $menuTree = $this->adminMenuRuntime->render('studio');
-        $providers = $this->sortedProviders();
-        $linksByKey = $this->groupMenuLinks($menuTree, $providers);
-        $monthMeta = $this->buildMonthMeta();
+        $published = 0;
+        $drafts = 0;
+        foreach ($this->scopedStatusCounts() as $status => $count) {
+            if ($status === Node::STATUS_PUBLISHED) {
+                $published += $count;
+            } elseif ($status === Node::STATUS_DRAFT || $status === Node::STATUS_SCHEDULED) {
+                $drafts += $count;
+            }
+        }
 
-        $heroMetrics = [];
-        $mixItems = [];
-        $trendSeries = [];
-        $radarItems = [];
-        $statusBreakdown = [];
-        $modules = [];
-        $publishRate = 0;
-        $publishedContent = 0;
-        $draftContent = 0;
-        $scheduledContent = 0;
-        $totalContent = 0;
+        $mediaBytes = $this->assetRepository->sumFileSize();
+        $extraKpis = [];
+        $mix = [];
 
-        foreach ($providers as $provider) {
+        foreach ($this->sortedProviders() as $provider) {
             try {
                 $contribution = $provider->buildContribution();
             } catch (\Throwable) {
                 continue;
             }
 
-            $key = $provider->getKey();
+            if ($contribution->mediaBytes > 0) {
+                $mediaBytes = $contribution->mediaBytes;
+            }
 
-            foreach ($contribution->heroMetrics as $metric) {
-                $heroMetrics[] = $metric;
-                $totalContent += (int) $metric['value'];
+            foreach ($contribution->extraKpis as $kpi) {
+                if (\is_array($kpi) && isset($kpi['key'], $kpi['labelKey'], $kpi['value'])) {
+                    $extraKpis[] = $kpi;
+                }
+            }
+
+            if ($contribution->forumPostsLast24h > 0) {
+                $extraKpis[] = [
+                    'key' => 'forum_24h',
+                    'labelKey' => 'studio.dashboard.kpi.forum_24h',
+                    'value' => $contribution->forumPostsLast24h,
+                ];
             }
 
             foreach ($contribution->mixItems as $item) {
-                $mixItems[] = [
-                    'key' => $item['key'],
-                    'label' => $item['labelKey'],
-                    'count' => $item['count'],
-                ];
-            }
-
-            foreach ($contribution->trendSeries as $series) {
-                $values = $series['values'];
-                if (\count($values) !== \count($monthMeta['keys'])) {
-                    $values = $this->normalizeTrendValues($values, \count($monthMeta['keys']));
-                }
-                $trendSeries[] = [
-                    'label' => $series['labelKey'],
-                    'values' => $values,
-                ];
-            }
-
-            foreach ($contribution->radarItems as $item) {
-                $radarItems[] = [
-                    'label' => $item['labelKey'],
-                    'value' => $item['value'],
-                ];
-            }
-
-            foreach ($contribution->statusBreakdown as $row) {
-                $statusBreakdown[] = $row;
-                if ($row['status'] === 'published') {
-                    $publishedContent += $row['count'];
-                } elseif ($row['status'] === 'draft') {
-                    $draftContent += $row['count'];
-                } elseif ($row['status'] === 'scheduled') {
-                    $scheduledContent += $row['count'];
-                }
-            }
-
-            if ($contribution->publishRate !== null) {
-                $publishRate = $contribution->publishRate;
-            }
-
-            $links = $linksByKey[$key] ?? [];
-            if ($links === []) {
-                $links = $contribution->links;
-            }
-
-            $modules[] = [
-                'key' => $key,
-                'name' => $provider->getLabel(),
-                'icon' => $provider->getIcon(),
-                'links' => $links,
-                'panels' => $contribution->panels,
-                'publishRate' => $contribution->publishRate,
-            ];
-        }
-
-        $heroMetrics[] = [
-            'key' => 'active_modules',
-            'labelKey' => 'studio.dashboard.overview.active_modules',
-            'value' => $this->countActiveModules(),
-        ];
-
-        $contentMix = array_values(array_filter(
-            $mixItems,
-            static fn (array $row): bool => true,
-        ));
-
-        $contentByStatus = $this->mergeStatusBreakdown($statusBreakdown);
-        if ($contentByStatus === [] && ($publishedContent + $draftContent + $scheduledContent) > 0) {
-            foreach ([
-                ['status' => 'published', 'count' => $publishedContent],
-                ['status' => 'draft', 'count' => $draftContent],
-                ['status' => 'scheduled', 'count' => $scheduledContent],
-            ] as $row) {
-                if ($row['count'] > 0) {
-                    $contentByStatus[] = $row;
-                }
+                $mix[] = $item;
             }
         }
-
-        $capacityMax = $this->resolveContentCapacityLimit($totalContent);
-        $capacityPercent = $capacityMax > 0
-            ? min(100, (int) round(($totalContent / $capacityMax) * 100))
-            : 0;
 
         return [
-            'overview' => [
-                'totalContent' => $totalContent,
-                'activeModuleCount' => $this->countActiveModules(),
-                'publishRate' => $publishRate,
-                'heroMetrics' => $heroMetrics,
-                'publishedContent' => $publishedContent,
-                'draftContent' => $draftContent,
-                'scheduledContent' => $scheduledContent,
+            'kpis' => [
+                'published' => $published,
+                'drafts' => $drafts,
+                'mediaBytes' => $mediaBytes,
+                'mediaLabel' => $this->formatBytes($mediaBytes),
+                'extraKpis' => $extraKpis,
             ],
-            'charts' => [
-                'contentMix' => $contentMix,
-                'contentByStatus' => $contentByStatus,
-                'contentTrend' => [
-                    'labels' => $monthMeta['labels'],
-                    'series' => $trendSeries,
-                ],
-                'contentCapacity' => [
-                    'value' => $totalContent,
-                    'max' => $capacityMax,
-                    'percent' => $capacityPercent,
-                ],
-                'moduleOverview' => array_map(
-                    static fn (array $row): array => ['label' => $row['label'], 'count' => $row['count']],
-                    $contentMix,
-                ),
-                'moduleRadar' => $radarItems,
-            ],
-            'modules' => $modules,
+            'mix' => $mix,
+            'recentActivity' => $this->buildRecentActivity(),
+            'quickCreate' => $this->existingLinks($this->contributions->studioQuickCreate()),
+            'quickLinks' => $this->existingLinks($this->contributions->studioQuickLinks()),
         ];
-    }
-
-    /**
-     * İçerik doluluk metresi için yumuşak üst sınır (bir sonraki 250'lik basamak).
-     */
-    private function resolveContentCapacityLimit(int $totalContent): int
-    {
-        if ($totalContent <= 0) {
-            return 250;
-        }
-
-        $step = 250;
-
-        return (int) (ceil($totalContent / $step) * $step + $step);
     }
 
     /**
@@ -271,122 +137,134 @@ final class StudioDashboardService
         return $providers;
     }
 
-    private function countActiveModules(): int
+    /**
+     * @return array<string, int>
+     */
+    private function scopedStatusCounts(): array
     {
-        return \count(array_filter(
-            $this->moduleRegistry->discoverAllModules(),
-            static fn (array $m): bool => $m['status'] === 'active' && $m['class'] !== null,
-        ));
+        $qb = $this->nodeRepository->createQueryBuilder('n')
+            ->select('n.status AS status, COUNT(n.id) AS count')
+            ->andWhere('n.deletedAt IS NULL')
+            ->groupBy('n.status');
+
+        $this->queryScopeApplier->apply($qb, 'n', 'node.post.view', 'author');
+
+        $counts = [];
+        foreach ($qb->getQuery()->getResult() as $row) {
+            $counts[(string) $row['status']] = (int) $row['count'];
+        }
+
+        return $counts;
     }
 
     /**
-     * @return array{keys: list<string>, labels: list<string>}
+     * @return list<array{
+     *     title: string,
+     *     typeKey: string,
+     *     author: string,
+     *     updatedAt: \DateTimeImmutable,
+     *     status: string,
+     *     editUrl: ?string,
+     *     viewUrl: ?string
+     * }>
      */
-    private function buildMonthMeta(): array
+    private function buildRecentActivity(): array
     {
-        $months = [];
-        $now = new \DateTimeImmutable('first day of this month 00:00:00');
-        for ($i = 5; $i >= 0; --$i) {
-            $months[] = $now->modify("-{$i} months");
+        $qb = $this->nodeRepository->createRecentlyUpdatedQueryBuilder()
+            ->setMaxResults(10);
+        $this->queryScopeApplier->apply($qb, 'n', 'node.post.view', 'author');
+        /** @var list<Node> $nodes */
+        $nodes = $qb->getQuery()->getResult();
+
+        $hidden = $this->contributions->hiddenNodeTypes();
+        $typeLabels = $this->contributions->studioTypeLabels();
+
+        $rows = [];
+        foreach ($nodes as $node) {
+            $type = $node->getType();
+            if (\in_array($type, $hidden, true)) {
+                continue;
+            }
+            $rows[] = [
+                'title' => $node->getTitle(),
+                'typeKey' => $typeLabels[$type] ?? 'studio.dashboard.type.other',
+                'author' => $node->getAuthor()?->getFullName() ?: '—',
+                'updatedAt' => $node->getUpdatedAt(),
+                'status' => $node->getStatus(),
+                'editUrl' => $this->nodeEditUrl($node),
+                'viewUrl' => $node->getStatus() === Node::STATUS_PUBLISHED ? $this->nodeViewUrl($node) : null,
+            ];
         }
 
-        return [
-            'keys' => array_map(static fn (\DateTimeImmutable $d): string => $d->format('Y-m'), $months),
-            'labels' => array_map(static fn (\DateTimeImmutable $d): string => $d->format('M Y'), $months),
-        ];
+        return $rows;
+    }
+
+    private function nodeEditUrl(Node $node): ?string
+    {
+        $map = $this->contributions->studioEditRoutes()[$node->getType()] ?? null;
+        if ($map === null || $node->getId() === null) {
+            return null;
+        }
+
+        return $this->safeUrl($map[0], [$map[1] => $node->getId()]);
+    }
+
+    private function nodeViewUrl(Node $node): ?string
+    {
+        $map = $this->contributions->studioViewRoutes()[$node->getType()] ?? null;
+        if ($map === null) {
+            return null;
+        }
+
+        return $this->safeUrl($map[0], [
+            $map[1] => $node->getSlug(),
+            '_locale' => $node->getLocale(),
+        ]);
     }
 
     /**
-     * @param list<int> $values
-     * @return list<int>
+     * @param array<string, mixed> $params
      */
-    private function normalizeTrendValues(array $values, int $expected): array
+    private function safeUrl(string $routeName, array $params): ?string
     {
-        if (\count($values) >= $expected) {
-            return \array_slice($values, -$expected);
+        try {
+            return $this->urlGenerator->generate($routeName, $params);
+        } catch (RouteNotFoundException|\Throwable) {
+            return null;
         }
-
-        return array_pad($values, $expected, 0);
     }
 
     /**
-     * @param list<array{status: string, count: int}> $rows
-     * @return list<array{status: string, count: int}>
+     * @param list<array{labelKey: string, routeName: string, icon: string}> $links
+     * @return list<array{labelKey: string, routeName: string, icon: string}>
      */
-    private function mergeStatusBreakdown(array $rows): array
+    private function existingLinks(array $links): array
     {
-        $merged = [];
-        foreach ($rows as $row) {
-            $status = $row['status'];
-            $merged[$status] = ($merged[$status] ?? 0) + $row['count'];
-        }
-
         $out = [];
-        foreach ($merged as $status => $count) {
-            $out[] = ['status' => $status, 'count' => $count];
+        foreach ($links as $link) {
+            try {
+                $this->urlGenerator->generate($link['routeName']);
+                $out[] = $link;
+            } catch (RouteNotFoundException|\Throwable) {
+                continue;
+            }
         }
-
-        usort($out, static fn (array $a, array $b): int => $b['count'] <=> $a['count']);
 
         return $out;
     }
 
-    /**
-     * @param list<array{label: string, icon: string, routeName: string, routePrefix: string, group: ?string, children: list<array{label: string, icon: string, routeName: string, routePrefix: string}>}> $menuTree
-     * @param list<StudioDashboardStatsProviderInterface> $providers
-     * @return array<string, list<array{label: string, icon: string, routeName: string}>>
-     */
-    private function groupMenuLinks(array $menuTree, array $providers): array
+    private function formatBytes(int $bytes): string
     {
-        $prefixMap = [];
-        foreach ($providers as $provider) {
-            foreach ($provider->getRoutePrefixes() as $prefix) {
-                $prefixMap[$prefix] = $provider->getKey();
-            }
+        if ($bytes < 1024) {
+            return $bytes.' B';
+        }
+        if ($bytes < 1024 * 1024) {
+            return round($bytes / 1024, 1).' KB';
+        }
+        if ($bytes < 1024 * 1024 * 1024) {
+            return round($bytes / (1024 * 1024), 1).' MB';
         }
 
-        $grouped = [];
-
-        foreach ($menuTree as $item) {
-            if ($item['routeName'] === 'admin_dashboard') {
-                continue;
-            }
-
-            $key = $this->resolveModuleKey($item['routeName'], $item['routePrefix'], $prefixMap);
-            if ($key === null) {
-                continue;
-            }
-
-            $grouped[$key][] = [
-                'label' => $item['label'],
-                'icon' => $item['icon'],
-                'routeName' => $item['routeName'],
-            ];
-
-            foreach ($item['children'] as $child) {
-                $childKey = $this->resolveModuleKey($child['routeName'], $child['routePrefix'], $prefixMap) ?? $key;
-                $grouped[$childKey][] = [
-                    'label' => $child['label'],
-                    'icon' => $child['icon'],
-                    'routeName' => $child['routeName'],
-                ];
-            }
-        }
-
-        return $grouped;
-    }
-
-    /**
-     * @param array<string, string> $prefixMap prefix => module key
-     */
-    private function resolveModuleKey(string $routeName, string $routePrefix, array $prefixMap): ?string
-    {
-        foreach ($prefixMap as $prefix => $key) {
-            if (str_starts_with($routeName, $prefix) || str_starts_with($routePrefix, $prefix)) {
-                return $key;
-            }
-        }
-
-        return null;
+        return round($bytes / (1024 * 1024 * 1024), 2).' GB';
     }
 }

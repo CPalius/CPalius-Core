@@ -27,8 +27,14 @@ services:
     Modules\Forum\Twig\:
         resource: '../../Twig/'
 
+    Modules\Forum\Security\:
+        resource: '../../Security/'
+
     Modules\Forum\Studio\:
         resource: '../../Studio/'
+
+    Modules\Forum\Account\:
+        resource: '../../Account/'
 
     Modules\Forum\Portal\:
         resource: '../../Portal/'

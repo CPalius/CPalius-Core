@@ -6,17 +6,8 @@ use App\Repository\NodeFieldIndexRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * CPalius Manifesto 3.3 (High-Performance Querying) uygulaması: Node::data
- * JSON kolonu içindeki sorgulanabilir alanların "düz" (flat) bir kopyasını
- * tutar. Amaç, JSON içi filtreleme SQLite/MySQL/Postgres arasında ya
- * desteklenmiyor ya da indekslenemez olduğundan, aynı veriyi tip-uygun
- * sabit kolonlara yazıp standart SQL ile (ve gerekirse gerçek bir DB
- * indeksiyle) sorgulanabilir kılmaktır.
- *
- * Bir Node -> bir fieldName için EN FAZLA bir satır olur (bkz.
- * uniq_node_field_index). Değer, hangi valueX kolonunun dolu olacağını
- * belirleyen alanın tipine göre yalnızca BİR value* kolonuna yazılır;
- * diğerleri NULL kalır.
+ * Manifesto 3.3 flat index for queryable Node::data fields (indexed SQL columns).
+ * One row per node+fieldName; only one value* column is populated per type.
  */
 #[ORM\Entity(repositoryClass: NodeFieldIndexRepository::class)]
 #[ORM\Table(name: 'node_field_index')]
@@ -37,8 +28,7 @@ class NodeFieldIndex
     private Node $node;
 
     /**
-     * Sorgulanacak dinamik alanın adı (ör. 'price', 'is_featured',
-     * 'event_date'). Node::data JSON'undaki key ile birebir aynıdır.
+     * Dynamic field name matching a key in Node::data JSON.
      */
     #[ORM\Column(name: 'field_name', type: 'string', length: 100)]
     private string $fieldName;
@@ -101,8 +91,7 @@ class NodeFieldIndex
     }
 
     /**
-     * Doctrine 'decimal' tipi PHP'ye string olarak gelir (float hassasiyet
-     * kaybını önlemek için) — bilinçli olarak float DEĞİL.
+     * Doctrine decimal maps to string in PHP to avoid float precision loss.
      */
     public function getValueDecimal(): ?string
     {

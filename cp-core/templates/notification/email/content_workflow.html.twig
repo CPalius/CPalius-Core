@@ -1,0 +1,7 @@
+<p>{{ 'notification.mail.body.content_workflow'|trans({
+    'title': payload.title|default(''),
+    'from': payload.from|default(''),
+    'to': payload.to|default(''),
+    'transition': payload.transition|default('')
+}) }}</p>
+<p><a href="{{ absolute_url(path('account_notifications')) }}">{{ 'notification.mail.open_inbox'|trans }}</a></p>

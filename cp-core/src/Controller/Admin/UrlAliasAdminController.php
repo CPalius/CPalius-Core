@@ -20,11 +20,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * "URL Yönetimi" — "Araçlar" (aacp.group.tools) grubunda, Modüller/Eklentiler
- * linkleriyle aynı seviyede üst-seviye bir link olarak yer alır.
- * MenuAdminController ile aynı desen: Doctrine doğrudan kullanımı + manuel
- * CSRF, own/any ayrımı olmayan tek bir capability (core.url_alias.manage —
- * alias'lar site-geneli yapılandırmadır, kullanıcıya özel değildir).
+ * URL alias admin nested under Araçlar; manual CSRF, core.url_alias.manage capability.
  */
 #[Route('/aacp/url-aliases', name: 'aacp_url_alias_')]
 #[IsGranted('core.url_alias.manage')]
@@ -41,7 +37,7 @@ final class UrlAliasAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.url_aliases', icon: 'heroicons:link', panel: 'aacp', priority: 40, capability: 'core.url_alias.manage', group: 'aacp.group.tools')]
+    #[CpAdminMenu(label: 'aacp.menu.url_aliases', icon: 'heroicons:link', panel: 'aacp', priority: 26, capability: 'core.url_alias.manage', parent: 'aacp_tools')]
     public function index(): Response
     {
         return $this->render('aacp/url_aliases/index.html.twig', [
@@ -92,7 +88,7 @@ final class UrlAliasAdminController extends AbstractController
             'formValues' => $formValues,
             'locales' => $this->localeRepository->findBy([], ['sortOrder' => 'ASC']),
             'nodes' => $this->nodeRepository->findBy(['status' => 'published'], ['title' => 'ASC'], 200),
-            'categories' => $this->categoryRepository->findBy([], ['name' => 'ASC'], 200),
+            'categories' => $this->categoryRepository->findAllSorted(200),
         ];
     }
 

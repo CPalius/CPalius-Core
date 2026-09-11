@@ -1,0 +1,2 @@
+pattern: '/blog/[node:created:Y]/[node:title]'
+enabled: true

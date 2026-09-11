@@ -20,8 +20,22 @@ class CronJobRunRepository extends ServiceEntityRepository
     }
 
     /**
-     * AACP "Çalıştırma Geçmişi" ekranı için bir işin en son N çalıştırma
-     * kaydı — sınırsız geçmiş sayfada birikmesin diye $limit ile kısıtlanır.
+     * Latest cron executions across every job, newest first.
+     *
+     * @return list<CronJobRun>
+     */
+    public function findLatest(int $limit = 10): array
+    {
+        return $this->createQueryBuilder('r')
+            ->innerJoin('r.cronJob', 'j')->addSelect('j')
+            ->orderBy('r.startedAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Last N runs of one job, newest first.
      *
      * @return list<CronJobRun>
      */
@@ -37,12 +51,7 @@ class CronJobRunRepository extends ServiceEntityRepository
     }
 
     /**
-     * AACP Dashboard Kritik Uyarı Şeridi'nin tek veri ihtiyacı: bu job'un
-     * en son $lookback çalıştırmasını en yeniden geriye doğru tarar, ilk
-     * başarılı çalıştırmaya (veya henüz bitmemiş bir çalıştırmaya —
-     * isSuccess() null — rastlayınca) durur ve o ana kadar sayılan ardışık
-     * başarısızlık sayısını döner. Hiç çalıştırma yoksa veya ilk kayıt
-     * zaten başarılıysa 0 döner (fail-safe: "alarm yok" varsayılan durum).
+     * Counts consecutive failures from newest runs until success or unfinished run.
      */
     public function countConsecutiveFailures(CronJob $cronJob, int $lookback = 5): int
     {

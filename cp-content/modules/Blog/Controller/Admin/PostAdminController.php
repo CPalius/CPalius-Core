@@ -8,6 +8,7 @@ use App\Core\Annotation\CpAdminMenu;
 use App\Core\Content\RichTextSanitizer;
 use App\Core\Content\SlugGenerator;
 use App\Core\Localization\LocaleProvider;
+use App\Core\OriginCache\OriginCachePurger;
 use App\Core\Pagination\Paginator;
 use App\Core\Security\QueryScopeApplier;
 use App\Entity\Node;
@@ -54,6 +55,7 @@ final class PostAdminController extends AbstractController
         private readonly LocaleRepository $localeRepository,
         private readonly LocaleProvider $localeProvider,
         private readonly TranslatorInterface $translator,
+        private readonly OriginCachePurger $originCachePurger,
     ) {
     }
 
@@ -61,7 +63,7 @@ final class PostAdminController extends AbstractController
      * List posts; QueryScopeApplier adds author=:me for .own-only users (Law 6.2).
      */
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Blog', icon: 'heroicons:document-text', panel: 'studio', priority: 20, capability: 'node.post.view.own|node.post.view.any', group: 'İçerik')]
+    #[CpAdminMenu(label: 'studio.blog.menu', icon: 'heroicons:document-text', panel: 'studio', priority: 20, capability: 'node.post.view.own|node.post.view.any', group: 'studio.group.content')]
     public function index(Request $request): Response
     {
         // Coarse gate: own OR any. Per-row own/any is applied by QueryScopeApplier (Law 6.2).
@@ -82,6 +84,16 @@ final class PostAdminController extends AbstractController
         return $this->render('@BlogModule/admin/posts/index.html.twig', [
             'posts' => $result,
         ]);
+    }
+
+    /**
+     * Same list as index(); exists so "Posts" appears inside the Blog dropdown.
+     */
+    #[Route('/list', name: 'list', methods: ['GET'])]
+    #[CpAdminMenu(label: 'studio.blog.posts.menu', icon: 'heroicons:pencil-square', panel: 'studio', priority: 19, capability: 'node.post.view.own|node.post.view.any', parent: 'admin_posts_index')]
+    public function list(Request $request): Response
+    {
+        return $this->index($request);
     }
 
     /**
@@ -115,6 +127,7 @@ final class PostAdminController extends AbstractController
 
             $this->entityManager->persist($node);
             $this->entityManager->flush();
+            $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
             $this->addFlash('success', $this->translator->trans('blog.posts.flash.created', ['title' => $node->getTitle()]));
 
@@ -154,6 +167,7 @@ final class PostAdminController extends AbstractController
             $this->mapDtoToNode($dto, $node);
 
             $this->entityManager->flush();
+            $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
             $this->addFlash('success', $this->translator->trans('blog.posts.flash.updated', ['title' => $node->getTitle()]));
 
@@ -194,7 +208,7 @@ final class PostAdminController extends AbstractController
      */
     private function createPostForm(PostFormModel $dto): FormInterface
     {
-        $categories = $this->categoryRepository->findBy(['locale' => $this->localeProvider->getDefaultCode()]);
+        $categories = $this->categoryRepository->findByLocale($this->localeProvider->getDefaultCode());
         $categoryChoices = [];
         foreach ($categories as $category) {
             $categoryChoices[$category->getName()] = $category;
@@ -255,6 +269,7 @@ final class PostAdminController extends AbstractController
         $node->setDataValue('body', $this->richTextSanitizer->sanitize($dto->body));
         // is_featured / post_sub_type are indexed via NodeIndexListener (Law 6.3).
         $node->setDataValue('is_featured', $dto->isFeatured ? 1 : 0);
+        $node->setDataValue('comments_enabled', $dto->commentsEnabled ? 1 : 0);
 
         $node->setDataValue('post_sub_type', $dto->postSubType);
         $node->setDataValue('type_fields', $this->buildTypeFields($dto));
@@ -341,7 +356,7 @@ final class PostAdminController extends AbstractController
         }
 
         if ($dto->categoryIds !== []) {
-            foreach ($this->categoryRepository->findBy(['id' => $dto->categoryIds]) as $category) {
+            foreach ($this->categoryRepository->findByIds($dto->categoryIds) as $category) {
                 $node->addCategory($category);
             }
             $node->setCategory($this->categoryRepository->find($dto->categoryIds[0]));
@@ -369,6 +384,8 @@ final class PostAdminController extends AbstractController
         $dto->excerpt = (string) $node->getDataValue('excerpt', '');
         $dto->body = (string) $node->getDataValue('body', '');
         $dto->isFeatured = (bool) $node->getDataValue('is_featured', false);
+        $rawComments = $node->getDataValue('comments_enabled', 1);
+        $dto->commentsEnabled = !\in_array($rawComments, [0, '0', false, null, ''], true);
         $dto->status = $node->getStatus();
         $dto->publishedAt = $node->getPublishedAt() ?? $this->resolveScheduledForAsDate($node);
         $dto->categoryIds = array_map(static fn ($c) => $c->getId(), $node->getCategories()->toArray());
@@ -436,6 +453,7 @@ final class PostAdminController extends AbstractController
 
         $node->publish();
         $this->entityManager->flush();
+        $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
         $this->addFlash('success', $this->translator->trans('blog.posts.flash.published', ['title' => $node->getTitle()]));
 
@@ -452,6 +470,7 @@ final class PostAdminController extends AbstractController
         // Soft-delete stamps deletedAt (trash) instead of a hard DELETE.
         $node->softDelete();
         $this->entityManager->flush();
+        $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
         $this->addFlash('success', $this->translator->trans('blog.posts.flash.trashed', ['title' => $node->getTitle()]));
 

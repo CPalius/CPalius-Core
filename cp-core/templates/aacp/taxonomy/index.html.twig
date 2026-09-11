@@ -1,0 +1,54 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.taxonomy.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <div class="flex items-center justify-between">
+            <p class="text-fs-sm !text-slate-500">{{ 'aacp.taxonomy.intro'|trans }}</p>
+            <a href="{{ path('aacp_taxonomy_vocabulary_new') }}" class="btn btn-primary">
+                {{ 'aacp.taxonomy.new_vocabulary'|trans }}
+            </a>
+        </div>
+
+        <twig:cp:card padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.taxonomy.column.vocabulary'|trans,
+                'aacp.taxonomy.column.terms'|trans,
+                'aacp.taxonomy.column.hierarchical'|trans,
+                '',
+            ] }}" empty="{{ vocabularies is empty }}" emptyText="{{ 'aacp.taxonomy.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for vocabulary in vocabularies %}
+                        <tr>
+                            <td class="!text-slate-200">
+                                <a href="{{ path('aacp_taxonomy_terms', {machineName: vocabulary.machineName}) }}" class="hover:text-primary-400">
+                                    {{ vocabulary.label }}
+                                    <span class="ml-1 font-mono text-fs-xs !text-slate-500">{{ vocabulary.machineName }}</span>
+                                </a>
+                            </td>
+                            <td class="text-fs-sm !text-slate-400">{{ counts[vocabulary.id] ?? 0 }}</td>
+                            <td class="text-fs-sm !text-slate-400">
+                                {{ vocabulary.hierarchical ? 'aacp.taxonomy.yes'|trans : 'aacp.taxonomy.no'|trans }}
+                            </td>
+                            <td class="text-right">
+                                <a href="{{ path('aacp_taxonomy_vocabulary_edit', {machineName: vocabulary.machineName}) }}"
+                                   class="text-fs-xs font-medium !text-primary-400 hover:!text-success-300 mr-3">
+                                    {{ 'aacp.taxonomy.edit'|trans }}
+                                </a>
+                                <form method="post" class="inline"
+                                      action="{{ path('aacp_taxonomy_vocabulary_delete', {machineName: vocabulary.machineName}) }}"
+                                      onsubmit="return confirm('{{ 'aacp.taxonomy.confirm_delete_vocabulary'|trans|e('js') }}');">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('aacp_taxonomy_vocabulary') }}">
+                                    <button type="submit" class="text-fs-xs font-medium !text-danger-400 hover:!text-danger-300">
+                                        {{ 'aacp.taxonomy.delete'|trans }}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+{% endblock %}

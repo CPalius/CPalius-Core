@@ -1,0 +1,30 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.resources.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <p class="text-fs-sm !text-slate-500">{{ 'aacp.resources.intro'|trans }}</p>
+
+        <twig:cp:card title="{{ 'aacp.resources.registered'|trans }}" padded="{{ false }}">
+            <twig:cp:table headers="{{ ['aacp.resources.column.name'|trans, 'aacp.resources.column.module'|trans, 'aacp.resources.column.flags'|trans, ''] }}"
+                           empty="{{ resources is empty }}" emptyText="{{ 'aacp.resources.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for r in resources %}
+                        <tr>
+                            <td class="!text-slate-200"><a href="{{ path('aacp_resource_index', {name: r.name}) }}" class="hover:text-primary-400">{{ r.name }}</a></td>
+                            <td class="text-fs-xs !text-slate-500">{{ r.module }}</td>
+                            <td class="text-fs-xs !text-slate-500">
+                                {% if r.multiTenant %}<span class="badge badge-info">tenant</span>{% endif %}
+                                {% if r.auditable %}<span class="badge badge-neutral">audit</span>{% endif %}
+                                {% if r.workflow %}<span class="badge badge-success">{{ r.workflow }}</span>{% endif %}
+                                {% if r.softDeletable %}<span class="badge badge-warning">trash</span>{% endif %}
+                            </td>
+                            <td class="text-right"><a href="{{ path('aacp_resource_index', {name: r.name}) }}" class="text-fs-xs font-medium !text-primary-400 hover:!text-success-300">{{ 'aacp.resources.open'|trans }}</a></td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+{% endblock %}

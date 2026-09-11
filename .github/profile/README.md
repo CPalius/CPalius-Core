@@ -1,7 +1,6 @@
 # CPalius
 
-### Next-generation Content Management Framework  
-*Yeni nesil içerik yönetim çerçevesi*
+### Next-generation Content Management Framework
 
 Built on **PHP 8.2+** & **Symfony 7.4 LTS** — the bridge between heavy CMS platforms and frameworks you rebuild from scratch.
 

@@ -1,6 +1,6 @@
 # CPalius CMF
 
-**Next-generation Content Management Framework** built on PHP 8.2+ and Symfony 7.4 LTS.
+**Next-generation Content Management Framework** built on PHP 8.4+ and Symfony 7.4 LTS.
 
 CPalius sits between heavy CMS platforms and bare frameworks. You get authentication, access control, file management, localization, an admin panel, and a modular extension system — without rebuilding them for every project, and without inheriting a decade of CMS technical debt.
 
@@ -22,9 +22,11 @@ Use it for blogs and community sites today, or as the base for dealerships, trav
 
 ## Requirements
 
-- PHP 8.2 or newer
+- PHP 8.4 or newer
 - Composer 2
-- SQLite, MySQL, or PostgreSQL
+- MySQL 8+ or MariaDB 10.6+
+  (PostgreSQL and SQLite are not yet supported for installation: the shipped
+  migrations emit MySQL-specific DDL. The ORM layer itself is portable.)
 - A web server pointing at the `public/` directory
 
 No Node.js is required for the core or admin UI (AssetMapper + standalone Tailwind).
@@ -91,7 +93,7 @@ Faulty modules are logged to the quarantine log and can be reviewed in AACP.
 ### Content & business data
 
 - **Nodes** — Pages, posts, and similar content: SQL columns for title, slug, status, locale + flexible JSON `data`
-- **Flat field index** — Queryable JSON fields indexed for fast filters (SQLite / MySQL / PostgreSQL)
+- **Flat field index** — Queryable JSON fields indexed for fast filters
 - **Localization** — Built into the core (`UNIQUE(slug, locale)`, translation groups)
 - **Resources** — Business records via `#[CpResource]` (capabilities, multi-tenant flags, workflow hooks — infrastructure ready)
 

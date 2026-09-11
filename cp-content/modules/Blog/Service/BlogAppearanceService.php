@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Modules\Blog\Service;
 
 use App\Core\Settings\SettingsRegistry;
-use App\Entity\Category;
+use App\Core\Taxonomy\Entity\Term;
 use App\Entity\Node;
 use App\Entity\NodeFieldIndex;
 use App\Repository\AssetRepository;
@@ -127,7 +127,7 @@ final class BlogAppearanceService
     /**
      * Category map for the blog index: roots, children, and post counts.
      *
-     * @return array{roots: list<Category>, postCounts: array<int, int>}
+     * @return array{roots: list<Term>, postCounts: array<int, int>}
      */
     public function resolveCategoryTree(string $locale): array
     {

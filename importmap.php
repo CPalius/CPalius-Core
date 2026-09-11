@@ -3,15 +3,12 @@
 /**
  * Returns the importmap for this application.
  *
- * - "path" is a path inside the asset mapper system. Use the
- *     "debug:asset-map" command to see the full list of paths.
- *
- * - "entrypoint" (JavaScript only) set to true for any module that will
- *     be used as an "entrypoint" (and passed to the importmap() Twig function).
- *
- * The "importmap:require" command can be used to add new entries to this file.
+ * Core entrypoints live here. Module JS is merged from each active module's
+ * Resources/config/importmap.php — never edit this file for a feature module.
  */
-return [
+use App\Core\Module\ModuleImportmapLoader;
+
+$core = [
     'app' => [
         'path' => './cp-core/assets/app.js',
         'entrypoint' => true,
@@ -49,28 +46,16 @@ return [
         'path' => './cp-core/assets/aacp-localization.js',
         'entrypoint' => true,
     ],
+    'aacp-theme-editor' => [
+        'path' => './cp-core/assets/aacp-theme-editor.js',
+        'entrypoint' => true,
+    ],
     'studio-quick-cache-clear' => [
         'path' => './cp-core/assets/studio-quick-cache-clear.js',
         'entrypoint' => true,
     ],
-    'admin-post-form' => [
-        'path' => './cp-core/assets/admin-post-form.js',
-        'entrypoint' => true,
-    ],
-    'media-picker' => [
-        'path' => './cp-core/assets/media-picker.js',
-        'entrypoint' => true,
-    ],
     'cp-editor-init' => [
         'path' => './cp-core/assets/cp-editor-init.js',
-        'entrypoint' => true,
-    ],
-    'forum-editor-init' => [
-        'path' => './cp-core/assets/forum-editor-init.js',
-        'entrypoint' => true,
-    ],
-    'forum-dashboard' => [
-        'path' => './cp-core/assets/forum-dashboard.js',
         'entrypoint' => true,
     ],
     'aacp-user-roles' => [
@@ -79,10 +64,6 @@ return [
     ],
     'studio-dashboard' => [
         'path' => './cp-core/assets/studio-dashboard.js',
-        'entrypoint' => true,
-    ],
-    'menu-sortable' => [
-        'path' => './cp-core/assets/menu-sortable.js',
         'entrypoint' => true,
     ],
     'sortablejs' => [
@@ -108,3 +89,5 @@ return [
         'version' => '2.0.0',
     ],
 ];
+
+return ModuleImportmapLoader::merge($core, __DIR__);

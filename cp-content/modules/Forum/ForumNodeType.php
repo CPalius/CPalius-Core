@@ -34,9 +34,9 @@ enum ForumNodeType: string
     public function label(): string
     {
         return match ($this) {
-            self::Category => 'Kategori',
-            self::Forum => 'Forum',
-            self::Link => 'Baglanti',
+            self::Category => 'forum.node_type.category',
+            self::Forum => 'forum.node_type.forum',
+            self::Link => 'forum.node_type.link',
         };
     }
 }

@@ -1,14 +1,7 @@
 {#
-    FAZ 4 — Ön yüz dil değiştirici.
+    Phase 4 — front-end locale switcher.
 
-    style = 'buttons'  → düz buton grubu
-    style = 'dropdown' → dil ikonu; tıklayınca bayrak listesi
-
-    Beklenen değişkenler:
-      style       ('buttons'|'dropdown')
-      current     (string)  aktif dil kodu
-      currentLink (array)   aktif dilin link kaydı
-      links       (list)    {code, url, isCurrent, isDefault, nativeName}
+    style = 'buttons' | 'dropdown'. Expects: style, current, currentLink, links.
 #}
 {% if style == 'dropdown' %}
     <details class="locale-switcher locale-switcher--dropdown" id="navLocale">

@@ -15,9 +15,7 @@ use Symfony\Component\Security\Core\User\UserProviderInterface;
 /**
  * @extends ServiceEntityRepository<User>
  *
- * Symfony'nin security firewall'ı için doğrudan bir UserProviderInterface
- * implementasyonu — ayrı bir UserProvider sınıfına gerek yok, entity
- * repository'nin kendisi bu rolü üstlenir (Symfony'nin önerdiği kısayol).
+ * Also implements UserProviderInterface for the security firewall (Symfony shortcut).
  */
 class UserRepository extends ServiceEntityRepository implements UserProviderInterface, PasswordUpgraderInterface
 {
@@ -56,7 +54,7 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
     }
 
     /**
-     * Onay bekleyen kayıtlar — inactive + registration_pending_approval.
+     * Pending approval registrations (inactive + registration_pending_approval).
      *
      * @return list<User>
      */
@@ -71,10 +69,7 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
     }
 
     /**
-     * CpUserProvider için: verilen kimliği ÖNCE e-posta, bulunamazsa
-     * kullanıcı adı olarak arar. E-posta önceliklidir çünkü her kullanıcının
-     * garanti e-postası vardır (username nullable), bu yüzden e-posta ile
-     * eşleşme daha güvenilir bir ilk denemedir.
+     * Lookup by email first, then username (email is always present).
      */
     public function findOneByEmailOrUsername(string $identifier): ?User
     {
@@ -82,26 +77,7 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
     }
 
     /**
-     * AACP kullanıcı listesi için: e-posta üzerinde basit bir arama
-     * (opsiyonel) uygulayarak en yeni kayıtlar önde sıralı bir QueryBuilder
-     * döner. Paginator::paginate() bunu setMaxResults/setFirstResult ile
-     * sarmalar (bkz. Paginator sınıf üstü doküman notu).
-     *
-     * Ad/soyad $data JSON kolonunda yaşadığı için (bkz. User::getFirstName())
-     * ve projede JSON_EXTRACT gibi bir custom DQL fonksiyonu tanımlı
-     * olmadığı için (bkz. cp-core/config/packages/doctrine.yaml), arama
-     * bilinçli olarak SADECE e-posta sabit kolonuna uygulanır — bu, DQL'in
-     * desteklemediği bir fonksiyonu çağırıp çalışma zamanı hatası üretmek
-     * yerine güvenli bir alt kümedir.
-     */
-    /**
-     * "Yöneticiler" ekranı için: verilen rol id'sine (ör. 'admin') sahip
-     * kullanıcılar. User::$roles bir JSON sütunudur (bkz. #[ORM\Column(type:
-     * 'json')]); veritabanı motoruna göre serileştirme farklılık
-     * gösterebileceğinden LIKE ile kaba DB filtresi yerine kullanıcı
-     * sayısının admin panelinde büyük olmayacağı varsayımıyla PHP tarafında
-     * getCpaliusRoles() ile KESİN filtreleme yapılır — bu, JSON encoding
-     * ayrıntılarına bağımlı kırılgan bir sorgudan daha güvenilirdir.
+     * Users with the given role id; filtered in PHP for reliable JSON role matching.
      *
      * @return list<User>
      */
@@ -128,9 +104,7 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
     }
 
     /**
-     * Bir e-postanın BAŞKA bir kullanıcı tarafından zaten kullanılıp
-     * kullanılmadığını kontrol eder (edit ekranında "kendi e-postan"
-     * çakışma sayılmamalı, bu yüzden $excludeId parametresi vardır).
+     * Whether email is taken by another user ($excludeId skips self on edit).
      */
     public function isEmailTakenByAnotherUser(string $email, ?int $excludeId): bool
     {
@@ -167,7 +141,7 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
     }
 
     /**
-     * AACP Dashboard "Kullanıcılar" kartı için toplam sayı.
+     * Total user count for dashboard card.
      */
     public function countAll(): int
     {
@@ -190,8 +164,7 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
     }
 
     /**
-     * Dashboard'daki "Kullanıcı Durumu" doughnut widget'ının veri kaynağı
-     * — User::STATUS_* sabitleri (active/inactive/banned) üzerinden.
+     * User counts grouped by status for dashboard doughnut widget.
      *
      * @return list<array{status: string, count: int}>
      */
@@ -212,7 +185,7 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
         $user = $this->findOneByEmail($identifier);
 
         if ($user === null) {
-            throw new UserNotFoundException(sprintf('"%s" e-postasına sahip bir kullanıcı bulunamadı.', $identifier));
+            throw new UserNotFoundException(sprintf('No user found with email "%s".', $identifier));
         }
 
         return $user;
@@ -221,13 +194,13 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
     public function refreshUser(UserInterface $user): UserInterface
     {
         if (!$user instanceof User) {
-            throw new UnsupportedUserException(sprintf('Geçersiz kullanıcı sınıfı "%s".', $user::class));
+            throw new UnsupportedUserException(sprintf('Invalid user class "%s".', $user::class));
         }
 
         $freshUser = $this->find($user->getId());
 
         if ($freshUser === null) {
-            throw new UserNotFoundException(sprintf('#%d kimlikli kullanıcı artık mevcut değil.', $user->getId()));
+            throw new UserNotFoundException(sprintf('User with ID #%d no longer exists.', $user->getId()));
         }
 
         return $freshUser;

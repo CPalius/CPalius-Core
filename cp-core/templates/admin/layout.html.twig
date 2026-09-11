@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr" class="h-full">
+<html lang="{{ app.request.locale|default('en') }}" class="h-full">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,6 +11,13 @@
         {% block javascripts %}
             {{ importmap(['app', 'studio-quick-cache-clear']) }}
         {% endblock %}
+        <script type="application/json" id="cp-media-picker-i18n">{{ {
+            title: 'media.picker.title'|trans,
+            close: 'media.picker.close'|trans,
+            loading: 'media.picker.loading'|trans,
+            uploadFailed: 'media.picker.upload_failed'|trans,
+            listFailed: 'media.picker.list_failed'|trans,
+        }|json_encode|raw }}</script>
     </head>
     <body class="h-full bg-neutral-50 text-neutral-700 antialiased text-fs-base font-sans">
         <div class="flex h-full">
@@ -85,19 +92,27 @@
 
             <main data-sidebar-main class="dashboard-main">
                 <header class="navbar-header">
-                    <div class="flex items-center gap-3">
+                    <div class="flex min-w-0 items-center gap-3">
                         <button type="button" data-sidebar-toggle class="sidebar-toggle">
                             <twig:ux:icon name="tabler:menu-2" class="h-5 w-5" />
                         </button>
                         <button type="button" data-sidebar-mobile-toggle class="sidebar-mobile-toggle">
                             <twig:ux:icon name="tabler:menu-2" class="h-5 w-5" />
                         </button>
-                        <h1 class="text-fs-md font-semibold text-neutral-900">{% block header %}{{ 'studio.layout.header.default'|trans }}{% endblock %}</h1>
+                        <h1 class="min-w-0 truncate text-fs-md font-semibold text-neutral-900">{% block header %}{{ 'studio.layout.header.default'|trans }}{% endblock %}</h1>
                     </div>
-                    <div class="flex items-center gap-2">
-                        {% block header_actions %}
-                            {{ include('admin/_header_actions.html.twig') }}
-                        {% endblock %}
+                    <div class="flex shrink-0 items-center gap-2">
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            {% block header_actions %}{% endblock %}
+                        </div>
+
+                        <a href="{{ path('theme_cpalius_website_home') }}"
+                           target="_blank"
+                           rel="noopener"
+                           title="{{ 'studio.layout.go_website'|trans }}"
+                           class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-neutral-500 transition hover:border-primary-600 hover:text-primary-600">
+                            <twig:ux:icon name="tabler:external-link" class="h-4 w-4" />
+                        </a>
 
                         {% if is_granted('system.aacp.access') %}
                             <button type="button"
@@ -109,6 +124,8 @@
                                 <twig:ux:icon name="heroicons:bolt" class="h-4 w-4" />
                             </button>
                         {% endif %}
+
+                        {{ include('admin/_header_actions.html.twig') }}
                     </div>
                 </header>
 
@@ -126,6 +143,8 @@
                                    data-running-text="{{ 'studio.layout.clear_cache_modal.running'|trans }}"
                                    data-success-text="{{ 'studio.layout.clear_cache_modal.success'|trans }}"
                                    data-error-text="{{ 'studio.layout.clear_cache_modal.error'|trans }}"
+                                   data-request-failed="{{ 'aacp.cache_rebuild.log.request_failed'|trans({error: '{error}'}) }}"
+                                   data-not-json="{{ 'aacp.cache_rebuild.log.not_json'|trans({status: '{status}'}) }}"
                                    class="mb-3 text-fs-sm text-neutral-600">
                                     {{ 'studio.layout.clear_cache_modal.running'|trans }}
                                 </p>

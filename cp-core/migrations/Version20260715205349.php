@@ -14,7 +14,7 @@ final class Version20260715205349 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Frontend menu yonetimi: menus + menu_items tablolari (node_id kasitli olarak FK degil, gevsek referans).';
+        return 'Frontend menu management: menus + menu_items tables (node_id intentionally not an FK; loose reference).';
     }
 
     public function up(Schema $schema): void

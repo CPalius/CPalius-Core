@@ -1,0 +1,29 @@
+{% extends '@Theme/account/layout.html.twig' %}
+
+{% block title %}{{ 'account.two_factor.recovery_title'|trans }}{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in" style="text-align:center; max-width: 520px; margin: 0 auto var(--sp-lg);">
+    <span class="section-label">{{ 'account.two_factor.label'|trans }}</span>
+    <h1 class="section-title">{{ 'account.two_factor.recovery_heading'|trans }}</h1>
+    <p class="forum-header__desc" style="margin: 0 auto;">{{ 'account.two_factor.recovery_desc'|trans }}</p>
+</div>
+
+<div class="forum-flash forum-flash--warning" style="max-width: 520px; margin: 0 auto var(--sp-md);">
+    {{ 'account.two_factor.recovery_shown_once'|trans }}
+</div>
+
+<div class="forum-form fade-in" style="max-width: 520px; margin: 0 auto;">
+    <ul style="list-style:none; margin:0; padding:0; display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-xs);">
+        {% for code in recoveryCodes %}
+            <li style="padding: var(--sp-xs) var(--sp-sm); border: 1px solid var(--slw-border); border-radius: 6px; text-align:center;">
+                <code style="font-size: var(--fs-md); letter-spacing: 0.06em;">{{ code }}</code>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <p style="margin-top: var(--sp-md); text-align:center;">
+        <a href="{{ path('account_profile') }}" class="btn btn-primary btn-sm">{{ 'account.two_factor.recovery_saved'|trans }}</a>
+    </p>
+</div>
+{% endblock %}

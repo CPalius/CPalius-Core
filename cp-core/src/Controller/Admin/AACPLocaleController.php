@@ -12,22 +12,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * AACP arayüz dilini değiştirir.
- *
- * FAZ 3: seçim artık SESSION'da değil, LocaleListener ile aynı cp_locale
- * ÇEREZİNDE saklanır (Manifesto Law 6.4 — sessionless trafik). Böylece
- * panelde seçilen dil ön yüzde de geçerli olur; iki ayrı "arayüz dili" ve
- * "site dili" kavramı kalmaz.
- *
- * Rota kısıtı %cpalius.locales_pattern% ile DERLEME ZAMANINDA üretilir
- * (bkz. LocalesPatternPass) — yeni bir dil eklendiğinde burada elle
- * güncellenecek sabit bir 'tr|en' listesi YOKTUR. Yine de çalışma
- * zamanında LocaleProvider ile ikinci kez doğrulanır: container henüz
- * yeniden derlenmemişse desen ile aktif liste ayrışabilir.
- *
- * Desteklenmeyen bir kod sessizce yok sayılıp mevcut sayfaya dönülür —
- * sadece bir dil linkine tıklayan kullanıcıya 400 göstermek orantısız
- * olurdu.
+ * Switches AACP UI locale via cp_locale cookie (Law 6.4), shared with the front end.
+ * Route uses compile-time %cpalius.locales_pattern%; unsupported codes are ignored.
  */
 final class AACPLocaleController extends AbstractController
 {
@@ -50,8 +36,7 @@ final class AACPLocaleController extends AbstractController
         if ($this->localeProvider->isSupported($locale)) {
             $response->headers->setCookie($this->localeListener->buildCookie($locale, $request));
 
-            // Eski oturum anahtarı çerezle çelişmesin: oturum ZATEN açıksa
-            // (yeni bir oturum başlatmadan) senkron tutulur.
+            // Sync session locale with cookie when a session already exists.
             if ($request->hasPreviousSession()) {
                 $request->getSession()->set(LocaleListener::SESSION_KEY, $locale);
             }
@@ -64,7 +49,7 @@ final class AACPLocaleController extends AbstractController
     {
         $referer = $request->headers->get('referer');
 
-        // Open-redirect koruması: yalnızca kendi host'umuza dönülür.
+        // Open-redirect guard: same host only.
         if (\is_string($referer) && $referer !== '') {
             $host = parse_url($referer, \PHP_URL_HOST);
 

@@ -1,18 +1,6 @@
 {#
-    {% include '@Theme/blog/partials/pagination.html.twig' with {
-        result: posts, route: 'blog_index', routeParams: {}
-    } %}
-
-    App\Core\Pagination\PaginatedResult için cpalius-website temasının
-    (Flat Design / Golden Ratio) sayfalama şeridi. Studio'nun
-    twig:studio:pagination bileşeninden BİLİNÇLİ OLARAK ayrıdır: burada
-    Tailwind utility class'ları değil, temanın kendi .btn/--cp-* tasarım
-    token'ları kullanılır (bkz. dist/style.css).
-
-    Beklenen değişkenler:
-      result      (App\Core\Pagination\PaginatedResult)
-      route       (string)  path() için route adı
-      routeParams (array)   route'un {page} ve {_locale} dışındaki diğer parametreleri
+    PaginatedResult pagination strip (Flat Design / Golden Ratio) — theme .btn/--cp-* tokens, not twig:studio:pagination.
+    Expects: result (PaginatedResult), route (string), routeParams (array, excluding page and _locale).
 #}
 {% set routeParams = routeParams|default({}) %}
 

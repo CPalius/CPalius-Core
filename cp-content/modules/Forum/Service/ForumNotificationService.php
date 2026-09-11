@@ -4,43 +4,47 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
+use App\Core\Notification\Entity\Notification;
+use App\Core\Notification\NotificationDispatcher;
+use App\Core\Notification\NotificationSubject;
+use App\Core\Notification\Repository\NotificationRepository;
 use App\Core\Settings\SettingsRegistry;
-use Modules\Forum\Entity\ForumNotification;
-use Modules\Forum\Entity\ForumPost;
 use App\Entity\User;
-use Modules\Forum\Repository\ForumNotificationRepository;
-use Modules\Forum\Repository\ForumPostRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
+use Modules\Forum\Notification\ForumNotificationType;
+use Modules\Forum\Entity\ForumPost;
+use Modules\Forum\Notification\ForumInboxItem;
+use Modules\Forum\Repository\ForumPostRepository;
 
 /**
- * Forum notifications. Preference keys live in User::$data JSON.
+ * Forum notifications via core NotificationDispatcher (module → core).
+ * Preference keys stay forum_notif_* in User::$data; inbox rows live in cp_notifications.
  */
 final class ForumNotificationService
 {
-    /** @var array<string, string|null> type => preference key (null = always) */
-    private const PREFERENCE_BY_TYPE = [
-        ForumNotification::TYPE_REPLY => 'forum_notif_reply',
-        ForumNotification::TYPE_THREAD_REPLY => 'forum_notif_thread',
-        ForumNotification::TYPE_QUOTE => 'forum_notif_quote',
-        ForumNotification::TYPE_REACTION => 'forum_notif_reaction',
-        ForumNotification::TYPE_DISLIKE => 'forum_notif_dislike',
-        ForumNotification::TYPE_MENTION => 'forum_notif_mention',
-        ForumNotification::TYPE_REPUTATION => null,
-    ];
+    public const EVENT_PREFIX = 'forum.';
 
     public function __construct(
+        private readonly NotificationDispatcher $dispatcher,
+        private readonly NotificationRepository $notifications,
         private readonly EntityManagerInterface $entityManager,
-        private readonly ForumNotificationRepository $notificationRepository,
         private readonly ForumPostRepository $postRepository,
         private readonly ForumQuoteParser $quoteParser,
         private readonly ForumMentionParser $mentionParser,
         private readonly SettingsRegistry $settingsRegistry,
+        private readonly ForumWatchService $watchService,
     ) {
     }
 
     public function isEnabled(): bool
     {
         return (bool) $this->settingsRegistry->get('forum.notifications_enabled', true);
+    }
+
+    public static function eventKey(string $type): string
+    {
+        return self::EVENT_PREFIX.$type;
     }
 
     /**
@@ -59,40 +63,25 @@ final class ForumNotificationService
             return false;
         }
 
-        if ($sender !== null && $sender->getId() === $receiver->getId()) {
-            return false;
-        }
-
-        if ($receiver->getStatus() === User::STATUS_BANNED) {
-            return false;
-        }
-
-        if (!$this->userReceives($receiver, $type)) {
-            return false;
-        }
-
-        $notification = new ForumNotification(
+        $notification = $this->dispatcher->dispatch(
+            self::eventKey($type),
             $receiver,
-            $type,
-            $contentType,
-            $contentId,
-            $data,
+            $data + ['content_type' => $contentType],
             $sender,
-            $sender?->getFullName(),
+            new NotificationSubject($contentType, $contentId),
         );
 
-        $this->entityManager->persist($notification);
+        // Core dispatcher flushes on write; $flush kept for call-site compatibility.
+        unset($flush);
 
-        if ($flush) {
-            $this->entityManager->flush();
-        }
-
-        return true;
+        return $notification instanceof Notification;
     }
 
+    /**
+     * No-op: NotificationDispatcher persists immediately. Kept for subscriber API.
+     */
     public function flush(): void
     {
-        $this->entityManager->flush();
     }
 
     public function notifyTopicReply(ForumPost $post, User $author, bool $flush = true): void
@@ -105,8 +94,8 @@ final class ForumNotificationService
 
         $this->notify(
             $topicAuthor,
-            ForumNotification::TYPE_REPLY,
-            ForumNotification::CONTENT_POST,
+            ForumNotificationType::REPLY,
+            ForumNotificationType::CONTENT_POST,
             $post->getId(),
             $this->postPayload($post, $author),
             $author,
@@ -133,8 +122,33 @@ final class ForumNotificationService
 
             $this->notify(
                 $participant,
-                ForumNotification::TYPE_THREAD_REPLY,
-                ForumNotification::CONTENT_POST,
+                ForumNotificationType::THREAD_REPLY,
+                ForumNotificationType::CONTENT_POST,
+                $post->getId(),
+                $this->postPayload($post, $author),
+                $author,
+                $flush,
+            );
+        }
+
+        $this->notifyWatchers($post, $author, $skip, $flush);
+    }
+
+    /**
+     * @param array<int, true> $skip
+     */
+    public function notifyWatchers(ForumPost $post, User $author, array $skip, bool $flush = true): void
+    {
+        foreach ($this->watchService->watchers($post->getTopic()) as $watcher) {
+            $uid = $watcher->getId();
+            if ($uid === null || isset($skip[$uid])) {
+                continue;
+            }
+            $skip[$uid] = true;
+            $this->notify(
+                $watcher,
+                ForumNotificationType::WATCH,
+                ForumNotificationType::CONTENT_POST,
                 $post->getId(),
                 $this->postPayload($post, $author),
                 $author,
@@ -167,8 +181,8 @@ final class ForumNotificationService
 
             $this->notify(
                 $quotedAuthor,
-                ForumNotification::TYPE_QUOTE,
-                ForumNotification::CONTENT_POST,
+                ForumNotificationType::QUOTE,
+                ForumNotificationType::CONTENT_POST,
                 $post->getId(),
                 $this->postPayload($post, $author) + [
                     'quoted_post_id' => $quotedPost->getId(),
@@ -193,8 +207,8 @@ final class ForumNotificationService
 
             $this->notify(
                 $user,
-                ForumNotification::TYPE_MENTION,
-                ForumNotification::CONTENT_POST,
+                ForumNotificationType::MENTION,
+                ForumNotificationType::CONTENT_POST,
                 $post->getId(),
                 $this->postPayload($post, $author),
                 $author,
@@ -207,8 +221,8 @@ final class ForumNotificationService
     {
         $this->notify(
             $postAuthor,
-            ForumNotification::TYPE_REACTION,
-            ForumNotification::CONTENT_POST,
+            ForumNotificationType::REACTION,
+            ForumNotificationType::CONTENT_POST,
             $post->getId(),
             $this->postPayload($post, $liker),
             $liker,
@@ -220,8 +234,8 @@ final class ForumNotificationService
     {
         $this->notify(
             $postAuthor,
-            ForumNotification::TYPE_DISLIKE,
-            ForumNotification::CONTENT_POST,
+            ForumNotificationType::DISLIKE,
+            ForumNotificationType::CONTENT_POST,
             $post->getId(),
             $this->postPayload($post, $disliker),
             $disliker,
@@ -236,8 +250,8 @@ final class ForumNotificationService
     {
         $this->notify(
             $receiver,
-            ForumNotification::TYPE_REPUTATION,
-            ForumNotification::CONTENT_USER,
+            ForumNotificationType::REPUTATION,
+            ForumNotificationType::CONTENT_USER,
             $receiver->getId(),
             array_merge([
                 'from_user_id' => $giver->getId(),
@@ -251,15 +265,15 @@ final class ForumNotificationService
 
     public function countUnread(User $user): int
     {
-        return $this->notificationRepository->countUnreadForUser($user);
+        return $this->notifications->countUnreadByEventPrefix($user, self::EVENT_PREFIX);
     }
 
     public function markAllRead(User $user): void
     {
-        $this->notificationRepository->markAllReadForUser($user);
+        $this->notifications->markAllReadByEventPrefix($user, self::EVENT_PREFIX);
     }
 
-    public function markRead(ForumNotification $notification): void
+    public function markRead(Notification $notification): void
     {
         if (!$notification->isRead()) {
             $notification->markRead();
@@ -267,16 +281,40 @@ final class ForumNotificationService
         }
     }
 
-    private function userReceives(User $user, string $type): bool
+    public function findOwned(User $user, int $id): ?Notification
     {
-        $prefKey = self::PREFERENCE_BY_TYPE[$type] ?? null;
-        if ($prefKey === null) {
-            return true;
+        $notification = $this->notifications->find($id);
+        if (!$notification instanceof Notification || $notification->getUser()->getId() !== $user->getId()) {
+            return null;
+        }
+        if (!str_starts_with($notification->getEventKey(), self::EVENT_PREFIX)) {
+            return null;
         }
 
-        $value = $user->getDataValue($prefKey, true);
+        return $notification;
+    }
 
-        return $value !== false && $value !== 0 && $value !== '0';
+    public function createInboxQueryBuilder(User $user, ?string $shortType = null): QueryBuilder
+    {
+        $eventKey = $shortType !== null && $shortType !== '' ? self::eventKey($shortType) : null;
+
+        return $this->notifications->createForUserByEventPrefixQueryBuilder($user, self::EVENT_PREFIX, $eventKey);
+    }
+
+    /**
+     * @return list<ForumInboxItem>
+     */
+    public function recentForUser(User $user, int $limit = 6): array
+    {
+        return array_map(
+            static fn (Notification $n): ForumInboxItem => new ForumInboxItem($n),
+            $this->notifications->findForUserByEventPrefix($user, self::EVENT_PREFIX, $limit),
+        );
+    }
+
+    public function wrap(Notification $notification): ForumInboxItem
+    {
+        return new ForumInboxItem($notification);
     }
 
     /** @return array<string, mixed> */

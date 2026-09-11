@@ -34,6 +34,9 @@
                     {% endfor %}
                 </select>
             {% endif %}
+            <input type="text" name="author" value="{{ author|default('') }}" placeholder="{{ 'forum.search.author'|trans }}" class="forum-search-extra">
+            <input type="date" name="from" value="{{ dateFrom|default('') }}" title="{{ 'forum.search.from'|trans }}">
+            <input type="date" name="to" value="{{ dateTo|default('') }}" title="{{ 'forum.search.to'|trans }}">
             <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search"></i> {{ 'forum.action.search'|trans }}</button>
         </div>
     </form>

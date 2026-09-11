@@ -10,17 +10,8 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Faz 6: AACP üzerinden tamamen dinamik (DB-tabanlı) yönetilen bir cron
- * işi tanımı. Setting entity'siyle aynı ruhta: bu sınıf salt bir veri
- * taşıyıcısıdır, HİÇBİR zamanlama/çalıştırma mantığı içermez — gerçek
- * "zamanı geldi mi?" hesaplaması App\Core\Cron\CronExpressionEvaluator'da,
- * gerçek çalıştırma App\Core\Command\RunDueCronJobsCommand'de yaşar.
- *
- * commandName BİLİNÇLİ olarak serbest metin DEĞİLDİR: AACP formu bu alanı
- * App\Core\Cron\CronCommandWhitelist'in izin verdiği "cp:*" önekli
- * komutlarla sınırlar (bkz. CronCommandWhitelist docblock'u) — aksi halde
- * bir yönetici (veya ele geçirilmiş bir admin hesabı) "dbal:run-sql" gibi
- * tehlikeli bir komutu cron'a ekleyip rastgele SQL çalıştırabilirdi.
+ * Phase 6 DB cron job definition (data only; scheduling lives in CronExpressionEvaluator).
+ * commandName is whitelisted to cp:* commands via CronCommandWhitelist.
  */
 #[ORM\Entity(repositoryClass: CronJobRepository::class)]
 #[ORM\Table(name: 'cp_cron_jobs')]
@@ -171,9 +162,7 @@ class CronJob
     }
 
     /**
-     * VirtualCronJob (kod tabanlı görev) ile aynı okuma arayüzünü paylaşmak
-     * için: AACP şablonları "[MANUEL]" / "[KOD]" rozetini bu bayrakla seçer
-     * (bkz. VirtualCronJob::isCodeBased()).
+     * Shared read API with VirtualCronJob; AACP shows [MANUAL] badge when false.
      */
     public function isCodeBased(): bool
     {

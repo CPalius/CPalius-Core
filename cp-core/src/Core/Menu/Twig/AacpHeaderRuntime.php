@@ -10,11 +10,8 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Twig\Extension\RuntimeExtensionInterface;
 
 /**
- * AACP header'daki profil dropdown'ının avatarını çözer. AACPUserController
- * ::profile() ile AYNI mantık ("avatarAssetId varsa AssetRepository'den
- * storageKey'i çek, yoksa null dön") burada tekrarlanmak yerine buraya
- * taşınmıştır ki layout.html.twig HER sayfada (profil ekranı olmasa bile)
- * doğru avatarı gösterebilsin.
+ * Resolves the AACP header profile avatar (same logic as AACPUserController::profile()).
+ * Shared so layout.html.twig shows the correct avatar on every page, not only on profile.
  */
 final class AacpHeaderRuntime implements RuntimeExtensionInterface
 {

@@ -30,7 +30,7 @@ final class BlogArchivePlugin implements PluginInterface
 
     public function getLabel(): string
     {
-        return 'Blog Arşivi (Yıl/Ay)';
+        return 'blog.plugin.archive';
     }
 
     public function isActive(): bool

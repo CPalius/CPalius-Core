@@ -1,8 +1,4 @@
 {#
-    Modules\Blog\Plugin\BlogWidgetPlugin'i (Faz 3 — Modül Eklentisi
-    mimarisi) sidebar'a gömer. Eklenti aktif değilse veya render()
-    sırasında çökerse cp_plugin() sessizce boş string döner (bkz.
-    App\Core\Plugin\Twig\PluginRuntime) — bu include'un varlığı hiçbir
-    zaman sayfa render'ını riske atmaz.
+    Embeds BlogWidgetPlugin in sidebar — cp_plugin() returns empty if inactive or on error (PluginRuntime); never breaks page render.
 #}
 {{ cp_plugin('blog_widget', {locale: app.request.locale}) }}

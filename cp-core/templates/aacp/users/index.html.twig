@@ -1,6 +1,6 @@
 {% extends 'aacp/layout.html.twig' %}
 
-{% block header %}{{ 'aacp.users.header'|trans }}{% endblock %}
+{% block header %}{{ listHeader|trans }}{% endblock %}
 
 {% block body %}
     <div class="mb-sp-sm flex items-center justify-between gap-sp-sm">
@@ -92,7 +92,7 @@
 
             <div class="flex items-center gap-1.5">
                 {% if users.hasPreviousPage %}
-                    <a href="{{ path('aacp_users', {page: users.currentPage - 1, q: search}) }}"
+                    <a href="{{ path(listRoute, {page: users.currentPage - 1, q: search}) }}"
                        class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5">
                         ‹ {{ 'aacp.pagination.previous'|trans }}
                     </a>
@@ -104,7 +104,7 @@
                             {{ pageNumber }}
                         </span>
                     {% else %}
-                        <a href="{{ path('aacp_users', {page: pageNumber, q: search}) }}"
+                        <a href="{{ path(listRoute, {page: pageNumber, q: search}) }}"
                            class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5">
                             {{ pageNumber }}
                         </a>
@@ -112,7 +112,7 @@
                 {% endfor %}
 
                 {% if users.hasNextPage %}
-                    <a href="{{ path('aacp_users', {page: users.currentPage + 1, q: search}) }}"
+                    <a href="{{ path(listRoute, {page: users.currentPage + 1, q: search}) }}"
                        class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5">
                         {{ 'aacp.pagination.next'|trans }} ›
                     </a>

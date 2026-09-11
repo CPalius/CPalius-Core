@@ -4,17 +4,29 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Core\Account\AccountProfileExtensionInterface;
 use App\Form\DTO\AccountProfileFormModel;
+use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormView;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 final class AccountProfileType extends AbstractType
 {
+    /**
+     * @param iterable<AccountProfileExtensionInterface> $extensions
+     */
+    public function __construct(
+        #[TaggedIterator('cpalius.account.profile_extension')]
+        private readonly iterable $extensions = [],
+    ) {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
@@ -44,31 +56,20 @@ final class AccountProfileType extends AbstractType
                 'required' => false,
                 'attr' => ['autocomplete' => 'new-password'],
             ])
-            ->add('forumNotifReply', CheckboxType::class, [
-                'label' => 'account.profile.notif_reply',
-                'required' => false,
-            ])
-            ->add('forumNotifThread', CheckboxType::class, [
-                'label' => 'account.profile.notif_thread',
-                'required' => false,
-            ])
-            ->add('forumNotifQuote', CheckboxType::class, [
-                'label' => 'account.profile.notif_quote',
-                'required' => false,
-            ])
-            ->add('forumNotifReaction', CheckboxType::class, [
-                'label' => 'account.profile.notif_reaction',
-                'required' => false,
-            ])
-            ->add('forumNotifDislike', CheckboxType::class, [
-                'label' => 'account.profile.notif_dislike',
-                'required' => false,
-            ])
-            ->add('forumNotifMention', CheckboxType::class, [
-                'label' => 'account.profile.notif_mention',
-                'required' => false,
-            ])
         ;
+
+        foreach ($this->extensions as $extension) {
+            $extension->buildForm($builder);
+        }
+    }
+
+    public function buildView(FormView $view, FormInterface $form, array $options): void
+    {
+        $sections = [];
+        foreach ($this->extensions as $extension) {
+            $sections[] = $extension->section();
+        }
+        $view->vars['profile_sections'] = $sections;
     }
 
     public function configureOptions(OptionsResolver $resolver): void

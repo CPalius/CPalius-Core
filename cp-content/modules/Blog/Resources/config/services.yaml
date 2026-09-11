@@ -26,6 +26,9 @@ services:
     Modules\Blog\Service\:
         resource: '../../Service/'
 
+    Modules\Blog\Repository\:
+        resource: '../../Repository/'
+
     Modules\Blog\Command\:
         resource: '../../Command/'
 
@@ -44,3 +47,6 @@ services:
     # Studio overview stats providers.
     Modules\Blog\Studio\:
         resource: '../../Studio/'
+
+    Modules\Blog\Portal\:
+        resource: '../../Portal/'

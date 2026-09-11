@@ -7,19 +7,22 @@ namespace App\Core\Api\Attribute;
 /**
  * Exposes a service method under /api via the gateway. Not repeatable: one path+methods contract per method.
  * $path is the suffix after /api — do not include the /api prefix yourself.
+ * Private endpoints (public: false) require X-CP-API-KEY and a resolved $capability.
  */
 #[\Attribute(\Attribute::TARGET_METHOD)]
 final class CpApi
 {
     /**
-     * @param string        $path    Path after /api (e.g. "/blog/posts/{id}").
-     * @param list<string>  $methods Allowed HTTP methods.
-     * @param bool          $public  Skip X-CP-API-KEY when true (default false).
+     * @param string        $path        Path after /api (e.g. "/blog/posts/{id}").
+     * @param list<string>  $methods     Allowed HTTP methods.
+     * @param bool          $public      Skip X-CP-API-KEY when true (default false).
+     * @param string|null   $capability  Required grant. Path tokens like {name} are interpolated. Null on a private endpoint is fail-closed (403).
      */
     public function __construct(
         public readonly string $path,
         public readonly array $methods = ['GET'],
         public readonly bool $public = false,
+        public readonly ?string $capability = null,
     ) {
     }
 }

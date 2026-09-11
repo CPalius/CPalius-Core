@@ -7,12 +7,8 @@ namespace App\Core\Plugin;
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 
 /**
- * #[AutoconfigureTag('cpalius.module_plugin')] ile etiketlenmiş TÜM
- * PluginInterface implementasyonlarının tek doğruluk kaynağı.
- *
- * AACPController'ın $systemWidgetProviders enjeksiyonuyla aynı desen
- * (TaggedIterator üzerinden iterable enjeksiyonu) — burada ayrıca
- * isimle (getName()) erişim sağlamak için lazy bir indeks kurulur.
+ * Single source of truth for all #[AutoconfigureTag('cpalius.module_plugin')] PluginInterface implementations.
+ * TaggedIterator injection with a lazy index for lookup by getName().
  */
 final class PluginRegistry
 {
@@ -45,10 +41,7 @@ final class PluginRegistry
     }
 
     /**
-     * Faz 4: AACP "Modül Eklentileri" yönetim ekranı için — isActive()
-     * FİLTRESİ OLMADAN kayıtlı TÜM plugin'leri döner. getActivePlugins()
-     * burada KULLANILAMAZ: bir yönetici zaten pasif ettiği bir eklentiyi
-     * de listede görüp tekrar aktive edebilmelidir (bkz. AACPController::plugins()).
+     * Returns all registered plugins without isActive() filter (AACP plugin management screen).
      *
      * @return list<PluginInterface>
      */

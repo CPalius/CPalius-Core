@@ -104,11 +104,12 @@ final class LocaleListener implements EventSubscriberInterface
     {
         $path = $request->getPathInfo();
 
-        // 1) URL prefix — /tr/blog, /en/forum ...
+        // 1) URL prefix — /tr/blog, /en/forum. Not an explicit choice: writing
+        // cp_locale here Set-Cookie's every first anonymous hit and origin cache never stores.
         if (preg_match(self::URL_LOCALE_PATTERN, $path, $matches) === 1
             && $this->localeProvider->isSupported($matches['locale'])
         ) {
-            return [$matches['locale'], true];
+            return [$matches['locale'], false];
         }
 
         // 2) Query _locale on unprefixed routes. Counts as an explicit choice (writes cookie).

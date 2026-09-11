@@ -28,22 +28,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
 
 /**
- * AACP "Cron Yönetimi" ekranı — CPalius'un Birleşik Otomasyon Motoru'nun
- * TEK yönetim paneli. CronManager::getTasks() üzerinden HEM DB-tabanlı
- * (cp_cron_jobs, "[MANUEL]" rozetli) HEM DE kod tabanlı (Attribute/Flat-File,
- * "[KOD]" rozetli) görevleri AYNI tabloda listeler. AACPController'dan
- * (Modül/Sistem/Ayarlar yönetimi) BİLİNÇLİ olarak ayrı bir controller'a
- * alındı: AACPController zaten çok sorumluluklu, ve AACPPlaceholderController
- * ile zaten kurulan "kendi alanına özel ayrı controller, aynı /aacp paneli"
- * konvansiyonu burada da izlenir.
- *
- * Ekleme/düzenleme/silme SADECE DB görevleri için anlamlıdır (kod tabanlı
- * görevlerin "kaynağı" koddur, AACP formu üzerinden değiştirilemez —
- * Manifesto Law 3.1 ruhu). "Şimdi Çalıştır" ise HER İKİ görev tipi için de
- * çalışır: DB görevleri id ile (runNow), kod tabanlı görevler jobName ile
- * (runVirtualNow) tetiklenir — ikisi de AYNI izole subprocess mekanizmasını
- * (CronCommandProcessFactory) kullanır, gerçek çalıştırma mantığı BURADA
- * TEKRARLANMAZ.
+ * Unified cron admin: DB [MANUAL] and code [CODE] tasks in one table.
+ * CRUD applies to DB jobs only; Run Now works for both via CronCommandProcessFactory.
  */
 final class AACPCronController
 {
@@ -62,7 +48,7 @@ final class AACPCronController
     }
 
     #[Route('/aacp/cron', name: 'aacp_cron', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.cron', icon: 'heroicons:clock', panel: 'aacp', priority: 21, capability: 'system.cron.manage', group: 'aacp.group.system')]
+    #[CpAdminMenu(label: 'aacp.menu.cron', icon: 'heroicons:clock', panel: 'aacp', priority: 21, capability: 'system.cron.manage', parent: 'aacp_tools')]
     #[IsGranted('system.cron.manage')]
     public function index(): Response
     {
@@ -153,10 +139,7 @@ final class AACPCronController
     }
 
     /**
-     * AACP'den TEK bir işi anında, senkron olarak (dispatcher'ın "zamanı
-     * geldi mi?" kontrolünü ATLAYARAK) çalıştırır — kullanıcı "Şimdi
-     * Çalıştır" dediğinde beklemesi gerektiği süre, komutun kendisinin
-     * çalışma süresidir (ayrıca bkz. Process::setTimeout(300) sınırı).
+     * Runs one job synchronously from AACP, skipping the due-time check (300s process timeout).
      */
     #[Route('/aacp/cron/{id}/run', name: 'aacp_cron_run_now', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('system.cron.manage')]
@@ -186,16 +169,7 @@ final class AACPCronController
     }
 
     /**
-     * AACP "Cron Yönetimi" tablosundaki "Şimdi Çalıştır" AJAX butonunun tek
-     * uç noktası — HEM DB görevleri ("[MANUEL]") HEM DE kod tabanlı görevler
-     * ("[KOD]") buradan tetiklenir; $type ayrımı hangi kaynağın (id veya
-     * jobName) kullanılacağını belirler. Neon konsol çıktısı bu JSON
-     * yanıtın "output" alanından üretilir (bkz. cron/index.html.twig'deki
-     * fetch() çağrısı).
-     *
-     * runNow()'dan (edit sayfasındaki redirect tabanlı form) FARKLI olarak
-     * senkron çalışır ama sayfa yenilemesi YAPMAZ — tablo satırındaki
-     * "Son Çalıştırma" hücresini JS ile günceller.
+     * AJAX Run Now for DB and code tasks; updates last-run cell without page reload.
      */
     #[Route('/aacp/cron/run-now', name: 'aacp_cron_run_now_ajax', methods: ['POST'])]
     #[IsGranted('system.cron.manage')]

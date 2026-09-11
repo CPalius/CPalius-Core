@@ -27,7 +27,7 @@ final class ApiRegistrationPass implements CompilerPassInterface
     {
         $projectDir = (string) $container->getParameter('kernel.project_dir');
 
-        /** @var list<array{path: string, methods: list<string>, public: bool, serviceId: string, method: string}> $collected */
+        /** @var list<array{path: string, methods: list<string>, public: bool, capability: ?string, serviceId: string, method: string}> $collected */
         $collected = [];
         $seen = [];
         $serviceIds = [];
@@ -85,7 +85,7 @@ final class ApiRegistrationPass implements CompilerPassInterface
     }
 
     /**
-     * @return list<array{path: string, methods: list<string>, public: bool, serviceId: string, method: string}>
+     * @return list<array{path: string, methods: list<string>, public: bool, capability: ?string, serviceId: string, method: string}>
      */
     private function scanDirectory(string $dir, string $namespacePrefix, ContainerBuilder $container): array
     {
@@ -144,6 +144,7 @@ final class ApiRegistrationPass implements CompilerPassInterface
                         'path' => $normalizedPath,
                         'methods' => $normalizedMethods,
                         'public' => $api->public,
+                        'capability' => $api->capability,
                         'serviceId' => $className,
                         'method' => $method->getName(),
                     ];

@@ -1,0 +1,11 @@
+widget.test_message: "Widget module is speaking English."
+
+widget.settings.sidebar_enabled: "Show sidebar"
+widget.settings.sidebar_position: "Sidebar position"
+widget.settings.sidebar_title: "Sidebar title"
+widget.settings.max_items_per_widget: "Maximum items per widget"
+widget.settings.footer_enabled: "Show footer widget area"
+widget.settings.footer_columns: "Footer column count"
+widget.settings.footer_note: "Footer note"
+widget.settings.position.left: "Left"
+widget.settings.position.right: "Right"

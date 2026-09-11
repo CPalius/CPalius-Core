@@ -1,6 +1,5 @@
 {#
-    Not show — dar konteyner, prose gövde, code_snippet için terminal.
-    GÜVENLİK: code_snippet |raw ile basılmaz (auto-escape).
+    Note show — narrow container, prose body, terminal for code_snippet. SECURITY: code_snippet is never |raw (auto-escape).
 #}
 <section class="section post-show post-show--not" id="post-detail">
     <div class="container container-narrow">
@@ -27,5 +26,10 @@
                 {% endfor %}
             </div>
         {% endif %}
+
+        {% include '@Theme/blog/partials/comments.html.twig' with {
+            post: post,
+            commentContext: commentContext|default({enabled: false, canSubmit: false, threads: [], approvedCount: 0}),
+        } %}
     </div>
 </section>

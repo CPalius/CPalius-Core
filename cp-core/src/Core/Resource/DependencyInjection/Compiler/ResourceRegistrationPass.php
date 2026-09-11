@@ -15,33 +15,14 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Throwable;
 
 /**
- * ResourceRegistry'yi container derleme zamanında doldurur.
- *
- * #[CpResource] attribute'u taşıyan sınıfları bulmak için Doctrine'in
- * kendi metadata sürücüsünü değil, doğrudan dosya sistemi taramasını +
- * PHP Reflection'ı kullanır: bu sayede ResourceRegistry, Doctrine ORM'in
- * ManagerRegistry'sinden (runtime bağımlılığı) tamamen bağımsız, saf bir
- * derleme-zamanı çıktısı olarak kalır.
- *
- * Taranan konumlar:
- *   1) cp-core/src/Entity — çekirdek entity'ler ("core" modülü).
- *   2) Her modülün src/Entity dizini (varsa) — modül izolasyonu ile:
- *      bir modülün entity dosyası reflection sırasında hata verirse
- *      (syntax hatası, eksik bağımlılık vb.) sadece o modülün kaynakları
- *      kayıt olmaz, derleme durmaz (bkz. Kernel::build() ile aynı felsefe).
+ * Populates ResourceRegistry at compile time via filesystem scan + reflection (not Doctrine metadata).
+ * Scans cp-core/src/Entity and each module src/Entity; module isolation skips broken modules without aborting build.
  */
 final class ResourceRegistrationPass implements CompilerPassInterface
 {
     private const MODULE_NAMESPACE_PREFIX = 'Modules\\';
 
-    /**
-     * CapabilityRegistrationPass bu sabit servis ID'si üzerinden, bu pass
-     * tarafından derleme zamanında toplanan #[CpResource] tanımlarını
-     * (henüz ResourceRegistry'ye method-call olarak eklenmiş, ama runtime'da
-     * çözülmemiş ham veriyi) okuyup kendi capability listesini üretir.
-     * İki pass arasındaki tek bağ budur; birbirlerinin sınıflarına doğrudan
-     * bağımlı değildirler.
-     */
+    /** Container parameter read by CapabilityRegistrationPass for compile-time #[CpResource] definitions. */
     public const CONTAINER_PARAMETER = 'cpalius.resource_definitions';
 
     public function process(ContainerBuilder $container): void
@@ -70,8 +51,7 @@ final class ResourceRegistrationPass implements CompilerPassInterface
                     $collected[] = $resource;
                 }
             } catch (Throwable) {
-                // Modül izolasyonu: bir modülün entity dizini taranırken
-                // hata oluşursa sadece o modülün kaynakları kayıt olmaz.
+                // Module isolation: scan failure skips that module's resources only.
             }
         }
 
@@ -128,12 +108,7 @@ final class ResourceRegistrationPass implements CompilerPassInterface
                 $cpResourceAttributes = $reflection->getAttributes(CpResource::class);
                 [$publishable, $softDeletable, $auditableBehavior] = $this->detectBehaviors($reflection);
 
-                // #[CpResource] hiç yoksa, sadece bir davranış attribute'u
-                // (#[Publishable]/#[SoftDeletable]/#[Auditable]) taşıyan
-                // "platform kaynağı olmayan" bir entity söz konusu olabilir.
-                // Bu sınıf yine de ResourceRegistry'ye kaydedilir — ama
-                // capability/module/workflow gibi #[CpResource]'a özgü
-                // alanlar boş/varsayılan kalır (hiç yetenek üretilmez).
+                // Behavior-only entities without #[CpResource] still register with empty name/capabilities.
                 if ($cpResourceAttributes === [] && !$publishable && !$softDeletable && !$auditableBehavior) {
                     continue;
                 }
@@ -167,9 +142,7 @@ final class ResourceRegistrationPass implements CompilerPassInterface
                     ];
                 }
             } catch (Throwable) {
-                // Tek bir dosyanın reflection'ı başarısız olursa (namespace
-                // uyuşmazlığı, eksik parent class vb.) o dosya atlanır;
-                // tüm tarama iptal edilmez.
+                // Reflection failure on one file skips that file; scan continues.
                 continue;
             }
         }
@@ -178,11 +151,7 @@ final class ResourceRegistrationPass implements CompilerPassInterface
     }
 
     /**
-     * Bir entity sınıfının hangi kompozisyonel davranışları (#[Publishable],
-     * #[SoftDeletable], #[Auditable]) taşıdığını tespit eder. Bu üç
-     * attribute birbirinden BAĞIMSIZDIR — bir sınıf ikisini birden, birini
-     * veya hiçbirini taşıyabilir; #[CpResource] ile zorunlu bir ilişkisi
-     * yoktur.
+     * Detects #[Publishable], #[SoftDeletable], #[Auditable] on an entity (independent of #[CpResource]).
      *
      * @return array{0: bool, 1: bool, 2: bool} [publishable, softDeletable, auditable]
      */

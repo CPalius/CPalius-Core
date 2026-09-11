@@ -1,18 +1,9 @@
 {#
-    <twig:studio:card title="Yazılar">
-        ... içerik ...
-    </twig:studio:card>
+    <twig:studio:card title="Posts">...</twig:studio:card>
 
-    Studio (aydınlık tema) için <twig:cp:card>'ın açık renk karşılığı.
-    AACP'nin koyu paleti Studio'da kullanılmaz; bu iki bileşen bilinçli
-    olarak AYRI dosyalardır, aynı kaynağın "variant"ı değil — AACP zaten
-    "sıfır bağımlılık" ilkesiyle izole tutulur, Studio'nun tema
-    değişiklikleri o izolasyona hiç dokunmamalıdır.
+    Light-theme counterpart of twig:cp:card — separate files, not variants (AACP/Studio isolation).
 
-    Props:
-      title    (string|null)  Kart başlığı, verilmezse header gizlenir.
-      variant  (string)       'default' | 'danger' — uyarı/silme kartları için kırmızı vurgu.
-      padded   (bool)         İçerik alanına varsayılan padding uygulansın mı.
+    Props: title, variant ('default'|'danger'), padded
 #}
 {% props title = null, variant = 'default', padded = true %}
 

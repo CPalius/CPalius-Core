@@ -16,6 +16,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\UniqueConstraint(name: 'uniq_forum_presence_session', columns: ['session_hash'])]
 #[ORM\Index(columns: ['last_seen_at'], name: 'idx_forum_presence_seen')]
 #[ORM\Index(columns: ['user_id'], name: 'idx_forum_presence_user')]
+#[ORM\Index(columns: ['topic_id'], name: 'idx_forum_presence_topic')]
 class ForumPresence
 {
     #[ORM\Id]
@@ -29,6 +30,10 @@ class ForumPresence
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(name: 'user_id', referencedColumnName: 'id', nullable: true, onDelete: 'CASCADE')]
     private ?User $user = null;
+
+    #[ORM\ManyToOne(targetEntity: ForumTopic::class)]
+    #[ORM\JoinColumn(name: 'topic_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    private ?ForumTopic $topic = null;
 
     #[ORM\Column(name: 'last_seen_at', type: 'datetime_immutable')]
     private \DateTimeImmutable $lastSeenAt;
@@ -58,6 +63,16 @@ class ForumPresence
     public function setUser(?User $user): void
     {
         $this->user = $user;
+    }
+
+    public function getTopic(): ?ForumTopic
+    {
+        return $this->topic;
+    }
+
+    public function setTopic(?ForumTopic $topic): void
+    {
+        $this->topic = $topic;
     }
 
     public function getLastSeenAt(): \DateTimeImmutable

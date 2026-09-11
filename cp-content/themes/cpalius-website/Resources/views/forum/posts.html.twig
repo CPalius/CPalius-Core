@@ -48,6 +48,15 @@
         </div>
         <div class="forum-header__actions">
             <div class="forum-header__action-group">
+                {% if watchEnabled|default(false) and cp_user() %}
+                    <form method="post" action="{{ path('forum_topic_watch', {topicId: topic.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('forum_watch') }}">
+                        <button type="submit" class="btn btn-sm btn-outline forum-btn-compact">
+                            <i class="bi {{ watching|default(false) ? 'bi-bell-fill' : 'bi-bell' }}"></i>
+                            {{ watching|default(false) ? 'forum.watch.stop'|trans : 'forum.watch.start'|trans }}
+                        </button>
+                    </form>
+                {% endif %}
                 {% if canReply %}
                     <a href="#reply" class="btn btn-primary btn-sm forum-btn-compact"><i class="bi bi-reply"></i> {{ 'action.reply'|trans({}, 'forums') }}</a>
                 {% endif %}
@@ -70,15 +79,16 @@
                             </form>
                         {% endif %}
                         {% if canMove|default(canModerate) and moveTargets is defined and moveTargets is not empty %}
-                            <form method="post" action="{{ path('forum_moderate_topic', {topicId: topic.id}) }}" class="forum-tools__move">
+                            <form method="post" action="{{ path('forum_moderate_topic', {topicId: topic.id}) }}" class="forum-tools__move" data-move-form>
                                 <input type="hidden" name="_token" value="{{ csrf_token('forum_moderate') }}">
                                 <input type="hidden" name="action" value="move">
-                                <select name="target_section_id">
+                                <select name="target_section_id" data-move-target required>
+                                    <option value="">{{ 'forum.imod.choose_board'|trans }}</option>
                                     {% for target in moveTargets %}
                                         <option value="{{ target.id }}">{{ target.title }}</option>
                                     {% endfor %}
                                 </select>
-                                <button type="submit">{{ 'thread.move'|trans({}, 'forums') }}</button>
+                                <button type="submit" data-move-submit hidden>{{ 'thread.move'|trans({}, 'forums') }}</button>
                             </form>
                         {% endif %}
                         {% if canModerate %}
@@ -96,11 +106,20 @@
     </div>
 </div>
 
+{% if poll is defined and poll %}
+    {% include '@Theme/forum/partials/_poll.html.twig' %}
+{% endif %}
+
 <div class="forum-posts fade-in">
     {% for post in posts %}
         {% set postNum = (posts.currentPage - 1) * posts.perPage + loop.index %}
-        <article class="forum-post {{ postNum == 1 ? 'forum-post--op' : '' }}" id="post{{ post.id }}">
+        <article class="forum-post {{ postNum == 1 ? 'forum-post--op' : '' }} {{ canInlineMod|default(false) ? 'is-imod' : '' }}" id="post{{ post.id }}" data-post-id="{{ post.id }}">
             {% set authorStats = post.author ? postbitStats[post.author.id]|default(null) : null %}
+            {% if canInlineMod|default(false) %}
+                <label class="forum-post__imod" title="{{ 'forum.imod.pick_post'|trans }}">
+                    <input type="checkbox" form="forum-imod-form" name="post_ids[]" value="{{ post.id }}">
+                </label>
+            {% endif %}
 
             <aside class="forum-postbit">
                 <div class="forum-postbit__avatar">
@@ -176,11 +195,6 @@
                         <span class="forum-post__relative">{{ post.createdAt|forum_relative_time }}</span>
                     </div>
                     <div class="forum-post__toolbar forum-post__toolbar--meta">
-                        {% if canReply %}
-                            <label class="forum-multi-quote-check" title="{{ 'action.multi_quote'|trans({}, 'forums') }}">
-                                <input type="checkbox" data-multi-quote data-quote-post="{{ post.id }}" data-quote-author="{{ post.posterName }}" data-quote-body="{{ post.body|striptags|e('html_attr') }}">
-                            </label>
-                        {% endif %}
                         <button type="button" class="forum-tool-btn" data-share-post title="{{ 'action.share'|trans({}, 'forums') }}"><i class="bi bi-share"></i></button>
                         {% set viewer = cp_user() %}
                         {% set canEdit = cp_is_granted('forum.post.edit.any') or (cp_is_granted('forum.post.edit.own') and viewer and post.author and post.author.id == viewer.id) %}
@@ -204,7 +218,22 @@
                     </div>
                 </header>
 
-                <div class="forum-post__body">{{ post.body|raw }}</div>
+                <div class="forum-post__body">{{ post.body|forum_body }}</div>
+                {% if post.moderated %}<div class="forum-thread-notice forum-thread-notice--private">{{ 'notice.moderated'|trans({}, 'forums') }}</div>{% endif %}
+                {% set postAttachments = attachmentsByPost[post.id]|default([]) %}
+                {% if postAttachments is not empty %}
+                    <ul class="forum-attachments">
+                        {% for file in postAttachments %}
+                            <li>
+                                {% if file.image %}
+                                    <a class="forum-lightbox" href="{{ file.url }}"><img src="{{ file.url }}" alt="{{ file.originalName }}" class="forum-attachments__img"></a>
+                                {% else %}
+                                    <a href="{{ file.url }}" target="_blank" rel="noopener"><i class="bi bi-paperclip"></i> {{ file.originalName }}</a>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
 
                 {% if post.author and post.author.signature %}
                     <div class="forum-post__signature">{{ post.author.signature }}</div>
@@ -235,13 +264,20 @@
             <span><i class="bi bi-reply-fill"></i> {{ 'action.reply'|trans({}, 'forums') }}</span>
             <button type="button" class="btn btn-sm btn-outline forum-multi-quote-btn" data-multi-quote-apply hidden>{{ 'action.multi_quote_apply'|trans({}, 'forums') }}</button>
         </div>
-        <form action="{{ path('forum_reply', {topicId: topic.id}) }}" method="post" id="forum-reply-form" data-forum-reply-form>
+        <form action="{{ path('forum_reply', {topicId: topic.id}) }}" method="post" id="forum-reply-form" data-forum-reply-form enctype="multipart/form-data" data-forum-draft data-draft-topic="{{ topic.id }}" data-draft-token="{{ csrf_token('forum_draft') }}" data-draft-url="{{ path('forum_draft_save') }}">
             <div class="forum-field forum-field--reply">
-                <textarea name="body" id="forum-reply-body" data-forum-editor required placeholder="{{ 'forum.reply.placeholder'|trans }}"></textarea>
+                <textarea name="body" id="forum-reply-body" data-forum-editor required placeholder="{{ 'forum.reply.placeholder'|trans }}">{{ replyDraft ? replyDraft.body : '' }}</textarea>
             </div>
+            {% if attachmentsEnabled|default(false) %}
+                <div class="forum-field">
+                    <label>{{ 'forum.attach.label'|trans }}</label>
+                    <input type="file" name="attachments[]" multiple>
+                </div>
+            {% endif %}
             <div class="forum-form__actions">
                 <input type="hidden" name="_token" value="{{ csrf_token('forum_reply') }}">
                 <button type="submit" class="btn btn-primary btn-sm">{{ 'forum.action.send'|trans }}</button>
+                {% if draftsEnabled|default(false) %}<span class="forum-draft-status" data-draft-status hidden>{{ 'forum.draft.saved'|trans }}</span>{% endif %}
             </div>
         </form>
     </div>
@@ -283,4 +319,7 @@
         </form>
     </dialog>
 {% endif %}
+
+{% include '@Theme/forum/partials/_thread_engagement.html.twig' %}
+{% include '@Theme/forum/partials/_inline_mod.html.twig' with { imodScope: 'posts' } %}
 {% endblock %}

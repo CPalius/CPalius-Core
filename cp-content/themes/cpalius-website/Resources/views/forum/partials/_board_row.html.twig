@@ -1,6 +1,5 @@
 {#
-    CPalius Forum Engine — node/forum satırı (profesyonel board listesi).
-    Beklenen: board (ForumSection), lastVisitAt (optional)
+    CPalius Forum Engine board row. Expects: board (ForumSection), lastVisitAt (optional).
 #}
 {% set boardHref = board.linkNode and board.linkUrl ? board.linkUrl : path('forum_section', {sectionSlug: board.slug}) %}
 {% set isUnread = lastVisitAt is defined and lastVisitAt and board.lastPostAt and board.lastPostAt > lastVisitAt %}

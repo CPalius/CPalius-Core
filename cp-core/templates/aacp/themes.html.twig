@@ -17,10 +17,38 @@
         {% if activated %}
             <div class="toast toast-success">{{ 'aacp.themes.activated'|trans }}</div>
         {% endif %}
+        {% if uploaded|default(false) %}
+            <div class="toast toast-success">{{ 'aacp.themes.uploaded'|trans }}</div>
+        {% endif %}
 
         {% if error %}
             <div class="toast toast-error">{{ error }}</div>
         {% endif %}
+        {% if problems|default([]) is not empty %}
+            <div class="toast toast-error">
+                <ul class="list-disc ps-5 text-fs-sm">
+                    {% for problem in problems %}
+                        <li>{{ problem }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <twig:cp:card title="{{ 'aacp.themes.upload.header'|trans }}">
+            <p class="mb-sp-sm text-fs-sm text-slate-400">{{ 'aacp.themes.upload.help'|trans }}</p>
+            <form method="post" action="{{ path('aacp_theme_upload') }}" enctype="multipart/form-data" class="flex flex-col gap-3 md:flex-row md:items-end">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <div class="flex-1">
+                    <label class="form-label !text-slate-300">{{ 'aacp.themes.upload.file'|trans }}</label>
+                    <input type="file" name="package" accept=".zip,application/zip" required class="form-control">
+                </div>
+                <label class="flex items-center gap-2 text-fs-sm text-slate-300">
+                    <input type="checkbox" name="overwrite" value="1" class="form-check-input h-4 w-4">
+                    {{ 'aacp.themes.upload.overwrite'|trans }}
+                </label>
+                <button type="submit" class="btn btn-sm btn-primary">{{ 'aacp.themes.upload.submit'|trans }}</button>
+            </form>
+        </twig:cp:card>
 
         <div class="rounded-lg border border-primary-500/40 bg-primary-500/5 px-3 py-2 text-fs-sm !text-primary-300">
             {{ 'aacp.themes.rebuild_hint'|trans }}

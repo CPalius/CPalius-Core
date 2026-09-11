@@ -12,22 +12,8 @@ use Doctrine\ORM\Event\PostUpdateEventArgs;
 use Doctrine\ORM\Events;
 
 /**
- * CPalius Manifesto 3.3 (High-Performance Querying) senkronizasyon motoru.
- *
- * Bir Node persist/update edildiğinde, QueryableFieldsRegistry'nin o
- * content type için tanımladığı alanları Node::data JSON'undan okuyup
- * NodeFieldIndex tablosuna "düz" (flat) kolonlar halinde yazar. Böylece
- * ağır JSON içi filtreleme yerine standart, indekslenebilir SQL WHERE
- * koşullarıyla sorgu atılabilir (bkz. NodeRepository::findByIndexedField).
- *
- * postPersist/postUpdate NEDEN kullanılıyor (prePersist/preUpdate DEĞİL):
- * NodeFieldIndex satırları Node->id'ye (join column) bağımlıdır; ID,
- * INSERT tamamlanana kadar (postPersist) atanmaz. Bu da demektir ki
- * UnitOfWork o Node için zaten commit edilmiştir — yeni persist/remove
- * çağrıları bu flush'a "yakalanamaz", bu yüzden idempotent senkronizasyon
- * kendi flush()'unu tetikler. computeChangeSet ile SADECE NodeFieldIndex
- * değişiklikleri hesaplanır; sonsuz postPersist/postUpdate döngüsüne
- * girilmez çünkü Node tekrar değiştirilmiyor.
+ * Syncs QueryableFieldsRegistry fields from Node::data JSON into flat NodeFieldIndex rows for indexed SQL queries.
+ * Uses postPersist/postUpdate because NodeFieldIndex rows need the Node id assigned after insert.
  */
 #[AsDoctrineListener(event: Events::postPersist)]
 #[AsDoctrineListener(event: Events::postUpdate)]
@@ -72,7 +58,7 @@ final class NodeIndexListener
             $indexRow = $existingByField[$fieldName] ?? null;
 
             if ($rawValue === null) {
-                // Alan JSON'da artık yoksa/null ise eski endeksi temizle.
+                // Remove stale index row when the field is null or absent from JSON.
                 if ($indexRow !== null) {
                     $em->remove($indexRow);
                     unset($existingByField[$fieldName]);
@@ -92,8 +78,7 @@ final class NodeIndexListener
             $touched = true;
         }
 
-        // Registry'de artık tanımlı olmayan (ör. content type değişti)
-        // eski endeks satırlarını temizle — idempotentlik için.
+        // Drop index rows for fields no longer defined for this content type.
         foreach ($existingByField as $fieldName => $indexRow) {
             if (!\array_key_exists($fieldName, $fields)) {
                 $em->remove($indexRow);
@@ -105,8 +90,7 @@ final class NodeIndexListener
             return;
         }
 
-        // Bu Node için zaten commit edilmiş olan UnitOfWork'ü tekrar
-        // tetiklemeden, SADECE NodeFieldIndex değişikliklerini flush eder.
+        // Flush only NodeFieldIndex changes without re-triggering the committed Node UnitOfWork.
         $em->flush();
     }
 

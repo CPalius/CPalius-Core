@@ -1,12 +1,7 @@
 {#
-    <twig:cp:card title="Sistem Sağlığı">
-        ... içerik ...
-    </twig:cp:card>
+    <twig:cp:card title="System Health">...</twig:cp:card>
 
-    Props:
-      title    (string|null)  Kart başlığı, verilmezse header gizlenir.
-      variant  (string)       'default' | 'danger' — karantina/uyarı kartları için kırmızı vurgu.
-      padded   (bool)         İçerik alanına varsayılan padding uygulansın mı.
+    Props: title, variant ('default'|'danger'), padded
 #}
 {% props title = null, variant = 'default', padded = true %}
 

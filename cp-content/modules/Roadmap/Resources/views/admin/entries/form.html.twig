@@ -8,10 +8,20 @@
 {% endblock %}
 
 {% block body %}
+    <twig:studio:translation_tabs
+        tabs="{{ translationTabs }}"
+        editRoute="admin_roadmap_edit"
+        createRoute="admin_roadmap_create"
+        sourceId="{{ tabsSourceId }}" />
+
     <form method="post"
           action="{{ entry ? path('admin_roadmap_edit', {id: entry.id}) : path('admin_roadmap_create') }}"
           class="flex flex-col gap-sp-md lg:flex-row lg:items-start">
         <input type="hidden" name="_token" value="{{ csrf_token('admin_roadmap_form') }}">
+        <input type="hidden" name="locale" value="{{ locale }}">
+        {% if sourceId is not null %}
+            <input type="hidden" name="translation_of" value="{{ sourceId }}">
+        {% endif %}
 
         <div class="min-w-0 space-y-sp-md lg:w-[75%]">
             <twig:studio:card title="{{ 'studio.roadmap.form.section_content'|trans }}">
@@ -47,7 +57,7 @@
                         <div>
                             <label for="slug" class="form-label">{{ 'studio.roadmap.form.slug'|trans }}</label>
                             <div class="flex items-center gap-2">
-                                <span class="text-fs-sm text-neutral-500">/tr/roadmap/</span>
+                                <span class="text-fs-sm text-neutral-500">/{{ locale }}/roadmap/</span>
                                 <input type="text" id="slug" name="slug" value="{{ formValues.slug }}" class="form-control" placeholder="auto">
                             </div>
                         </div>
@@ -63,6 +73,18 @@
         <div class="min-w-0 space-y-sp-md lg:w-[25%]">
             <twig:studio:card title="{{ 'studio.roadmap.form.section_publish'|trans }}">
                 <div class="space-y-sp-sm">
+                    <div>
+                        <span class="form-label">{{ 'cp.form.locale'|trans }}</span>
+                        <p class="text-fs-sm font-medium text-neutral-900">
+                            <code>{{ locale }}</code>
+                            {% if sourceId is not null and not entry %}
+                                <span class="ms-1 text-fs-xs font-normal text-primary-600">
+                                    {{ 'cp.form.locale_translation_of'|trans }}
+                                </span>
+                            {% endif %}
+                        </p>
+                        <p class="mt-1 text-fs-xs text-neutral-500">{{ 'cp.form.locale_hint'|trans }}</p>
+                    </div>
                     <div>
                         <label for="kind" class="form-label">{{ 'studio.roadmap.form.kind'|trans }}</label>
                         <select id="kind" name="kind" class="form-select">
@@ -102,7 +124,7 @@
                 <button type="submit" class="btn btn-primary">
                     {{ entry ? 'aacp.users.form.submit_edit'|trans : 'studio.roadmap.form.submit_create'|trans }}
                 </button>
-                <a href="{{ path('admin_roadmap_index') }}" class="text-fs-sm font-medium text-neutral-500 hover:text-neutral-900">{{ 'aacp.users.form.cancel'|trans }}</a>
+                <a href="{{ path('admin_roadmap_index', {locale: locale}) }}" class="text-fs-sm font-medium text-neutral-500 hover:text-neutral-900">{{ 'aacp.users.form.cancel'|trans }}</a>
             </div>
         </div>
     </form>

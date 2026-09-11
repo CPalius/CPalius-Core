@@ -6,6 +6,7 @@ namespace Modules\Forum\Repository;
 
 use App\Entity\User;
 use Modules\Forum\Entity\ForumPresence;
+use Modules\Forum\Entity\ForumTopic;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -50,6 +51,24 @@ final class ForumPresenceRepository extends ServiceEntityRepository
             ->setParameter('since', $since)
             ->getQuery()
             ->getSingleScalarResult();
+    }
+
+    /**
+     * Presence rows currently on this thread (members + guests).
+     *
+     * @return list<ForumPresence>
+     */
+    public function findActiveOnTopic(ForumTopic $topic, \DateTimeImmutable $since): array
+    {
+        return $this->createQueryBuilder('p')
+            ->leftJoin('p.user', 'u')->addSelect('u')
+            ->andWhere('p.topic = :topic')
+            ->andWhere('p.lastSeenAt >= :since')
+            ->setParameter('topic', $topic)
+            ->setParameter('since', $since)
+            ->orderBy('p.lastSeenAt', 'DESC')
+            ->getQuery()
+            ->getResult();
     }
 
     public function purgeStale(\DateTimeImmutable $before): int

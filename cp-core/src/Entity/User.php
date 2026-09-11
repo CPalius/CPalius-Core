@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use App\Core\Entity\Attribute\CpEntityType;
+use App\Core\Entity\FieldableInterface;
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -16,7 +18,8 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\UniqueConstraint(name: 'uniq_user_email', columns: ['email'])]
 #[ORM\UniqueConstraint(name: 'uniq_user_username', columns: ['username'])]
 #[ORM\Index(columns: ['status'], name: 'idx_user_status')]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+#[CpEntityType(id: 'user', label: 'entity.type.user')]
+class User implements UserInterface, PasswordAuthenticatedUserInterface, FieldableInterface
 {
     public const STATUS_ACTIVE = 'active';
     public const STATUS_INACTIVE = 'inactive';
@@ -226,6 +229,44 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
+     * FieldableInterface: users are a single-bundle entity type. Custom fields
+     * defined for the "user" bundle share the $data bag with profile keys.
+     */
+    public function fieldableEntityTypeId(): string
+    {
+        return 'user';
+    }
+
+    public function fieldableBundle(): string
+    {
+        return 'user';
+    }
+
+    /**
+     * Users are not localized; "und" (ISO 639-2 undetermined) is the field context.
+     */
+    public function fieldableLocale(): string
+    {
+        return 'und';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getFieldableData(): array
+    {
+        return $this->data;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function setFieldableData(array $data): void
+    {
+        $this->data = $data;
+    }
+
+    /**
      * Name fields live in $data JSON (hybrid model, no Asset FK).
      */
     public function getFirstName(): string
@@ -253,6 +294,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $fullName = trim($this->getFirstName().' '.$this->getLastName());
 
         return $fullName !== '' ? $fullName : $this->email;
+    }
+
+    /**
+     * Public-facing identity: username, then first+last name. Never email.
+     */
+    public function getPublicDisplayName(): string
+    {
+        $username = trim((string) ($this->username ?? ''));
+        if ($username !== '') {
+            return $username;
+        }
+
+        return trim($this->getFirstName().' '.$this->getLastName());
     }
 
     public function getBio(): string

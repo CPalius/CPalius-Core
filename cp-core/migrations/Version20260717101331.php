@@ -8,19 +8,13 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * cp_performance_backend_status tablosunu oluşturur ve 4 önbellek
- * backend'i (redis/memcached/varnish/pagespeed) için varsayılan (devre
- * dışı, test edilmemiş) satırları seed eder — bkz. App\Entity\
- * PerformanceBackendStatus. Tüm satırların baştan var olması,
- * PerformanceBackendStatusRepository::findOneByBackendId()'nin migrate
- * edilmiş her sistemde null yerine her zaman bir satır dönebileceğini
- * garanti eder.
+ * Creates cp_performance_backend_status and seeds default rows for four cache backends (disabled, untested).
  */
 final class Version20260717101331 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return "cp_performance_backend_status tablosunu oluşturur ve 4 önbellek backend'i için varsayılan (devre dışı, test edilmemiş) satırları seed eder.";
+        return 'Creates the cp_performance_backend_status table and seeds default rows (disabled, untested) for four cache backends.';
     }
 
     public function up(Schema $schema): void

@@ -1,0 +1,78 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% macro cell(entity, col) %}
+    {%- set v = attribute(entity, col.property) -%}
+    {%- if col.type == 'reference' -%}
+        {%- if v is null -%}—{%- elseif v.name is defined -%}{{ v.name }}{%- elseif v.title is defined -%}{{ v.title }}{%- elseif v.email is defined -%}{{ v.email }}{%- else -%}#{{ v.id ?? '?' }}{%- endif -%}
+    {%- elseif col.type == 'boolean' -%}
+        {{ v ? 'field.value.yes'|trans : 'field.value.no'|trans }}
+    {%- elseif v is null -%}—
+    {%- elseif v.format is defined -%}{{ v.format('d.m.Y H:i') }}
+    {#-
+        Kısaltma bilinçli olarak yerel Twig ile yapılıyor. Önceki sürüm
+        "|u.truncate()" kullanıyordu; "u" filtresi twig/string-extra
+        paketinden gelir ve bu projede kurulu DEĞİL — şablon lint'te hata
+        veriyor, çalışma zamanında da her #[CpResource] liste sayfasını
+        kırıyordu. slice + length aynı işi ek bağımlılık olmadan görür.
+    -#}
+    {%- else -%}{% set s = v|default('')|trim %}{{ s|slice(0, 80) }}{{ s|length > 80 ? '…' : '' }}
+    {%- endif -%}
+{% endmacro %}
+
+{% block header %}{{ definition.name }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        {% if app.request.query.get('deleted') %}<div class="toast toast-success">{{ 'aacp.resources.deleted'|trans }}</div>{% endif %}
+
+        <div class="flex items-center justify-between gap-3">
+            <form method="get" class="flex items-center gap-2">
+                <input type="text" name="q" value="{{ q }}" placeholder="{{ 'aacp.resources.search'|trans }}"
+                       class="form-control !border-white/10 !bg-dark-1 !text-slate-100 w-64">
+                {% if sort %}<input type="hidden" name="sort" value="{{ sort }}"><input type="hidden" name="dir" value="{{ dir|lower }}">{% endif %}
+                <button type="submit" class="btn btn-secondary text-fs-xs">{{ 'aacp.resources.go'|trans }}</button>
+            </form>
+            <div class="flex items-center gap-3">
+                <a href="{{ path('aacp_resources') }}" class="text-fs-sm !text-slate-400 hover:!text-slate-200">{{ 'aacp.resources.all'|trans }}</a>
+                {% if canCreate %}<a href="{{ path('aacp_resource_new', {name: definition.name}) }}" class="btn btn-primary">{{ 'aacp.resources.new'|trans }}</a>{% endif %}
+            </div>
+        </div>
+
+        <twig:cp:card title="{{ 'aacp.resources.rows'|trans({'count': result.totalItems}) }}" padded="{{ false }}">
+            <twig:cp:table headers="{{ columns|map(c => c.label)|merge(['']) }}" empty="{{ result.isEmpty }}" emptyText="{{ 'aacp.resources.no_rows'|trans }}">
+                <twig:block name="rows">
+                    {% for entity in result.items %}
+                        <tr>
+                            {% for col in columns %}
+                                <td class="text-fs-xs !text-slate-300">
+                                    {% if loop.first and canEdit %}
+                                        <a href="{{ path('aacp_resource_show', {name: definition.name, id: entity.id}) }}" class="!text-slate-200 hover:text-primary-400">{{ _self.cell(entity, col) }}</a>
+                                    {% else %}{{ _self.cell(entity, col) }}{% endif %}
+                                </td>
+                            {% endfor %}
+                            <td class="text-right">
+                                <div class="flex items-center justify-end gap-3">
+                                    {% if canEdit %}<a href="{{ path('aacp_resource_show', {name: definition.name, id: entity.id}) }}" class="text-fs-xs font-medium !text-slate-400 hover:!text-slate-200">{{ 'aacp.users.edit_action'|trans }}</a>{% endif %}
+                                    {% if canDelete %}
+                                        <form method="post" action="{{ path('aacp_resource_delete', {name: definition.name, id: entity.id}) }}" onsubmit="return confirm({{ 'aacp.resources.delete_confirm'|trans|json_encode|raw }});">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('resource_' ~ definition.name) }}">
+                                            <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">{{ 'aacp.fields.form.delete'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+
+        {% if result.totalPages > 1 %}
+            <div class="flex items-center justify-center gap-2 text-fs-sm">
+                {% if result.hasPreviousPage %}<a href="?q={{ q }}&page={{ result.currentPage - 1 }}" class="!text-slate-400 hover:!text-slate-200">&larr;</a>{% endif %}
+                <span class="!text-slate-500">{{ result.currentPage }} / {{ result.totalPages }}</span>
+                {% if result.hasNextPage %}<a href="?q={{ q }}&page={{ result.currentPage + 1 }}" class="!text-slate-400 hover:!text-slate-200">&rarr;</a>{% endif %}
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

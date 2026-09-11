@@ -1,0 +1,199 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ page ? 'pages.form.header_edit'|trans : 'pages.form.header_create'|trans }}{% endblock %}
+
+{% block javascripts %}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'admin-page-form', 'media-picker', 'cp-editor-init']) }}
+{% endblock %}
+
+{% block body %}
+    <div id="page-form-container"
+         data-page-form-root
+         data-current-url="{{ page ? path('admin_pages_edit', {id: page.id}) : path('admin_pages_create', {translation_group: translationGroupId, locale: currentLocale}) }}"
+         data-field-groups="{{ fieldGroups|default([])|json_encode|e('html_attr') }}"
+         data-field-types="{{ fieldTypeChoices|default({})|json_encode|e('html_attr') }}"
+         data-acf-i18n="{{ {
+            active: 'pages.acf.active'|trans,
+            pick_image: 'pages.form.select_image'|trans,
+            asset_id: 'pages.acf.asset_id'|trans,
+            label: 'pages.acf.label'|trans,
+            key: 'pages.acf.key'|trans,
+            required: 'pages.acf.required'|trans,
+            choices: 'pages.acf.choices'|trans,
+            value: 'pages.acf.value'|trans,
+            gallery_placeholder: 'pages.acf.gallery_placeholder'|trans,
+         }|json_encode|e('html_attr') }}">
+    {% if activeLocales|default([])|length > 1 %}
+        <div class="mb-sp-md flex flex-wrap items-center gap-2" data-page-translation-tabs>
+            {% for locale in activeLocales %}
+                {% set translation = translations[locale.code] ?? null %}
+                {% if locale.code == currentLocale %}
+                    <span class="badge badge-primary">{{ locale.nativeName }}</span>
+                {% elseif translation %}
+                    <a href="{{ path('admin_pages_edit', {id: translation.id}) }}" data-page-translation-link class="badge badge-success hover:opacity-80">
+                        {{ locale.nativeName }}
+                    </a>
+                {% elseif page and translationGroupId %}
+                    <a href="{{ path('admin_pages_create', {translation_group: translationGroupId, locale: locale.code}) }}" data-page-translation-link class="badge badge-neutral hover:opacity-80">
+                        + {{ locale.nativeName }}
+                    </a>
+                {% elseif page %}
+                    <form method="post" action="{{ path('admin_pages_assign_translation_group', {id: page.id}) }}" class="inline" data-page-translation-assign-form>
+                        <input type="hidden" name="_token" value="{{ csrf_token('admin_page_form') }}">
+                        <button type="submit" class="badge badge-neutral hover:opacity-80">
+                            + {{ locale.nativeName }}
+                        </button>
+                    </form>
+                {% else %}
+                    <button type="button" data-page-translation-locked class="badge badge-neutral opacity-60 cursor-not-allowed" title="{{ 'pages.form.translation_locked_hint'|trans }}">
+                        + {{ locale.nativeName }}
+                    </button>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {{ form_start(form, {
+        action: page ? path('admin_pages_edit', {id: page.id}) : path('admin_pages_create', {translation_group: translationGroupId, locale: currentLocale}),
+        attr: {'data-page-form': ''},
+    }) }}
+    <div class="flex flex-col gap-sp-md lg:flex-row lg:items-start">
+        <div class="min-w-0 space-y-sp-md lg:w-[75%]">
+
+            <twig:studio:card title="{{ 'pages.form.section_content'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.title) }}
+                    {{ form_row(form.excerpt) }}
+                    {{ form_row(form.body) }}
+                </div>
+            </twig:studio:card>
+
+            <twig:studio:card title="{{ 'pages.form.section_acf'|trans }}">
+                <p class="mb-sp-sm text-fs-xs text-neutral-500">{{ 'pages.form.acf_hint'|trans }}</p>
+
+                {% if fieldGroups|default([]) is not empty or presets|default([]) is not empty %}
+                    <div class="mb-sp-sm flex flex-wrap items-end gap-2">
+                        {% if fieldGroups|default([]) is not empty %}
+                            <div class="min-w-[12rem] flex-1">
+                                <label class="form-label">{{ 'pages.form.apply_group'|trans }}</label>
+                                <select data-page-acf-group class="form-control">
+                                    <option value="">{{ 'pages.form.apply_group_placeholder'|trans }}</option>
+                                    {% for group in fieldGroups %}
+                                        <option value="{{ group.id }}" data-fields="{{ group.fields|json_encode|e('html_attr') }}">{{ group.title }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-neutral" data-page-acf-apply-group>
+                                {{ 'pages.form.apply_group_action'|trans }}
+                            </button>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                <div data-page-acf-list class="space-y-sp-sm"></div>
+
+                <div class="mt-sp-sm flex flex-wrap gap-2">
+                    <select data-page-acf-new-type class="form-control w-auto min-w-[10rem]">
+                        {% for labelKey, type in fieldTypeChoices %}
+                            <option value="{{ type }}">{{ labelKey|trans }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="btn btn-sm btn-primary" data-page-acf-add>
+                        {{ 'pages.form.add_field'|trans }}
+                    </button>
+                </div>
+
+                {{ form_widget(form.customFieldsJson) }}
+                {{ form_widget(form.fieldGroupId) }}
+            </twig:studio:card>
+
+            <twig:studio:card title="{{ 'pages.form.section_code'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.customCss) }}
+                    {{ form_row(form.customJs) }}
+                    <p class="text-fs-xs text-neutral-500">{{ 'pages.form.code_hint'|trans }}</p>
+                </div>
+            </twig:studio:card>
+
+            <twig:studio:card padded="{{ false }}">
+                <details class="group">
+                    <summary class="flex cursor-pointer list-none items-center justify-between px-sp-sm py-3 text-fs-sm font-semibold text-neutral-900">
+                        {{ 'pages.form.section_seo'|trans }}
+                        <span class="text-fs-xs text-neutral-500 transition group-open:rotate-180">▾</span>
+                    </summary>
+
+                    <div class="space-y-sp-sm border-t border-neutral-200 px-sp-sm py-sp-sm">
+                        <div>
+                            <label for="{{ form.slug.vars.id }}" class="form-label">{{ 'pages.form.field.slug'|trans }}</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-fs-sm text-neutral-500">/{{ currentLocale|default('tr') }}/</span>
+                                {{ form_widget(form.slug) }}
+                            </div>
+                            <p class="mt-1 text-fs-xs text-neutral-500">{{ 'pages.form.slug_hint'|trans }}</p>
+                            {{ form_errors(form.slug) }}
+                        </div>
+
+                        <div>
+                            {{ form_label(form.seoMetaDescription) }}
+                            {{ form_widget(form.seoMetaDescription) }}
+                            <p class="mt-1 text-fs-xs text-neutral-500">{{ 'pages.form.seo_char_count'|trans({count: form.vars.value.seoMetaDescription|default('')|length}) }}</p>
+                            {{ form_errors(form.seoMetaDescription) }}
+                        </div>
+
+                        {{ form_row(form.seoFocusKeyword) }}
+                        {{ form_row(form.seoCanonicalUrl) }}
+                        {{ form_row(form.seoNoindex) }}
+
+                        <p class="border-t border-neutral-200 pt-sp-xs text-fs-xs text-neutral-500">
+                            {{ 'pages.form.schema_notice'|trans }}
+                        </p>
+                    </div>
+                </details>
+            </twig:studio:card>
+        </div>
+
+        <div class="min-w-0 space-y-sp-md lg:w-[25%]">
+            <twig:studio:card title="{{ 'pages.form.section_publish'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.template) }}
+                    {{ form_row(form.status) }}
+                    {{ form_row(form.publishedAt) }}
+                    {{ form_row(form.isFeatured) }}
+
+                    {% if page %}
+                        <div class="border-t border-neutral-200 pt-sp-sm">
+                            <twig:studio:badge status="{{ page.status }}" />
+                        </div>
+                    {% endif %}
+
+                    <div class="flex items-center gap-3 border-t border-neutral-200 pt-sp-sm">
+                        <button type="submit" class="btn btn-primary w-full">
+                            {{ page ? 'aacp.users.form.submit_edit'|trans : 'pages.form.submit_create'|trans }}
+                        </button>
+                    </div>
+                    <a href="{{ path('admin_pages_index') }}" class="block text-center text-fs-sm font-medium text-neutral-500 hover:text-neutral-900">
+                        {{ 'aacp.users.form.cancel'|trans }}
+                    </a>
+                </div>
+            </twig:studio:card>
+
+            <twig:studio:card title="{{ 'pages.form.section_featured_image'|trans }}">
+                <div data-featured-image-preview class="mb-sp-xs">
+                    {% if featuredImageUrl %}
+                        <img src="{{ featuredImageUrl }}" class="max-h-40 rounded-lg">
+                    {% endif %}
+                </div>
+                {{ form_widget(form.featuredImageAssetId, {attr: {'data-target-input': 'featured_image_asset_id'}}) }}
+                <button type="button"
+                        data-media-picker-trigger
+                        data-target-input="featured_image_asset_id"
+                        data-target-preview="featured-image-preview"
+                        class="btn btn-sm btn-neutral w-full">
+                    {{ 'pages.form.select_image'|trans }}
+                </button>
+            </twig:studio:card>
+        </div>
+    </div>
+    {{ form_end(form) }}
+    </div>
+{% endblock %}

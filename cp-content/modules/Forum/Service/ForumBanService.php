@@ -67,7 +67,7 @@ final class ForumBanService
         }
 
         foreach ($this->banRepository->findActiveForUserIds($userIds) as $ban) {
-            $userId = $ban->getUser()->getId();
+            $userId = $ban->getUser()?->getId();
             if ($userId === null || !isset($map[$userId])) {
                 continue;
             }
@@ -85,11 +85,53 @@ final class ForumBanService
 
     public function ban(User $user, int $type, string $reason, ?User $moderator, ?\DateTimeImmutable $expiresAt): ForumBan
     {
-        $ban = new ForumBan($user, $type, $reason, $moderator, $expiresAt);
+        return $this->banTarget($user, $type, $reason, $moderator, $expiresAt);
+    }
+
+    public function banTarget(
+        ?User $user,
+        int $type,
+        string $reason,
+        ?User $moderator,
+        ?\DateTimeImmutable $expiresAt,
+        ?string $ipAddress = null,
+        ?string $email = null,
+    ): ForumBan {
+        $ban = new ForumBan($user, $type, $reason, $moderator, $expiresAt, $ipAddress, $email);
         $this->entityManager->persist($ban);
         $this->entityManager->flush();
 
         return $ban;
+    }
+
+    public function activeBanForIp(?string $ip): ?ForumBan
+    {
+        if ($ip === null || $ip === '') {
+            return null;
+        }
+
+        foreach ($this->banRepository->findActiveForIp($ip) as $ban) {
+            if ($ban->isBan()) {
+                return $ban;
+            }
+        }
+
+        return null;
+    }
+
+    public function activeBanForEmail(?string $email): ?ForumBan
+    {
+        if ($email === null || $email === '') {
+            return null;
+        }
+
+        foreach ($this->banRepository->findActiveForEmail($email) as $ban) {
+            if ($ban->isBan()) {
+                return $ban;
+            }
+        }
+
+        return null;
     }
 
     public function revoke(ForumBan $ban): void

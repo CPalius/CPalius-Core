@@ -7,6 +7,8 @@ namespace Modules\Roadmap\Controller\Admin;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Content\RichTextSanitizer;
 use App\Core\Localization\LocaleProvider;
+use App\Core\Localization\TranslationGroupResolver;
+use App\Core\OriginCache\OriginCachePurger;
 use Modules\Roadmap\Entity\RoadmapEntry;
 use Modules\Roadmap\Repository\RoadmapEntryRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -21,30 +23,23 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Studio CRUD for roadmap entries. $body is the only |raw field — sanitize before persist (Law 5.3).
- * $summary stays plain text (auto-escaped); sanitizing it would mangle legitimate "<" characters.
+ * Studio CRUD for roadmap entries. Locale is fixed after create; translations
+ * link via translation_group_id (Blog category pattern).
+ * $body is the only |raw field — sanitize before persist (Law 5.3).
  */
 #[Route('/admin/roadmap', name: 'admin_roadmap_')]
 #[IsGranted('roadmap.manage')]
 final class RoadmapEntryAdminController extends AbstractController
 {
-
-
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly RoadmapEntryRepository $entryRepository,
         private readonly TranslatorInterface $translator,
         private readonly LocaleProvider $localeProvider,
+        private readonly TranslationGroupResolver $translationGroupResolver,
         private readonly RichTextSanitizer $richTextSanitizer,
+        private readonly OriginCachePurger $originCachePurger,
     ) {
-    }
-
-    /**
-     * Entries are single-locale; use the active default from LocaleProvider.
-     */
-    private function defaultLocale(): string
-    {
-        return $this->localeProvider->getDefaultCode();
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -54,16 +49,17 @@ final class RoadmapEntryAdminController extends AbstractController
         panel: 'studio',
         priority: 24,
         capability: 'roadmap.manage',
-        group: 'İçerik',
+        group: 'studio.group.content',
     )]
     public function index(Request $request): Response
     {
+        $locale = $this->resolveLocale($request->query->get('locale'));
         $status = $request->query->getString('status');
         $kind = $request->query->getString('kind');
 
         return $this->render('@RoadmapModule/admin/entries/index.html.twig', [
             'entries' => $this->entryRepository->findAdminList(
-                $this->defaultLocale(),
+                $locale,
                 $status !== '' ? $status : null,
                 $kind !== '' ? $kind : null,
             ),
@@ -71,12 +67,18 @@ final class RoadmapEntryAdminController extends AbstractController
             'kindFilter' => $kind,
             'statuses' => RoadmapEntry::STATUSES,
             'kinds' => RoadmapEntry::KINDS,
+            'locales' => $this->localeProvider->getLocales(),
+            'currentLocale' => $locale,
         ]);
     }
 
     #[Route('/create', name: 'create', methods: ['GET', 'POST'])]
     public function create(Request $request): Response
     {
+        $bag = $request->isMethod('POST') ? $request->request : $request->query;
+        $locale = $this->resolveLocale($bag->get('locale'));
+        $source = $this->findTranslationSource($bag->get('translation_of'));
+
         if ($request->isMethod('POST')) {
             $this->assertValidCsrf($request);
             $values = $this->readFormValues($request);
@@ -87,50 +89,58 @@ final class RoadmapEntryAdminController extends AbstractController
                     $this->addFlash('error', $error);
                 }
 
-                return $this->render('@RoadmapModule/admin/entries/form.html.twig', [
-                    'entry' => null,
-                    'formValues' => $values,
-                    'statuses' => RoadmapEntry::STATUSES,
-                    'kinds' => RoadmapEntry::KINDS,
-                ]);
+                return $this->renderForm(null, $locale, $source, $values);
             }
 
-            $slug = $this->resolveSlug($values['title'], $values['slug']);
-            if ($this->entryRepository->findOneBySlugAndLocale($slug, $this->defaultLocale()) !== null) {
-                $this->addFlash('error', $this->translator->trans('studio.roadmap.error.slug_exists'));
+            if ($source instanceof RoadmapEntry && $source->getLocale() !== $locale) {
+                $existing = $this->translationGroupResolver->findGroup($source)[$locale] ?? null;
+                if ($existing instanceof RoadmapEntry) {
+                    $this->addFlash('error', $this->translator->trans('studio.roadmap.error.translation_exists', [
+                        'title' => $source->getTitle(),
+                        'locale' => $locale,
+                    ]));
 
-                return $this->render('@RoadmapModule/admin/entries/form.html.twig', [
-                    'entry' => null,
-                    'formValues' => $values,
-                    'statuses' => RoadmapEntry::STATUSES,
-                    'kinds' => RoadmapEntry::KINDS,
-                ]);
+                    return $this->redirectToRoute('admin_roadmap_edit', ['id' => $existing->getId()]);
+                }
             }
 
-            $entry = new RoadmapEntry($values['title'], $slug, $this->defaultLocale());
+            $slug = $this->resolveSlug($values['title'], $values['slug'], $locale, null);
+            $entry = new RoadmapEntry($values['title'], $slug, $locale);
             $this->applyValues($entry, $values);
+
+            if ($source instanceof RoadmapEntry && $source->getLocale() !== $locale) {
+                $this->translationGroupResolver->link($source, $entry);
+            }
+
             $this->entityManager->persist($entry);
             $this->entityManager->flush();
+            $this->originCachePurger->purgeAreas('roadmap', 'home');
 
-            $this->addFlash('success', $this->translator->trans('studio.roadmap.flash.created', [
-                'title' => $entry->getTitle(),
-            ]));
+            $this->addFlash('success', $source instanceof RoadmapEntry
+                ? $this->translator->trans('cp.translation_tabs.linked_flash', [
+                    'name' => $entry->getTitle(),
+                    'locale' => $locale,
+                ])
+                : $this->translator->trans('studio.roadmap.flash.created', [
+                    'title' => $entry->getTitle(),
+                ]));
 
-            return $this->redirectToRoute('admin_roadmap_index');
+            return $this->redirectToRoute('admin_roadmap_index', ['locale' => $locale]);
         }
 
-        return $this->render('@RoadmapModule/admin/entries/form.html.twig', [
-            'entry' => null,
-            'formValues' => $this->defaultFormValues(),
-            'statuses' => RoadmapEntry::STATUSES,
-            'kinds' => RoadmapEntry::KINDS,
-        ]);
+        $formValues = $source instanceof RoadmapEntry
+            ? $this->formValuesFromEntry($source)
+            : $this->defaultFormValues();
+        $formValues['slug'] = '';
+
+        return $this->renderForm(null, $locale, $source, $formValues);
     }
 
     #[Route('/{id}/edit', name: 'edit', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
     public function edit(int $id, Request $request): Response
     {
         $entry = $this->findOrFail($id);
+        $locale = $entry->getLocale();
 
         if ($request->isMethod('POST')) {
             $this->assertValidCsrf($request);
@@ -142,56 +152,23 @@ final class RoadmapEntryAdminController extends AbstractController
                     $this->addFlash('error', $error);
                 }
 
-                return $this->render('@RoadmapModule/admin/entries/form.html.twig', [
-                    'entry' => $entry,
-                    'formValues' => $values,
-                    'statuses' => RoadmapEntry::STATUSES,
-                    'kinds' => RoadmapEntry::KINDS,
-                ]);
+                return $this->renderForm($entry, $locale, null, $values);
             }
 
-            $slug = $this->resolveSlug($values['title'], $values['slug']);
-            $existing = $this->entryRepository->findOneBySlugAndLocale($slug, $this->defaultLocale());
-            if ($existing instanceof RoadmapEntry && $existing->getId() !== $entry->getId()) {
-                $this->addFlash('error', $this->translator->trans('studio.roadmap.error.slug_exists'));
-
-                return $this->render('@RoadmapModule/admin/entries/form.html.twig', [
-                    'entry' => $entry,
-                    'formValues' => $values,
-                    'statuses' => RoadmapEntry::STATUSES,
-                    'kinds' => RoadmapEntry::KINDS,
-                ]);
-            }
-
+            $slug = $this->resolveSlug($values['title'], $values['slug'], $locale, $entry->getId());
             $entry->setTitle($values['title'])->setSlug($slug);
             $this->applyValues($entry, $values);
             $this->entityManager->flush();
+            $this->originCachePurger->purgeAreas('roadmap', 'home');
 
             $this->addFlash('success', $this->translator->trans('studio.roadmap.flash.updated', [
                 'title' => $entry->getTitle(),
             ]));
 
-            return $this->redirectToRoute('admin_roadmap_index');
+            return $this->redirectToRoute('admin_roadmap_index', ['locale' => $locale]);
         }
 
-        return $this->render('@RoadmapModule/admin/entries/form.html.twig', [
-            'entry' => $entry,
-            'formValues' => [
-                'title' => $entry->getTitle(),
-                'slug' => $entry->getSlug(),
-                'summary' => $entry->getSummary(),
-                'body' => $entry->getBody() ?? '',
-                'status' => $entry->getStatus(),
-                'kind' => $entry->getKind(),
-                'versionLabel' => $entry->getVersionLabel() ?? '',
-                'icon' => $entry->getIcon() ?? '',
-                'publishedAt' => $entry->getPublishedAt()?->format('Y-m-d\TH:i') ?? '',
-                'sortOrder' => (string) $entry->getSortOrder(),
-                'isFeatured' => $entry->isFeatured(),
-            ],
-            'statuses' => RoadmapEntry::STATUSES,
-            'kinds' => RoadmapEntry::KINDS,
-        ]);
+        return $this->renderForm($entry, $locale, null, $this->formValuesFromEntry($entry));
     }
 
     #[Route('/{id}/delete', name: 'delete', methods: ['POST'], requirements: ['id' => '\d+'])]
@@ -200,13 +177,34 @@ final class RoadmapEntryAdminController extends AbstractController
         $entry = $this->findOrFail($id);
         $this->assertValidCsrf($request);
 
+        $locale = $entry->getLocale();
         $title = $entry->getTitle();
         $this->entityManager->remove($entry);
         $this->entityManager->flush();
+        $this->originCachePurger->purgeAreas('roadmap', 'home');
 
         $this->addFlash('success', $this->translator->trans('studio.roadmap.flash.deleted', ['title' => $title]));
 
-        return $this->redirectToRoute('admin_roadmap_index');
+        return $this->redirectToRoute('admin_roadmap_index', ['locale' => $locale]);
+    }
+
+    /**
+     * @param array<string, mixed> $formValues
+     */
+    private function renderForm(?RoadmapEntry $entry, string $locale, ?RoadmapEntry $source, array $formValues): Response
+    {
+        return $this->render('@RoadmapModule/admin/entries/form.html.twig', [
+            'entry' => $entry,
+            'formValues' => $formValues,
+            'statuses' => RoadmapEntry::STATUSES,
+            'kinds' => RoadmapEntry::KINDS,
+            'locale' => $locale,
+            'sourceId' => $source?->getId(),
+            'translationTabs' => $entry instanceof RoadmapEntry
+                ? $this->translationGroupResolver->tabsFor($entry)
+                : ($source instanceof RoadmapEntry ? $this->translationGroupResolver->tabsFor($source) : []),
+            'tabsSourceId' => $entry?->getId() ?? $source?->getId(),
+        ]);
     }
 
     private function findOrFail(int $id): RoadmapEntry
@@ -217,6 +215,23 @@ final class RoadmapEntryAdminController extends AbstractController
         }
 
         return $entry;
+    }
+
+    private function findTranslationSource(mixed $rawId): ?RoadmapEntry
+    {
+        $id = $this->intOrNull($rawId);
+
+        return $id !== null ? $this->entryRepository->find($id) : null;
+    }
+
+    private function resolveLocale(mixed $raw): string
+    {
+        return $this->localeProvider->resolve(\is_string($raw) ? $raw : null);
+    }
+
+    private function intOrNull(mixed $raw): ?int
+    {
+        return $raw !== null && ctype_digit((string) $raw) ? (int) $raw : null;
     }
 
     /**
@@ -248,6 +263,38 @@ final class RoadmapEntryAdminController extends AbstractController
             'publishedAt' => trim((string) $request->request->get('publishedAt')),
             'sortOrder' => trim((string) $request->request->get('sortOrder', '0')),
             'isFeatured' => $request->request->getBoolean('isFeatured'),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     title: string,
+     *     slug: string,
+     *     summary: string,
+     *     body: string,
+     *     status: string,
+     *     kind: string,
+     *     versionLabel: string,
+     *     icon: string,
+     *     publishedAt: string,
+     *     sortOrder: string,
+     *     isFeatured: bool
+     * }
+     */
+    private function formValuesFromEntry(RoadmapEntry $entry): array
+    {
+        return [
+            'title' => $entry->getTitle(),
+            'slug' => $entry->getSlug(),
+            'summary' => $entry->getSummary(),
+            'body' => $entry->getBody() ?? '',
+            'status' => $entry->getStatus(),
+            'kind' => $entry->getKind(),
+            'versionLabel' => $entry->getVersionLabel() ?? '',
+            'icon' => $entry->getIcon() ?? '',
+            'publishedAt' => $entry->getPublishedAt()?->format('Y-m-d\TH:i') ?? '',
+            'sortOrder' => (string) $entry->getSortOrder(),
+            'isFeatured' => $entry->isFeatured(),
         ];
     }
 
@@ -359,7 +406,6 @@ final class RoadmapEntryAdminController extends AbstractController
 
     /**
      * Sanitize body at persist (applyValues), not at form read — same pattern as Blog mapDtoToNode.
-     * Empty after sanitizing (e.g. script-only) is stored as null by the caller.
      */
     private function sanitizeBody(string $body): string
     {
@@ -370,12 +416,23 @@ final class RoadmapEntryAdminController extends AbstractController
         return trim($this->richTextSanitizer->sanitize($body));
     }
 
-    private function resolveSlug(string $title, string $slug): string
+    private function resolveSlug(string $title, string $slug, string $locale, ?int $excludeId): string
     {
-        $slugger = new AsciiSlugger($this->defaultLocale());
+        $slugger = new AsciiSlugger($locale);
         $base = $slug !== '' ? $slug : $title;
+        $baseSlug = strtolower($slugger->slug($base)->toString());
+        if ($baseSlug === '') {
+            $baseSlug = 'r-'.substr(bin2hex(random_bytes(4)), 0, 8);
+        }
 
-        return strtolower($slugger->slug($base)->toString());
+        $candidate = $baseSlug;
+        $suffix = 2;
+        while ($this->entryRepository->slugExists($candidate, $locale, $excludeId)) {
+            $candidate = $baseSlug.'-'.$suffix;
+            ++$suffix;
+        }
+
+        return $candidate;
     }
 
     private function assertValidCsrf(Request $request): void

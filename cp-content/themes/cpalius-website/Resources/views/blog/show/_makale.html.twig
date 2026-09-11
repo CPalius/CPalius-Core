@@ -1,6 +1,5 @@
 {#
-    Makale show — altın oran editöryel iskelet.
-    Beklenen: post, postBody, typeFields, relatedPosts.
+    Article show — golden-ratio editorial layout. Expects: post, postBody, typeFields, relatedPosts.
 #}
 <section class="section post-show post-show--makale" id="post-detail">
     <div class="container">
@@ -19,6 +18,11 @@
                         </div>
                     {% endif %}
                 </div>
+
+                {% include '@Theme/blog/partials/comments.html.twig' with {
+                    post: post,
+                    commentContext: commentContext|default({enabled: false, canSubmit: false, threads: [], approvedCount: 0}),
+                } %}
             </div>
 
             <aside class="grid-golden-minor">

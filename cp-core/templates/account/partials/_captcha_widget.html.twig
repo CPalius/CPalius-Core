@@ -6,6 +6,8 @@
             <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response">
         {% elseif captchaConfig.provider == 'turnstile' %}
             <div class="cf-turnstile" data-sitekey="{{ captchaConfig.site_key }}"></div>
+        {% elseif captchaConfig.provider == 'hcaptcha' %}
+            <div class="h-captcha" data-sitekey="{{ captchaConfig.site_key }}"></div>
         {% endif %}
     </div>
 {% endif %}

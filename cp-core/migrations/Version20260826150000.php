@@ -8,14 +8,13 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Forum modülü "orta seviye" genişlemesi: konu ön ekleri, kullanıcı
- * rütbeleri, forum-özel yasaklama/susturma ve mesaj beğenileri.
+ * Forum mid-tier expansion: topic prefixes, user ranks, forum bans, and post likes.
  */
 final class Version20260826150000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Forum konu ön ekleri, kullanıcı rütbeleri, yasaklama ve beğeni tablolarını ekler.';
+        return 'Adds forum topic prefixes, user ranks, bans, and like tables.';
     }
 
     public function up(Schema $schema): void
@@ -79,7 +78,7 @@ final class Version20260826150000 extends AbstractMigration
         $this->addSql('ALTER TABLE forum_post_likes ADD CONSTRAINT FK_FORUM_POST_LIKE_POST FOREIGN KEY (post_id) REFERENCES forum_posts (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE forum_post_likes ADD CONSTRAINT FK_FORUM_POST_LIKE_USER FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE');
 
-        // Varsayılan rütbeler — mesaj sayısına göre otomatik atanır.
+        // Default ranks — assigned automatically by post count.
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $this->addSql("INSERT INTO forum_user_ranks (label, color, icon, min_posts, sort_order) VALUES ('Yeni Üye', '#8B9DAF', 'bi-person', 0, 0)");
         $this->addSql("INSERT INTO forum_user_ranks (label, color, icon, min_posts, sort_order) VALUES ('Üye', '#4A7C9B', 'bi-person-check', 10, 1)");
@@ -87,7 +86,7 @@ final class Version20260826150000 extends AbstractMigration
         $this->addSql("INSERT INTO forum_user_ranks (label, color, icon, min_posts, sort_order) VALUES ('Uzman', '#C8A86E', 'bi-award', 200, 3)");
         $this->addSql("INSERT INTO forum_user_ranks (label, color, icon, min_posts, sort_order) VALUES ('Moderatör', '#27AE60', 'bi-shield-check', NULL, 10)");
 
-        // Varsayılan konu ön ekleri.
+        // Default topic prefixes.
         $this->addSql("INSERT INTO forum_topic_prefixes (label, color, sort_order) VALUES ('Duyuru', '#C0392B', 0)");
         $this->addSql("INSERT INTO forum_topic_prefixes (label, color, sort_order) VALUES ('Soru', '#4AADE4', 1)");
         $this->addSql("INSERT INTO forum_topic_prefixes (label, color, sort_order) VALUES ('Çözüldü', '#27AE60', 2)");

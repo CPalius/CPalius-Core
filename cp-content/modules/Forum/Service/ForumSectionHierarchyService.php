@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
-use Modules\Forum\Entity\ForumSection;
-use Modules\Forum\Repository\ForumSectionRepository;
 use App\Repository\UserRepository;
+use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\ForumSectionType;
+use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumSectionRepository;
+use Modules\Forum\Repository\ForumTopicRepository;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Resolves Forum > Division > Category > Subcategory hierarchy.
@@ -27,7 +30,10 @@ final class ForumSectionHierarchyService
 
     public function __construct(
         private readonly ForumSectionRepository $sectionRepository,
+        private readonly ForumTopicRepository $topicRepository,
+        private readonly ForumPostRepository $postRepository,
         private readonly UserRepository $userRepository,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -42,19 +48,11 @@ final class ForumSectionHierarchyService
     }
 
     /** @return array{topics: int, posts: int, users: int} */
-    public function aggregateStats(string $locale): array
+    public function aggregateStats(?string $locale = null): array
     {
-        $topics = 0;
-        $posts = 0;
-
-        foreach ($this->getAllSections($locale) as $section) {
-            $topics += $section->getTopicCount();
-            $posts += $section->getPostCount();
-        }
-
         return [
-            'topics' => $topics,
-            'posts' => $posts,
+            'topics' => $this->topicRepository->countVisiblePublic($locale),
+            'posts' => $this->postRepository->countVisiblePublic($locale),
             'users' => $this->userRepository->countAll(),
         ];
     }
@@ -248,23 +246,25 @@ final class ForumSectionHierarchyService
         $allowedParents = $type->allowedParentTypes();
 
         if ($allowedParents === [] && $parent !== null) {
-            return 'Bölüm seviyesinde üst kayıt olamaz.';
+            return $this->translator->trans('forum.hierarchy.division_no_parent');
         }
 
         if ($allowedParents !== [] && $parent === null) {
             return match ($type) {
-                ForumSectionType::Category => 'Kategori için bir bölüm seçmelisiniz.',
-                ForumSectionType::Subcategory => 'Alt kategori için bir kategori veya bölüm seçmelisiniz.',
-                default => 'Üst kayıt zorunludur.',
+                ForumSectionType::Category => $this->translator->trans('forum.hierarchy.category_needs_division'),
+                ForumSectionType::Subcategory => $this->translator->trans('forum.hierarchy.subcategory_needs_parent'),
+                default => $this->translator->trans('forum.hierarchy.parent_required'),
             };
         }
 
         if ($parent !== null && !in_array($this->resolveEffectiveType($parent), $allowedParents, true)) {
-            return sprintf(
-                '%s için geçerli üst tip: %s',
-                $type->label(),
-                implode(', ', array_map(static fn (ForumSectionType $t) => $t->label(), $allowedParents)),
-            );
+            return $this->translator->trans('forum.hierarchy.invalid_parent_type', [
+                'type' => $this->translator->trans($type->label()),
+                'allowed' => implode(', ', array_map(
+                    fn (ForumSectionType $t) => $this->translator->trans($t->label()),
+                    $allowedParents,
+                )),
+            ]);
         }
 
         return null;
@@ -300,7 +300,7 @@ final class ForumSectionHierarchyService
         return sprintf(
             '%s (%s)',
             implode(' › ', $titles),
-            $this->resolveEffectiveType($section)->label(),
+            $this->translator->trans($this->resolveEffectiveType($section)->label()),
         );
     }
 

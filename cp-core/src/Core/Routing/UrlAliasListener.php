@@ -9,6 +9,7 @@ use App\Entity\UrlAlias;
 use App\Repository\CategoryRepository;
 use App\Repository\NodeRepository;
 use App\Repository\UrlAliasRepository;
+use App\Core\Module\ModuleContributionCatalog;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
@@ -19,41 +20,17 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
 
 /**
- * Dinamik URL alias çözümü — SafeModuleRouteLoader'ın (statik, derleme-
- * zamanı modül route'ları) YANINA, ayrı bir mekanizma olarak eklenir.
- *
- * Bilinçli olarak KernelEvents::EXCEPTION dinlenir, KernelEvents::REQUEST
- * DEĞİL: Symfony'nin normal route matcher'ı önce her zaman kendi statik
- * route'larını (Blog'un /blog/{slug} gibi) dener; hiçbiri eşleşmeyip
- * NotFoundHttpException fırlattığında ancak o zaman alias tablosuna
- * bakılır. Bu sayede mevcut modül route'larının önceliği hiç bozulmaz ve
- * route cache invalidation sorunu oluşmaz (Blog PostFrontController'daki
- * generic {slug} route'unun priority: -1 catch-all deseniyle aynı felsefe).
- *
- * Bir alias bulunduğunda hedefin gerçek kanonik URL'ine 301 ile yönlendirilir
- * — alias bir içerik render'ı DEĞİL, kanonik URL'in bir takma adıdır.
+ * Dynamic URL alias resolution alongside SafeModuleRouteLoader static module routes.
+ * Listens on KernelEvents::EXCEPTION (not REQUEST) so static routes win; unresolved 404s check the alias table and 301 to canonical URLs.
  */
 final class UrlAliasListener implements EventSubscriberInterface
 {
-    /**
-     * Node'un content type'ına (bkz. Node::$type doc-block'u — modüllerin
-     * kendi tiplerini çekirdeği değiştirmeden ekleyebildiği string kolon)
-     * karşılık gelen front-end "göster" route adı. Bugün tek somut örnek
-     * Blog modülünün 'post' tipi; yeni bir modül kendi tipini eklediğinde
-     * bu haritaya kendi route adını eklemesi gerekir (SafeModuleRouteLoader
-     * ile aynı "modül kendi front route'unu tanımlar" felsefesi).
-     *
-     * @var array<string, string>
-     */
-    private const NODE_TYPE_SHOW_ROUTES = [
-        'post' => 'blog_show',
-    ];
-
     public function __construct(
         private readonly UrlAliasRepository $urlAliasRepository,
         private readonly NodeRepository $nodeRepository,
         private readonly CategoryRepository $categoryRepository,
         private readonly RouterInterface $router,
+        private readonly ModuleContributionCatalog $contributions,
     ) {
     }
 
@@ -115,7 +92,7 @@ final class UrlAliasListener implements EventSubscriberInterface
             return null;
         }
 
-        $routeName = self::NODE_TYPE_SHOW_ROUTES[$node->getType()] ?? null;
+        $routeName = $this->contributions->nodeShowRoute($node->getType());
         if ($routeName === null) {
             return null;
         }
@@ -134,7 +111,12 @@ final class UrlAliasListener implements EventSubscriberInterface
             return null;
         }
 
-        return $this->tryGenerateRoute('blog_category', ['slug' => $category->getSlug(), '_locale' => $category->getLocale()]);
+        $routeName = $this->contributions->categoryShowRoute();
+        if ($routeName === null) {
+            return null;
+        }
+
+        return $this->tryGenerateRoute($routeName, ['slug' => $category->getSlug(), '_locale' => $category->getLocale()]);
     }
 
     private function resolveRouteUrl(UrlAlias $alias): ?string

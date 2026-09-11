@@ -11,7 +11,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'cp:module:list',
-    description: 'cp-content/modules altındaki tüm modülleri ve durumlarını listeler.',
+    description: 'Lists all modules under cp-content/modules and their statuses.',
 )]
 final class ModuleListCommand extends Command
 {
@@ -27,12 +27,12 @@ final class ModuleListCommand extends Command
         $modules = $this->moduleRegistry->discoverAllModules();
 
         if ($modules === []) {
-            $io->warning('cp-content/modules altında hiçbir modül bulunamadı.');
+            $io->warning('No modules found under cp-content/modules.');
 
             return Command::SUCCESS;
         }
 
-        $io->title('CPalius Modülleri');
+        $io->title('CPalius Modules');
 
         $rows = [];
         foreach ($modules as $module) {
@@ -44,13 +44,13 @@ final class ModuleListCommand extends Command
             ];
         }
 
-        $io->table(['Ad', 'Versiyon', 'Durum', 'Not'], $rows);
+        $io->table(['Name', 'Version', 'Status', 'Note'], $rows);
 
         $activeCount = count(array_filter($modules, static fn (array $m) => $m['status'] === 'active'));
         $quarantinedCount = count(array_filter($modules, static fn (array $m) => $m['status'] === 'quarantined'));
 
         $io->text(sprintf(
-            'Toplam: %d modül | Aktif: %d | Pasif: %d | Karantinada: %d',
+            'Total: %d modules | Active: %d | Inactive: %d | Quarantined: %d',
             count($modules),
             $activeCount,
             count($modules) - $activeCount - $quarantinedCount,
@@ -63,9 +63,9 @@ final class ModuleListCommand extends Command
     private function formatStatus(string $status): string
     {
         return match ($status) {
-            'active' => '<fg=green;options=bold>● Aktif</>',
-            'inactive' => '<fg=yellow>○ Pasif</>',
-            'quarantined' => '<fg=red;options=bold>✕ Karantinada</>',
+            'active' => '<fg=green;options=bold>● Active</>',
+            'inactive' => '<fg=yellow>○ Inactive</>',
+            'quarantined' => '<fg=red;options=bold>✕ Quarantined</>',
             default => $status,
         };
     }

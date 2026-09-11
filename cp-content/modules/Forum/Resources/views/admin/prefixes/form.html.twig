@@ -3,6 +3,7 @@
 {% block header %}{{ prefix ? 'studio.forum.prefixes.form.edit_header'|trans : 'studio.forum.prefixes.form.create_header'|trans }}{% endblock %}
 
 {% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
     <twig:studio:card>
         <form method="post">
             <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_prefix') }}">
@@ -25,13 +26,13 @@
                     <select name="css_class" class="form-select">
                         <option value="">{{ 'studio.forum.prefixes.form.css_class_none'|trans }}</option>
                         {% for className, classLabel in {
-                            'forum-prefix--announcement': 'Duyuru',
-                            'forum-prefix--solved': 'Çözüldü',
-                            'forum-prefix--guide': 'Rehber',
-                            'forum-prefix--question': 'Soru',
-                            'forum-prefix--warning': 'Uyarı'
+                            'forum-prefix--announcement': 'forum.prefix.css.announcement',
+                            'forum-prefix--solved': 'forum.prefix.css.solved',
+                            'forum-prefix--guide': 'forum.prefix.css.guide',
+                            'forum-prefix--question': 'forum.prefix.css.question',
+                            'forum-prefix--warning': 'forum.prefix.css.warning'
                         } %}
-                            <option value="{{ className }}" {{ formValues.cssClass|default('') == className ? 'selected' : '' }}>{{ classLabel }} ({{ className }})</option>
+                            <option value="{{ className }}" {{ formValues.cssClass|default('') == className ? 'selected' : '' }}>{{ classLabel|trans }} ({{ className }})</option>
                         {% endfor %}
                     </select>
                 </div>

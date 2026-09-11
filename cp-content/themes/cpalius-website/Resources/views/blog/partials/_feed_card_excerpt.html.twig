@@ -1,6 +1,5 @@
 {#
-    Liste özeti — blog ayarlarındaki uzunluk/birim ile kısaltılır.
-    Beklenen değişken: post
+    List excerpt trimmed per blog settings. Expects: post.
 #}
 {% set listExcerpt = blog_list_excerpt(post) %}
 {% if listExcerpt %}

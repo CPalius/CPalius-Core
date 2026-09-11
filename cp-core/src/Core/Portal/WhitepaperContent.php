@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Portal;
 
 /**
- * Structured, per-locale body of the CPalius CMF whitepaper (v1.0.0-draft).
+ * Structured, per-locale body of the CPalius CMF whitepaper (v1.2.0).
  * Ported verbatim from the original cpalius-website whitepaper documents.
  */
 final class WhitepaperContent
@@ -27,10 +27,10 @@ final class WhitepaperContent
             'title' => 'CPalius CMF: Evolving from a Content Management System into a "Bulletproof" Enterprise Application Framework',
             'intro_html' => <<<'HTML'
 <p><strong>Publication Type:</strong> Technical Review (Whitepaper) &amp; Architectural Roadmap (RFC)<br>
-<strong>Version:</strong> v1.0.0-draft<br>
+<strong>Version:</strong> v1.2.0<br>
 <strong>Audience:</strong> Senior PHP Developers, System Architects, Open Source Contributors, and AI Agents<br>
 <strong>Author / Founder:</strong> Ali Çömez (slaweally)<br>
-<strong>Technology Stack:</strong> PHP 8.2+, Symfony 7.4 LTS, Doctrine ORM, AssetMapper, Tailwind CSS Standalone Binary</p>
+<strong>Technology Stack:</strong> PHP 8.4+, Symfony 7.4 LTS, Doctrine ORM, AssetMapper, Tailwind CSS Standalone Binary</p>
 
 <p><strong>Introduction: Theory, Practice, and the Pain of "Reinventing the Wheel"</strong></p>
 
@@ -155,6 +155,10 @@ HTML,
 </ul>
 
 <p>The same guarantee is carried to four more entities (categories, tags, menu_items, forum_sections) via <code>UNIQUE(translation_group_id, locale)</code>, so the database itself enforces "one record per locale per translation group" even under concurrent requests.</p>
+
+<p><strong>Operator UI catalogues</strong></p>
+
+<p>AACP and Studio chrome is bound to ICU YAML under <code>cp-content/translations</code> and each module's <code>Resources/translations</code>. Sidebar labels and <code>#[CpAdminMenu]</code> attributes use translation keys. Hardcoded Turkish (or English) operator strings do not live in PHP, Twig chrome, or JavaScript.</p>
 HTML,
                 ],
                 [
@@ -227,21 +231,182 @@ HTML,
 
 <p><strong>3. N+1 Query Guard (Dev-Mode N+1 Guard)</strong></p>
 
-<p>To stop N+1 query mistakes&mdash;the most common cause of database bloat and slowness&mdash;a Doctrine DBAL middleware fires only in the dev environment. If the number of queries to the same table in a single HTTP request exceeds a set limit, it throws <code>MaxQueriesExceededException</code> immediately. Developers cannot ship code to production until they fix that error locally.</p>
+<p>To stop N+1 query mistakes&mdash;the most common cause of database bloat and slowness&mdash;a Doctrine DBAL middleware fires only in the dev environment. If the number of queries to the same table in a single HTTP request exceeds a set limit, it throws <code>MaxQueriesExceededException</code> immediately. Developers cannot ship code to production until they fix that error locally. The chain is real at the DBAL layer: <code>QueryCounterConnection</code>, <code>Driver</code>, <code>Statement</code>, and <code>TableParser</code>.</p>
+
+<p><strong>4. Voter-to-SQL Conversion</strong></p>
+
+<p>List screens must not run a PHP voter per row (that is an N+1 of authorization). <code>QueryScopeApplier</code> turns the caller's <code>.own</code> / <code>.any</code> capabilities into a Doctrine <code>WHERE</code> before the query hits the database.</p>
+
+<p><strong>5. Zero-Trust Payloads and Core XSS Sanitization</strong></p>
+
+<p>Inbound HTTP bodies are mapped to strict DTOs and validated before they reach controllers. Rich text destined for the database is sterilized by <code>RichTextSanitizer</code> (Manifesto Law 5.3). <code>SchemaOrgBuilder</code> emits JSON-LD (BlogPosting, WebPage) from the same hybrid JSON payload.</p>
+
+<p><strong>6. Optimistic Concurrency</strong></p>
+
+<p>High-write paths use optimistic locking instead of table locks, so concurrent mutations isolate without deadlock theater. Config (roles, capabilities) stays in Git-tracked YAML; users stay in the database&mdash;Drupal-style config sync via Symfony TreeBuilder.</p>
+HTML,
+                ],
+                [
+                    'id' => 'platform-layer',
+                    'title' => 'Section 7: Platform Extensibility — API, Hooks, Cron, Plugins',
+                    'html' => <<<'HTML'
+<p>Since the first whitepaper draft, four extension backbones landed in core. Each carries the same Core Never Dies armor: a failing extension is quarantined; the kernel stays up.</p>
+
+<p><strong>Cryptographic REST API Gateway</strong></p>
+
+<p>A single <code>/api/{path}</code> wildcard is bound at compile time by <code>ApiRegistrationPass</code> to service methods marked <code>#[CpApi]</code>. Authentication uses the <code>X-CP-API-KEY</code> header, SHA-256 hashes, and timing-safe <code>hash_equals()</code>. Fail-closed: an invalid key never reaches the target method. Each endpoint runs in its own try/catch; a crashing method cannot 500 the gateway.</p>
+
+<p><strong>Dual-lane isolated Hook engine</strong></p>
+
+<p>Cotonti-style <code>Hooks/{hook_point}.php</code> files run inside a bound Closure so they cannot leak <code>$this</code>. Symfony-style <code>#[CpHook]</code> services are collected by <code>HookRegistrationPass</code>. A throwing hook is written to the quarantine log; the page still renders.</p>
+
+<p><strong>Unified hybrid Cron engine</strong></p>
+
+<p><code>CronManager</code> merges three sources into one list: <code>cp_cron_jobs</code> rows, <code>#[CpCronJob]</code> methods, and <code>Hooks/cron.{job}.php</code> files. Jobs run in isolated subprocesses and may only execute <code>cp:*</code> commands via <code>CronCommandWhitelist</code>. Operators can inspect and &ldquo;Run now&rdquo; from <code>/aacp/cron</code>.</p>
+
+<p><strong>Module-independent Plugin layer</strong></p>
+
+<p>Services marked <code>PluginInterface</code> are collected by <code>PluginRegistry</code>; enablement lives in <code>PluginToggleRepository</code>. A module can toggle optional widgets without deactivating the whole module.</p>
+
+<p><strong>Lazy settings</strong></p>
+
+<p><code>#[CpSetting]</code> keys are loaded through <code>SettingsRegistry</code> on demand&mdash;one query when asked, not a boot-time dump of every key.</p>
+
+<p><strong>WordPress-style module packages</strong></p>
+
+<p>A first-party module may ship <code>Resources/config/importmap.php</code> and <code>contributions.yaml</code>. <code>ModulePackageContract</code> validates the on-disk layout; operators can upload a ZIP from AACP. Homepage modes, portal feed blocks, schema types, and the account post-login landing are declared in contributions&mdash;core does not hardcode <code>forum_index</code> or <code>blog_index</code>.</p>
+HTML,
+                ],
+                [
+                    'id' => 'aacp-command',
+                    'title' => 'Section 8: AACP Command Desk, Studio, and Recovery',
+                    'html' => <<<'HTML'
+<p>The Safe Mode / Recovery Console promised in the original roadmap is production code. AACP is the system management center, not a decorative admin skin.</p>
+
+<p><strong>Recovery Console (<code>/aacp/recovery</code>)</strong></p>
+
+<p>The route is intentionally <code>PUBLIC_ACCESS</code> in <code>security.yaml</code>. Authorization is a timing-safe <code>hash_equals()</code> against <code>AACP_RECOVERY_TOKEN</code> in <code>.env</code>. It issues no Doctrine queries, so it still works when the database is gone. An empty token seals the door (fail-safe).</p>
+
+<p><strong>Live command desk (<code>/aacp</code>)</strong></p>
+
+<p>The dashboard polls <code>/aacp/system/metrics</code> for PHP version, load, request time, memory, OPcache hit rate, database telemetry, queue, cron last-run, and module quarantine. Cache Rebuild and OPcache flush are one-click, CSRF-protected actions. Content KPIs live on Studio <code>/admin</code>, not on AACP&mdash;AACP is operations, Studio is the editorial command desk.</p>
+
+<p><strong>Studio dashboard</strong></p>
+
+<p>Each first-party module contributes a <code>StudioDashboardStatsProvider</code> (Blog, Forum, Media, Menu, Roadmap, SEO). Studio is a Drupal-style command desk: counts, shortcuts, and homepage portal layout (block order, bilingual copy in <code>portal.{locale}.yaml</code>).</p>
+
+<p><strong>Quarantine, localization, performance backends</strong></p>
+
+<p><code>/aacp/quarantine</code> is a read-only view of <code>module_quarantine.log</code>. <code>TranslationManager</code> edits core and module ICU YAML with atomic <code>.tmp</code> + <code>rename()</code> writes. The Performance screen tests Redis, Memcached, Varnish, Nginx PageSpeed, and CPalius Origin Cache; the enabled flag is set only after a successful probe&mdash;never a fake-green toggle. <code>/aacp/backup</code> is the Backup Management desk (capability <code>system.backup.manage</code>): database dump, files ZIP, or full archive, with download and delete.</p>
+HTML,
+                ],
+                [
+                    'id' => 'origin-cache',
+                    'title' => 'Section 9: Origin HTML Cache and Performance Inventory',
+                    'html' => <<<'HTML'
+<p>CPalius Origin Cache is a first-party HTML cache that does not require Redis, Varnish, or a CDN. It sits beside those backends and can run on plain shared hosting.</p>
+
+<p><strong>How a hit is served</strong></p>
+
+<p>Enabled state is a disk sentinel under <code>public/page-cache/</code>. Apache rewrite in <code>public/.htaccess</code> serves <code>page-cache/{path}/index.html</code> for anonymous GET requests with no query string and no session cookies (<code>PHPSESSID</code>, <code>REMEMBERME</code>). PHP still writes and, for query-string variants, reads through <code>OriginCacheWriter</code> / <code>OriginCacheReader</code>.</p>
+
+<p><strong>What is stored</strong></p>
+
+<p>HTML is optionally minified. Linked CSS/JS can be copied and minified; images can be derived as WebP. An optional HTML shield rewrites markup. TTL, exclude paths (<code>/aacp</code>, <code>/admin</code>, <code>/login</code>, APIs, profiler), minify, asset/image compression, and shield are <code>performance.cpalius.*</code> settings. Cron <code>cpalius.origin_cache.purge</code> drops expired files every 15 minutes. Cache Rebuild also purges origin HTML.</p>
+
+<p><strong>Invalidation</strong></p>
+
+<p><code>OriginCachePurger</code> runs on Blog post/category/tag writes (including scheduled publish), Forum topic mutations, Roadmap entry saves, and Menu saves&mdash;so editorial changes do not leave stale HTML on disk.</p>
+
+<p><strong>AACP Performance panel</strong></p>
+
+<p>The dashboard Performance section inventories every backend the PHP process can see:</p>
+
+<ul>
+<li><strong>Origin Cache:</strong> HTML page count, disk bytes, recent paths with size and mtime.</li>
+<li><strong>Redis:</strong> <code>DBSIZE</code> (key count) and <code>INFO memory</code> (<code>used_memory</code>).</li>
+<li><strong>Memcached:</strong> <code>curr_items</code> and <code>bytes</code> (plus hit count when the daemon answers).</li>
+<li><strong>OPcache:</strong> cached scripts, used memory, hit rate.</li>
+<li><strong>Varnish / PageSpeed:</strong> enablement and TTL / last probe. Object counts need <code>varnishstat</code> or the PageSpeed admin on the host; PHP cannot invent those numbers.</li>
+</ul>
+
+<p>Probes are isolated and cached for a few seconds so a hanging Redis cannot 500 the dashboard.</p>
+HTML,
+                ],
+                [
+                    'id' => 'backup',
+                    'title' => 'Section 10: Backup Management',
+                    'html' => <<<'HTML'
+<p>Disaster recovery is a first-party AACP desk, not a third-party plugin. Capability <code>system.backup.manage</code> gates <code>/aacp/backup</code>. The admin role inherits it via <code>*</code>; editors do not see the menu.</p>
+
+<p><strong>Three archive types</strong></p>
+
+<ul>
+<li><strong>Database:</strong> a gzipped SQL dump written in PHP through Doctrine DBAL. <code>mysqldump</code> is not required, so Laragon on Windows works the same as Linux hosting.</li>
+<li><strong>Files:</strong> a ZIP of the whole CPalius tree, including <code>cp-includes/vendor</code> and the entire <code>public/</code> directory (uploads, compiled assets, themes, front controller). Out: every <code>.env*</code> file, <code>.git</code>, <code>node_modules</code>, Symfony cache, Tailwind compile cache, sessions, Origin Cache HTML, and nested archives under <code>cp-core/var/backups/</code>.</li>
+<li><strong>Full:</strong> the files ZIP plus <code>database.sql.gz</code> packed inside the same archive.</li>
+</ul>
+
+<p>Archives are named <code>cpalius-{db|files|full}-YYYYMMDD-HHMMSS.{sql.gz|zip}</code> and live under <code>cp-core/var/backups/</code> (already gitignored). Download uses <code>/aacp/backup/archive/{stem}</code> (no <code>.sql.gz</code> / <code>.zip</code> in the URL) so nginx static-file locations cannot intercept the request; <code>Content-Disposition</code> still sends the real filename. Delete is CSRF-protected. Path traversal is rejected by an allowlist on the filename. CLI <code>cp:backup:create</code> is on the cron whitelist so operators can schedule dumps without a web timeout.</p>
+
+<p>v1 does not overwrite a live tree from the browser. Restore is a staging-first operator step: unpack files beside a fresh install, apply SQL on a copy of the database, then swap. Putting restore behind a one-click AACP button would violate Core Never Dies.</p>
+HTML,
+                ],
+                [
+                    'id' => 'telemetry',
+                    'title' => 'Section 11: Security Telemetry and IP Control',
+                    'html' => <<<'HTML'
+<p>AACP records request telemetry without turning the public site into a dark-pattern tracker. The master switch is <code>telemetry.security_enabled</code> and defaults to <strong>off</strong>.</p>
+
+<p><strong>Visitor mode (default)</strong></p>
+
+<p>The dashboard shows page views, unique IPs, top paths, and a traffic chart. No threat feed, no Ban IP. Suitable for hosting the marketing site without a WAF console in the operator&rsquo;s face.</p>
+
+<p><strong>Security mode</strong></p>
+
+<p>When enabled, <code>TelemetrySubscriber</code> on <code>kernel.terminate</code> persists a row to <code>cp_system_telemetry_logs</code>: IP, user, method, URI, user-agent, severity, event type, threat score, and JSON details. <code>ThreatAnalyzer</code> scores SQLi, XSS, scanner, path traversal, and login noise. The live feed polls JSON; a details modal opens the row; Ban IP is offered only for <code>critical</code> / <code>threat</code> severities.</p>
+
+<p><strong>IP ban</strong></p>
+
+<p><code>IpBanService</code> writes <code>cp_banned_ips</code>. <code>BannedIpSubscriber</code> rejects banned clients before the rest of the stack spends budget. A cron task purges old telemetry rows so the table cannot grow without bound.</p>
+HTML,
+                ],
+                [
+                    'id' => 'first-party',
+                    'title' => 'Section 12: First-Party Modules, Media Pipeline, and Deep Localization',
+                    'html' => <<<'HTML'
+<p>Blog, Media, Menu, Forum, Roadmap, Pages, and SEO are reference modules: they exercise API, Hook, Cron, Plugin, Settings, contributions, and Studio stats the same way a third-party module must.</p>
+
+<p><strong>Blog</strong> sits on <code>Node::type = post</code> with categories, tags, scheduled publish (<code>PublishScheduledPostsTask</code>), <code>GET /api/blog/posts</code>, sidebar hooks, and Schema.org BlogPosting. <strong>Pages</strong> sits on <code>Node::type = page</code>; field groups use <code>fg-</code> slugs and the public route is <code>page_show</code> at <code>/{_locale}/{slug}</code>. <strong>Menu</strong> is WordPress-style drag-and-drop; items reference nodes loosely (no hard FK) so soft-delete stays honest. <strong>Roadmap</strong> is a native feed that can also pull related blog and forum activity onto the portal. <strong>SEO</strong> contributes sitemap sources and JSON-LD.</p>
+
+<p><strong>Forum engine</strong></p>
+
+<p>Hierarchical boards reuse the Node tree; prefixes, a CSRF-protected report/moderation queue, ranks/badges, and a 20/80 postbit layout (Golden Ratio) run on the same capability model as the rest of the CMF.</p>
+
+<p><strong>Media pipeline (Manifesto Law 3.3)</strong></p>
+
+<p><code>Asset</code> is independent of Node. Flysystem storage plus sha256 dedup. <code>ImageProcessor</code> (GD) builds <code>crop</code> or <code>fit</code> derivatives into <code>public/uploads/cache/</code>; <code>cp_thumb</code> accepts an Asset, id, storage key, or <code>/uploads/...</code> URL. A failed derivative returns the original URL (fail-soft). <code>purge()</code> drops all sizes when the source changes.</p>
+
+<p><strong>Deep localization</strong></p>
+
+<p>Each row lives in its locale and joins siblings via <code>translation_group_id</code> UUID, enforced by <code>UNIQUE(translation_group_id, locale)</code> (also on categories, tags, menu items, forum sections). <code>LocaleSwitchService</code> builds the counterpart URL; missing siblings fall back to that locale&rsquo;s home&mdash;never a 404. AACP has no locale prefix; panel locale is the <code>cp_locale</code> cookie. Translation files are written atomically (<code>.tmp</code> + OS <code>rename()</code>).</p>
+
+<p><strong>Zero Node.js in core UI</strong></p>
+
+<p>Admin and developer chrome use AssetMapper + the Tailwind standalone binary. There is no Node.js build for those surfaces. Public theme CSS may still be a static theme asset.</p>
 HTML,
                 ],
                 [
                     'id' => 'roadmap',
-                    'title' => 'Section 7: Future Roadmap and Technical Consultation (RFC)',
+                    'title' => 'Section 13: Future Roadmap and Technical Consultation (RFC)',
                     'html' => <<<'HTML'
-<p>The core security, performance, and architectural backbone of CPalius is complete. Since this whitepaper's first draft, several roadmap items have shipped: the AACP Safe Mode / Recovery Console, the isolated Hook system, the unified Cron engine, the REST API Gateway, the fourth defense line (<code>SafeModuleRouteLoader</code>), the on-demand image pipeline (<code>cp_thumb</code>), and the <code>#[CpResource]</code> audit log.</p>
+<p>The core security, performance, and architectural backbone of CPalius is complete. Since this whitepaper's first draft the following have shipped: AACP Safe Mode / Recovery Console, the isolated Hook system, the unified Cron engine, the REST API Gateway, the fourth defense line (<code>SafeModuleRouteLoader</code>), the on-demand image pipeline (<code>cp_thumb</code>), the <code>#[CpResource]</code> audit log, Studio dashboard stats, CPalius Origin Cache, the AACP performance inventory, optional security telemetry with IP ban, WordPress-style module packages and the contribution catalog (homepage, portal, schema, account landing), the Pages module, operator UI catalogue binding, and AACP Backup Management (<code>cp:backup:create</code>).</p>
 
 <p>In upcoming development sprints we will build the following systems:</p>
 
 <ul>
-<li><strong>Workflow &amp; State Machine:</strong> A mechanism that manages transition processes for business records such as invoices, vehicles, and reservations (<code>draft &rarr; preparation &rarr; sold</code>) via YAML definitions, and automatically ties every transition to the audit log and notification queue.</li>
-<li><strong>Pimcore-style Independent Asset System:</strong> A modern media library that frees media from being a Node subtype and offers on-the-fly image derivation over URLs via Flysystem (S3, MinIO).</li>
-<li><strong>Messenger Async Queue:</strong> Wiring a real transport (Doctrine/Redis) so email and notification work move onto an asynchronous queue.</li>
+<li><strong>Workflow &amp; State Machine:</strong> A mechanism that manages transition processes for business records such as invoices, vehicles, and reservations (<code>draft &rarr; preparation &rarr; sold</code>) via YAML definitions, and automatically ties every transition to the audit log and notification queue. <code>CpResource::$workflow</code> is already declared.</li>
+<li><strong>Messenger Async Queue:</strong> Wiring a real transport (Doctrine/Redis) so email and notification work move onto an asynchronous queue. <code>symfony/messenger</code> is installed and visible on the AACP desk; no active transport is bound yet.</li>
 </ul>
 HTML,
                 ],
@@ -273,10 +438,10 @@ HTML,
             'title' => 'CPalius CMF: Bir İçerik Yönetim Sisteminden "Kurşun Geçirmez" Kurumsal Uygulama Framework\'üne Evrim',
             'intro_html' => <<<'HTML'
 <p><strong>Yayın Türü:</strong> Teknik İnceleme (Whitepaper) &amp; Mimari Yol Haritası (RFC)<br>
-<strong>Sürüm:</strong> v1.0.0-draft<br>
+<strong>Sürüm:</strong> v1.2.0<br>
 <strong>Hedef Kitle:</strong> Kıdemli PHP Geliştiricileri, Sistem Mimarları, Açık Kaynak Geliştiricileri ve Yapay Zeka Ajanları<br>
 <strong>Yazar / Kurucu:</strong> Ali Çömez (slaweally)<br>
-<strong>Teknoloji Yığını:</strong> PHP 8.2+, Symfony 7.4 LTS, Doctrine ORM, AssetMapper, Tailwind CSS Standalone Binary</p>
+<strong>Teknoloji Yığını:</strong> PHP 8.4+, Symfony 7.4 LTS, Doctrine ORM, AssetMapper, Tailwind CSS Standalone Binary</p>
 
 <p><strong>Giriş: Teori, Pratik ve "Tekerleği Yeniden İcat Etme" Sancısı</strong></p>
 
@@ -401,6 +566,10 @@ HTML,
 </ul>
 
 <p>Aynı güvence, <code>UNIQUE(translation_group_id, locale)</code> ile dört entity'ye daha (categories, tags, menu_items, forum_sections) taşınmıştır; böylece "bir çeviri grubunda her dilden en fazla bir kayıt" kuralını eşzamanlı isteklerde bile veritabanının kendisi zorlar.</p>
+
+<p><strong>Operatör arayüz katalogları</strong></p>
+
+<p>AACP ve Studio kromu <code>cp-content/translations</code> altındaki ICU YAML'e ve her modülün <code>Resources/translations</code> dizinine bağlıdır. Kenar çubuğu etiketleri ve <code>#[CpAdminMenu]</code> öznitelikleri çeviri anahtarı kullanır. Sabit kodlanmış Türkçe (veya İngilizce) operatör metinleri PHP, Twig kromu veya JavaScript içinde yaşamaz.</p>
 HTML,
                 ],
                 [
@@ -473,21 +642,182 @@ HTML,
 
 <p><strong>3. N+1 Sorgu Muhafızı (Dev-Mode N+1 Guard)</strong></p>
 
-<p>Veritabanı şişmelerinin ve yavaşlıklarının en yaygın sebebi olan N+1 sorgu hatalarını engellemek için sadece dev ortamında tetiklenen bir Doctrine DBAL middleware'i devrededir. Tek bir HTTP isteğinde aynı tabloya atılan sorgu sayısı belirlenen limiti aşarsa, doğrudan <code>MaxQueriesExceededException</code> fırlatılır. Geliştirici bu hatayı lokalde çözmeden kodu canlıya alamaz.</p>
+<p>Veritabanı şişmelerinin ve yavaşlıklarının en yaygın sebebi olan N+1 sorgu hatalarını engellemek için sadece dev ortamında tetiklenen bir Doctrine DBAL middleware'i devrededir. Tek bir HTTP isteğinde aynı tabloya atılan sorgu sayısı belirlenen limiti aşarsa, doğrudan <code>MaxQueriesExceededException</code> fırlatılır. Geliştirici bu hatayı lokalde çözmeden kodu canlıya alamaz. Zincir DBAL katmanında gerçektir: <code>QueryCounterConnection</code>, <code>Driver</code>, <code>Statement</code> ve <code>TableParser</code>.</p>
+
+<p><strong>4. Voter-to-SQL Dönüşümü</strong></p>
+
+<p>Liste ekranları her satır için PHP voter çalıştırmamalıdır (bu, yetkilendirmenin N+1'idir). <code>QueryScopeApplier</code>, çağıranın <code>.own</code> / <code>.any</code> yeteneklerini sorgu veritabanına gitmeden önce Doctrine <code>WHERE</code> koşuluna çevirir.</p>
+
+<p><strong>5. Zero-Trust Payload ve Çekirdek XSS Sterilizasyonu</strong></p>
+
+<p>Dışarıdan gelen HTTP gövdeleri sıkı DTO'lara map edilir ve denetleyicilere ulaşmadan doğrulanır. Veritabanına gidecek zengin metin <code>RichTextSanitizer</code> ile sterilize edilir (Manifesto Law 5.3). <code>SchemaOrgBuilder</code> aynı hibrit JSON'dan JSON-LD (BlogPosting, WebPage) üretir.</p>
+
+<p><strong>6. İyimser Eşzamanlılık</strong></p>
+
+<p>Yüksek yazma yolları tablo kilidi yerine optimistic locking kullanır; eşzamanlı mutasyonlar deadlock tiyatrosu olmadan izole edilir. Config (roller, yetenekler) Git'teki YAML'de kalır; kullanıcılar veritabanında kalır — Symfony TreeBuilder ile Drupal tarzı config sync.</p>
+HTML,
+                ],
+                [
+                    'id' => 'platform-layer',
+                    'title' => '7. Bölüm: Platform Genişletilebilirliği — API, Hook, Cron, Plugin',
+                    'html' => <<<'HTML'
+<p>İlk whitepaper taslağından bu yana çekirdeğe dört genişletme omurgası indi. Her biri aynı Core Never Dies zırhını taşır: çöken bir eklenti karantinaya alınır; çekirdek ayakta kalır.</p>
+
+<p><strong>Kriptografik REST API Gateway</strong></p>
+
+<p>Tek bir <code>/api/{path}</code> joker rotası, derleme zamanında <code>ApiRegistrationPass</code> ile <code>#[CpApi]</code> işaretli servis metotlarına bağlanır. Kimlik doğrulama <code>X-CP-API-KEY</code> header'ı, SHA-256 hash ve zamanlama-güvenli <code>hash_equals()</code> ile yapılır. Fail-closed: geçersiz anahtar hedef metoda asla ulaşmaz. Her uç kendi try/catch'inde çalışır; çöken bir metot gateway'i 500'e düşüremez.</p>
+
+<p><strong>Çift kulvarlı izole Hook motoru</strong></p>
+
+<p>Cotonti tarzı <code>Hooks/{hook_point}.php</code> dosyaları bağlı bir Closure içinde çalışır; <code>$this</code> sızıntısı olmaz. Symfony tarzı <code>#[CpHook]</code> servisleri <code>HookRegistrationPass</code> ile toplanır. Fırlatan hook karantina günlüğüne yazılır; sayfa yine render edilir.</p>
+
+<p><strong>Birleşik hibrit Cron motoru</strong></p>
+
+<p><code>CronManager</code> üç kaynağı tek listede birleştirir: <code>cp_cron_jobs</code> satırları, <code>#[CpCronJob]</code> metotları ve <code>Hooks/cron.{job}.php</code> dosyaları. Görevler izole alt süreçlerde çalışır ve <code>CronCommandWhitelist</code> ile yalnızca <code>cp:*</code> komutlarını çalıştırabilir. Operatörler <code>/aacp/cron</code> üzerinden izler ve &ldquo;Şimdi çalıştır&rdquo; der.</p>
+
+<p><strong>Modülden bağımsız Plugin katmanı</strong></p>
+
+<p><code>PluginInterface</code> işaretli servisler <code>PluginRegistry</code> tarafından toplanır; aktiflik <code>PluginToggleRepository</code>'dedir. Bir modül, kendisini kapatmadan opsiyonel widget'ları açıp kapatabilir.</p>
+
+<p><strong>Lazy ayarlar</strong></p>
+
+<p><code>#[CpSetting]</code> anahtarları <code>SettingsRegistry</code> üzerinden talep edilince yüklenir — boot'ta her anahtarı dökmez, sorulunca tek sorgu atar.</p>
+
+<p><strong>WordPress tarzı modül paketleri</strong></p>
+
+<p>Birinci parti bir modül <code>Resources/config/importmap.php</code> ve <code>contributions.yaml</code> taşıyabilir. <code>ModulePackageContract</code> disk düzenini doğrular; operatörler AACP'den ZIP yükleyebilir. Ana sayfa kipleri, portal akış blokları, şema türleri ve hesap giriş-sonrası iniş noktası contribution kataloğunda ilan edilir — çekirdek <code>forum_index</code> veya <code>blog_index</code>'i sabit kodlamaz.</p>
+HTML,
+                ],
+                [
+                    'id' => 'aacp-command',
+                    'title' => '8. Bölüm: AACP Komuta Masası, Studio ve Kurtarma',
+                    'html' => <<<'HTML'
+<p>Orijinal yol haritasında vaat edilen Safe Mode / Kurtarma Konsolu artık üretim kodudur. AACP süs bir admin teması değil, sistem yönetim merkezidir.</p>
+
+<p><strong>Kurtarma Konsolu (<code>/aacp/recovery</code>)</strong></p>
+
+<p>Rota <code>security.yaml</code>'da bilinçli olarak <code>PUBLIC_ACCESS</code>'tir. Yetki, <code>.env</code>'deki <code>AACP_RECOVERY_TOKEN</code> ile zamanlama-güvenli <code>hash_equals()</code>'tir. Hiç Doctrine sorgusu çalıştırmaz; veritabanı yokken de ayaktadır. Boş token kapıyı kilitler (fail-safe).</p>
+
+<p><strong>Canlı komuta masası (<code>/aacp</code>)</strong></p>
+
+<p>Dashboard <code>/aacp/system/metrics</code>'i poll eder: PHP sürümü, load, istek süresi, bellek, OPcache hit oranı, veritabanı telemetrisi, kuyruk, cron son çalışma, modül karantinası. Cache Rebuild ve OPcache flush tek tık, CSRF korumalıdır. İçerik KPI'ları Studio <code>/admin</code>'dedir, AACP'de değil — AACP operasyon, Studio editoryal komuta masasıdır.</p>
+
+<p><strong>Studio dashboard</strong></p>
+
+<p>Her ilk parti modül bir <code>StudioDashboardStatsProvider</code> sunar (Blog, Forum, Medya, Menü, Roadmap, SEO). Studio Drupal tarzı bir komuta masasıdır: sayılar, kısayollar ve ana sayfa portal düzeni (blok sırası, <code>portal.{locale}.yaml</code> içinde çift dilli metin).</p>
+
+<p><strong>Karantina, lokalizasyon, performans backend'leri</strong></p>
+
+<p><code>/aacp/quarantine</code>, <code>module_quarantine.log</code>'un salt-okunur görünümüdür. <code>TranslationManager</code> çekirdek ve modül ICU YAML'ini atomik <code>.tmp</code> + <code>rename()</code> ile yazar. Performans ekranı Redis, Memcached, Varnish, Nginx PageSpeed ve CPalius Origin Cache'i test eder; &ldquo;aktif&rdquo; bayrağı yalnızca başarılı probe'dan sonra konur — sahte yeşil toggle yoktur. <code>/aacp/backup</code> Yedek Yönetimi masasıdır (<code>system.backup.manage</code> yeteneği): veritabanı dökümü, dosya ZIP'i veya tam arşiv; indirme ve silme dahildir.</p>
+HTML,
+                ],
+                [
+                    'id' => 'origin-cache',
+                    'title' => '9. Bölüm: Origin HTML Cache ve Performans Envanteri',
+                    'html' => <<<'HTML'
+<p>CPalius Origin Cache, Redis, Varnish veya CDN gerektirmeyen birinci parti bir HTML önbelleğidir. Bu backend'lerin yanında durur; sade paylaşımlı hostingde de çalışır.</p>
+
+<p><strong>İsabet nasıl servis edilir</strong></p>
+
+<p>Açık/kapalı durumu <code>public/page-cache/</code> altındaki disk sentinel'idir. <code>public/.htaccess</code> içindeki Apache rewrite, sorgu dizesi ve oturum çerezi (<code>PHPSESSID</code>, <code>REMEMBERME</code>) olmayan anonim GET isteklerinde <code>page-cache/{path}/index.html</code> dosyasını servis eder. PHP yazmayı ve sorgu-dizesi varyantlarını <code>OriginCacheWriter</code> / <code>OriginCacheReader</code> ile okumayı sürdürür.</p>
+
+<p><strong>Ne saklanır</strong></p>
+
+<p>HTML isteğe bağlı minify edilir. Bağlı CSS/JS kopyalanıp minify edilebilir; görseller WebP türevi olarak üretilebilir. İsteğe bağlı HTML kalkanı işaretlemeyi yeniden yazar. TTL, hariç tutulan yollar (<code>/aacp</code>, <code>/admin</code>, <code>/login</code>, API'ler, profiler), minify, asset/görsel sıkıştırma ve kalkan <code>performance.cpalius.*</code> ayarlarıdır. Cron <code>cpalius.origin_cache.purge</code> süresi dolan dosyaları 15 dakikada bir siler. Cache Rebuild origin HTML'i de temizler.</p>
+
+<p><strong>Geçersiz kılma</strong></p>
+
+<p><code>OriginCachePurger</code> Blog yazı/kategori/etiket yazımlarında (zamanlanmış yayın dahil), Forum konu mutasyonlarında, Roadmap kayıt kaydında ve Menü kaydında çalışır — editoryal değişiklik diskte bayat HTML bırakmaz.</p>
+
+<p><strong>AACP Performans paneli</strong></p>
+
+<p>Dashboard'daki Performans bölümü, PHP sürecinin görebileceği her backend'in envanterini çıkarır:</p>
+
+<ul>
+<li><strong>Origin Cache:</strong> HTML sayfa adedi, disk baytı, son yollar (boyut ve zaman).</li>
+<li><strong>Redis:</strong> <code>DBSIZE</code> (anahtar sayısı) ve <code>INFO memory</code> (<code>used_memory</code>).</li>
+<li><strong>Memcached:</strong> <code>curr_items</code> ve <code>bytes</code> (daemon cevaplıyorsa hit sayısı).</li>
+<li><strong>OPcache:</strong> önbellekteki script'ler, kullanılan bellek, hit oranı.</li>
+<li><strong>Varnish / PageSpeed:</strong> açık/kapalı ve TTL / son probe. Nesne sayıları host'ta <code>varnishstat</code> veya PageSpeed admin ister; PHP bu sayıları uydurmaz.</li>
+</ul>
+
+<p>Probe'lar izole edilir ve birkaç saniye önbelleğe alınır; takılan bir Redis dashboard'u 500'e düşüremez.</p>
+HTML,
+                ],
+                [
+                    'id' => 'backup',
+                    'title' => '10. Bölüm: Yedek Yönetimi',
+                    'html' => <<<'HTML'
+<p>Felaket kurtarma üçüncü parti bir eklenti değil, birinci parti bir AACP masasındır. <code>system.backup.manage</code> yeteneği <code>/aacp/backup</code> yolunu korur. Admin rolü bunu <code>*</code> ile miras alır; editörler menüyü görmez.</p>
+
+<p><strong>Üç arşiv türü</strong></p>
+
+<ul>
+<li><strong>Veritabanı:</strong> Doctrine DBAL üzerinden PHP ile yazılan gzip SQL dökümü. <code>mysqldump</code> gerekmez; Windows'ta Laragon, Linux hosting ile aynı şekilde çalışır.</li>
+<li><strong>Dosyalar:</strong> tüm CPalius ağacının ZIP'i; <code>cp-includes/vendor</code> ve tüm <code>public/</code> dizini (yüklemeler, derlenmiş asset'ler, temalar, front controller) dahildir. Dışarıda: her <code>.env*</code> dosyası, <code>.git</code>, <code>node_modules</code>, Symfony cache, Tailwind derleme önbelleği, oturumlar, Origin Cache HTML ve <code>cp-core/var/backups/</code> altındaki iç içe arşivler.</li>
+<li><strong>Tam:</strong> aynı arşivin içine <code>database.sql.gz</code> eklenmiş dosya ZIP'i.</li>
+</ul>
+
+<p>Arşiv adları <code>cpalius-{db|files|full}-YYYYMMDD-HHMMSS.{sql.gz|zip}</code> biçimindedir ve <code>cp-core/var/backups/</code> altında durur (zaten gitignore). İndirme <code>/aacp/backup/archive/{stem}</code> kullanır (URL'de <code>.sql.gz</code> / <code>.zip</code> yoktur) ki nginx statik-dosya location'ı isteği kesmesin; <code>Content-Disposition</code> yine gerçek dosya adını gönderir. Silme CSRF korumalıdır. Path traversal dosya adı allowlist'i ile reddedilir. CLI <code>cp:backup:create</code> cron whitelist'indedir; operatörler web zaman aşımı olmadan döküm zamanlayabilir.</p>
+
+<p>v1 tarayıcıdan canlı ağacı üzerine yazmaz. Geri yükleme önce staging'dir: dosyaları taze bir kurulumun yanına açın, SQL'i veritabanının bir kopyasına uygulayın, sonra yer değiştirin. Geri yüklemeyi tek tık AACP düğmesinin arkasına koymak Core Never Dies'ı ihlal eder.</p>
+HTML,
+                ],
+                [
+                    'id' => 'telemetry',
+                    'title' => '11. Bölüm: Güvenlik Telemetrisi ve IP Denetimi',
+                    'html' => <<<'HTML'
+<p>AACP, kamu sitesini karanlık-kalıp bir izleyiciye çevirmeden istek telemetrisi tutar. Ana anahtar <code>telemetry.security_enabled</code>'dır ve varsayılanı <strong>kapalı</strong>dır.</p>
+
+<p><strong>Ziyaretçi modu (varsayılan)</strong></p>
+
+<p>Dashboard sayfa görüntüleme, benzersiz IP, popüler yollar ve trafik grafiği gösterir. Tehdit akışı yoktur, Ban IP yoktur. Pazarlama sitesini, operatörün yüzüne bir WAF konsolu yapıştırmadan barındırmak için uygundur.</p>
+
+<p><strong>Güvenlik modu</strong></p>
+
+<p>Açıldığında <code>kernel.terminate</code> üzerindeki <code>TelemetrySubscriber</code>, <code>cp_system_telemetry_logs</code>'a satır yazar: IP, kullanıcı, metot, URI, user-agent, şiddet, olay türü, tehdit skoru ve JSON ayrıntı. <code>ThreatAnalyzer</code> SQLi, XSS, tarayıcı, path traversal ve giriş gürültüsünü skorlar. Canlı akış JSON poll eder; ayrıntı modalı satırı açar; Ban IP yalnızca <code>critical</code> / <code>threat</code> şiddette sunulur.</p>
+
+<p><strong>IP ban</strong></p>
+
+<p><code>IpBanService</code> <code>cp_banned_ips</code>'e yazar. <code>BannedIpSubscriber</code> yasaklı istemciyi yığının geri kalanı bütçe harcamadan reddeder. Bir cron görevi eski telemetri satırlarını siler; tablo sınırsız büyüyemez.</p>
+HTML,
+                ],
+                [
+                    'id' => 'first-party',
+                    'title' => '12. Bölüm: İlk Parti Modüller, Medya Pipeline ve Deep-Localization',
+                    'html' => <<<'HTML'
+<p>Blog, Medya, Menü, Forum, Roadmap, Pages ve SEO referans modülleridir: API, Hook, Cron, Plugin, Settings, contribution kataloğu ve Studio istatistiklerini üçüncü parti bir modülün kullanması gereken şekilde kullanırlar.</p>
+
+<p><strong>Blog</strong> <code>Node::type = post</code> üzerindedir; kategori, etiket, zamanlanmış yayın (<code>PublishScheduledPostsTask</code>), <code>GET /api/blog/posts</code>, sidebar hook ve Schema.org BlogPosting. <strong>Pages</strong> <code>Node::type = page</code> üzerindedir; alan grupları <code>fg-</code> slug kullanır ve kamu rotası <code>/{_locale}/{slug}</code> adresindeki <code>page_show</code>'dur. <strong>Menü</strong> WordPress tarzı sürükle-bıraktır; öğeler node'a gevşek referans verir (sert FK yok) ki soft-delete dürüst kalsın. <strong>Roadmap</strong> yerli bir akıştır; portala ilişkili blog ve forum etkinliğini de çekebilir. <strong>SEO</strong> sitemap kaynakları ve JSON-LD üretir.</p>
+
+<p><strong>Forum motoru</strong></p>
+
+<p>Hiyerarşik panolar Node ağacını yeniden kullanır; önekler, CSRF korumalı rapor/moderasyon kuyruğu, rütbe/rozet ve 20/80 postbit (Altın Oran) CMF'in geri kalanıyla aynı yetenek modelinde çalışır.</p>
+
+<p><strong>Medya pipeline (Manifesto Law 3.3)</strong></p>
+
+<p><code>Asset</code> Node'dan bağımsızdır. Flysystem depolama ve sha256 dedup. <code>ImageProcessor</code> (GD) <code>crop</code> veya <code>fit</code> türevlerini <code>public/uploads/cache/</code> altına yazar; <code>cp_thumb</code> bir Asset, id, depolama anahtarı veya <code>/uploads/...</code> URL kabul eder. Başarısız türev orijinal URL'i döner (fail-soft). Kaynak değişince <code>purge()</code> tüm boyutları siler.</p>
+
+<p><strong>Deep-localization</strong></p>
+
+<p>Her satır kendi dilinde yaşar ve kardeşlerine <code>translation_group_id</code> UUID'si ile bağlanır; kural <code>UNIQUE(translation_group_id, locale)</code> ile zorlanır (kategoriler, etiketler, menü öğeleri, forum bölümleri dahil). <code>LocaleSwitchService</code> karşı URL'i üretir; kardeş yoksa o dilin ana sayfasına düşer — asla 404. AACP'de locale öneki yoktur; panel dili <code>cp_locale</code> çerezidir. Çeviri dosyaları atomik yazılır (<code>.tmp</code> + işletim sistemi <code>rename()</code>).</p>
+
+<p><strong>Çekirdek arayüzde Zero Node.js</strong></p>
+
+<p>Admin ve geliştirici kromu AssetMapper + Tailwind standalone binary kullanır. Bu yüzeyler için Node.js derlemesi yoktur. Kamu tema CSS'i yine statik bir tema varlığı olabilir.</p>
 HTML,
                 ],
                 [
                     'id' => 'roadmap',
-                    'title' => '7. Bölüm: Gelecek Yol Haritası ve Teknik İstişare (RFC)',
+                    'title' => '13. Bölüm: Gelecek Yol Haritası ve Teknik İstişare (RFC)',
                     'html' => <<<'HTML'
-<p>CPalius'un çekirdek güvenlik, performans ve mimari omurgası tamamlanmıştır. Bu whitepaper'ın ilk taslağından bu yana birçok roadmap maddesi teslim edildi: AACP Safe Mode / Kurtarma Konsolu, izole Hook sistemi, birleşik Cron motoru, REST API Gateway, dördüncü savunma hattı (<code>SafeModuleRouteLoader</code>), anlık görsel pipeline'ı (<code>cp_thumb</code>) ve <code>#[CpResource]</code> audit log.</p>
+<p>CPalius'un çekirdek güvenlik, performans ve mimari omurgası tamamlanmıştır. Bu whitepaper'ın ilk taslağından bu yana teslim edilenler: AACP Safe Mode / Kurtarma Konsolu, izole Hook sistemi, birleşik Cron motoru, REST API Gateway, dördüncü savunma hattı (<code>SafeModuleRouteLoader</code>), anlık görsel pipeline'ı (<code>cp_thumb</code>), <code>#[CpResource]</code> audit log, Studio dashboard istatistikleri, CPalius Origin Cache, AACP performans envanteri, isteğe bağlı güvenlik telemetrisi (IP ban dahil), WordPress tarzı modül paketleri ve contribution kataloğu (ana sayfa, portal, şema, hesap inişi), Pages modülü, operatör arayüz katalog bağlama ve AACP Yedek Yönetimi (<code>cp:backup:create</code>).</p>
 
 <p>Sıradaki geliştirme sprintlerinde aşağıdaki sistemleri inşa edeceğiz:</p>
 
 <ul>
-<li><strong>Workflow &amp; State Machine:</strong> Fatura, araç, rezervasyon gibi iş kayıtlarının geçiş süreçlerini (<code>draft &rarr; preparation &rarr; sold</code>) YAML tanımlarıyla yöneten ve her geçişi otomatik audit log'a ve bildirim kuyruğuna bağlayan mekanizma.</li>
-<li><strong>Pimcore Tarzı Bağımsız Asset Sistemi:</strong> Medyayı Node'un bir alt tipi yapmaktan kurtarıp, Flysystem (S3, MinIO) ile URL üzerinden anlık görsel türetme sunan modern dosya kütüphanesi.</li>
-<li><strong>Messenger Async Kuyruk:</strong> Gerçek bir transport (Doctrine/Redis) bağlayarak e-posta ve bildirim işlemlerini asenkron kuyruğa taşımak.</li>
+<li><strong>Workflow &amp; State Machine:</strong> Fatura, araç, rezervasyon gibi iş kayıtlarının geçiş süreçlerini (<code>draft &rarr; preparation &rarr; sold</code>) YAML tanımlarıyla yöneten ve her geçişi otomatik audit log'a ve bildirim kuyruğuna bağlayan mekanizma. <code>CpResource::$workflow</code> alanı zaten deklare edilmiştir.</li>
+<li><strong>Messenger Async Kuyruk:</strong> Gerçek bir transport (Doctrine/Redis) bağlayarak e-posta ve bildirim işlemlerini asenkron kuyruğa taşımak. <code>symfony/messenger</code> kurulu ve AACP masasında görünür; henüz aktif transport bağlı değildir.</li>
 </ul>
 HTML,
                 ],

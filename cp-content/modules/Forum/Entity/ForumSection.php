@@ -20,7 +20,7 @@ use Modules\Forum\ForumSectionType;
  */
 #[ORM\Entity(repositoryClass: ForumSectionRepository::class)]
 #[ORM\Table(name: 'forum_sections')]
-#[ORM\UniqueConstraint(name: 'uniq_forum_section_code', columns: ['code'])]
+#[ORM\UniqueConstraint(name: 'uniq_forum_section_code_locale', columns: ['code', 'locale'])]
 #[ORM\UniqueConstraint(name: 'uniq_forum_section_slug_locale', columns: ['slug', 'locale'])]
 #[ORM\Index(columns: ['locale'], name: 'idx_forum_section_locale')]
 #[ORM\Index(columns: ['node_type'], name: 'idx_forum_section_node_type')]

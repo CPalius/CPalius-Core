@@ -21,3 +21,4 @@ capabilities:
     - forum.reputation.give
     - forum.topic.moderate
     - forum.user.manage
+    - forum.thread.split

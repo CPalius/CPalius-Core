@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Core\Cache;
 
+use App\Core\OriginCache\OriginCachePurger;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Shared cache/OPcache/asset rebuild for AACP and Studio. Three independent methods (Law 2.3).
@@ -17,71 +19,153 @@ use Symfony\Component\Process\Process;
  */
 final class CacheRebuildManager
 {
+    private const OK = '[OK] ';
+    private const ERR = '[ERR] ';
+
+    private bool $deferKernelPurge = false;
+
     public function __construct(
         #[Autowire(param: 'kernel.project_dir')]
         private readonly string $projectDir,
+        #[Autowire(param: 'kernel.cache_dir')]
+        private readonly string $cacheDir,
         #[Autowire(param: 'kernel.environment')]
         private readonly string $environment,
         #[Autowire(service: 'cache.app')]
         private readonly CacheInterface $appCache,
+        private readonly OriginCachePurger $originCachePurger,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
     /**
-     * Clear cache.app and safe var/cache/{env} subdirs in-process (do not spawn cache:clear).
+     * Clear cache.app and origin HTML now. Kernel var/cache/{env} (container,
+     * routing, twig) is wiped after the HTTP response is sent — renaming that
+     * directory mid-request fatals PHP and returns an HTML 500 instead of JSON.
      *
      * @return array{success: bool, output: string}
      */
     public function clearSymfonyCache(): array
     {
+        $msg = $this->translateLogTemplates();
         $log = [];
 
         try {
             $this->appCache->clear();
-            $log[] = '[OK] Uygulama önbelleği (cache.app) temizlendi.';
+            $log[] = $msg['app_cleared'];
         } catch (\Throwable $e) {
-            $log[] = sprintf('[HATA] cache.app temizlenemedi: %s', $e->getMessage());
+            $log[] = str_replace('__ERROR__', $e->getMessage(), $msg['app_failed']);
         }
 
-        $log = array_merge($log, $this->purgeCacheDirectory());
+        try {
+            $originDeleted = $this->originCachePurger->purgeAll();
+            $log[] = str_replace('__COUNT__', (string) $originDeleted, $msg['origin_cleared']);
+        } catch (\Throwable $e) {
+            $log[] = str_replace('__ERROR__', $e->getMessage(), $msg['origin_failed']);
+        }
 
-        $hasFailure = array_filter($log, static fn (string $line) => str_starts_with($line, '[HATA]')) !== [];
+        $this->deferKernelPurge = true;
+        $log[] = $msg['dir_wiped'];
+
+        if (\function_exists('opcache_reset')) {
+            $log[] = $msg['opcache_reset'];
+        }
+
+        // Shutdown always runs, even when the compiled container does not yet
+        // contain CacheRebuildTerminateSubscriber (chicken-and-egg on first deploy).
+        $manager = $this;
+        register_shutdown_function(static function () use ($manager): void {
+            $manager->flushDeferredKernelPurge();
+        });
 
         return [
-            'success' => !$hasFailure,
+            'success' => !$this->logHasError($log),
             'output' => implode(PHP_EOL, $log),
         ];
     }
 
     /**
-     * Remove rebuildable cache subdirs (pools, twig, …); never delete compiled container/routing files.
-     *
-     * @return list<string>
+     * Called from kernel.terminate after the JSON/HTML response is flushed.
      */
-    private function purgeCacheDirectory(): array
+    public function flushDeferredKernelPurge(): void
     {
-        $cacheDir = $this->projectDir.'/cp-core/var/cache/'.$this->environment;
+        if (!$this->deferKernelPurge) {
+            return;
+        }
+        $this->deferKernelPurge = false;
+
+        if (\function_exists('fastcgi_finish_request')) {
+            @\fastcgi_finish_request();
+        }
+
+        try {
+            $this->purgeKernelCacheDirectory();
+        } catch (\Throwable) {
+        }
+
+        if (\function_exists('opcache_reset')) {
+            @opcache_reset();
+        }
+    }
+
+    private function purgeKernelCacheDirectory(): void
+    {
+        $cacheDir = rtrim($this->cacheDir, '/\\');
         $filesystem = new Filesystem();
 
-        // Never delete compiled container/routing; only rebuildable content dirs.
-        $purgeableSubdirs = ['pools', 'twig', 'asset_mapper', 'doctrine', 'jit', 'profiler'];
+        if (!$filesystem->exists($cacheDir)) {
+            return;
+        }
 
-        $log = [];
-        foreach ($purgeableSubdirs as $subdir) {
-            $path = $cacheDir.'/'.$subdir;
-            if (!$filesystem->exists($path)) {
+        $this->removeStaleCacheDirs($filesystem, dirname($cacheDir));
+
+        $staleDir = dirname($cacheDir).DIRECTORY_SEPARATOR.$this->environment.'.stale.'.bin2hex(random_bytes(4));
+        if (@rename($cacheDir, $staleDir)) {
+            @mkdir($cacheDir, 0775, true);
+            try {
+                $filesystem->remove($staleDir);
+            } catch (\Throwable) {
+            }
+
+            return;
+        }
+
+        $this->deleteTreeContents($cacheDir);
+    }
+
+    private function deleteTreeContents(string $dir): void
+    {
+        $entries = @scandir($dir);
+        if ($entries === false) {
+            return;
+        }
+
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') {
                 continue;
             }
 
+            $path = $dir.DIRECTORY_SEPARATOR.$entry;
+            if (is_dir($path) && !is_link($path)) {
+                $this->deleteTreeContents($path);
+                @rmdir($path);
+                continue;
+            }
+
+            @chmod($path, 0666);
+            @unlink($path);
+        }
+    }
+
+    private function removeStaleCacheDirs(Filesystem $filesystem, string $parentDir): void
+    {
+        $pattern = $parentDir.DIRECTORY_SEPARATOR.$this->environment.'.stale.*';
+        foreach (glob($pattern) ?: [] as $stale) {
             try {
-                $filesystem->remove($path);
-                $log[] = sprintf('[OK] Dizin temizlendi: var/cache/%s/%s', $this->environment, $subdir);
-            } catch (\Throwable $e) {
-                $log[] = sprintf('[HATA] var/cache/%s/%s silinemedi: %s', $this->environment, $subdir, $e->getMessage());
+                $filesystem->remove($stale);
+            } catch (\Throwable) {
             }
         }
-
-        return $log;
     }
 
     /**
@@ -94,7 +178,7 @@ final class CacheRebuildManager
         if (!\function_exists('opcache_reset')) {
             return [
                 'success' => false,
-                'output' => '[HATA] OPcache eklentisi bu PHP kurulumunda yüklü değil.',
+                'output' => $this->err('aacp.cache_rebuild.log.opcache_missing'),
             ];
         }
 
@@ -103,13 +187,13 @@ final class CacheRebuildManager
         if ($result === false) {
             return [
                 'success' => false,
-                'output' => '[HATA] opcache_reset() başarısız oldu (opcache.enable=0 olabilir).',
+                'output' => $this->err('aacp.cache_rebuild.log.opcache_reset_failed'),
             ];
         }
 
         return [
             'success' => true,
-            'output' => '[OK] OPcache sıfırlandı (yalnızca bu isteği işleyen PHP worker\'ı için geçerlidir).',
+            'output' => $this->ok('aacp.cache_rebuild.log.opcache_reset_worker'),
         ];
     }
 
@@ -144,5 +228,55 @@ final class CacheRebuildManager
             'success' => true,
             'output' => $process->getOutput().$process->getErrorOutput(),
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function translateLogTemplates(): array
+    {
+        $env = $this->environment;
+        $ok = self::OK;
+        $err = self::ERR;
+        $t = fn (string $id, array $params = []): string => $this->translator->trans($id, $params);
+
+        return [
+            'app_cleared' => $ok.$t('aacp.cache_rebuild.log.app_cleared'),
+            'app_failed' => $err.$t('aacp.cache_rebuild.log.app_failed', ['error' => '__ERROR__']),
+            'origin_cleared' => $ok.$t('aacp.cache_rebuild.log.origin_cleared', ['count' => '__COUNT__']),
+            'origin_failed' => $err.$t('aacp.cache_rebuild.log.origin_failed', ['error' => '__ERROR__']),
+            'opcache_reset' => $ok.$t('aacp.cache_rebuild.log.opcache_reset'),
+            'dir_wiped' => $ok.$t('aacp.cache_rebuild.log.dir_wiped', ['env' => $env]),
+        ];
+    }
+
+    /**
+     * @param array<string, scalar> $parameters
+     */
+    private function ok(string $id, array $parameters = []): string
+    {
+        return self::OK.$this->translator->trans($id, $parameters);
+    }
+
+    /**
+     * @param array<string, scalar> $parameters
+     */
+    private function err(string $id, array $parameters = []): string
+    {
+        return self::ERR.$this->translator->trans($id, $parameters);
+    }
+
+    /**
+     * @param list<string> $log
+     */
+    private function logHasError(array $log): bool
+    {
+        foreach ($log as $line) {
+            if (str_starts_with($line, self::ERR) || str_starts_with($line, '[HATA]')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

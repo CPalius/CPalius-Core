@@ -49,7 +49,7 @@ final class ForumMemberAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Üyeler', icon: 'heroicons:users', panel: 'studio', priority: 29, capability: 'forum.user.manage', group: 'İçerik', parent: 'admin_forum_dashboard')]
+    #[CpAdminMenu(label: 'studio.forum.dashboard.action.members', icon: 'heroicons:users', panel: 'studio', priority: 29, capability: 'forum.user.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
     public function index(Request $request): Response
     {
         $page = max(1, $request->query->getInt('page', 1));
@@ -166,6 +166,37 @@ final class ForumMemberAdminController extends AbstractController
         $this->banService->ban($user, $type, $reason, $moderator, $expiresAt);
         $flashKey = $type === ForumBan::TYPE_BAN ? 'studio.forum.members.user_banned' : 'studio.forum.members.user_muted';
         $this->addFlash('success', $this->translator->trans($flashKey, ['name' => $user->getFullName()]));
+
+        return $this->redirectToRoute('admin_forum_members_index');
+    }
+
+    #[Route('/target-ban', name: 'target_ban', methods: ['POST'])]
+    public function targetBan(Request $request): Response
+    {
+        $this->assertValidCsrf($request);
+        $reason = trim((string) $request->request->get('reason'));
+        $ip = trim((string) $request->request->get('ip_address'));
+        $email = trim((string) $request->request->get('email'));
+        if ($reason === '' || ($ip === '' && $email === '')) {
+            $this->addFlash('error', $this->translator->trans('studio.forum.members.target_required'));
+
+            return $this->redirectToRoute('admin_forum_members_index');
+        }
+
+        $days = $this->parseOptionalPositiveInt($request, 'duration_days') ?? 0;
+        $expiresAt = $days > 0 ? (new \DateTimeImmutable())->modify(sprintf('+%d days', $days)) : null;
+        /** @var User $moderator */
+        $moderator = $this->getUser();
+        $this->banService->banTarget(
+            null,
+            ForumBan::TYPE_BAN,
+            $reason,
+            $moderator,
+            $expiresAt,
+            $ip !== '' ? $ip : null,
+            $email !== '' ? $email : null,
+        );
+        $this->addFlash('success', $this->translator->trans('studio.forum.members.target_banned'));
 
         return $this->redirectToRoute('admin_forum_members_index');
     }

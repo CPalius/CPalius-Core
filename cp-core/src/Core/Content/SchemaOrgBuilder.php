@@ -2,19 +2,19 @@
 
 namespace App\Core\Content;
 
+use App\Core\Module\ModuleContributionCatalog;
 use App\Entity\Node;
 use App\Repository\AssetRepository;
 
 /**
- * Node::data['seo'] içindeki alanlardan Schema.org JSON-LD verisi üretir.
- * Generic tutulur (herhangi bir Node type için kullanılabilir) — node.type
- * 'post' ise BlogPosting, aksi halde WebPage üretir; ileride yeni type'lar
- * için switch/match genişletilebilir.
+ * Builds Schema.org JSON-LD from Node::data['seo'] fields.
+ * Schema type map comes from module contributions (schema_types); default is WebPage.
  */
 final class SchemaOrgBuilder
 {
     public function __construct(
         private readonly AssetRepository $assetRepository,
+        private readonly ModuleContributionCatalog $contributions,
     ) {
     }
 
@@ -65,7 +65,7 @@ final class SchemaOrgBuilder
 
     private function defaultSchemaType(Node $node): string
     {
-        return $node->getType() === 'post' ? 'BlogPosting' : 'WebPage';
+        return $this->contributions->schemaTypeFor($node->getType());
     }
 
     /**

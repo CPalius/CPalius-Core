@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\Blog\Controller;
 
+use App\Core\OriginCache\CacheTagCollector;
 use App\Core\Pagination\Paginator;
-use App\Entity\Category;
+use App\Core\Taxonomy\Entity\Term;
 use App\Entity\Node;
+use App\Entity\User;
 use App\Repository\CategoryRepository;
 use App\Repository\NodeRepository;
 use Modules\Blog\Service\BlogAppearanceService;
+use Modules\Blog\Service\BlogCommentService;
 use Modules\Blog\Service\BlogPostPresentationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -33,6 +36,8 @@ final class PostFrontController extends AbstractController
         private readonly BlogPostPresentationService $presentationService,
         private readonly BlogAppearanceService $appearanceService,
         private readonly TranslatorInterface $translator,
+        private readonly BlogCommentService $commentService,
+        private readonly CacheTagCollector $tagCollector,
     ) {
     }
 
@@ -51,6 +56,8 @@ final class PostFrontController extends AbstractController
             $this->appearanceService->postsPerPage(),
         );
 
+        $this->tagCollector->addListTag('node', self::NODE_TYPE);
+
         return $this->render('@Theme/blog/archive.html.twig', [
             'posts' => $result,
             'category' => null,
@@ -65,7 +72,7 @@ final class PostFrontController extends AbstractController
         $locale = $request->getLocale();
 
         $category = $this->categoryRepository->findOneBySlug($slug, $locale);
-        if (!$category instanceof Category) {
+        if (!$category instanceof Term) {
             throw new NotFoundHttpException($this->translator->trans('blog.front.error.category_not_found'));
         }
 
@@ -75,6 +82,9 @@ final class PostFrontController extends AbstractController
             $request->query->getInt('page', 1),
             $this->appearanceService->postsPerPage(),
         );
+
+        $this->tagCollector->addListTag('node', self::NODE_TYPE);
+        $this->tagCollector->addEntityTag('category', (int) $category->getId());
 
         return $this->render('@Theme/blog/archive.html.twig', [
             'posts' => $result,
@@ -98,6 +108,8 @@ final class PostFrontController extends AbstractController
             $request->query->getInt('page', 1),
             $this->appearanceService->postsPerPage(),
         );
+
+        $this->tagCollector->addListTag('node', self::NODE_TYPE);
 
         return $this->render('@Theme/blog/tag/show.html.twig', [
             'posts' => $result,
@@ -149,6 +161,8 @@ final class PostFrontController extends AbstractController
             $this->appearanceService->postsPerPage(),
         );
 
+        $this->tagCollector->addListTag('node', self::NODE_TYPE);
+
         return $this->render('@Theme/blog/archive.html.twig', [
             'posts' => $result,
             'category' => null,
@@ -188,10 +202,19 @@ final class PostFrontController extends AbstractController
         // LocaleSwitchService reads TranslatableInterface from request attributes.
         $request->attributes->set('blog_post', $node);
 
+        $user = $this->getUser();
+
+        $this->tagCollector->addEntityTag('node', (int) $node->getId());
+
         return $this->render('@Theme/blog/show.html.twig', [
             'post' => $node,
             'relatedPosts' => $this->nodeRepository->findRelatedPosts($node),
             'featuredImageUrl' => $this->presentationService->resolveFeaturedImageUrl($node),
+            'commentContext' => $this->commentService->buildShowContext(
+                $node,
+                $request,
+                $user instanceof User ? $user : null,
+            ),
         ]);
     }
 
@@ -252,7 +275,7 @@ final class PostFrontController extends AbstractController
      * @return array{
      *     blogHero: array<string, mixed>,
      *     featuredPosts: list<Node>,
-     *     blogCategories: array{roots: list<\App\Entity\Category>, postCounts: array<int, int>},
+     *     blogCategories: array{roots: list<\App\Core\Taxonomy\Entity\Term>, postCounts: array<int, int>},
      *     blogStats: array{posts: int, categories: int, tags: int},
      *     listLayout: string
      * }

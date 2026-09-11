@@ -1,16 +1,8 @@
 /**
- * AACP "Dil Yönetimi" sayfası — Translation Explorer tıkla-düzenle akışı,
- * dil sekmeleri, grup/eksik-çeviri filtreleri ve içe aktarma tetikleyicisi.
+ * AACP locale management — Translation Explorer inline edit, tabs, filters, import.
  *
- * aacp-api-keys.js ile aynı desen (framework'süz/vanilla JS, "sıfır
- * bağımlılık" ilkesi): data-localization-root bulunamazsa sessizce hiçbir
- * şey yapmaz. Bir AJAX isteği başarısız olursa hücre eski değerine geri
- * döner, sayfa asla çökmez.
- *
- * FAZ 3: dil sayısı sabit değildir. Sekmeler ve sütunlar sunucudan gelen
- * aktif dil listesine göre üretilir; bu dosyada hiçbir yerde 'tr'/'en'
- * yazmaz. Bir dil sekmesi seçildiğinde tablo, O DİLDE çevirisi EKSİK olan
- * satırlara odaklanır — çevirmenin "sırada ne var" sorusunun cevabı.
+ * Same vanilla-JS pattern as aacp-api-keys.js; no-ops without data-localization-root.
+ * Failed AJAX restores the cell value. Phase 3: locale count is dynamic from the server.
  */
 function initAacpLocalization(root) {
     const csrfToken = root.dataset.localizationCsrf;
@@ -34,7 +26,7 @@ function initAacpLocalization(root) {
     let activeLocale = '__all__';
 
     /* ------------------------------------------------------------------ */
-    /* Inline düzenleme                                                     */
+    /* Inline editing                                                       */
     /* ------------------------------------------------------------------ */
 
     function flashCell(cell, ok) {
@@ -150,8 +142,7 @@ function initAacpLocalization(root) {
             flashCell(cell, true);
             applyFilter();
         } catch (error) {
-            // Fail-safe: sunucu reddettiyse hücre eski değerine döner —
-            // ekranda YANLIŞ bir "kaydedildi" izlenimi bırakmaz.
+            // Fail-safe: revert cell on server rejection — no false "saved" state.
             span.textContent = originalValue;
             markMissingState(cell, originalValue);
             flashCell(cell, false);
@@ -163,7 +154,7 @@ function initAacpLocalization(root) {
     });
 
     /* ------------------------------------------------------------------ */
-    /* Sekmeler + filtreler                                                 */
+    /* Tabs + filters                                                       */
     /* ------------------------------------------------------------------ */
 
     function setActiveTab(locale) {
@@ -176,9 +167,7 @@ function initAacpLocalization(root) {
             tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
 
-        // Seçili dilin sütunu dışındakiler soluklaştırılır: çevirmen
-        // gözünü tek sütunda tutabilsin (sütun GİZLENMEZ — kaynak dili
-        // görmeden çeviri yapılamaz).
+        // Dim non-active locale columns (not hidden — source locale stays visible).
         root.querySelectorAll('[data-localization-cell]').forEach((cell) => {
             const dim = locale !== '__all__' && cell.dataset.locale !== locale;
             cell.classList.toggle('opacity-40', dim);
@@ -205,8 +194,7 @@ function initAacpLocalization(root) {
             }
 
             if (visible && onlyIncomplete) {
-                // "Tümü" sekmesindeyken herhangi bir dilde eksik olanlar;
-                // belirli bir dil sekmesindeyken SADECE o dilde eksik olanlar.
+                // "All" tab: any missing locale; specific tab: missing in that locale only.
                 visible = activeLocale === '__all__'
                     ? row.dataset.incomplete === '1'
                     : missing.includes(activeLocale);
@@ -240,14 +228,14 @@ function initAacpLocalization(root) {
         incompleteFilter.addEventListener('change', applyFilter);
     }
 
-    // ?locale=xx ile gelindiyse o dilin sekmesi açık başlar.
+    // Open the tab matching ?locale=xx when present.
     const focusLocale = root.dataset.localizationFocus;
     const hasFocusTab = focusLocale && tabs.some((tab) => tab.dataset.localizationTab === focusLocale);
 
     setActiveTab(hasFocusTab ? focusLocale : '__all__');
 
     /* ------------------------------------------------------------------ */
-    /* İçe aktarma                                                          */
+    /* Import                                                               */
     /* ------------------------------------------------------------------ */
 
     const importTrigger = document.querySelector('[data-localization-import-trigger]');
@@ -281,8 +269,7 @@ function initAacpLocalization(root) {
 
                 window.location.reload();
             } catch (error) {
-                // Fail-safe: içe aktarma başarısız olursa sayfa mevcut
-                // hâliyle kalır, kullanıcı tekrar deneyebilir.
+                // Fail-safe: failed import leaves the page unchanged for retry.
             } finally {
                 importInput.value = '';
             }

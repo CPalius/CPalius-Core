@@ -3,9 +3,34 @@
 {% block header %}{{ section ? 'studio.forum.sections.form.edit_header'|trans : 'studio.forum.sections.form.create_header'|trans }}{% endblock %}
 
 {% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+    <div class="space-y-sp-sm">
+        <twig:studio:translation_tabs
+            tabs="{{ translationTabs }}"
+            editRoute="admin_forum_sections_edit"
+            createRoute="admin_forum_sections_create"
+            sourceId="{{ tabsSourceId }}" />
+
     <twig:studio:card>
         <form method="post" id="forum-section-form">
             <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_section') }}">
+            <input type="hidden" name="locale" value="{{ locale }}">
+            {% if sourceId is not null %}
+                <input type="hidden" name="translation_of" value="{{ sourceId }}">
+            {% endif %}
+
+            <div class="mb-4">
+                <span class="form-label">{{ 'cp.form.locale'|trans }}</span>
+                <p class="text-fs-sm font-medium text-neutral-900">
+                    <code>{{ locale }}</code>
+                    {% if sourceId is not null and not section %}
+                        <span class="ms-1 text-fs-xs font-normal text-primary-600">
+                            {{ 'cp.form.locale_translation_of'|trans }}
+                        </span>
+                    {% endif %}
+                </p>
+                <p class="mt-1 text-fs-xs text-neutral-500">{{ 'cp.form.locale_hint'|trans }}</p>
+            </div>
 
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
@@ -31,11 +56,15 @@
                 </div>
                 <div>
                     <label class="form-label">{{ 'studio.forum.sections.form.code'|trans }}</label>
-                    <input type="text" name="code" value="{{ formValues.code }}" {{ section ? 'readonly' : 'required' }} class="form-control">
+                    <input type="text" name="code" value="{{ formValues.code }}" {{ section or sourceId ? 'readonly' : 'required' }} class="form-control">
+                    {% if sourceId is not null and not section %}
+                        <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.forum.sections.form.code_reuse_hint'|trans }}</p>
+                    {% endif %}
                 </div>
                 <div>
                     <label class="form-label">{{ 'studio.forum.sections.form.slug'|trans }}</label>
                     <input type="text" name="slug" value="{{ formValues.slug }}" class="form-control" placeholder="{{ 'studio.forum.sections.form.slug_placeholder'|trans }}">
+                    <p class="mt-1 text-fs-xs text-neutral-500">/{{ locale }}/forums/…</p>
                 </div>
                 <div>
                     <label class="form-label">{{ 'studio.forum.sections.form.sort_order'|trans }}</label>
@@ -98,10 +127,11 @@
 
             <div class="mt-6 flex gap-2">
                 <button type="submit" class="btn btn-primary">{{ 'studio.forum.sections.form.save'|trans }}</button>
-                <a href="{{ path('admin_forum_sections_index') }}" class="btn btn-neutral">{{ 'studio.forum.sections.form.cancel'|trans }}</a>
+                <a href="{{ path('admin_forum_sections_index', {locale: locale}) }}" class="btn btn-neutral">{{ 'studio.forum.sections.form.cancel'|trans }}</a>
             </div>
         </form>
     </twig:studio:card>
+    </div>
 
     <script>
         (function () {

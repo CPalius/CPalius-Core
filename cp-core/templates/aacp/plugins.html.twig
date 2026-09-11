@@ -7,7 +7,11 @@
 {% endblock %}
 
 {% block body %}
-    <div class="space-y-sp-md" data-plugin-toggle-root data-plugin-toggle-csrf="{{ csrf_token }}">
+    <div class="space-y-sp-md" data-plugin-toggle-root data-plugin-toggle-csrf="{{ csrf_token }}"
+         data-i18n-active="{{ 'aacp.plugins.active'|trans }}"
+         data-i18n-inactive="{{ 'aacp.plugins.inactive'|trans }}"
+         data-i18n-deactivate="{{ 'aacp.plugins.deactivate'|trans }}"
+         data-i18n-activate="{{ 'aacp.plugins.activate'|trans }}">
         <twig:cp:card title="{{ 'aacp.plugins.registered_plugins'|trans }}" padded="{{ false }}">
             <twig:cp:table headers="{{ [
                 'aacp.plugins.column.name'|trans,
@@ -18,7 +22,7 @@
                 <twig:block name="rows">
                     {% for plugin in plugins %}
                         <tr data-plugin-row="{{ plugin.name }}">
-                            <td class="!text-slate-200">{{ plugin.label }}</td>
+                            <td class="!text-slate-200">{{ plugin.label|trans }}</td>
                             <td class="font-mono text-fs-xs !text-slate-500">{{ plugin.name }}</td>
                             <td>
                                 <span data-plugin-status class="badge {{ plugin.active ? 'badge-success' : 'badge-neutral' }}">

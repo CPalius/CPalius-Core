@@ -8,14 +8,8 @@ use App\Repository\CronJobRunRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Bir CronJob'un TEK bir çalıştırma denemesinin değişmez günlük kaydı
- * (Manifesto'nun module_quarantine.log'unun DB karşılığı — burada dosya
- * yerine tablo tercih edildi çünkü AACP'nin "Çalıştırma Geçmişi" ekranı
- * bunu filtrelenebilir/sayfalanabilir bir liste olarak sunar).
- *
- * Hem cp:cron:run dispatcher'ının otomatik tetiklediği hem de AACP'den
- * "Şimdi Çalıştır" ile MANUEL tetiklenen çalıştırmalar aynı tabloya
- * yazılır; $triggeredManually bu ikisini ayırt eder.
+ * Immutable log row for one CronJob run (scheduled or manual via AACP).
+ * $triggeredManually distinguishes manual Run Now executions.
  */
 #[ORM\Entity(repositoryClass: CronJobRunRepository::class)]
 #[ORM\Table(name: 'cp_cron_job_runs')]
@@ -92,10 +86,7 @@ class CronJobRun
     {
         $this->finishedAt = new \DateTimeImmutable();
         $this->success = $success;
-        // Aşırı uzun komut çıktısının (ör. bir migration'ın binlerce satır
-        // basması) tabloyu şişirmesini önlemek için makul bir üst sınır
-        // uygulanır — Setting entity'sindeki LONGTEXT'in aksine burada
-        // sınırsız büyümeye izin vermek için hiçbir gerekçe yok.
+        // Cap output length so huge command logs cannot bloat the table.
         $this->output = mb_substr($output, 0, 20000);
 
         return $this;

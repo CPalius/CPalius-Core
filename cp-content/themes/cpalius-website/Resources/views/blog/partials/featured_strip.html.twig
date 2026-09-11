@@ -1,18 +1,18 @@
 {#
-    Vitrin — tüm featuredPosts; kapak yoksa tip renkli placeholder.
-    Beklenen: featuredPosts (list<Node>)
+    Featured strip — all featuredPosts; type-colored placeholder when no cover. Expects: featuredPosts (list<Node>).
 #}
 {% set coverSlides = [] %}
 {% if featuredPosts is defined %}
     {% for post in featuredPosts %}
         {% set coverUrl = blog_featured_image_url(post) %}
         {% set subType = post.getDataValue('post_sub_type', 'makale') %}
+        {% set authorName = post.author ? blog_public_display_name(post.author) : '' %}
         {% set coverSlides = coverSlides|merge([{
             post: post,
             coverUrl: coverUrl,
             subType: subType,
             author: post.author
-                ? post.author.getDataValue('display_name', post.author.email)
+                ? (authorName != '' ? authorName : 'blog.author.anonymous'|trans)
                 : null
         }]) %}
     {% endfor %}

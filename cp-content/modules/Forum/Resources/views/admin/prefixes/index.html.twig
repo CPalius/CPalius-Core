@@ -8,6 +8,7 @@
 {% endblock %}
 
 {% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
     <twig:studio:card padded="{{ false }}">
         <twig:studio:table headers="{{ [
             'studio.forum.prefixes.index.column.label'|trans,

@@ -1,0 +1,52 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'pages.field_groups.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <form method="post" action="{{ path('admin_page_field_groups_install_presets') }}" class="inline">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_page_field_group_form') }}">
+        <button type="submit" class="btn btn-sm btn-neutral">{{ 'pages.field_groups.install_presets'|trans }}</button>
+    </form>
+    <a href="{{ path('admin_page_field_groups_create') }}" class="btn btn-sm btn-primary">
+        {{ 'pages.field_groups.create_action'|trans }}
+    </a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'pages.field_groups.column.title'|trans,
+            'pages.field_groups.column.identifier'|trans,
+            'pages.field_groups.column.locale'|trans,
+            '',
+        ] }}" empty="{{ groups is empty }}" emptyText="{{ 'pages.field_groups.empty'|trans }}">
+            <twig:block name="rows">
+                {% for group in groups %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('admin_page_field_groups_edit', {id: group.id}) }}" class="font-medium text-neutral-900 hover:text-primary-600">
+                                {{ group.title }}
+                            </a>
+                        </td>
+                        <td class="text-fs-sm text-neutral-500">{{ group.slug }}</td>
+                        <td class="text-fs-sm text-neutral-500">{{ group.locale }}</td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ path('admin_page_field_groups_edit', {id: group.id}) }}" class="btn btn-sm btn-neutral">
+                                    {{ 'aacp.users.edit_action'|trans }}
+                                </a>
+                                <form method="post" action="{{ path('admin_page_field_groups_delete', {id: group.id}) }}"
+                                      onsubmit="return confirm({{ 'pages.field_groups.delete_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_page_field_group_form') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        {{ 'aacp.cron.delete'|trans }}
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+{% endblock %}

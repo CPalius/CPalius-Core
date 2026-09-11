@@ -9,15 +9,8 @@ use Symfony\Component\Routing\RouteCollection;
 use Throwable;
 
 /**
- * cp-content/modules/*\/Resources/config/routes.yaml dosyalarını
- * tek tek, birbirinden izole şekilde yükler.
- *
- * Standart Symfony wildcard import'unun (`resource: '.../*\/routes.yaml'`)
- * aksine, burada TEK bir modülün route dosyası bozuk olsa bile (syntax
- * hatası, eksik controller, hatalı YAML) diğer modüllerin route'ları ve
- * Core'un kendi route'ları etkilenmez. Hatalı modül, henüz Bundle olarak
- * yüklenmediyse zaten burada denenmez (bkz. ModuleRegistry); yüklendiği
- * halde route dosyası bozuksa burada yakalanıp atlanır.
+ * Loads each module Resources/config/routes.yaml in isolation.
+ * One broken module route file does not break others; failures are logged and skipped (see ModuleRegistry).
  */
 final class SafeModuleRouteLoader extends Loader
 {
@@ -58,7 +51,7 @@ final class SafeModuleRouteLoader extends Loader
             $reflection = new \ReflectionClass($moduleClass);
             $moduleDir = \dirname($reflection->getFileName());
         } catch (Throwable $e) {
-            $this->logger?->error('{module} modülünün dizini tespit edilemedi: {message}', [
+            $this->logger?->error('{module} module directory could not be resolved: {message}', [
                 'module' => $moduleClass,
                 'message' => $e->getMessage(),
             ]);
@@ -69,21 +62,17 @@ final class SafeModuleRouteLoader extends Loader
         $routesFile = $moduleDir.'/Resources/config/routes.yaml';
 
         if (!is_file($routesFile)) {
-            // Modülün route dosyası yoksa bu bir hata değil, sadece
-            // o modülün route'u olmadığı anlamına gelir.
+            // Missing routes.yaml is normal — the module simply has no routes.
             return;
         }
 
         try {
-            // Ana resolver kullanılıyor ki routes.yaml içindeki
-            // "type: attribute" gibi iç içe import'lar da (controller
-            // attribute'larını okuyan AttributeClassLoader) doğru
-            // şekilde çözülebilsin.
+            // Main resolver so nested imports (e.g. type: attribute / AttributeClassLoader) resolve correctly.
             $subLoader = $this->resolve($routesFile, 'yaml');
             $moduleCollection = $subLoader->load($routesFile, 'yaml');
             $collection->addCollection($moduleCollection);
         } catch (Throwable $e) {
-            $this->logger?->error('{module} modülünün route dosyası yüklenemedi, modül route\'ları atlandı: {message}', [
+            $this->logger?->error('{module} module route file could not be loaded; module routes skipped: {message}', [
                 'module' => $moduleClass,
                 'message' => $e->getMessage(),
             ]);

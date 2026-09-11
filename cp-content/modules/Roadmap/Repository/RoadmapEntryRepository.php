@@ -8,6 +8,7 @@ use Modules\Roadmap\Entity\RoadmapEntry;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * @extends ServiceEntityRepository<RoadmapEntry>
@@ -22,6 +23,44 @@ class RoadmapEntryRepository extends ServiceEntityRepository
     public function findOneBySlugAndLocale(string $slug, string $locale): ?RoadmapEntry
     {
         return $this->findOneBy(['slug' => $slug, 'locale' => $locale]);
+    }
+
+    /**
+     * Any publicly visible row with this slug (locale-agnostic). Used to resolve a missing translation.
+     */
+    public function findOnePublicBySlug(string $slug): ?RoadmapEntry
+    {
+        return $this->createQueryBuilder('e')
+            ->andWhere('e.slug = :slug')
+            ->andWhere('e.status != :cancelled')
+            ->andWhere('e.publishedAt IS NOT NULL')
+            ->andWhere('e.publishedAt <= CURRENT_TIMESTAMP()')
+            ->setParameter('slug', $slug)
+            ->setParameter('cancelled', RoadmapEntry::STATUS_CANCELLED)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    public function findTranslation(Uuid $groupId, string $locale): ?RoadmapEntry
+    {
+        return $this->findOneBy(['translationGroupId' => $groupId, 'locale' => $locale]);
+    }
+
+    public function slugExists(string $slug, string $locale, ?int $excludeId = null): bool
+    {
+        $qb = $this->createQueryBuilder('e')
+            ->select('COUNT(e.id)')
+            ->andWhere('e.slug = :slug')
+            ->andWhere('e.locale = :locale')
+            ->setParameter('slug', $slug)
+            ->setParameter('locale', $locale);
+
+        if ($excludeId !== null) {
+            $qb->andWhere('e.id != :excludeId')->setParameter('excludeId', $excludeId);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult() > 0;
     }
 
     /**
@@ -136,6 +175,26 @@ class RoadmapEntryRepository extends ServiceEntityRepository
             ->setParameter('kind', RoadmapEntry::KIND_UPDATE)
             ->setParameter('cancelled', RoadmapEntry::STATUS_CANCELLED)
             ->orderBy('e.publishedAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Title/summary match on publicly visible rows (same visibility as the feed).
+     *
+     * @return list<RoadmapEntry>
+     */
+    public function searchPublic(string $term, string $locale, int $limit): array
+    {
+        $term = trim($term);
+        if ($term === '') {
+            return [];
+        }
+
+        return $this->createPublicFeedQueryBuilder($locale)
+            ->andWhere('(e.title LIKE :term OR e.summary LIKE :term)')
+            ->setParameter('term', '%'.addcslashes($term, '%_').'%')
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();

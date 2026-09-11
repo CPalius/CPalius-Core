@@ -8,20 +8,18 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Yanlışlıkla silinen forum üst kayıtlarını geri yükler ve yetim kalan
- * panoları hiyerarşiye bağlar. Soft-delete yoktur; üst kayıt silindiğinde
- * alt panolar parent_id = NULL ile yetim kalır, konular silinmediyse korunur.
+ * Restores accidentally deleted forum parent rows and re-attaches orphan boards (no soft-delete).
  */
 final class Version20260827140000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Silinen forum bölüm/kategori kayıtlarını geri yükler ve yetim panoları yeniden bağlar.';
+        return 'Restores deleted forum section/category records and reattaches orphaned boards.';
     }
 
     public function up(Schema $schema): void
     {
-        // Genel Forum (pub) — kök bölüm
+        // General Forum (pub) — root division
         $this->addSql(<<<'SQL'
             INSERT INTO forum_sections (code, slug, locale, title, description, sort_order, is_container, allow_topics, section_type, created_at, updated_at)
             SELECT 'pub', 'genel', 'tr', 'Genel Forum', 'Herkese açık tartışma alanı', 0, 1, 0, 'division', NOW(), NOW()
@@ -30,7 +28,7 @@ final class Version20260827140000 extends AbstractMigration
             LIMIT 1
             SQL);
 
-        // Akademik → pub altında kategori
+        // Academic category under pub
         $this->addSql(<<<'SQL'
             UPDATE forum_sections a
             INNER JOIN forum_sections pub ON pub.code = 'pub'
@@ -52,7 +50,7 @@ final class Version20260827140000 extends AbstractMigration
             WHERE child.code IN ('general', 'offtopic')
             SQL);
 
-        // Makaleler kategorisi — ustbolum altına
+        // Articles category under ustbolum
         $this->addSql(<<<'SQL'
             INSERT INTO forum_sections (parent_id, code, slug, locale, title, description, sort_order, is_container, allow_topics, section_type, created_at, updated_at)
             SELECT u.id, 'makaleler-kat', 'makaleler-kategori', 'tr', 'Makaleler', 'Makale ve yazı panoları', 1, 1, 0, 'category', NOW(), NOW()
@@ -71,7 +69,7 @@ final class Version20260827140000 extends AbstractMigration
             WHERE m.code = 'makaleler-02'
             SQL);
 
-        // Projeler kategorisi — ustbolum altına
+        // Projects category under ustbolum
         $this->addSql(<<<'SQL'
             INSERT INTO forum_sections (parent_id, code, slug, locale, title, description, sort_order, is_container, allow_topics, section_type, created_at, updated_at)
             SELECT u.id, 'proje-kat', 'projeler-kategori', 'tr', 'Projeler', 'Proje panoları', 2, 1, 0, 'category', NOW(), NOW()
@@ -90,7 +88,7 @@ final class Version20260827140000 extends AbstractMigration
             WHERE p.code = 'proje'
             SQL);
 
-        // Alt kategori, alt kategori altında olamaz — Laravel'i kategori altına al
+        // Subcategory cannot nest under subcategory — move Laravel under category
         $this->addSql(<<<'SQL'
             UPDATE forum_sections l
             INNER JOIN forum_sections k ON k.code = 'proje-kat'

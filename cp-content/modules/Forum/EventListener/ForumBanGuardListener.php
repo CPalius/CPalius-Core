@@ -7,10 +7,11 @@ namespace Modules\Forum\EventListener;
 use App\Entity\User;
 use Modules\Forum\Service\ForumBanService;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Blocks forum-banned users from all front controllers by namespace.
@@ -21,6 +22,7 @@ final class ForumBanGuardListener implements EventSubscriberInterface
     public function __construct(
         private readonly ForumBanService $banService,
         private readonly Security $security,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -49,15 +51,22 @@ final class ForumBanGuardListener implements EventSubscriberInterface
         }
 
         $user = $this->security->getUser();
-        if (!$user instanceof User) {
-            return;
+        $ip = $event->getRequest()->getClientIp();
+        $ban = null;
+
+        if ($user instanceof User) {
+            $ban = $this->banService->activeBanFor($user)
+                ?? $this->banService->activeBanForEmail($user->getEmail());
         }
 
-        $ban = $this->banService->activeBanFor($user);
+        if ($ban === null) {
+            $ban = $this->banService->activeBanForIp($ip);
+        }
+
         if ($ban === null) {
             return;
         }
 
-        throw new AccessDeniedHttpException(sprintf('Forumdan yasaklandınız: %s', $ban->getReason()));
+        throw new AccessDeniedHttpException($this->translator->trans('forum.ban.denied', ['reason' => $ban->getReason()]));
     }
 }

@@ -1,11 +1,8 @@
 symfonycasts_tailwind:
-    # Pristine Root: giriş CSS dosyası cp-core/assets altında yaşar,
-    # proje kökünde assets/ veya tailwind.config.js oluşmasını engeller.
+    # Pristine Root: entry CSS under cp-core/assets — no assets/ at project root.
     input_css:
         - '%kernel.project_dir%/cp-core/assets/styles/app.css'
-    # Tailwind v4: config_file (CommonJS) kullanılmaz, tarama kaynakları
-    # app.css içindeki @source direktifleriyle tanımlanır ("Zero Node.js").
+    # Tailwind v4: scan sources via @source in app.css, not config_file ("Zero Node.js").
     binary_version: '4.3.2'
-    # Tailwind v4 config_file üretmez; yine de bundle varsayılanının proje
-    # köküne düşmesini önlemek için açıkça cp-core altına sabitliyoruz.
+    # Pin config_file under cp-core so the bundle default does not land at project root.
     config_file: '%kernel.project_dir%/cp-core/tailwind.config.js'

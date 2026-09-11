@@ -1,0 +1,123 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block title %}{{ 'aacp.queue.header'|trans }}{% endblock %}
+
+{% block body %}
+<div class="aacp-page-head">
+    <h1>{{ 'aacp.queue.header'|trans }}</h1>
+    <p class="aacp-muted">{{ 'aacp.queue.intro'|trans }}</p>
+</div>
+
+<div class="aacp-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    <div class="aacp-card"><strong>{{ summary.pending }}</strong><div class="aacp-muted">{{ 'aacp.queue.kpi.total_pending'|trans }}</div></div>
+    <div class="aacp-card"><strong>{{ summary.messengerPending }}</strong><div class="aacp-muted">{{ 'aacp.queue.kpi.messenger_pending'|trans }}</div></div>
+    <div class="aacp-card"><strong>{{ summary.messengerFailed }}</strong><div class="aacp-muted">{{ 'aacp.queue.kpi.messenger_failed'|trans }}</div></div>
+    <div class="aacp-card"><strong>{{ summary.platformPending }}</strong><div class="aacp-muted">{{ 'aacp.queue.kpi.platform_pending'|trans }}</div></div>
+    <div class="aacp-card"><strong>{{ summary.platformFailed }}</strong><div class="aacp-muted">{{ 'aacp.queue.kpi.platform_failed'|trans }}</div></div>
+</div>
+
+<p class="aacp-muted" style="margin-bottom: 1.5rem;">{{ workerHint }}</p>
+
+<section class="aacp-section" style="margin-bottom: 2rem;">
+    <h2>{{ 'aacp.queue.messenger_pending_title'|trans }}</h2>
+    <p class="aacp-muted">{{ 'aacp.queue.messenger_pending_desc'|trans }}</p>
+    {% if messengerPending is empty %}
+        <p class="aacp-muted">{{ 'aacp.queue.empty'|trans }}</p>
+    {% else %}
+        <table class="aacp-table">
+            <thead>
+                <tr>
+                    <th>{{ 'aacp.queue.column.id'|trans }}</th>
+                    <th>{{ 'aacp.queue.column.class'|trans }}</th>
+                    <th>{{ 'aacp.queue.column.available'|trans }}</th>
+                    <th>{{ 'aacp.queue.column.actions'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in messengerPending %}
+                <tr>
+                    <td>{{ row.id }}</td>
+                    <td><code>{{ row.messageClass }}</code></td>
+                    <td>{{ row.available_at }}</td>
+                    <td>
+                        <form method="post" action="{{ path('aacp_queue_messenger_delete', {id: row.id}) }}" style="display:inline">
+                            <input type="hidden" name="_token" value="{{ csrfToken }}">
+                            <button type="submit" class="btn btn-sm">{{ 'aacp.queue.delete'|trans }}</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</section>
+
+<section class="aacp-section" id="failed" style="margin-bottom: 2rem;">
+    <h2>{{ 'aacp.queue.messenger_failed_title'|trans }}</h2>
+    <p class="aacp-muted">{{ 'aacp.queue.messenger_failed_desc'|trans }}</p>
+    {% if messengerFailed is empty %}
+        <p class="aacp-muted">{{ 'aacp.queue.empty'|trans }}</p>
+    {% else %}
+        <table class="aacp-table">
+            <thead>
+                <tr>
+                    <th>{{ 'aacp.queue.column.id'|trans }}</th>
+                    <th>{{ 'aacp.queue.column.class'|trans }}</th>
+                    <th>{{ 'aacp.queue.column.available'|trans }}</th>
+                    <th>{{ 'aacp.queue.column.actions'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in messengerFailed %}
+                <tr>
+                    <td>{{ row.id }}</td>
+                    <td><code>{{ row.messageClass }}</code></td>
+                    <td>{{ row.available_at }}</td>
+                    <td>
+                        <form method="post" action="{{ path('aacp_queue_messenger_retry', {id: row.id}) }}" style="display:inline">
+                            <input type="hidden" name="_token" value="{{ csrfToken }}">
+                            <button type="submit" class="btn btn-sm btn-primary">{{ 'aacp.queue.retry'|trans }}</button>
+                        </form>
+                        <form method="post" action="{{ path('aacp_queue_messenger_delete', {id: row.id}) }}" style="display:inline">
+                            <input type="hidden" name="_token" value="{{ csrfToken }}">
+                            <button type="submit" class="btn btn-sm">{{ 'aacp.queue.delete'|trans }}</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</section>
+
+<section class="aacp-section">
+    <h2>{{ 'aacp.queue.platform_title'|trans }}</h2>
+    <p class="aacp-muted">{{ 'aacp.queue.platform_desc'|trans }}</p>
+    {% if platformJobs is empty %}
+        <p class="aacp-muted">{{ 'aacp.queue.empty'|trans }}</p>
+    {% else %}
+        <table class="aacp-table">
+            <thead>
+                <tr>
+                    <th>{{ 'aacp.queue.column.id'|trans }}</th>
+                    <th>{{ 'aacp.queue.column.type'|trans }}</th>
+                    <th>{{ 'aacp.queue.column.attempts'|trans }}</th>
+                    <th>{{ 'aacp.queue.column.available'|trans }}</th>
+                    <th>{{ 'aacp.queue.column.error'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for job in platformJobs %}
+                <tr>
+                    <td>{{ job.id }}</td>
+                    <td><code>{{ job.type }}</code>{% if job.failed %} · {{ 'aacp.queue.failed'|trans }}{% endif %}</td>
+                    <td>{{ job.attempts }}</td>
+                    <td>{{ job.availableAt }}</td>
+                    <td>{{ job.lastError|default('—') }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</section>
+{% endblock %}

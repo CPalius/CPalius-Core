@@ -7,42 +7,62 @@
 {% endblock %}
 
 {% block body %}
-    <twig:studio:card>
-        <form method="post" action="{{ path('admin_forum_settings_update') }}">
-            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_settings') }}">
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
 
+    <form method="post" action="{{ path('admin_forum_settings_update') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_settings') }}">
+
+        <twig:studio:card title="{{ 'studio.forum.settings.seo.header'|trans }}">
+            <p class="mb-4 text-fs-sm text-neutral-500">{{ 'studio.forum.settings.seo.hint'|trans }}</p>
             <div class="grid gap-4 md:grid-cols-2">
-                {% for definition in definitions %}
-                    <div>
-                        <label class="form-label">{{ definition.label }}</label>
-                        {% if definition.type in ['checkbox', 'boolean'] %}
-                            <label class="flex items-center gap-2 mt-1">
-                                <input type="checkbox" name="settings[{{ definition.key }}]" value="1" {{ values[definition.key] ? 'checked' : '' }}>
-                                <span class="text-fs-sm text-neutral-600">{{ 'studio.forum.settings.index.enabled'|trans }}</span>
-                            </label>
-                        {% elseif definition.type == 'textarea' %}
-                            <textarea name="settings[{{ definition.key }}]" class="form-control" rows="3">{{ values[definition.key] }}</textarea>
-                        {% elseif definition.type == 'select' %}
-                            <select name="settings[{{ definition.key }}]" class="form-select">
-                                {% for value, label in definition.variants %}
-                                    <option value="{{ value }}" {{ values[definition.key] == value ? 'selected' : '' }}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        {% elseif definition.type == 'integer' %}
-                            <input type="number" name="settings[{{ definition.key }}]" value="{{ values[definition.key] }}" class="form-control">
-                        {% else %}
-                            <input type="text" name="settings[{{ definition.key }}]" value="{{ values[definition.key] }}" class="form-control">
-                        {% endif %}
-                        <code class="text-fs-xs text-neutral-400">{{ definition.key }}</code>
-                    </div>
+                {% for definition in homeDefinitions %}
+                    {% include '@ForumModule/admin/settings/_field.html.twig' with {definition: definition, values: values} %}
                 {% else %}
                     <p class="text-neutral-500">{{ 'studio.forum.settings.index.no_settings'|trans }}</p>
                 {% endfor %}
             </div>
+        </twig:studio:card>
 
-            <div class="mt-6">
-                <button type="submit" class="btn btn-primary">{{ 'studio.forum.settings.index.save'|trans }}</button>
+        <twig:studio:card title="{{ 'studio.forum.settings.engine.header'|trans }}">
+            <div class="grid gap-4 md:grid-cols-2">
+                {% for definition in engineDefinitions %}
+                    {% include '@ForumModule/admin/settings/_field.html.twig' with {definition: definition, values: values} %}
+                {% else %}
+                    <p class="text-neutral-500">{{ 'studio.forum.settings.index.no_settings'|trans }}</p>
+                {% endfor %}
             </div>
+        </twig:studio:card>
+
+        <div class="mt-6">
+            <button type="submit" class="btn btn-primary">{{ 'studio.forum.settings.index.save'|trans }}</button>
+        </div>
+    </form>
+
+    <twig:studio:card title="{{ 'studio.forum.censor.header'|trans }}">
+        <form method="post" action="{{ path('admin_forum_settings_censor_add') }}" class="mb-4 flex flex-wrap gap-2 items-end">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_settings') }}">
+            <div>
+                <label class="form-label">{{ 'studio.forum.censor.word'|trans }}</label>
+                <input type="text" name="word" class="form-control" required maxlength="100">
+            </div>
+            <div>
+                <label class="form-label">{{ 'studio.forum.censor.replacement'|trans }}</label>
+                <input type="text" name="replacement" class="form-control" maxlength="100" placeholder="***">
+            </div>
+            <button type="submit" class="btn btn-primary">{{ 'studio.forum.censor.add'|trans }}</button>
         </form>
+        <ul class="space-y-2">
+            {% for word in censorWords|default([]) %}
+                <li class="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2">
+                    <span><code>{{ word.word }}</code> → {{ word.replacement|default('***') }}</span>
+                    <form method="post" action="{{ path('admin_forum_settings_censor_delete', {id: word.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_settings') }}">
+                        <button class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</button>
+                    </form>
+                </li>
+            {% else %}
+                <li class="text-fs-sm text-neutral-500">{{ 'studio.forum.censor.empty'|trans }}</li>
+            {% endfor %}
+        </ul>
     </twig:studio:card>
 {% endblock %}

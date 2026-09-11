@@ -1,0 +1,53 @@
+{% extends '@Theme/account/layout.html.twig' %}
+
+{% block title %}{{ 'account.two_factor.challenge_title'|trans }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-nav fade-in" aria-label="{{ 'account.nav_aria'|trans }}">
+        <div class="container">
+            <div class="forum-nav__inner">
+                <ol class="forum-nav__crumbs">
+                    <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+                    <li class="is-active">{{ 'account.two_factor.breadcrumb'|trans }}</li>
+                </ol>
+            </div>
+        </div>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in" style="text-align:center; max-width: 420px; margin: 0 auto var(--sp-lg);">
+    <span class="section-label">{{ 'account.two_factor.label'|trans }}</span>
+    <h1 class="section-title">{{ 'account.two_factor.challenge_heading'|trans }}</h1>
+    <p class="forum-header__desc" style="margin: 0 auto;">{{ 'account.two_factor.challenge_desc'|trans }}</p>
+</div>
+
+{% if error is not null %}
+    <div class="forum-flash forum-flash--error" style="max-width: 420px; margin: 0 auto var(--sp-md);">{{ error }}</div>
+{% endif %}
+
+<div class="forum-form fade-in" style="max-width: 420px; margin: 0 auto;">
+    <form method="post" action="{{ path('account_two_factor_challenge') }}">
+        <div class="forum-field">
+            <label for="two-factor-code">{{ 'account.two_factor.code_label'|trans }}</label>
+            <input type="text" id="two-factor-code" name="code" required autofocus autocomplete="one-time-code"
+                   inputmode="numeric" pattern="[0-9A-Za-z-]*" maxlength="16" spellcheck="false">
+            <p style="margin-top: var(--sp-xs); font-size: var(--fs-sm); color: var(--slw-text-muted);">
+                {{ 'account.two_factor.code_hint'|trans }}
+            </p>
+        </div>
+
+        <input type="hidden" name="_token" value="{{ csrf_token('account_two_factor') }}">
+
+        <div class="forum-form__actions">
+            <button type="submit" class="btn btn-primary btn-sm">{{ 'account.two_factor.verify'|trans }}</button>
+        </div>
+    </form>
+
+    <p style="margin-top: var(--sp-md); text-align:center; font-size: var(--fs-sm); color: var(--slw-text-muted);">
+        {{ 'account.two_factor.recovery_remaining'|trans({'count': recoveryRemaining}) }}
+        <br>
+        <a href="{{ path('admin_logout') }}" style="color: var(--cp-accent); text-decoration: underline;">{{ 'account.two_factor.sign_out'|trans }}</a>
+    </p>
+</div>
+{% endblock %}

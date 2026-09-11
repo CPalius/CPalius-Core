@@ -96,10 +96,10 @@
         <input type="hidden" name="portal_copy" id="portal-copy-json" value="">
 
         <twig:cp:card title="{{ 'studio.homepage.mode_card'|trans }}">
-            <label class="form-label" for="homepage_mode">{{ modeDefinition.label|default('Ana Sayfa Modu') }}</label>
+            <label class="form-label" for="homepage_mode">{{ (modeDefinition.label|default('studio.homepage.mode_card'))|trans }}</label>
             <select name="homepage_mode" id="homepage_mode" class="form-select lg:w-[61.8%]">
                 {% for value, label in modeDefinition.variants|default({}) %}
-                    <option value="{{ value }}" {{ modeValue == value ? 'selected' : '' }}>{{ label }}</option>
+                    <option value="{{ value }}" {{ modeValue == value ? 'selected' : '' }}>{{ label|trans }}</option>
                 {% endfor %}
             </select>
         </twig:cp:card>

@@ -3,8 +3,8 @@
 # extended with the architecture features shipped after the whitepaper.
 
 meta:
-  title: "CPalius CMF — Next-Generation Content Management Framework | PHP 8.2+ & Symfony 7.4"
-  description: "CPalius CMF: a secure, modular, and extensible enterprise content management framework built on PHP 8.2+ and Symfony 7.4 LTS. Open source and community supported."
+  title: "CPalius CMF — Next-Generation Content Management Framework | PHP 8.4+ & Symfony 7.4"
+  description: "CPalius CMF: a secure, modular, and extensible enterprise content management framework built on PHP 8.4+ and Symfony 7.4 LTS. Open source and community supported."
 
 nav:
   about: "About"
@@ -36,7 +36,7 @@ hero:
   subtitle_line2: "Enterprise Application Framework"
   desc: "A world-class, optimized, secure, and extensible foundation that bridges plugin-rich but cumbersome CMS platforms and frameworks that require starting everything from scratch."
   cta_whitepaper: "Read the Whitepaper"
-  cta_architecture: "Explore the Architecture"
+  cta_features: "Key features"
   badge_opensource: "Open Source"
 
 about:
@@ -127,15 +127,25 @@ core:
     }
 
 features:
-  label: "Chapters 3 — 4"
-  title: "Data Model and Platform Capabilities"
-  desc: "A hybrid data model, high-performance indexing, and localization are built into the core from day one."
+  label: "Highlights"
+  title: "Six pillars of the enterprise backbone"
+  desc: "The landing page shows only the decisions that matter. Architecture depth, code samples, and every shipped sprint live in the Whitepaper."
+  core_title: "Core Never Dies"
+  core_text: "A broken module cannot lock the system. Four defense lines, quarantine, and Safe Mode keep the kernel running."
   hybrid_title: "Hybrid Data Model"
-  hybrid_text: "Frequently queried fields (ID, Title, Slug, Status) live in real columns; flexible fields (body, SEO, gallery) live in a single JSON column. Escape EAV JOIN hell and WordPress meta chaos."
+  hybrid_text: "Hot fields live in real columns; flexible content lives in one JSON column. No EAV JOIN hell and no WordPress meta chaos."
+  i18n_title: "Localization in the Core"
+  i18n_text: "Language is not a late polish layer. Composite UNIQUE(slug, locale) and translation_group_id sibling rows are baked in from day one."
+  origin_title: "Origin Cache & Performance"
+  origin_text: "Static HTML origin cache plus Redis, Memcached, Varnish, PageSpeed, and OPcache — counts and sizes on the AACP dashboard."
+  ops_title: "AACP Command Desk"
+  ops_text: "Live system health, Studio dashboard, security telemetry, and IP bans. The Recovery Console stays up even if the database is down."
+  extend_title: "Modules, API, Hooks, Cron"
+  extend_text: "REST Gateway, isolated hooks, a unified cron engine, and first-party Blog/Forum/Media/Menu/SEO — all under the same capability armor."
+  more_hint: "Config Sync, XSS sanitization, Schema.org, the N+1 guard, audit log, and the forum engine are documented in the Whitepaper."
+  more_cta: "Full technical detail — Whitepaper"
   index_title: "Flat Field Index Engine"
   index_text: "Query JSON data in a database-agnostic way. NodeFieldIndex plus a Doctrine Event Listener build a typed index table. The same DQL works on SQLite, MySQL, and Postgres."
-  i18n_title: "Localization (i18n)"
-  i18n_text: "Multilingual support is baked into the core from day one. Composite uniqueness guarantees UNIQUE(slug, locale) and UNIQUE(translation_group_id, locale). Language is not a late polish layer."
   config_title: "Config Sync System"
   config_text: "Drupal's config sync approach, combined with Symfony TreeBuilder. Roles and capability matrices live in YAML and travel with Git. User data stays in the database."
   bundle_title: "Modular Bundle Architecture"
@@ -514,7 +524,7 @@ stats:
 roadmap:
   label: "Chapter 10"
   title: "Future Roadmap"
-  desc: "Of the items promised in the first whitepaper, Safe Mode, the on-demand image pipeline, and the audit log are complete. The following systems will be built in upcoming development sprints."
+  desc: "Safe Mode, origin cache, telemetry, and the audit log have shipped. Sprint detail and remaining work live in the Whitepaper and the Roadmap page."
   sprint1: "Sprint 1"
   sprint1_title: "Workflow & State Machine"
   sprint1_text_html: "A mechanism that manages transitions for business records such as invoices, vehicles, and reservations (draft → preparation → sold) through YAML definitions and connects each transition to an automatic audit log. The <code class=\"code-inline\">CpResource::$workflow</code> field is already declared — the next step is wiring the real transition/guard engine."
@@ -537,9 +547,9 @@ community:
 
 whitepaper:
   meta_title: "CPalius CMF Whitepaper — Technical Review & Architecture Roadmap"
-  meta_description: "CPalius CMF technical whitepaper: Pristine Root, Core Never Dies, hybrid data model, i18n, CBAC, SaaS tenant protection, and roadmap."
+  meta_description: "CPalius CMF technical whitepaper: Pristine Root, Core Never Dies, backup management, origin HTML cache, AACP telemetry, Pages, module packages, i18n, CBAC, and roadmap."
   back: "Back to home"
   badge: "Technical Review (Whitepaper) & Architecture Roadmap (RFC)"
-  version: "Version: v1.0.0-draft"
+  version: "Version: v1.2.0"
   toc_title: "Contents"
   cta: "Read the Whitepaper"

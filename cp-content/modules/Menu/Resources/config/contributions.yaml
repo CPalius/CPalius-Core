@@ -1,0 +1,5 @@
+studio:
+    quick_create:
+        - { label_key: studio.dashboard.create.menu, route: admin_menus_create, icon: heroicons:bars-3 }
+    quick_links:
+        - { label_key: studio.dashboard.link.menus, route: admin_menus_index, icon: heroicons:bars-3 }

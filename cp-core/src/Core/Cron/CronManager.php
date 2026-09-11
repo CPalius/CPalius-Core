@@ -84,7 +84,7 @@ final class CronManager
         $definition = $this->findDefinitionByJobName($jobName);
 
         if ($definition === null) {
-            throw new \RuntimeException(sprintf('"%s" adında bir sanal cron görevi bulunamadı.', $jobName));
+            throw new \RuntimeException(sprintf('No virtual cron job found with name "%s".', $jobName));
         }
 
         try {
@@ -94,7 +94,7 @@ final class CronManager
         } catch (Throwable $e) {
             $this->quarantineTaskFailure($jobName, $e);
 
-            throw new \RuntimeException(sprintf('"%s" görevi çalışırken hata oluştu: %s', $jobName, $e->getMessage()), previous: $e);
+            throw new \RuntimeException(sprintf('Error while running job "%s": %s', $jobName, $e->getMessage()), previous: $e);
         }
     }
 
@@ -107,7 +107,7 @@ final class CronManager
         $method = (string) $definition['method'];
 
         if (!$this->serviceLocator->has($serviceId)) {
-            throw new \RuntimeException(sprintf('"%s" servisi konteynerde bulunamadı.', $serviceId));
+            throw new \RuntimeException(sprintf('Service "%s" not found in the container.', $serviceId));
         }
 
         $service = $this->serviceLocator->get($serviceId);
@@ -126,7 +126,7 @@ final class CronManager
         $file = (string) $definition['file'];
 
         if (!is_file($file)) {
-            throw new \RuntimeException(sprintf('"%s" dosyası bulunamadı.', $file));
+            throw new \RuntimeException(sprintf('File "%s" not found.', $file));
         }
 
         $isolated = static function (string $__cp_cron_file): mixed {
@@ -136,7 +136,7 @@ final class CronManager
         $definitionArray = $isolated($file);
 
         if (!is_array($definitionArray) || !isset($definitionArray['run']) || !($definitionArray['run'] instanceof \Closure)) {
-            throw new \RuntimeException('Flat-file cron dosyası "run" anahtarında bir Closure döndürmüyor.');
+            throw new \RuntimeException('Flat-file cron file does not return a Closure under the "run" key.');
         }
 
         $result = ($definitionArray['run'])();
@@ -146,7 +146,7 @@ final class CronManager
 
     private function quarantineTaskFailure(string $jobName, Throwable $e): void
     {
-        $this->logger->error('Kod tabanlı cron görevi çalıştırılırken hata oluştu.', [
+        $this->logger->error('Error while running code-based cron job.', [
             'job_name' => $jobName,
             'exception' => $e->getMessage(),
         ]);
@@ -158,7 +158,7 @@ final class CronManager
         }
 
         $line = sprintf(
-            '[%s] "%s" kod tabanlı cron görevi çalışma anında hata verdi. Sebep: %s',
+            '[%s] Code-based cron job "%s" failed at runtime. Reason: %s',
             date('Y-m-d H:i:s'),
             $jobName,
             $e->getMessage(),

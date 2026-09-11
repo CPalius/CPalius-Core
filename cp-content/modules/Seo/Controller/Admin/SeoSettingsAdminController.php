@@ -42,7 +42,7 @@ final class SeoSettingsAdminController extends AbstractController
         panel: 'studio',
         priority: 32,
         capability: 'seo.manage',
-        group: 'İçerik',
+        group: 'studio.group.content',
     )]
     public function index(): Response
     {

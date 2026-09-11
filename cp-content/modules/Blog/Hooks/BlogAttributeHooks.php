@@ -30,7 +30,14 @@ final class BlogAttributeHooks
             return $context;
         }
 
-        $labels = array_map(static fn ($tag): string => htmlspecialchars((string) $tag->getName(), ENT_QUOTES, 'UTF-8'), $popularTags);
+        // findMostUsed() returns rows, not terms: ['tag' => Term, 'usageCount' => int].
+        // Calling getName() on the row itself used to fatal here — silently, because
+        // the hook engine quarantines a failing listener and keeps the page up. The
+        // sidebar simply stopped rendering and nothing reported it.
+        $labels = array_map(
+            static fn (array $row): string => htmlspecialchars($row['tag']->getName(), ENT_QUOTES, 'UTF-8'),
+            $popularTags,
+        );
 
         return $context->appendHtml(sprintf(
             '<div class="cp-hook-blog-tags"><p>Popüler Etiketler: %s</p></div>',

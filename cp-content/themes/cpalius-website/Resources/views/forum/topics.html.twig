@@ -26,6 +26,8 @@
     </div>
 </div>
 
+{% include '@Theme/forum/partials/_user_rail.html.twig' %}
+
 {% if childSections is not empty %}
     <div class="forum-group fade-in">
         <div class="forum-group__title"><i class="bi bi-folder2"></i> {{ 'forum.subforums_title'|trans }}</div>
@@ -37,14 +39,16 @@
     </div>
 {% endif %}
 
+{% set langParams = contentLangParams|default({}) %}
+
 <div class="forum-toolbar fade-in">
     <nav class="forum-filters" aria-label="{{ 'filter.all'|trans({}, 'forums') }}">
-        <a href="{{ path('forum_section', {sectionSlug: section.slug}) }}" class="forum-filters__item {{ (filter|default('all')) == 'all' ? 'is-active' : '' }}">{{ 'filter.all'|trans({}, 'forums') }}</a>
-        <a href="{{ path('forum_section', {sectionSlug: section.slug, filter: 'solved'}) }}" class="forum-filters__item {{ filter|default('all') == 'solved' ? 'is-active' : '' }}">{{ 'filter.solved'|trans({}, 'forums') }}</a>
-        <a href="{{ path('forum_section', {sectionSlug: section.slug, filter: 'latest'}) }}" class="forum-filters__item {{ filter|default('all') == 'latest' ? 'is-active' : '' }}">{{ 'filter.latest'|trans({}, 'forums') }}</a>
-        <a href="{{ path('forum_section', {sectionSlug: section.slug, filter: 'popular'}) }}" class="forum-filters__item {{ filter|default('all') == 'popular' ? 'is-active' : '' }}">{{ 'filter.popular'|trans({}, 'forums') }}</a>
+        <a href="{{ path('forum_section', {sectionSlug: section.slug}|merge(langParams)) }}" class="forum-filters__item {{ (filter|default('all')) == 'all' ? 'is-active' : '' }}">{{ 'filter.all'|trans({}, 'forums') }}</a>
+        <a href="{{ path('forum_section', {sectionSlug: section.slug, filter: 'solved'}|merge(langParams)) }}" class="forum-filters__item {{ filter|default('all') == 'solved' ? 'is-active' : '' }}">{{ 'filter.solved'|trans({}, 'forums') }}</a>
+        <a href="{{ path('forum_section', {sectionSlug: section.slug, filter: 'latest'}|merge(langParams)) }}" class="forum-filters__item {{ filter|default('all') == 'latest' ? 'is-active' : '' }}">{{ 'filter.latest'|trans({}, 'forums') }}</a>
+        <a href="{{ path('forum_section', {sectionSlug: section.slug, filter: 'popular'}|merge(langParams)) }}" class="forum-filters__item {{ filter|default('all') == 'popular' ? 'is-active' : '' }}">{{ 'filter.popular'|trans({}, 'forums') }}</a>
         {% if cp_user() %}
-            <a href="{{ path('forum_section', {sectionSlug: section.slug, filter: 'mine'}) }}" class="forum-filters__item {{ filter|default('all') == 'mine' ? 'is-active' : '' }}">{{ 'filter.mine'|trans({}, 'forums') }}</a>
+            <a href="{{ path('forum_section', {sectionSlug: section.slug, filter: 'mine'}|merge(langParams)) }}" class="forum-filters__item {{ filter|default('all') == 'mine' ? 'is-active' : '' }}">{{ 'filter.mine'|trans({}, 'forums') }}</a>
         {% endif %}
     </nav>
     {% if canCreateThread|default(false) %}
@@ -52,7 +56,26 @@
     {% endif %}
 </div>
 
-<div class="forum-topics-head fade-in" aria-hidden="true">
+{% if otherLanguageCounts|default([]) is not empty %}
+    {% for row in otherLanguageCounts %}
+        <div class="forum-lang-banner fade-in">
+            <span>{{ 'forum.content_lang.banner'|trans({count: row.count, locale: row.nativeName}) }}</span>
+            <a href="{{ path('forum_section', {sectionSlug: section.slug, content_lang: row.code}) }}">{{ 'forum.content_lang.show'|trans }}</a>
+        </div>
+    {% endfor %}
+{% endif %}
+{% if contentLang|default(app.request.locale) != 'all' and otherLanguageCounts|default([]) is not empty %}
+    <p class="forum-lang-all fade-in">
+        <a href="{{ path('forum_section', {sectionSlug: section.slug, content_lang: 'all'}) }}">{{ 'forum.content_lang.all'|trans }}</a>
+    </p>
+{% endif %}
+
+<div class="forum-topics-head fade-in {{ canInlineMod|default(false) ? 'is-imod' : '' }}" aria-hidden="true">
+    {% if canInlineMod|default(false) %}
+        <label class="forum-imod-check" title="{{ 'forum.imod.select_all'|trans }}">
+            <input type="checkbox" data-imod-select-all>
+        </label>
+    {% endif %}
     <span></span>
     <span>{{ 'forum.breadcrumb.home_title'|trans }}</span>
     <span>{{ 'stat.reply'|trans({}, 'forums') }}</span>
@@ -60,10 +83,15 @@
     <span>{{ 'index.last_post'|trans({}, 'forums') }}</span>
 </div>
 
-<div class="forum-topics fade-in">
+<div class="forum-topics fade-in {{ canInlineMod|default(false) ? 'is-imod' : '' }}">
     {% for topic in topics %}
-        {% set isUnread = lastVisitAt is defined and lastVisitAt and topic.updatedAt > lastVisitAt %}
-        <div class="forum-topic {{ topic.sticky ? 'forum-topic--sticky' : '' }} {{ topic.isLocked ? 'forum-topic--locked' : '' }} {{ isUnread ? 'forum-topic--unread' : '' }} {{ topic.deleted ? 'forum-topic--deleted' : '' }}">
+        {% set isUnread = (unreadTopicIds is defined and topic.id in unreadTopicIds|keys) or (lastVisitAt is defined and lastVisitAt and topic.updatedAt > lastVisitAt and unreadTopicIds is not defined) %}
+        <div class="forum-topic {{ topic.sticky ? 'forum-topic--sticky' : '' }} {{ topic.isLocked ? 'forum-topic--locked' : '' }} {{ isUnread ? 'forum-topic--unread' : '' }} {{ topic.deleted ? 'forum-topic--deleted' : '' }}" data-topic-id="{{ topic.id }}" data-topic-title="{{ topic.title|e('html_attr') }}">
+            {% if canInlineMod|default(false) %}
+                <label class="forum-imod-check">
+                    <input type="checkbox" form="forum-imod-form" name="topic_ids[]" value="{{ topic.id }}">
+                </label>
+            {% endif %}
             {% include '@Theme/forum/partials/_topic_icon.html.twig' with {topic: topic, hotThreshold: hotThreshold, unread: isUnread} %}
 
             <div>
@@ -72,6 +100,9 @@
                         <span class="forum-prefix {{ topic.prefix.cssClass|default('forum-prefix--default') }}" {% if not topic.prefix.cssClass %}style="background: color-mix(in srgb, {{ topic.prefix.color }} 15%, white); color: {{ topic.prefix.color }};"{% endif %}>{{ topic.prefix.title }}</span>
                     {% endif %}
                     <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}" title="{{ topic.preview }}">{{ topic.title }}</a>
+                    {% if topic.locale != app.request.locale or contentLang|default('') == 'all' %}
+                        <span class="forum-lang-badge">{{ topic.locale }}</span>
+                    {% endif %}
                     {% if topic.sticky and topic.isLocked %}<span class="forum-badge forum-badge--sticky">{{ 'forum.badge.announcement'|trans }}</span>
                     {% elseif topic.sticky %}<span class="forum-badge forum-badge--sticky">{{ 'forum.badge.sticky'|trans }}</span>{% endif %}
                     {% if topic.isLocked and not topic.sticky %}<span class="forum-badge forum-badge--locked">{{ 'forum.badge.locked'|trans }}</span>{% endif %}
@@ -127,6 +158,9 @@
 {% include '@Theme/forum/partials/pagination.html.twig' with {
     result: topics,
     route: 'forum_section',
-    routeParams: {sectionSlug: section.slug, filter: filter|default('all')}
+    routeParams: {sectionSlug: section.slug, filter: filter|default('all')}|merge(langParams)
 } %}
+
+{% include '@Theme/forum/partials/_inline_mod.html.twig' with { imodScope: 'topics' } %}
+{% include '@Theme/forum/partials/_stats_bar.html.twig' %}
 {% endblock %}

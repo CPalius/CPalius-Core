@@ -1,0 +1,57 @@
+{% extends '@Theme/account/layout.html.twig' %}
+
+{% block title %}{{ 'notification.inbox.title'|trans }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-nav fade-in" aria-label="{{ 'account.nav_aria'|trans }}">
+        <div class="container">
+            <div class="forum-nav__inner">
+                <ol class="forum-nav__crumbs">
+                    <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+                    <li><a href="{{ path('account_profile') }}">{{ 'account.profile.title'|trans }}</a></li>
+                    <li class="is-active">{{ 'notification.inbox.breadcrumb'|trans }}</li>
+                </ol>
+            </div>
+        </div>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in" style="max-width: 720px; margin: 0 auto var(--sp-lg);">
+    <span class="section-label">{{ 'notification.inbox.label'|trans }}</span>
+    <h1 class="section-title">{{ 'notification.inbox.heading'|trans }}</h1>
+    <p class="forum-header__desc">{{ 'notification.inbox.desc'|trans({'count': unread}) }}</p>
+</div>
+
+<div class="fade-in" style="max-width: 720px; margin: 0 auto;">
+    {% if unread > 0 %}
+        <form method="post" action="{{ path('account_notifications_mark_all') }}" style="margin-bottom: var(--sp-md);">
+            <input type="hidden" name="_token" value="{{ csrf_token('account_notifications') }}">
+            <button type="submit" class="btn btn-secondary btn-sm">{{ 'notification.inbox.mark_all'|trans }}</button>
+        </form>
+    {% endif %}
+
+    {% if notifications is empty %}
+        <p style="color: var(--slw-text-muted);">{{ 'notification.inbox.empty'|trans }}</p>
+    {% else %}
+        <ul class="forum-list" style="list-style: none; padding: 0; margin: 0;">
+            {% for n in notifications %}
+                <li style="padding: var(--sp-md) 0; border-bottom: 1px solid var(--slw-border, #e5e5e5); {% if not n.read %}font-weight: 600;{% endif %}">
+                    <div>{{ ('notification.event.' ~ n.eventKey)|trans(n.data) }}</div>
+                    <div style="font-size: var(--fs-sm); color: var(--slw-text-muted); margin-top: var(--sp-xs);">
+                        {{ n.createdAt|date('d.m.Y H:i') }}
+                        {% if n.data.title is defined %} — {{ n.data.title }}{% endif %}
+                        {% if n.data.to is defined %} ({{ n.data.from }} → {{ n.data.to }}){% endif %}
+                    </div>
+                    {% if not n.read %}
+                        <form method="post" action="{{ path('account_notification_mark_read', {id: n.id}) }}" style="margin-top: var(--sp-xs);">
+                            <input type="hidden" name="_token" value="{{ csrf_token('account_notifications') }}">
+                            <button type="submit" class="btn btn-secondary btn-sm">{{ 'notification.inbox.mark_read'|trans }}</button>
+                        </form>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+{% endblock %}

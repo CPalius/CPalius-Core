@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Portal;
 
+use App\Core\Module\ModuleContributionCatalog;
 use App\Core\Settings\SettingsRegistry;
 use App\Entity\Setting;
 use App\Repository\SettingRepository;
@@ -27,6 +28,7 @@ final class PortalLayoutService
         private readonly SettingsRegistry $settingsRegistry,
         private readonly SettingRepository $settingRepository,
         private readonly EntityManagerInterface $entityManager,
+        private readonly ModuleContributionCatalog $contributions,
     ) {
     }
 
@@ -37,12 +39,30 @@ final class PortalLayoutService
      *   supportsLimit: bool,
      *   supportsLayout: bool,
      *   supportsHeroFields: bool,
+     *   hideOnLanding?: bool,
+     *   requiresRoute?: ?string,
+     *   legacyWidgetSetting?: ?string,
      *   default: array<string, mixed>
      * }>
      */
     public function getCatalog(): array
     {
-        return PortalBlockCatalog::definitions();
+        $catalog = [];
+        foreach (PortalBlockCatalog::definitions() as $id => $meta) {
+            $catalog[$id] = $meta + [
+                'hideOnLanding' => false,
+                'requiresRoute' => null,
+                'legacyWidgetSetting' => null,
+            ];
+        }
+
+        foreach ($this->contributions->portalBlocks() as $id => $meta) {
+            if (\is_string($id) && $id !== '' && \is_array($meta)) {
+                $catalog[$id] = $meta;
+            }
+        }
+
+        return $catalog;
     }
 
     /**
@@ -56,10 +76,10 @@ final class PortalLayoutService
         $decoded = is_string($raw) && $raw !== '' ? json_decode($raw, true) : null;
 
         if (!is_array($decoded) || $decoded === []) {
-            return $this->applyLegacyWidgetFlags(PortalBlockCatalog::defaultLayout());
+            return $this->hideLandingFeeds($this->applyLegacyWidgetFlags(PortalBlockCatalog::defaultLayout()));
         }
 
-        return $this->normalizeLayout($decoded);
+        return $this->hideLandingFeeds($this->collapseVerboseMarketing($this->normalizeLayout($decoded)));
     }
 
     /**
@@ -102,7 +122,7 @@ final class PortalLayoutService
      */
     private function normalizeLayout(array $blocks): array
     {
-        $catalog = PortalBlockCatalog::definitions();
+        $catalog = $this->getCatalog();
         $seen = [];
         $normalized = [];
 
@@ -120,16 +140,70 @@ final class PortalLayoutService
             $normalized[] = $this->sanitizeBlock($id, $block, $catalog[$id]);
         }
 
-        foreach (PortalBlockCatalog::defaultLayout() as $defaultBlock) {
-            $id = (string) $defaultBlock['id'];
+        foreach ($this->orderedCatalogIds($catalog) as $id) {
             if (isset($seen[$id])) {
                 continue;
             }
 
-            $normalized[] = $defaultBlock;
+            $normalized[] = $catalog[$id]['default'];
+            $seen[$id] = true;
         }
 
         return $normalized;
+    }
+
+    /**
+     * Old factory layouts enabled every deep-dive marketing block. Collapse
+     * those onto the whitepaper so the public landing stays a spotlight.
+     *
+     * @param list<array<string, mixed>> $layout
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function collapseVerboseMarketing(array $layout): array
+    {
+        $verbose = PortalBlockCatalog::whitepaperOnlyIds();
+        $enabledVerbose = 0;
+        foreach ($layout as $block) {
+            $id = (string) ($block['id'] ?? '');
+            if (($block['enabled'] ?? false) && \in_array($id, $verbose, true)) {
+                ++$enabledVerbose;
+            }
+        }
+        if ($enabledVerbose < 8) {
+            return $layout;
+        }
+
+        foreach ($layout as &$block) {
+            $id = (string) ($block['id'] ?? '');
+            if (\in_array($id, $verbose, true)) {
+                $block['enabled'] = false;
+            }
+        }
+        unset($block);
+
+        return $layout;
+    }
+
+    /**
+     * Latest blog/forum feeds stay in Studio but are off the public landing.
+     *
+     * @param list<array<string, mixed>> $layout
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function hideLandingFeeds(array $layout): array
+    {
+        $catalog = $this->getCatalog();
+        foreach ($layout as &$block) {
+            $id = (string) ($block['id'] ?? '');
+            if (($catalog[$id]['hideOnLanding'] ?? false) === true) {
+                $block['enabled'] = false;
+            }
+        }
+        unset($block);
+
+        return $layout;
     }
 
     /**
@@ -189,6 +263,32 @@ final class PortalLayoutService
     }
 
     /**
+     * Core default order first, then module-contributed block ids.
+     *
+     * @param array<string, array<string, mixed>> $catalog
+     *
+     * @return list<string>
+     */
+    private function orderedCatalogIds(array $catalog): array
+    {
+        $ids = [];
+        foreach (PortalBlockCatalog::defaultLayout() as $defaultBlock) {
+            $id = (string) ($defaultBlock['id'] ?? '');
+            if ($id !== '' && isset($catalog[$id])) {
+                $ids[] = $id;
+            }
+        }
+
+        foreach (array_keys($catalog) as $id) {
+            if (!\in_array($id, $ids, true)) {
+                $ids[] = $id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
      * Maps legacy homepage.widget.* checkboxes onto enabled flags.
      *
      * @param list<array<string, mixed>> $layout
@@ -197,11 +297,13 @@ final class PortalLayoutService
      */
     private function applyLegacyWidgetFlags(array $layout): array
     {
-        $legacyMap = [
-            'latest_forum_topics' => 'homepage.widget.latest_forum_topics',
-            'latest_blog_posts' => 'homepage.widget.latest_blog_posts',
-            'popular_forum_topics' => 'homepage.widget.popular_forum_topics',
-        ];
+        $legacyMap = [];
+        foreach ($this->getCatalog() as $id => $meta) {
+            $legacyKey = $meta['legacyWidgetSetting'] ?? null;
+            if (\is_string($legacyKey) && $legacyKey !== '') {
+                $legacyMap[$id] = $legacyKey;
+            }
+        }
 
         foreach ($layout as &$block) {
             $id = (string) ($block['id'] ?? '');

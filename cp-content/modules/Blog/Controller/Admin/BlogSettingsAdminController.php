@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Blog\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
+use App\Core\Security\CaptchaService;
 use App\Core\Settings\SettingsRegistry;
 use App\Entity\Setting;
 use App\Repository\SettingRepository;
@@ -29,6 +30,7 @@ final class BlogSettingsAdminController extends AbstractController
         private readonly SettingRepository $settingRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly TranslatorInterface $translator,
+        private readonly CaptchaService $captchaService,
     ) {
     }
 
@@ -55,7 +57,9 @@ final class BlogSettingsAdminController extends AbstractController
                 'blog' => 'studio.blog.settings.group.general',
                 'blog_hero' => 'studio.blog.settings.group.hero',
                 'blog_showcase' => 'studio.blog.settings.group.showcase',
+                'blog_comments' => 'studio.blog.settings.group.comments',
             ],
+            'captchaStatus' => $this->captchaService->describeReadyProvider(),
         ]);
     }
 

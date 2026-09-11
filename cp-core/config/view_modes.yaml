@@ -1,0 +1,12 @@
+# Core view modes. Modules add theirs in Resources/config/view_modes.yaml
+# (see ViewModeRegistrationPass), not here — same convention as capabilities.yaml.
+#
+# "default" always exists even if this file is ever emptied (ViewModeRegistry
+# guarantees it) — it is the fallback every renderEntity()/serialize() call uses.
+view_modes:
+    default:
+        label: 'view_mode.label.default'
+    teaser:
+        label: 'view_mode.label.teaser'
+    card:
+        label: 'view_mode.label.card'

@@ -5,5 +5,5 @@
         "css": ["dist/style.css", "dist/forum.css"],
         "js": ["dist/main.js", "dist/forum.js"]
     },
-    "supports": ["blog", "menu", "forum"]
+    "supports": ["blog", "menu", "forum", "pages"]
 }

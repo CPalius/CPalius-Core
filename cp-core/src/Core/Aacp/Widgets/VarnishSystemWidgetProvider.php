@@ -10,9 +10,7 @@ use App\Repository\PerformanceBackendStatusRepository;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Ana AACP dashboard'unda Varnish durumunu gösteren kart — bkz.
- * RedisSystemWidgetProvider docblock'u (aynı "sadece son kayıt, canlı
- * probe yok" ve "description PHP tarafında önceden çevrilir" ilkeleri).
+ * Varnish status card on AACP dashboard — see RedisSystemWidgetProvider (last DB record, no live probe).
  */
 final class VarnishSystemWidgetProvider implements SystemWidgetProviderInterface
 {

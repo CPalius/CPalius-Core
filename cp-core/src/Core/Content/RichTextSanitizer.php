@@ -6,10 +6,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerInterface;
 
 /**
- * Zengin metin editöründen (Jodit) gelen HTML'i persist edilmeden hemen
- * önce temizler (Manifesto Law 5.3). Media modülünden bağımsız, generic
- * bir core servis — herhangi bir Node type'ında rich-text alanı olan
- * modül (Blog, Portfolio vb.) bunu kullanabilir.
+ * Sanitizes rich-text editor (Jodit) HTML before persistence (Manifesto Law 5.3).
+ * Generic core service independent of Media; any module with rich-text Node fields may use it.
  */
 final class RichTextSanitizer
 {

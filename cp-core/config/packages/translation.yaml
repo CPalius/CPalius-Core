@@ -6,8 +6,5 @@ framework:
             - en
         paths:
             - '%kernel.project_dir%/cp-content/translations'
-            # NOT: Her modül (Modules\*) aynı zamanda bir Symfony Bundle
-            # olduğu için, modüllerin Resources/translations klasörleri
-            # FrameworkExtension tarafından "kernel.bundles_metadata" üzerinden
-            # otomatik olarak taranır — ekstra bir Compiler Pass'e gerek yoktur.
-            # (bkz. FrameworkExtension::registerTranslatorConfiguration())
+            # Modules are Symfony bundles — Resources/translations is auto-scanned
+            # via kernel.bundles_metadata (FrameworkExtension::registerTranslatorConfiguration()).

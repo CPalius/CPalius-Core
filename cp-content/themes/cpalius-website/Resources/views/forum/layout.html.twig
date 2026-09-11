@@ -5,7 +5,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="section forum-page forum" id="forum">
+<section class="section forum-page forum" id="forum" data-unfurl-endpoint="{{ path('forum_unfurl') }}" data-unfurl-token="{{ csrf_token('forum_unfurl') }}" data-i18n-report-prompt="{{ 'forum.js.report_prompt'|trans({}, 'forums') }}" data-i18n-link-copied="{{ 'forum.js.link_copied'|trans({}, 'forums') }}" data-i18n-close="{{ 'forum.js.close'|trans({}, 'forums') }}" data-i18n-prev="{{ 'forum.js.prev'|trans({}, 'forums') }}" data-i18n-next="{{ 'forum.js.next'|trans({}, 'forums') }}">
     <div class="container">
         {% block forum_breadcrumbs %}{% endblock %}
 
@@ -16,8 +16,6 @@
         {% endfor %}
 
         {% block forum_content %}{% endblock %}
-
-        {% include '@Theme/forum/partials/_stats_bar.html.twig' %}
     </div>
 </section>
 {% endblock %}

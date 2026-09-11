@@ -41,9 +41,9 @@ final class ForumPortalBlockDataProvider implements PortalBlockDataProviderInter
         $limit = (int) ($block['limit'] ?? 5);
 
         return match ($blockId) {
-            'latest_forum_topics' => $this->wrapItems($this->forumTopicRepository->findLatest($limit)),
-            'popular_forum_topics' => $this->wrapItems($this->forumTopicRepository->findPopular($limit)),
-            'latest_forum_posts' => $this->wrapItems($this->forumPostRepository->findLatest($limit)),
+            'latest_forum_topics' => $this->wrapItems($this->forumTopicRepository->findLatest($limit, 0, $locale)),
+            'popular_forum_topics' => $this->wrapItems($this->forumTopicRepository->findPopular($limit, $locale)),
+            'latest_forum_posts' => $this->wrapItems($this->forumPostRepository->findLatest($limit, $locale)),
             'forum_boards' => $this->wrapItems($this->loadForumBoards($locale, $limit)),
             'forum_stats' => $this->aggregateForumStats($locale),
             default => null,

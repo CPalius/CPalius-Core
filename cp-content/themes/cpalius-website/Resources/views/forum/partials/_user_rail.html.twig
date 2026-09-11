@@ -1,0 +1,25 @@
+{% if cp_user() %}
+<nav class="forum-user-rail fade-in" aria-label="{{ 'forum.user_rail.title'|trans }}">
+    <a href="{{ path('forum_unread') }}" class="forum-user-rail__item">
+        <i class="bi bi-envelope"></i>
+        <span>{{ 'forum.unread.link'|trans }}</span>
+    </a>
+    <a href="{{ path('forum_drafts') }}" class="forum-user-rail__item">
+        <i class="bi bi-journal-text"></i>
+        <span>{{ 'forum.draft.list'|trans }}</span>
+    </a>
+    <a href="{{ path('forum_my_topics') }}" class="forum-user-rail__item">
+        <i class="bi bi-chat-square-text"></i>
+        <span>{{ 'forum.my_topics.link'|trans }}</span>
+    </a>
+    <form method="post" action="{{ path('forum_mark_read') }}" class="forum-user-rail__item forum-user-rail__form">
+        <input type="hidden" name="_token" value="{{ csrf_token('forum_mark_read') }}">
+        {% if section is defined and section.id is defined %}
+            <input type="hidden" name="section_id" value="{{ section.id }}">
+            <button type="submit"><i class="bi bi-check2-all"></i> <span>{{ 'forum.unread.mark_board'|trans }}</span></button>
+        {% else %}
+            <button type="submit"><i class="bi bi-check2-all"></i> <span>{{ 'forum.unread.mark_all'|trans }}</span></button>
+        {% endif %}
+    </form>
+</nav>
+{% endif %}

@@ -14,7 +14,7 @@ final class Version20260716124900 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'AACP Cron Yonetimi: cp_cron_jobs + cp_cron_job_runs tablolari (DB-tabanli dinamik cron isleri).';
+        return 'AACP Cron Management: cp_cron_jobs + cp_cron_job_runs tables (DB-backed dynamic cron jobs).';
     }
 
     public function up(Schema $schema): void

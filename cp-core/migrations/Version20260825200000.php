@@ -8,14 +8,14 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Forum modülü tabloları — Cotonti cot_forum_* şemasının CPalius uyarlaması.
- * Varsayılan bölümler: pub (konteyner) > general, offtopic.
+ * Forum module tables — CPalius adaptation of Cotonti cot_forum_* schema.
+ * Default sections: pub (container) > general, offtopic.
  */
 final class Version20260825200000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Forum modülü tablolarını oluşturur ve varsayılan bölümleri ekler.';
+        return 'Creates Forum module tables and seeds default sections.';
     }
 
     public function up(Schema $schema): void

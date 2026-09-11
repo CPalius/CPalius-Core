@@ -1,0 +1,26 @@
+<div class="mb-6">
+    <div class="flex flex-wrap gap-1 border-b border-neutral-200 pb-2" role="tablist">
+        {% for tab in forum_studio_desk_tabs() %}
+            <a href="{{ path(tab.route) }}"
+               class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-fs-sm font-medium transition-colors {{ tab.active ? 'bg-primary-50 text-primary-700' : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800' }}">
+                <twig:ux:icon name="{{ tab.icon }}" class="h-4 w-4 shrink-0" />
+                {{ tab.label|trans }}
+            </a>
+        {% endfor %}
+    </div>
+    {% set deskRoute = app.request.attributes.get('_route') %}
+    <div class="mt-3 flex flex-wrap gap-2">
+        {% if deskRoute starts with 'admin_forum_dashboard' or deskRoute starts with 'admin_forum_stats' or deskRoute starts with 'admin_forum_topics' %}
+            <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm {{ deskRoute == 'admin_forum_dashboard' ? 'btn-primary' : 'btn-neutral' }}">{{ 'studio.forum.desk.sub.overview'|trans }}</a>
+            <a href="{{ path('admin_forum_topics_index') }}" class="btn btn-sm {{ deskRoute starts with 'admin_forum_topics' ? 'btn-primary' : 'btn-neutral' }}">{{ 'studio.forum.desk.sub.topics'|trans }}</a>
+            <a href="{{ path('admin_forum_stats_index') }}" class="btn btn-sm {{ deskRoute starts with 'admin_forum_stats' ? 'btn-primary' : 'btn-neutral' }}">{{ 'studio.forum.desk.sub.stats'|trans }}</a>
+        {% elseif deskRoute starts with 'admin_forum_sections' or deskRoute starts with 'admin_forum_prefixes' or deskRoute starts with 'admin_forum_permissions' %}
+            <a href="{{ path('admin_forum_sections_index') }}" class="btn btn-sm {{ deskRoute starts with 'admin_forum_sections' ? 'btn-primary' : 'btn-neutral' }}">{{ 'studio.forum.desk.sub.sections'|trans }}</a>
+            <a href="{{ path('admin_forum_prefixes_index') }}" class="btn btn-sm {{ deskRoute starts with 'admin_forum_prefixes' ? 'btn-primary' : 'btn-neutral' }}">{{ 'studio.forum.desk.sub.prefixes'|trans }}</a>
+            <a href="{{ path('admin_forum_permissions_index') }}" class="btn btn-sm {{ deskRoute starts with 'admin_forum_permissions' ? 'btn-primary' : 'btn-neutral' }}">{{ 'studio.forum.desk.sub.permissions'|trans }}</a>
+        {% elseif deskRoute starts with 'admin_forum_members' or deskRoute starts with 'admin_forum_ranks' %}
+            <a href="{{ path('admin_forum_members_index') }}" class="btn btn-sm {{ deskRoute starts with 'admin_forum_members' ? 'btn-primary' : 'btn-neutral' }}">{{ 'studio.forum.desk.sub.members'|trans }}</a>
+            <a href="{{ path('admin_forum_ranks_index') }}" class="btn btn-sm {{ deskRoute starts with 'admin_forum_ranks' ? 'btn-primary' : 'btn-neutral' }}">{{ 'studio.forum.desk.sub.ranks'|trans }}</a>
+        {% endif %}
+    </div>
+</div>

@@ -1,6 +1,5 @@
 {#
-    Forum kök sayfası — Son olaylar (kompakt tablo / featuredThreads tarzı).
-    Beklenen: forumActivity
+    Forum home recent activity panel (compact table). Expects: forumActivity.
 #}
 {% if forumActivity is defined and forumActivity.enabled and forumActivity.tabs is not empty %}
 {% set firstTab = forumActivity.tabs|first %}

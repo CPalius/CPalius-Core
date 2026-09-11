@@ -4,85 +4,37 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
-use App\Core\Annotation\CpAdminMenu;
 use App\Core\Annotation\CpSetting;
-use App\Core\Settings\SettingScopeResolver;
-use App\Core\Settings\SettingsRegistry;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Twig\Environment;
 
 /**
- * Unified settings screen with Core / Modules / Plugins tabs.
- * Persisting is delegated to AACPController::updateSettings (single write path).
+ * Legacy /aacp/settings URLs redirect to the unified System Settings screen.
  */
 final class AACPSettingsController
 {
-    /** Tab id => translation key, in display order. */
-    public const TABS = [
-        CpSetting::SCOPE_CORE => 'aacp.settings.tab_core',
-        CpSetting::SCOPE_MODULE => 'aacp.settings.tab_modules',
-        CpSetting::SCOPE_PLUGIN => 'aacp.settings.tab_plugins',
+    private const TAB_MAP = [
+        CpSetting::SCOPE_CORE => 'general',
+        CpSetting::SCOPE_MODULE => 'modules',
+        CpSetting::SCOPE_PLUGIN => 'plugins',
     ];
 
-    public function __construct(
-        private readonly Environment $twig,
-        private readonly CsrfTokenManagerInterface $csrfTokenManager,
-        private readonly SettingsRegistry $settingsRegistry,
-        private readonly SettingScopeResolver $scopeResolver,
-    ) {
-    }
+    private const ALLOWED_TABS = [
+        'general', 'email', 'security', 'telemetry', 'registration', 'locales', 'modules', 'plugins',
+    ];
 
     #[Route('/aacp/settings', name: 'aacp_settings', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.settings', icon: 'heroicons:cog-6-tooth', panel: 'aacp', priority: 30, capability: 'system.settings.manage', group: 'aacp.group.genadset')]
     #[IsGranted('system.settings.manage')]
-    public function index(Request $request): Response
+    public function index(Request $request): RedirectResponse
     {
-        $definitions = $this->settingsRegistry->all();
-        $activeTab = (string) $request->query->get('tab', CpSetting::SCOPE_CORE);
-
-        if (!\array_key_exists($activeTab, self::TABS)) {
-            $activeTab = CpSetting::SCOPE_CORE;
+        $tab = (string) $request->query->get('tab', 'general');
+        $target = self::TAB_MAP[$tab] ?? $tab;
+        if (!\in_array($target, self::ALLOWED_TABS, true)) {
+            $target = 'general';
         }
 
-        $settingGroups = $this->scopeResolver->groupByScope($definitions, $activeTab);
-
-        $html = $this->twig->render('aacp/settings.html.twig', [
-            'tabs' => self::TABS,
-            'activeTab' => $activeTab,
-            'tabCounts' => $this->scopeResolver->countByScope($definitions),
-            'settingGroups' => $settingGroups,
-            'currentValues' => $this->currentValues($settingGroups),
-            'csrf_token' => $this->csrfTokenManager->getToken('aacp_settings')->getValue(),
-            'redirectTo' => '/aacp/settings?tab='.$activeTab,
-        ]);
-
-        return new Response($html);
-    }
-
-    /**
-     * Translatable settings are pre-filled with the FULL locale map, never the
-     * resolved string, so saving in one panel language cannot overwrite another.
-     *
-     * @param array<string, list<\App\Core\Settings\SettingDefinition>> $settingGroups
-     *
-     * @return array<string, mixed>
-     */
-    private function currentValues(array $settingGroups): array
-    {
-        $values = [];
-
-        foreach ($settingGroups as $definitions) {
-            foreach ($definitions as $definition) {
-                $values[$definition->key] = $definition->isTranslatable()
-                    ? $this->settingsRegistry->getTranslations($definition->key)
-                    : $this->settingsRegistry->get($definition->key);
-            }
-        }
-
-        return $values;
+        return new RedirectResponse('/aacp/advanced/management?tab='.$target);
     }
 }

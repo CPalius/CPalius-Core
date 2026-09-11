@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Blog\Form;
 
-use App\Entity\Category;
+use App\Core\Taxonomy\Entity\Term;
 use App\Entity\Node;
 use Modules\Blog\Form\DTO\PostFormModel;
 use Modules\Blog\PostSubType;
@@ -19,6 +19,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\UrlType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Studio PostType form mapped to PostFormModel (not Node); persistence via mapDtoToNode().
@@ -26,6 +27,11 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  */
 final class PostType extends AbstractType
 {
+    public function __construct(
+        private readonly TranslatorInterface $translator,
+    ) {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
@@ -44,7 +50,7 @@ final class PostType extends AbstractType
                 'required' => true,
                 'attr' => [
                     'class' => 'form-control text-fs-base font-medium',
-                    'placeholder' => 'Yazı başlığı',
+                    'placeholder' => $this->translator->trans('blog.posts.form.placeholder.title'),
                     'autofocus' => true,
                     'data-post-form-target' => 'title',
                 ],
@@ -54,7 +60,7 @@ final class PostType extends AbstractType
                 'required' => false,
                 'attr' => [
                     'class' => 'form-control',
-                    'placeholder' => 'baslik-otomatik-uretilir',
+                    'placeholder' => $this->translator->trans('blog.posts.form.placeholder.slug'),
                     'data-post-form-target' => 'slug',
                 ],
             ])
@@ -64,7 +70,7 @@ final class PostType extends AbstractType
                 'attr' => [
                     'class' => 'form-control',
                     'rows' => 2,
-                    'placeholder' => 'Blog listesinde gösterilecek kısa özet...',
+                    'placeholder' => $this->translator->trans('blog.posts.form.placeholder.excerpt'),
                 ],
             ])
             ->add('body', TextareaType::class, [
@@ -75,11 +81,18 @@ final class PostType extends AbstractType
                     'rows' => 20,
                     'style' => 'min-height: 550px;',
                     'data-cpeditor' => true,
-                    'placeholder' => 'Yazı içeriği...',
+                    'placeholder' => $this->translator->trans('blog.posts.form.placeholder.body'),
                 ],
             ])
             ->add('isFeatured', CheckboxType::class, [
                 'label' => 'blog.posts.form.field.is_featured',
+                'required' => false,
+                'attr' => [
+                    'class' => 'form-check-input h-4 w-4 text-primary-600 focus:ring-primary-600',
+                ],
+            ])
+            ->add('commentsEnabled', CheckboxType::class, [
+                'label' => 'blog.posts.form.field.comments_enabled',
                 'required' => false,
                 'attr' => [
                     'class' => 'form-check-input h-4 w-4 text-primary-600 focus:ring-primary-600',
@@ -112,7 +125,7 @@ final class PostType extends AbstractType
             ])
             ->add('categoryIds', EntityType::class, [
                 'label' => 'blog.categories.header',
-                'class' => Category::class,
+                'class' => Term::class,
                 'choice_label' => 'name',
                 'choice_value' => 'id',
                 'multiple' => true,
@@ -149,7 +162,7 @@ final class PostType extends AbstractType
                     'rows' => 3,
                     'maxlength' => 160,
                     'data-seo-char-counter' => true,
-                    'placeholder' => 'Arama sonuçlarında görünecek kısa açıklama (160 karakter)',
+                    'placeholder' => $this->translator->trans('blog.posts.form.placeholder.seo_meta'),
                 ],
             ])
             ->add('seoFocusKeyword', TextType::class, [
@@ -165,7 +178,7 @@ final class PostType extends AbstractType
                 'default_protocol' => null,
                 'attr' => [
                     'class' => 'form-control',
-                    'placeholder' => 'https://... (opsiyonel)',
+                    'placeholder' => $this->translator->trans('blog.posts.form.placeholder.canonical'),
                 ],
             ])
             ->add('seoNoindex', CheckboxType::class, [
@@ -181,7 +194,7 @@ final class PostType extends AbstractType
                 'default_protocol' => null,
                 'attr' => [
                     'class' => 'form-control',
-                    'placeholder' => 'https://github.com/kullanici/proje',
+                    'placeholder' => $this->translator->trans('blog.posts.form.placeholder.repo'),
                     'data-post-sub-type-block' => PostSubType::PROJECT,
                 ],
             ])
@@ -191,7 +204,7 @@ final class PostType extends AbstractType
                 'default_protocol' => null,
                 'attr' => [
                     'class' => 'form-control',
-                    'placeholder' => 'https://demo.proje.com',
+                    'placeholder' => $this->translator->trans('blog.posts.form.placeholder.demo'),
                     'data-post-sub-type-block' => PostSubType::PROJECT,
                 ],
             ])
@@ -200,7 +213,7 @@ final class PostType extends AbstractType
                 'required' => false,
                 'attr' => [
                     'class' => 'form-control',
-                    'placeholder' => 'ör. 2.4.1',
+                    'placeholder' => $this->translator->trans('blog.posts.form.placeholder.version'),
                     'data-post-sub-type-block' => PostSubType::SOFTWARE,
                 ],
             ])
@@ -210,7 +223,7 @@ final class PostType extends AbstractType
                 'default_protocol' => null,
                 'attr' => [
                     'class' => 'form-control',
-                    'placeholder' => 'https://...',
+                    'placeholder' => $this->translator->trans('blog.posts.form.placeholder.download'),
                     'data-post-sub-type-block' => PostSubType::SOFTWARE,
                 ],
             ])
@@ -221,7 +234,7 @@ final class PostType extends AbstractType
                     'class' => 'form-control',
                     'rows' => 8,
                     'style' => 'font-family: monospace;',
-                    'placeholder' => 'Paylaşmak istediğiniz kodu buraya yapıştırın (düz metin, HTML yorumlanmaz)...',
+                    'placeholder' => $this->translator->trans('blog.posts.form.placeholder.note_code'),
                     'data-post-sub-type-block' => PostSubType::NOTE,
                 ],
             ])

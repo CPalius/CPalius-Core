@@ -1,18 +1,30 @@
 /**
- * Studio header'ındaki şimşek ikonlu "Önbelleği Temizle" butonu.
- * AACPController::clearSymfonyCacheAction() ile AYNI AJAX ucunu (ve
- * AYNI 'aacp_cache_rebuild' CSRF token id'sini) kullanır — cache_rebuild
- * konsolundaki üç işlemden sadece biri, tek tıkla tetiklenir.
+ * Studio header cache-clear button. Uses the same AJAX endpoint and CSRF
+ * id as AACP cache rebuild (aacp_cache_rebuild).
  *
- * CacheRebuildManager::clearSymfonyCache() zaten SATIR SATIR bir log
- * döndürür (cache.app pool + var/cache/{env} alt dizinleri, "[OK]"/"[HATA]"
- * önekli) — hem Studio hem AACP tarafında AYNI cache.app havuzu ve AYNI
- * var/cache dizini temizlendiği için bu, front-end (website) render
- * cache'i ile AACP arayüzünün paylaştığı TEK gerçek önbellek katmanıdır.
- * Önceden bu detaylı log'u kullanıcıya hiç GÖSTERMİYORDUK (sadece sabit
- * "Önbellek temizlendi." metni) — artık bir modal içinde tam olarak
- * hangi alt dizinin/havuzun temizlendiği listelenir.
+ * Log lines from CacheRebuildManager are prefixed [OK] / [ERR] (locale-neutral);
+ * the sentence after the prefix is already translated server-side.
  */
+function isErrorLogLine(line) {
+    return line.startsWith('[ERR]') || line.startsWith('[HATA]');
+}
+
+function interpolate(template, vars) {
+    return Object.keys(vars).reduce(
+        (text, key) => text.replaceAll('{' + key + '}', String(vars[key])),
+        template,
+    );
+}
+
+async function parseJsonBody(response) {
+    const text = await response.text();
+    try {
+        return { data: JSON.parse(text) };
+    } catch {
+        return { status: response.status };
+    }
+}
+
 function initQuickCacheClear(button) {
     const url = button.dataset.quickCacheClearUrl;
     const csrfToken = button.dataset.quickCacheClearCsrf;
@@ -44,7 +56,7 @@ function initQuickCacheClear(button) {
             .filter((line) => line.trim() !== '')
             .forEach((line) => {
                 const lineEl = document.createElement('p');
-                lineEl.className = 'modal-log-line ' + (line.startsWith('[HATA]') ? 'text-danger-600' : 'text-success-700');
+                lineEl.className = 'modal-log-line ' + (isErrorLogLine(line) ? 'text-danger-600' : 'text-success-700');
                 lineEl.textContent = line;
                 logEl.appendChild(lineEl);
             });
@@ -60,16 +72,28 @@ function initQuickCacheClear(button) {
             const formData = new FormData();
             formData.append('_token', csrfToken);
 
-            const response = await fetch(url, { method: 'POST', body: formData });
-            const data = await response.json();
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: { Accept: 'application/json' },
+            });
+            const parsed = await parseJsonBody(response);
 
+            if (!parsed.data) {
+                statusEl.textContent = statusEl.dataset.errorText ?? 'ERROR';
+                renderLog('[ERR] ' + interpolate(statusEl.dataset.notJson || 'HTTP {status}', { status: parsed.status }));
+                return;
+            }
+
+            const data = parsed.data;
             statusEl.textContent = data.success
                 ? (statusEl.dataset.successText ?? 'OK')
                 : (statusEl.dataset.errorText ?? 'ERROR');
             renderLog(data.output ?? '');
         } catch (error) {
             statusEl.textContent = statusEl.dataset.errorText ?? 'ERROR';
-            renderLog('[HATA] ' + error.message);
+            const template = statusEl.dataset.requestFailed || '{error}';
+            renderLog('[ERR] ' + interpolate(template, { error: error.message }));
         } finally {
             button.disabled = false;
         }

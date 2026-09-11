@@ -205,7 +205,7 @@ final class SchemaGraphBuilder
             return null;
         }
 
-        foreach (['blog_search', 'forum_search'] as $route) {
+        foreach (['site_search', 'blog_search', 'forum_search'] as $route) {
             try {
                 return $this->urls->absolute($route, ['_locale' => $locale], $locale).'?q={search_term_string}';
             } catch (RouteNotFoundException) {

@@ -132,16 +132,19 @@ final class ForumSeoProvider implements SeoPageProviderInterface
     private function index(string $locale): SeoDocument
     {
         $url = $this->urls->absolute('forum_index', ['_locale' => $locale], $locale);
+        $title = (string) $this->settings->getForLocale('forum.home_title', $locale, 'Forum');
         $description = (string) $this->settings->getForLocale('forum.home_meta_description', $locale, '');
+        $keywords = (string) $this->settings->getForLocale('forum.home_meta_keywords', $locale, '');
 
         return new SeoDocument(
-            headline: 'Forum',
+            headline: $title !== '' ? $title : 'Forum',
             description: $description,
             canonicalPath: $url,
             ogType: 'website',
             contentKind: 'forum',
             schemaType: 'CollectionPage',
             locale: $locale,
+            keywords: $keywords,
         );
     }
 }

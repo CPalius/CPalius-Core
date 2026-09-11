@@ -48,6 +48,9 @@ final class ModuleCreateCommandTest extends TestCase
         self::assertFileExists($root.'/Install/ModuleInstaller.php');
         self::assertFileExists($root.'/Resources/migrations/.gitkeep');
         self::assertFileExists($root.'/Resources/translations/messages+intl-icu.en.yaml');
+        self::assertFileExists($root.'/Resources/config/contributions.yaml');
+        self::assertFileExists($root.'/Resources/config/importmap.php');
+        self::assertFileExists($root.'/Install/ModuleInstaller.php');
 
         $manifest = json_decode((string) file_get_contents($root.'/module.json'), true);
         self::assertIsArray($manifest);

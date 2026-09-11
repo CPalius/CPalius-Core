@@ -1,0 +1,58 @@
+CPalius CMF — Proprietary License
+Copyright (c) 2026 CPalius. All rights reserved.
+
+SUMMARY
+-------
+This is proprietary software. The source code is published for inspection,
+evaluation, and security review. It is NOT open source: no licence to use,
+copy, modify, or distribute the software is granted by its public visibility.
+
+GRANT
+-----
+Subject to the restrictions below, you are permitted to:
+
+  1. view and read the source code;
+  2. download and run the software locally for the sole purpose of private
+     evaluation and security review;
+  3. quote short excerpts for the purpose of reporting a defect, submitting a
+     security report, or discussing the software publicly.
+
+RESTRICTIONS
+------------
+Without prior written permission from the copyright holder, you may NOT:
+
+  1. use the software, in whole or in part, in any production, commercial, or
+     revenue-generating context;
+  2. copy, publish, sublicense, sell, rent, or otherwise distribute the
+     software or any derivative of it;
+  3. create derivative works intended for distribution;
+  4. remove or alter this notice or any copyright notice in the source.
+
+CONTRIBUTIONS
+-------------
+Unless a separate written agreement states otherwise, any contribution
+submitted to this repository is provided under these same terms, and the
+contributor grants the copyright holder a perpetual, worldwide, irrevocable,
+royalty-free licence to use, modify, relicense, and distribute that
+contribution as part of the software.
+
+THIRD-PARTY COMPONENTS
+----------------------
+This software depends on third-party packages (Symfony, Doctrine, and others)
+that are distributed under their own licences. Those licences govern those
+components; nothing in this file restricts or extends them. Dependencies are
+not vendored into this repository — see composer.json and composer.lock.
+
+NO WARRANTY
+-----------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+CONTACT
+-------
+For licensing enquiries, including commercial use: sys@rootali.net
+Security reports: see SECURITY.md

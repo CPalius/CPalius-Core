@@ -9,15 +9,13 @@ use Doctrine\Migrations\AbstractMigration;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
 /**
- * Forum modülü tamamlama seti: bölüm ikonu, konu slug'ı ve mesaj
- * raporlama/moderasyon kuyruğu (forum_post_reports — Cotonti'de doğrudan
- * karşılığı yok, AACP moderasyon masası için yeni bir tablo).
+ * Forum completion set: section icon, topic slug, and forum_post_reports moderation queue table.
  */
 final class Version20260826120000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Forum bölüm ikonu, konu slug alanı ve mesaj raporlama tablosunu ekler.';
+        return 'Adds forum section icon, topic slug field, and post reporting table.';
     }
 
     public function up(Schema $schema): void
@@ -50,11 +48,7 @@ final class Version20260826120000 extends AbstractMigration
         $this->addSql('ALTER TABLE forum_post_reports ADD CONSTRAINT FK_FORUM_POST_REPORT_RESOLVED_BY FOREIGN KEY (resolved_by_id) REFERENCES users (id) ON DELETE SET NULL');
     }
 
-    /**
-     * Mevcut konulara geriye dönük slug üretir. MySQL sürümü ne olursa olsun
-     * çalışması için (REGEXP_REPLACE MySQL 8+ ister) SQL yerine uygulamanın
-     * kendi AsciiSlugger'ı PHP tarafında kullanılır.
-     */
+    /** Backfills topic slugs via AsciiSlugger in PHP (avoids MySQL 8+ REGEXP_REPLACE requirement). */
     public function postUp(Schema $schema): void
     {
         $slugger = new AsciiSlugger();

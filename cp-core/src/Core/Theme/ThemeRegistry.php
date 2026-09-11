@@ -114,6 +114,11 @@ final class ThemeRegistry
             return sprintf('Theme "%s" is not installed.', $dirName);
         }
 
+        $problems = ThemePackageContract::problems($this->themesDir.'/'.$dirName);
+        if ($problems !== []) {
+            return implode(' ', $problems);
+        }
+
         try {
             $setting = $this->settingRepository->findOneBy(['settingKey' => self::ACTIVE_THEME_KEY]);
 

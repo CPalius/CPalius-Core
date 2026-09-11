@@ -24,6 +24,7 @@ use Modules\Forum\ForumDiscussionState;
 #[ORM\Index(columns: ['slug'], name: 'idx_forum_topic_slug')]
 #[ORM\Index(columns: ['discussion_state'], name: 'idx_forum_topic_discussion_state')]
 #[ORM\Index(columns: ['last_post_date'], name: 'idx_forum_topic_last_post_date')]
+#[ORM\Index(columns: ['locale'], name: 'idx_forum_topic_locale')]
 class ForumTopic
 {
     public const MODE_NORMAL = 0;
@@ -40,6 +41,9 @@ class ForumTopic
     #[ORM\ManyToOne(targetEntity: ForumSection::class)]
     #[ORM\JoinColumn(name: 'section_id', referencedColumnName: 'id', nullable: false, onDelete: 'CASCADE')]
     private ForumSection $section;
+
+    #[ORM\Column(type: 'string', length: 5)]
+    private string $locale;
 
     #[ORM\Column(type: 'string', length: 255)]
     private string $title;
@@ -114,6 +118,7 @@ class ForumTopic
     public function __construct(ForumSection $section, string $title, string $firstPosterName)
     {
         $this->section = $section;
+        $this->locale = $section->getLocale();
         $this->title = $title;
         $this->firstPosterName = $firstPosterName;
         $this->createdAt = new \DateTimeImmutable();
@@ -140,6 +145,18 @@ class ForumTopic
     public function setSection(ForumSection $section): static
     {
         $this->section = $section;
+
+        return $this;
+    }
+
+    public function getLocale(): string
+    {
+        return $this->locale;
+    }
+
+    public function setLocale(string $locale): static
+    {
+        $this->locale = $locale;
 
         return $this;
     }

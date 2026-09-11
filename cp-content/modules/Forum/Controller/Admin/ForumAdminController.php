@@ -6,6 +6,8 @@ namespace Modules\Forum\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Localization\LocaleProvider;
+use App\Core\Localization\TranslationGroupResolver;
+use App\Core\OriginCache\OriginCachePurger;
 use Modules\Forum\Entity\ForumPostReport;
 use Modules\Forum\Entity\ForumSection;
 use App\Entity\User;
@@ -21,10 +23,12 @@ use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\ForumNodeType;
 use Modules\Forum\ForumSectionType;
 use Modules\Forum\Service\ForumModerationService;
+use Modules\Forum\Service\ForumPermissionService;
 use Modules\Forum\Service\ForumSectionDeletionService;
 use Modules\Forum\Service\ForumSectionHierarchyService;
 use Modules\Forum\Service\ForumStatsService;
 use Modules\Forum\Service\ForumTopicService;
+use Modules\Forum\Service\ForumModerationLogService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -52,13 +56,17 @@ final class ForumAdminController extends AbstractController
         private readonly ForumSectionDeletionService $deletionService,
         private readonly ForumTopicService $topicService,
         private readonly ForumModerationService $moderationService,
+        private readonly ForumPermissionService $permissionService,
+        private readonly TranslationGroupResolver $translationGroupResolver,
+        private readonly OriginCachePurger $originCachePurger,
         private readonly Paginator $paginator,
         private readonly TranslatorInterface $translator,
+        private readonly ForumModerationLogService $moderationLog,
     ) {
     }
 
     #[Route('', name: 'dashboard', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Forum', icon: 'heroicons:chat-bubble-left-right', panel: 'studio', priority: 26, capability: 'forum.section.manage', group: 'İçerik')]
+    #[CpAdminMenu(label: 'aacp.menu.forums', icon: 'heroicons:chat-bubble-left-right', panel: 'studio', priority: 26, capability: 'forum.section.manage', group: 'studio.group.content')]
     #[IsGranted('forum.section.manage')]
     public function dashboard(): Response
     {
@@ -102,7 +110,7 @@ final class ForumAdminController extends AbstractController
     }
 
     #[Route('/moderation', name: 'moderation_index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Moderasyon Masası', icon: 'heroicons:shield-check', panel: 'studio', priority: 28, capability: 'forum.moderation.manage', group: 'İçerik', parent: 'admin_forum_dashboard')]
+    #[CpAdminMenu(label: 'aacp.menu.forums_moderation', icon: 'heroicons:shield-check', panel: 'studio', priority: 28, capability: 'forum.moderation.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
     #[IsGranted('forum.moderation.manage')]
     public function moderationIndex(): Response
     {
@@ -111,6 +119,8 @@ final class ForumAdminController extends AbstractController
             'deletedTopics' => $this->topicRepository->findDeleted(80),
             'bulkTopics' => $this->topicRepository->findLatest(60),
             'moveTargets' => $this->hierarchyService->getTopicBoards($this->localeProvider->getDefaultCode()),
+            'heldPosts' => $this->postRepository->findHeld(80),
+            'moderationLogs' => $this->moderationLog->latest(40),
         ]);
     }
 
@@ -141,6 +151,9 @@ final class ForumAdminController extends AbstractController
         };
 
         $this->addFlash('success', $this->translator->trans('studio.forum.moderation.bulk_done', ['count' => \count($topics)]));
+        /** @var User $actor */
+        $actor = $this->getUser();
+        $this->moderationLog->record($actor, 'bulk_'.$action, 'topic', $ids[0] ?? 0, ['count' => \count($topics), 'ids' => $ids]);
 
         return $this->redirectToRoute('admin_forum_moderation_index');
     }
@@ -227,6 +240,44 @@ final class ForumAdminController extends AbstractController
         return $this->redirectToRoute('admin_forum_moderation_index');
     }
 
+    #[Route('/moderation/post/{id}/approve', name: 'moderation_approve_post', methods: ['POST'], requirements: ['id' => '\d+'])]
+    #[IsGranted('forum.moderation.manage')]
+    public function moderationApprovePost(int $id, Request $request): Response
+    {
+        $this->assertValidCsrf($request, 'admin_forum_moderation');
+        $post = $this->postRepository->find($id);
+        if (!$post instanceof \Modules\Forum\Entity\ForumPost) {
+            throw new NotFoundHttpException($this->translator->trans('studio.forum.moderation.report_not_found'));
+        }
+
+        $this->moderationService->approvePost($post);
+        /** @var User $actor */
+        $actor = $this->getUser();
+        $this->moderationLog->record($actor, 'approve', 'post', $id);
+        $this->addFlash('success', $this->translator->trans('studio.forum.moderation.approved'));
+
+        return $this->redirectToRoute('admin_forum_moderation_index');
+    }
+
+    #[Route('/moderation/post/{id}/reject', name: 'moderation_reject_post', methods: ['POST'], requirements: ['id' => '\d+'])]
+    #[IsGranted('forum.moderation.manage')]
+    public function moderationRejectPost(int $id, Request $request): Response
+    {
+        $this->assertValidCsrf($request, 'admin_forum_moderation');
+        $post = $this->postRepository->find($id);
+        if (!$post instanceof \Modules\Forum\Entity\ForumPost) {
+            throw new NotFoundHttpException($this->translator->trans('studio.forum.moderation.report_not_found'));
+        }
+
+        $this->moderationService->rejectHeldPost($post);
+        /** @var User $actor */
+        $actor = $this->getUser();
+        $this->moderationLog->record($actor, 'reject', 'post', $id);
+        $this->addFlash('success', $this->translator->trans('studio.forum.moderation.rejected'));
+
+        return $this->redirectToRoute('admin_forum_moderation_index');
+    }
+
     private function findReportOrFail(int $id): ForumPostReport
     {
         $report = $this->postReportRepository->find($id);
@@ -238,12 +289,16 @@ final class ForumAdminController extends AbstractController
     }
 
     #[Route('/sections', name: 'sections_index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Düğümler', icon: 'heroicons:rectangle-group', panel: 'studio', priority: 26, capability: 'forum.nodes.manage', group: 'İçerik', parent: 'admin_forum_dashboard')]
+    #[CpAdminMenu(label: 'aacp.menu.forums_nodes', icon: 'heroicons:rectangle-group', panel: 'studio', priority: 26, capability: 'forum.nodes.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
     #[IsGranted('forum.nodes.manage')]
-    public function sectionsIndex(): Response
+    public function sectionsIndex(Request $request): Response
     {
+        $locale = $this->resolveLocale($request->query->get('locale'));
+
         return $this->render('@ForumModule/admin/sections/index.html.twig', [
-            'tree' => $this->hierarchyService->buildAdminTree($this->localeProvider->getDefaultCode()),
+            'tree' => $this->hierarchyService->buildAdminTree($locale),
+            'locales' => $this->localeProvider->getLocales(),
+            'currentLocale' => $locale,
         ]);
     }
 
@@ -251,19 +306,56 @@ final class ForumAdminController extends AbstractController
     #[IsGranted('forum.nodes.manage')]
     public function sectionsCreate(Request $request): Response
     {
+        $bag = $request->isMethod('POST') ? $request->request : $request->query;
+        $locale = $this->resolveLocale($bag->get('locale'));
+        $source = $this->findTranslationSource($bag->get('translation_of'));
+
         if ($request->isMethod('POST')) {
             $this->assertValidCsrf($request, 'admin_forum_section');
 
-            $section = $this->buildSectionFromRequest($request);
+            if ($source instanceof ForumSection && $source->getLocale() !== $locale) {
+                $existing = $this->translationGroupResolver->findGroup($source)[$locale] ?? null;
+                if ($existing instanceof ForumSection) {
+                    $this->addFlash('error', $this->translator->trans('studio.forum.sections.error.translation_exists', [
+                        'title' => $source->getTitle(),
+                        'locale' => $locale,
+                    ]));
+
+                    return $this->redirectToRoute('admin_forum_sections_edit', ['id' => $existing->getId()]);
+                }
+            }
+
+            $section = $this->buildSectionFromRequest($request, $locale, $source);
             $this->entityManager->persist($section);
+
+            if ($source instanceof ForumSection && $source->getLocale() !== $locale) {
+                $this->translationGroupResolver->link($source, $section);
+            }
+
             $this->entityManager->flush();
 
-            $this->addFlash('success', $this->translator->trans('studio.forum.sections.created', ['title' => $section->getTitle()]));
+            if ($source instanceof ForumSection && $source->getLocale() !== $locale) {
+                $this->permissionService->copyToSection($source, $section);
+                $this->entityManager->flush();
+            }
 
-            return $this->redirectToRoute('admin_forum_sections_index');
+            $this->originCachePurger->purgeAreas('forums', 'home');
+
+            $this->addFlash('success', $source instanceof ForumSection
+                ? $this->translator->trans('cp.translation_tabs.linked_flash', [
+                    'name' => $section->getTitle(),
+                    'locale' => $locale,
+                ])
+                : $this->translator->trans('studio.forum.sections.created', ['title' => $section->getTitle()]));
+
+            return $this->redirectToRoute('admin_forum_sections_index', ['locale' => $locale]);
         }
 
-        return $this->renderSectionForm(null, $this->defaultFormValues($request));
+        $formValues = $source instanceof ForumSection
+            ? $this->formValuesFromSection($source, $locale)
+            : $this->defaultFormValues($request);
+
+        return $this->renderSectionForm(null, $formValues, $locale, $source);
     }
 
     #[Route('/sections/{id}/edit', name: 'sections_edit', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
@@ -271,16 +363,18 @@ final class ForumAdminController extends AbstractController
     public function sectionsEdit(int $id, Request $request): Response
     {
         $section = $this->findSectionOrFail($id);
+        $locale = $section->getLocale();
 
         if ($request->isMethod('POST')) {
             $this->assertValidCsrf($request, 'admin_forum_section');
             $this->applyRequestToSection($section, $request);
             $section->touch();
             $this->entityManager->flush();
+            $this->originCachePurger->purgeAreas('forums', 'home');
 
             $this->addFlash('success', $this->translator->trans('studio.forum.sections.updated', ['title' => $section->getTitle()]));
 
-            return $this->redirectToRoute('admin_forum_sections_index');
+            return $this->redirectToRoute('admin_forum_sections_index', ['locale' => $locale]);
         }
 
         return $this->renderSectionForm($section, [
@@ -297,7 +391,7 @@ final class ForumAdminController extends AbstractController
             'requiredCapability' => $section->getRequiredCapability() ?? '',
             'locked' => $section->isLocked(),
             'defaultTopicSort' => $section->getDefaultTopicSort(),
-        ]);
+        ], $locale);
     }
 
     #[Route('/sections/{id}/delete', name: 'sections_delete', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
@@ -305,6 +399,7 @@ final class ForumAdminController extends AbstractController
     public function sectionsDelete(int $id, Request $request): Response
     {
         $section = $this->findSectionOrFail($id);
+        $locale = $section->getLocale();
         $impact = $this->deletionService->analyze($section);
 
         if ($request->isMethod('GET')) {
@@ -338,9 +433,10 @@ final class ForumAdminController extends AbstractController
 
         $title = $section->getTitle();
         $this->deletionService->delete($section);
+        $this->originCachePurger->purgeAreas('forums', 'home');
         $this->addFlash('success', $this->translator->trans('studio.forum.sections.deleted_named', ['title' => $title]));
 
-        return $this->redirectToRoute('admin_forum_sections_index');
+        return $this->redirectToRoute('admin_forum_sections_index', ['locale' => $locale]);
     }
 
     #[Route('/sections/{id}/resync', name: 'sections_resync', methods: ['POST'], requirements: ['id' => '\d+'])]
@@ -352,7 +448,7 @@ final class ForumAdminController extends AbstractController
         $this->statsService->syncSection($section);
         $this->addFlash('success', $this->translator->trans('studio.forum.sections.resynced'));
 
-        return $this->redirectToRoute('admin_forum_sections_index');
+        return $this->redirectToRoute('admin_forum_sections_index', ['locale' => $section->getLocale()]);
     }
 
     #[Route('/sections/{id}/move', name: 'sections_move', methods: ['POST'], requirements: ['id' => '\d+'])]
@@ -373,7 +469,7 @@ final class ForumAdminController extends AbstractController
         }
 
         if ($index === null) {
-            return $this->redirectToRoute('admin_forum_sections_index');
+            return $this->redirectToRoute('admin_forum_sections_index', ['locale' => $section->getLocale()]);
         }
 
         $swapWith = $direction === 'up' ? ($siblings[$index - 1] ?? null) : ($siblings[$index + 1] ?? null);
@@ -384,9 +480,10 @@ final class ForumAdminController extends AbstractController
             $section->touch();
             $swapWith->touch();
             $this->entityManager->flush();
+            $this->originCachePurger->purgeAreas('forums', 'home');
         }
 
-        return $this->redirectToRoute('admin_forum_sections_index');
+        return $this->redirectToRoute('admin_forum_sections_index', ['locale' => $section->getLocale()]);
     }
 
     #[Route('/sections/{id}/toggle-lock', name: 'sections_toggle_lock', methods: ['POST'], requirements: ['id' => '\d+'])]
@@ -403,11 +500,11 @@ final class ForumAdminController extends AbstractController
             'state' => $section->isLocked() ? 'locked' : 'open',
         ], 'forums'));
 
-        return $this->redirectToRoute('admin_forum_sections_index');
+        return $this->redirectToRoute('admin_forum_sections_index', ['locale' => $section->getLocale()]);
     }
 
     #[Route('/topics', name: 'topics_index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Konular', icon: 'heroicons:chat-bubble-left-right', panel: 'studio', priority: 26, capability: 'forum.topic.moderate', group: 'İçerik', parent: 'admin_forum_dashboard')]
+    #[CpAdminMenu(label: 'studio.forum.dashboard.action.topics', icon: 'heroicons:chat-bubble-left-right', panel: 'studio', priority: 26, capability: 'forum.topic.moderate', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
     #[IsGranted('forum.topic.moderate')]
     public function topicsIndex(Request $request): Response
     {
@@ -436,25 +533,44 @@ final class ForumAdminController extends AbstractController
         $this->topicService->deleteTopic($topic);
         $this->addFlash('success', $this->translator->trans('studio.forum.topics.deleted'));
 
-        return $this->redirectToRoute('admin_forum_sections_index', [], Response::HTTP_SEE_OTHER);
+        return $this->redirectToRoute('admin_forum_sections_index', ['locale' => $topic->getSection()->getLocale()], Response::HTTP_SEE_OTHER);
     }
 
-    private function buildSectionFromRequest(Request $request): ForumSection
+    private function buildSectionFromRequest(Request $request, string $locale, ?ForumSection $source = null): ForumSection
     {
         $title = trim((string) $request->request->get('title'));
-        $code = trim((string) $request->request->get('code'));
+        $code = $source instanceof ForumSection
+            ? $source->getCode()
+            : trim((string) $request->request->get('code'));
         $slug = trim((string) $request->request->get('slug'));
 
         if ($title === '' || $code === '') {
             throw new BadRequestHttpException($this->translator->trans('studio.forum.sections.title_code_required'));
         }
 
+        if ($this->sectionRepository->findOneByCodeAndLocale($code, $locale) instanceof ForumSection) {
+            throw new BadRequestHttpException($this->translator->trans('studio.forum.sections.error.code_taken', [
+                'code' => $code,
+                'locale' => $locale,
+            ]));
+        }
+
         if ($slug === '') {
-            $slugger = new AsciiSlugger($this->localeProvider->getDefaultCode());
+            $slugger = new AsciiSlugger($locale);
             $slug = strtolower($slugger->slug($title)->toString());
         }
 
-        $section = new ForumSection($code, $slug, $this->localeProvider->getDefaultCode(), $title);
+        $section = new ForumSection($code, $slug, $locale, $title);
+        if ($source instanceof ForumSection) {
+            $section->setIcon($source->getIcon());
+            $section->setSectionType($source->getSectionType());
+            $section->setNodeType($source->getNodeType());
+            $section->setLinkUrl($source->getLinkUrl() ?? '');
+            $section->setRequiredCapability($source->getRequiredCapability());
+            $section->setLocked($source->isLocked());
+            $section->setDefaultTopicSort($source->getDefaultTopicSort());
+            $section->setSortOrder($source->getSortOrder());
+        }
         $this->applyRequestToSection($section, $request);
 
         return $section;
@@ -471,6 +587,9 @@ final class ForumAdminController extends AbstractController
 
         $type = ForumSectionType::tryFrom((string) $request->request->get('section_type', '')) ?? ForumSectionType::Subcategory;
         $parent = $parentId !== null ? $this->sectionRepository->find($parentId) : null;
+        if ($parent instanceof ForumSection && $parent->getLocale() !== $section->getLocale()) {
+            $parent = $this->sectionRepository->findLocaleSibling($parent, $section->getLocale());
+        }
 
         $error = $this->hierarchyService->validateParent($type, $parent instanceof ForumSection ? $parent : null);
         if ($error !== null) {
@@ -490,6 +609,58 @@ final class ForumAdminController extends AbstractController
         $section->setRequiredCapability(trim((string) $request->request->get('required_capability')));
         $section->setLocked($request->request->getBoolean('is_locked'));
         $section->setDefaultTopicSort((string) $request->request->get('default_topic_sort', 'latest'));
+        $section->setSlug($this->resolveSectionSlug($section, $request));
+    }
+
+    private function resolveSectionSlug(ForumSection $section, Request $request): string
+    {
+        $raw = trim((string) $request->request->get('slug'));
+        $source = $raw !== '' ? $raw : trim((string) $request->request->get('title'));
+        $slugger = new AsciiSlugger($section->getLocale());
+        $slug = strtolower($slugger->slug($source)->toString());
+        if ($slug === '') {
+            $slug = 'forum';
+        }
+        $slug = mb_substr($slug, 0, 255);
+
+        $taken = $this->sectionRepository->findOneBySlugAndLocale($slug, $section->getLocale());
+        if ($taken instanceof ForumSection && $taken->getId() !== $section->getId()) {
+            throw new BadRequestHttpException($this->translator->trans('studio.forum.sections.error.slug_taken', [
+                'slug' => $slug,
+                'locale' => $section->getLocale(),
+            ]));
+        }
+
+        return $slug;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formValuesFromSection(ForumSection $source, string $targetLocale): array
+    {
+        $parent = $source->getParent();
+        $parentId = null;
+        if ($parent instanceof ForumSection) {
+            $mapped = $this->sectionRepository->findLocaleSibling($parent, $targetLocale);
+            $parentId = $mapped?->getId();
+        }
+
+        return [
+            'title' => $source->getTitle(),
+            'code' => $source->getCode(),
+            'slug' => $source->getSlug(),
+            'description' => $source->getDescription() ?? '',
+            'icon' => $source->getIcon() ?? '',
+            'parentId' => $parentId,
+            'sortOrder' => $source->getSortOrder(),
+            'sectionType' => $source->getSectionType()->value,
+            'nodeType' => $source->getNodeType()->value,
+            'linkUrl' => $source->getLinkUrl() ?? '',
+            'requiredCapability' => $source->getRequiredCapability() ?? '',
+            'locked' => $source->isLocked(),
+            'defaultTopicSort' => $source->getDefaultTopicSort(),
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -532,13 +703,35 @@ final class ForumAdminController extends AbstractController
     /**
      * @param array<string, mixed> $formValues
      */
-    private function renderSectionForm(?ForumSection $section, array $formValues): Response
+    private function renderSectionForm(?ForumSection $section, array $formValues, string $locale, ?ForumSection $source = null): Response
     {
         return $this->render('@ForumModule/admin/sections/form.html.twig', [
             'section' => $section,
-            'parentOptionsByType' => $this->hierarchyService->buildParentOptionsByType($this->localeProvider->getDefaultCode(), $section),
+            'parentOptionsByType' => $this->hierarchyService->buildParentOptionsByType($locale, $section),
             'formValues' => $formValues,
+            'locale' => $locale,
+            'sourceId' => $source?->getId(),
+            'translationTabs' => $section instanceof ForumSection
+                ? $this->translationGroupResolver->tabsFor($section)
+                : ($source instanceof ForumSection ? $this->translationGroupResolver->tabsFor($source) : []),
+            'tabsSourceId' => $section?->getId() ?? $source?->getId(),
         ]);
+    }
+
+    private function findTranslationSource(mixed $rawId): ?ForumSection
+    {
+        if ($rawId === null || !ctype_digit((string) $rawId)) {
+            return null;
+        }
+
+        $source = $this->sectionRepository->find((int) $rawId);
+
+        return $source instanceof ForumSection ? $source : null;
+    }
+
+    private function resolveLocale(mixed $raw): string
+    {
+        return $this->localeProvider->resolve(\is_string($raw) ? $raw : null);
     }
 
     private function findSectionOrFail(int $id): ForumSection

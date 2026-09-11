@@ -11,7 +11,7 @@
         <div class="navbar-collapse" id="navCollapse">
             {# Dynamic items from the Menu module #}
             <ul class="navbar-menu" id="navMenu">
-                {% for item in cp_menu('header') %}
+                {% for item in cp_menu('header', app.request.locale) %}
                     <li class="{{ item.children is not empty ? 'navbar-menu__item--dropdown' : '' }}">
                         <a href="{{ item.url }}" {{ item.openInNewTab ? 'target="_blank" rel="noopener"' : '' }}>{{ item.label }}</a>
                         {% if item.children is not empty %}
@@ -24,13 +24,8 @@
                     </li>
                 {% else %}
                     <li><a href="{{ path('theme_cpalius_website_home') }}#about">{{ 'nav.about'|trans({}, 'portal') }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}#features">{{ 'nav.features'|trans({}, 'portal') }}</a></li>
                     <li><a href="{{ path('theme_whitepaper', {_locale: app.request.locale}) }}">{{ 'nav.whitepaper'|trans({}, 'portal') }}</a></li>
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#architecture">{{ 'nav.architecture'|trans({}, 'portal') }}</a></li>
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#core">{{ 'nav.core'|trans({}, 'portal') }}</a></li>
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#platform">{{ 'nav.platform'|trans({}, 'portal') }}</a></li>
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#aacp">{{ 'nav.aacp'|trans({}, 'portal') }}</a></li>
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#forum-engine">{{ 'nav.forum'|trans({}, 'portal') }}</a></li>
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#security">{{ 'nav.security'|trans({}, 'portal') }}</a></li>
                     <li><a href="{{ path('roadmap_index') }}">{{ 'nav.roadmap'|trans({}, 'portal') }}</a></li>
                 {% endfor %}
             </ul>
@@ -42,8 +37,8 @@
                     <button type="button" class="navbar-search__toggle" id="navSearchToggle" aria-label="{{ 'website.nav.search_toggle_aria'|trans }}" aria-expanded="false" aria-controls="navSearchForm">
                         <i class="bi bi-search"></i>
                     </button>
-                    <form class="navbar-search__form" id="navSearchForm" action="{{ path('blog_search', {_locale: app.request.locale}) }}" method="get" role="search">
-                        <input type="search" name="q" class="navbar-search__input" placeholder="{{ 'website.nav.search_placeholder'|trans }}" aria-label="{{ 'website.nav.search_aria'|trans }}">
+                    <form class="navbar-search__form" id="navSearchForm" action="{{ path('site_search', {_locale: app.request.locale}) }}" method="get" role="search">
+                        <input type="search" name="q" class="navbar-search__input" value="{{ app.request.query.get('q', '') }}" placeholder="{{ 'website.nav.search_placeholder'|trans }}" aria-label="{{ 'website.nav.search_aria'|trans }}">
                     </form>
                 </div>
 
@@ -82,6 +77,7 @@
                                             {% elseif n.type == 'mention' %}<i class="bi bi-at"></i>
                                             {% elseif n.type == 'reaction' %}<i class="bi bi-heart"></i>
                                             {% elseif n.type == 'dislike' %}<i class="bi bi-hand-thumbs-down"></i>
+                                            {% elseif n.type == 'watch' %}<i class="bi bi-bell"></i>
                                             {% else %}<i class="bi bi-award"></i>{% endif %}
                                         </span>
                                         <span class="navbar-notif-box__text">

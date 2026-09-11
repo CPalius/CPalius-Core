@@ -8,29 +8,19 @@ use App\Entity\User;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * AACP "Profilim" ekranının form-katmanı DTO'su — giriş yapmış yöneticinin
- * KENDİ bilgilerini güncellediği, UserFormModel'den bilinçli olarak AYRI
- * bir DTO: burada 'status' ve 'roles' YOKTUR (bir kullanıcı kendi hesap
- * durumunu veya rollerini asla kendi profil formu üzerinden değiştiremez —
- * bu alanlar sadece system.users.manage yetkisiyle AACPUserController'ın
- * kullanıcı düzenleme ekranından değiştirilebilir).
- *
- * bio: CKEditor 5 (data-cpeditor) ile zenginleştirilir, form katmanında ham
- *   HTML taşır — sanitizasyon PostFormModel/mapDtoToNode desenindeki gibi
- *   controller'da (AACPUserController::mapProfileDtoToUser()) RichTextSanitizer
- *   ile yapılır (Manifesto Law 5.3).
+ * Profile DTO without status/roles; bio HTML is sanitized in the controller (Law 5.3).
  */
 final class ProfileFormModel
 {
     #[Assert\NotBlank(message: 'E-posta zorunludur.')]
-    #[Assert\Email(message: 'Geçerli bir e-posta adresi girin.')]
+    #[Assert\Email(message: 'Enter a valid email address.')]
     #[Assert\Length(max: 180, maxMessage: 'E-posta en fazla {{ limit }} karakter olabilir.')]
     public string $email = '';
 
-    #[Assert\Length(max: 180, maxMessage: 'Kullanıcı adı en fazla {{ limit }} karakter olabilir.')]
+    #[Assert\Length(max: 180, maxMessage: 'Username may be at most {{ limit }} characters.')]
     #[Assert\Regex(
         pattern: '/^[a-zA-Z0-9_.-]*$/',
-        message: 'Kullanıcı adı yalnızca harf, rakam, nokta, tire ve alt çizgi içerebilir.',
+        message: 'Username may contain only letters, numbers, dots, hyphens, and underscores.',
     )]
     public ?string $username = null;
 
@@ -45,19 +35,13 @@ final class ProfileFormModel
     public ?int $avatarAssetId = null;
 
     /**
-     * Mevcut şifreyi değiştirmek için doldurulur; boşsa şifre değişmez.
-     * AACPUserController, currentPassword ile birlikte doğrulanmadan
-     * (UserPasswordHasherInterface::isPasswordValid()) bu alanı ASLA
-     * User::setPassword()'a yazmaz (bkz. o metodun doküman notu).
+     * Optional new password; requires valid currentPassword before persisting.
      */
-    #[Assert\Length(min: 8, minMessage: 'Şifre en az {{ limit }} karakter olmalıdır.')]
+    #[Assert\Length(min: 8, minMessage: 'Password must be at least {{ limit }} characters.')]
     public ?string $newPassword = null;
 
     /**
-     * newPassword doldurulmuşsa zorunludur — bu koşullu kural form
-     * seviyesinde değil, AACPUserController::updateProfile() içinde
-     * değerlendirilir (PostFormModel'deki #[Assert\Callback] deseniyle
-     * aynı "çalışma zamanı koşullu zorunluluk" felsefesi).
+     * Required when newPassword is set; validated in the controller, not via Assert.
      */
     public ?string $currentPassword = null;
 

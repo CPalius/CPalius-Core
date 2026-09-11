@@ -57,6 +57,8 @@ final class ModuleCreateCommand extends Command
             $moduleDir.'/Install',
             $moduleDir.'/Resources/migrations',
             $moduleDir.'/Resources/translations',
+            $moduleDir.'/Resources/assets',
+            $moduleDir.'/Resources/config',
             $moduleDir.'/Controller',
         ]);
 
@@ -130,8 +132,50 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
 
 PHP,
             'Resources/migrations/.gitkeep' => '',
-            'Resources/translations/messages+intl-icu.en.yaml' => "# {$name} module strings\n",
-            'Resources/translations/messages+intl-icu.tr.yaml' => "# {$name} module strings\n",
+            'Resources/assets/.gitkeep' => '',
+            'Resources/config/services.yaml' => <<<YAML
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Modules\\{$name}\\Controller\\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+YAML,
+            'Resources/config/contributions.yaml' => <<<YAML
+# Declared by the module — the core never hardcodes this package.
+# Packages that edit cp-core or omit the English catalogue / installer are refused.
+# node_show_routes:
+#     {$id}: {$id}_show
+# schema_types:
+#     {$id}: WebPage
+# homepage_modes:
+#     {$id}:
+#         route: {$id}_index
+#         label: {$id}.homepage.mode
+# queryable_fields:
+#     {$id}:
+#         is_featured: int
+# studio:
+#     quick_create: []
+#     quick_links: []
+
+YAML,
+            'Resources/config/importmap.php' => <<<PHP
+<?php
+
+return [
+    // '{$id}-admin' => [
+    //     'path' => 'Resources/assets/{$id}-admin.js',
+    //     'entrypoint' => true,
+    // ],
+];
+
+PHP,
+            'Resources/translations/messages+intl-icu.en.yaml' => "{$id}.test_message: \"{$name} module is speaking English.\"\n",
+            'Resources/translations/messages+intl-icu.tr.yaml' => "{$id}.test_message: \"{$name} modülü Türkçe konuşuyor.\"\n",
         ];
     }
 }

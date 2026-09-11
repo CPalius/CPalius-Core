@@ -8,13 +8,13 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Header/footer menülerine Forum linki ekler.
+ * Adds Forum link to header/footer menus.
  */
 final class Version20260825210000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return "Menülere Forum linkini (/tr/forum) ekler.";
+        return 'Adds the Forum link (/tr/forum) to menus.';
     }
 
     public function up(Schema $schema): void

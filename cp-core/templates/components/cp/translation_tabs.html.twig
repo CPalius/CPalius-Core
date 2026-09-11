@@ -5,23 +5,12 @@
         createRoute="admin_forum_sections_create"
         sourceId="{{ section.id }}" />
 
-    FAZ 3 — Çeviri grubu dil şeridi (AACP / koyu palet).
+    Phase 3 — translation group locale strip (AACP / dark palette).
 
-    Bir kaydın TÜM aktif dillerdeki karşılıklarını tek satırda gösterir:
-    çevirisi olan diller doğrudan o kaydın düzenleme ekranına, olmayanlar
-    ise "yeni çeviri" formuna (kaynak kayda bağlanmış olarak) götürür.
+    Shows all locale variants in one row; links to edit or create translation forms.
+    Entity-agnostic; data from TranslationGroupResolver::tabsFor().
 
-    Bileşen entity tipinden BAĞIMSIZDIR — Category, Tag, MenuItem ve
-    ForumSection aynı şeridi paylaşır; tek fark verilen rota adlarıdır.
-    Veri kaynağı: TranslationGroupResolver::tabsFor().
-
-    Props:
-      tabs        (list<TranslationTab>) Zorunlu. code/nativeName/exists/id/isCurrent/label.
-      editRoute   (string)      Mevcut çeviriyi açan rota; {id} parametresi alır.
-      createRoute (string)      Yeni çeviri formunun rotası; {locale, translation_of} alır.
-      sourceId    (int|null)    Kaynak kaydın id'si. null ise (kayıt henüz
-                                kaydedilmemişse) şerit salt-okunur gösterilir.
-      extraParams (array)       Rota üretimine eklenecek ek parametreler (ör. {menuId: 3}).
+    Props: tabs, editRoute, createRoute, sourceId, extraParams
 #}
 {% props tabs = [], editRoute = null, createRoute = null, sourceId = null, extraParams = {} %}
 

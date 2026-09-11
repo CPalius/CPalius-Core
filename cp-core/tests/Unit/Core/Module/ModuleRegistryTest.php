@@ -12,17 +12,8 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Manifesto Law 2.1 + 2.2 — modül karantina mantığının birim testi.
- *
- * ModuleRegistry, sistemin en erken savunma hattıdır: DI container henüz
- * YOKKEN, config/bundles.php aşamasında çalışır ve yalnızca dosya sistemi
- * ile autoloader'a konuşur. Bu yüzden burada çekirdek boot edilmez —
- * sınıf doğrudan örneklenir, tıpkı Kernel::registerBundles()'in yaptığı
- * gibi.
- *
- * Test, geçici active_modules.php dosyaları üreterek her senaryoyu
- * izole eder; gerçek cp-core/config/active_modules.php dosyasına
- * DOKUNULMAZ.
+ * Manifesto Law 2.1 + 2.2 — unit test for module quarantine logic.
+ * Uses temporary active_modules.php files; real config is never touched.
  */
 #[CoversClass(ModuleRegistry::class)]
 final class ModuleRegistryTest extends TestCase
@@ -43,10 +34,7 @@ final class ModuleRegistryTest extends TestCase
         @rmdir($this->workDir);
     }
 
-    /**
-     * Kontrol grubu: sağlam bir modül listede KALMALI. Bu olmadan
-     * "bozuk modül elendi" iddiası, "her şey elendi" ile ayırt edilemez.
-     */
+    /** Control group: a healthy module must stay in the list. */
     public function testHealthyModuleIsKept(): void
     {
         $registry = $this->createRegistry([HealthyModule::class]);
@@ -55,14 +43,7 @@ final class ModuleRegistryTest extends TestCase
         self::assertSame([], $registry->getQuarantinedModules());
     }
 
-    /**
-     * Law 2.2: BundleInterface uygulamayan bir sınıf karantinaya alınmalı.
-     *
-     * Bu sınıf autoload edilebilir ve sözdizimi kusursuzdur — tek sorunu
-     * sözleşmeye uymamasıdır. Kernel onu "new" ile örnekleyip bundle
-     * listesine koysaydı, ilk setContainer() çağrısında izolasyon
-     * zırhının DIŞINDA ölümcül bir TypeError oluşurdu.
-     */
+    /** Law 2.2: a class not implementing BundleInterface must be quarantined. */
     public function testClassNotImplementingBundleInterfaceIsQuarantined(): void
     {
         $registry = $this->createRegistry([NotABundleModule::class]);
@@ -86,10 +67,7 @@ final class ModuleRegistryTest extends TestCase
         self::assertStringContainsString('not found', $quarantined[0]['reason']);
     }
 
-    /**
-     * İZOLASYONUN ÖZÜ: bozuk bir modül, aynı listedeki sağlam modülleri
-     * ETKİLEMEMELİ. Tek bir kötü elma bütün sepeti çürütmez.
-     */
+    /** Isolation essence: a broken module must not affect healthy siblings. */
     public function testBrokenModuleDoesNotAffectHealthySiblings(): void
     {
         $registry = $this->createRegistry([
@@ -101,10 +79,7 @@ final class ModuleRegistryTest extends TestCase
 
         $healthy = $registry->getHealthyModuleBundles();
 
-        // BrokenBootModule burada SAĞLAM sayılır ve bu DOĞRUDUR:
-        // ModuleRegistry yalnızca statik sözleşmeyi denetler (sınıf var
-        // mı, Bundle mı). Çalışma anında patlaması Kernel::boot()'un
-        // izolasyon zırhının işidir (bkz. ModuleIsolationTest).
+        // BrokenBootModule is healthy here — runtime failures are Kernel::boot()'s job.
         self::assertSame([HealthyModule::class, BrokenBootModule::class], $healthy);
 
         $quarantinedClasses = array_column($registry->getQuarantinedModules(), 'class');
@@ -112,10 +87,7 @@ final class ModuleRegistryTest extends TestCase
         self::assertContains('Modules\\Hayalet\\HayaletModule', $quarantinedClasses);
     }
 
-    /**
-     * En uç durum: active_modules.php dosyasının KENDİSİ bozuk. Sistem
-     * yine de ayakta kalmalı, sadece hiçbir modül yüklenmemeli.
-     */
+    /** Edge case: corrupt active_modules.php — system survives with no modules. */
     public function testCorruptActiveModulesFileDisablesModulesButDoesNotThrow(): void
     {
         $file = $this->workDir.'/active_modules.php';
@@ -163,15 +135,12 @@ final class ModuleRegistryTest extends TestCase
             modulesDir: $this->workDir,
         );
 
-        // Geçersiz girdiler elenir, geçerli olan hayatta kalır.
+        // Invalid entries are filtered; valid ones survive.
         self::assertSame([HealthyModule::class], $registry->getHealthyModuleBundles());
         self::assertCount(3, $registry->getQuarantinedModules());
     }
 
-    /**
-     * Karantina, sessizce olmamalı: log dosyasına gerçekten yazılmalı ki
-     * yönetici neden bir modülün kaybolduğunu görebilsin (Law 2.3).
-     */
+    /** Quarantine must be logged so admins can diagnose missing modules (Law 2.3). */
     public function testQuarantineIsWrittenToLogFile(): void
     {
         $logFile = $this->workDir.'/quarantine.log';

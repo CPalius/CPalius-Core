@@ -12,7 +12,12 @@
          data-cache-rebuild-csrf="{{ csrf_token }}"
          data-cache-rebuild-clear-url="{{ path('aacp_cache_rebuild_clear_symfony') }}"
          data-cache-rebuild-opcache-url="{{ path('aacp_cache_rebuild_reset_opcache') }}"
-         data-cache-rebuild-assets-url="{{ path('aacp_cache_rebuild_assets') }}">
+         data-cache-rebuild-assets-url="{{ path('aacp_cache_rebuild_assets') }}"
+         data-i18n-started="{{ 'aacp.cache_rebuild.log.action_started'|trans({action: '{action}'}) }}"
+         data-i18n-done="{{ 'aacp.cache_rebuild.log.action_done'|trans }}"
+         data-i18n-failed="{{ 'aacp.cache_rebuild.log.action_failed'|trans }}"
+         data-i18n-request-failed="{{ 'aacp.cache_rebuild.log.request_failed'|trans({error: '{error}'}) }}"
+         data-i18n-not-json="{{ 'aacp.cache_rebuild.log.not_json'|trans({status: '{status}'}) }}">
 
         <p class="text-fs-xs text-slate-500 font-mono">
             {{ 'aacp.cache_rebuild.intro'|trans }}
@@ -30,7 +35,7 @@
                 </button>
             </twig:cp:card>
 
-            <twig:cp:card title="OPcache">
+            <twig:cp:card title="{{ 'aacp.cache_rebuild.opcache'|trans }}">
                 <p class="mb-sp-xs text-fs-xs text-slate-500">
                     {{ 'aacp.cache_rebuild.opcache_desc'|trans }}
                 </p>

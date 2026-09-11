@@ -1,5 +1,5 @@
 /**
- * AACP Sistem Yönetimi — captcha alan görünürlüğü ve dil tablosu AJAX.
+ * AACP system settings — captcha field visibility and locale table AJAX.
  */
 export function initAacpSystemSettings(root) {
     if (!root) {
@@ -10,11 +10,13 @@ export function initAacpSystemSettings(root) {
     if (providerSelect) {
         const recaptchaRows = root.querySelectorAll('[data-captcha-recaptcha-row]');
         const turnstileRows = root.querySelectorAll('[data-captcha-turnstile-row]');
+        const hcaptchaRows = root.querySelectorAll('[data-captcha-hcaptcha-row]');
 
         const syncCaptchaFields = () => {
             const value = providerSelect.value;
             recaptchaRows.forEach((row) => row.classList.toggle('hidden', value !== 'recaptcha'));
             turnstileRows.forEach((row) => row.classList.toggle('hidden', value !== 'turnstile'));
+            hcaptchaRows.forEach((row) => row.classList.toggle('hidden', value !== 'hcaptcha'));
         };
 
         providerSelect.addEventListener('change', syncCaptchaFields);
@@ -35,7 +37,7 @@ export function initAacpSystemSettings(root) {
         });
         const data = await response.json();
         if (!response.ok) {
-            window.alert(data.error || 'Bir hata oluştu.');
+            window.alert(data.error || localesRoot.dataset.i18nError || 'An error occurred.');
             return null;
         }
         return data;

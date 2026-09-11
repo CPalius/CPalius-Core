@@ -7,7 +7,8 @@ namespace Modules\Blog\Controller\Admin;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Localization\LocaleProvider;
 use App\Core\Localization\TranslationGroupResolver;
-use App\Entity\Category;
+use App\Core\OriginCache\OriginCachePurger;
+use App\Core\Taxonomy\Entity\Term;
 use App\Repository\CategoryRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -21,8 +22,7 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Hierarchical category admin. Locale is fixed after create; translations link via translation_group_id.
- * List filters by ?locale=; "add translation" uses translation_of + TranslationGroupResolver::link().
+ * Hierarchical blog category admin backed by Vocabulary terms (blog_category).
  */
 #[Route('/admin/categories', name: 'admin_categories_')]
 #[IsGranted('blog.category.manage')]
@@ -34,11 +34,12 @@ final class CategoryAdminController extends AbstractController
         private readonly LocaleProvider $localeProvider,
         private readonly TranslationGroupResolver $translationGroupResolver,
         private readonly TranslatorInterface $translator,
+        private readonly OriginCachePurger $originCachePurger,
     ) {
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Kategoriler', icon: 'heroicons:folder', panel: 'studio', priority: 21, capability: 'blog.category.manage', parent: 'admin_posts_index')]
+    #[CpAdminMenu(label: 'blog.categories.header', icon: 'heroicons:folder', panel: 'studio', priority: 21, capability: 'blog.category.manage', parent: 'admin_posts_index')]
     public function index(Request $request): Response
     {
         $locale = $this->resolveLocale($request->query->get('locale'));
@@ -74,22 +75,22 @@ final class CategoryAdminController extends AbstractController
                 ]);
             }
 
-            $category = new Category($name, $this->buildSlug($name, $locale), $locale);
+            $category = new Term($this->categoryRepository->vocabulary(), $name, $this->buildSlug($name, $locale), $locale);
             $category->setDescription($description !== '' ? $description : null);
 
             if ($parentId !== null) {
                 $category->setParent($this->findParentInLocale($parentId, $locale));
             }
 
-            // Join the translation group; link() creates one if needed.
-            if ($source instanceof Category && $source->getLocale() !== $locale) {
+            if ($source instanceof Term && $source->getLocale() !== $locale) {
                 $this->translationGroupResolver->link($source, $category);
             }
 
             $this->entityManager->persist($category);
             $this->entityManager->flush();
+            $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
-            $this->addFlash('success', $source instanceof Category
+            $this->addFlash('success', $source instanceof Term
                 ? $this->translator->trans('cp.translation_tabs.linked_flash', ['name' => $name, 'locale' => $locale])
                 : $this->translator->trans('blog.categories.flash.created', ['name' => $name]));
 
@@ -97,7 +98,6 @@ final class CategoryAdminController extends AbstractController
         }
 
         return $this->renderForm(null, $locale, $source, [
-            // Prefill the source name so the translator starts from real text.
             'name' => $source?->getName() ?? '',
             'description' => $source?->getDescription() ?? '',
             'parentId' => null,
@@ -136,6 +136,7 @@ final class CategoryAdminController extends AbstractController
             );
 
             $this->entityManager->flush();
+            $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
             $this->addFlash('success', $this->translator->trans('blog.categories.flash.updated', ['name' => $name]));
 
@@ -156,11 +157,13 @@ final class CategoryAdminController extends AbstractController
         $this->assertValidCsrf($request, 'admin_category_form');
 
         $locale = $category->getLocale();
+        $name = $category->getName();
 
         $this->entityManager->remove($category);
         $this->entityManager->flush();
+        $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
-        $this->addFlash('success', $this->translator->trans('blog.categories.flash.deleted', ['name' => $category->getName()]));
+        $this->addFlash('success', $this->translator->trans('blog.categories.flash.deleted', ['name' => $name]));
 
         return $this->redirectToRoute('admin_categories_index', ['locale' => $locale]);
     }
@@ -168,14 +171,14 @@ final class CategoryAdminController extends AbstractController
     /**
      * @param array<string, mixed> $formValues
      */
-    private function renderForm(?Category $category, string $locale, ?Category $source, array $formValues): Response
+    private function renderForm(?Term $category, string $locale, ?Term $source, array $formValues): Response
     {
         $parentOptions = $this->categoriesFor($locale);
 
-        if ($category instanceof Category) {
+        if ($category instanceof Term) {
             $parentOptions = array_values(array_filter(
                 $parentOptions,
-                static fn (Category $c): bool => $c->getId() !== $category->getId(),
+                static fn (Term $c): bool => $c->getId() !== $category->getId(),
             ));
         }
 
@@ -185,33 +188,29 @@ final class CategoryAdminController extends AbstractController
             'formValues' => $formValues,
             'locale' => $locale,
             'sourceId' => $source?->getId(),
-            // Translation tabs only make sense on edit / add-translation flows.
-            'translationTabs' => $category instanceof Category
+            'translationTabs' => $category instanceof Term
                 ? $this->translationGroupResolver->tabsFor($category)
-                : ($source instanceof Category ? $this->translationGroupResolver->tabsFor($source) : []),
+                : ($source instanceof Term ? $this->translationGroupResolver->tabsFor($source) : []),
             'tabsSourceId' => $category?->getId() ?? $source?->getId(),
         ]);
     }
 
     /**
-     * @return list<Category>
+     * @return list<Term>
      */
     private function categoriesFor(string $locale): array
     {
-        return array_values($this->categoryRepository->findBy(['locale' => $locale], ['name' => 'ASC']));
+        return $this->categoryRepository->findByLocale($locale);
     }
 
-    /**
-     * Parent categories must share the same locale to avoid mixed breadcrumbs.
-     */
-    private function findParentInLocale(int $parentId, string $locale): ?Category
+    private function findParentInLocale(int $parentId, string $locale): ?Term
     {
         $parent = $this->categoryRepository->find($parentId);
 
-        return $parent instanceof Category && $parent->getLocale() === $locale ? $parent : null;
+        return $parent instanceof Term && $parent->getLocale() === $locale ? $parent : null;
     }
 
-    private function findTranslationSource(mixed $rawId): ?Category
+    private function findTranslationSource(mixed $rawId): ?Term
     {
         $id = $this->intOrNull($rawId);
 
@@ -235,10 +234,10 @@ final class CategoryAdminController extends AbstractController
         return $raw !== null && ctype_digit((string) $raw) ? (int) $raw : null;
     }
 
-    private function findCategoryOrFail(int $id): Category
+    private function findCategoryOrFail(int $id): Term
     {
         $category = $this->categoryRepository->find($id);
-        if (!$category instanceof Category) {
+        if (!$category instanceof Term) {
             throw new NotFoundHttpException($this->translator->trans('blog.categories.error.not_found'));
         }
 

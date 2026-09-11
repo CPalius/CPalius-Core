@@ -6,13 +6,8 @@ use App\Repository\PerformanceBackendStatusRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Bir performans backend'inin (redis/memcached/varnish/pagespeed) çalışma
- * zamanı DURUM deposu: son bağlantı testinin sonucu ve "aktif" bayrağı.
- * BİLİNÇLİ OLARAK App\Entity\Setting'den (cp_settings) AYRIDIR — Setting
- * serbestçe elle düzenlenebilir bir key/value form alanıdır, ama isEnabled
- * burada asla doğrudan elle set edilemez, yalnızca
- * PerformanceBackendRegistry::enable() üzerinden ve yalnızca
- * lastTestSuccess=true iken değiştirilebilir (bkz. PerformanceBackendRegistry).
+ * Runtime status for performance backends (redis, varnish, etc.), separate from Setting.
+ * isEnabled changes only via PerformanceBackendRegistry after a successful test.
  */
 #[ORM\Entity(repositoryClass: PerformanceBackendStatusRepository::class)]
 #[ORM\Table(name: 'cp_performance_backend_status')]
@@ -37,10 +32,7 @@ class PerformanceBackendStatus
     private ?string $lastTestStatus = null;
 
     /**
-     * Hazır bir metin DEĞİL, |trans ile görüntüleme anında çevrilecek bir
-     * anahtardır (bkz. PerformanceCheckResult docblock'u) — DB'ye asla
-     * dil-bağımlı metin yazılmaz, bu sayede AACP locale'i değiştiğinde aynı
-     * satır otomatik olarak doğru dilde görüntülenir.
+     * Translation key for last test message, not stored localized text.
      */
     #[ORM\Column(name: 'last_test_message_key', type: 'string', length: 191, nullable: true)]
     private ?string $lastTestMessageKey = null;
@@ -110,10 +102,7 @@ class PerformanceBackendStatus
     }
 
     /**
-     * Bir bağlantı testinin sonucunu kaydeder. Test başarısızsa isEnabled
-     * BİLİNÇLİ OLARAK false'a çekilir — halihazırda aktif bir backend,
-     * sonraki bir test başarısız olduğunda sessizce "aktif" görünmeye devam
-     * etmemelidir (bkz. plan: sahte aktif durum asla üretilmez).
+     * Records a connection test; failed tests force isEnabled false.
      *
      * @param array<string, string|int|float> $messageParams
      */

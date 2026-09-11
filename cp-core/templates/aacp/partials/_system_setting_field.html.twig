@@ -1,6 +1,6 @@
 {#
-    Tek bir #[CpSetting] alanı.
-    compact=true → tablo hücresinde yalnızca kontrol (etiket ayrı sütunda).
+    Single #[CpSetting] field.
+    compact=true → control only in table cell (label in separate column).
 #}
 {% set fieldId = 'setting-' ~ setting.key|replace({'.': '-'}) %}
 
@@ -13,19 +13,8 @@
 
 {% if setting.isTranslatable %}
     {#
-        FAZ 4 — Çevrilebilir ayar: TEK bir input yerine AKTİF DİL BAŞINA
-        bir input. Alan adı iki boyutludur (settings[key][dil]) ve
-        SystemSettingsService::encodeTranslationMap() bunu tek bir JSON
-        dil haritasına çevirip cp_settings'e yazar.
-
-        Dil listesi cp_locales() ile doğrudan LocaleProvider'dan alınır —
-        böylece bu partial'ı include eden her ekran (Yönetim, Modül
-        Ayarları, Eklenti Ayarları) ekstra bir değişken geçirmek zorunda
-        kalmaz ve AACP'den yeni bir dil eklendiğinde satır kendiliğinden
-        çoğalır.
-
-        "value" burada bir METİN DEĞİL, dil => değer haritasıdır
-        (bkz. SystemSettingsService::currentValuesForDefinitions).
+        Phase 4 — translatable setting: one input per active locale (settings[key][locale]).
+        Locales come from cp_locales(); "value" is a locale => value map, not plain text.
     #}
     <div class="space-y-1.5" data-translatable-setting="{{ setting.key }}">
         {% for locale in cp_locales() %}

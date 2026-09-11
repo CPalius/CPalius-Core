@@ -22,10 +22,7 @@ class PerformanceBackendStatusRepository extends ServiceEntityRepository
     }
 
     /**
-     * Dashboard widget'larının (bkz. Core/Aacp/Widgets/*) ve Performans
-     * sayfasının ihtiyaç duyduğu tüm durum satırlarını TEK sorguda okur
-     * (Manifesto Law 6.1 ruhu — SettingRepository::findAllAsMap() ile aynı
-     * desen).
+     * All backend status rows in one query (Law 6.1 map pattern).
      *
      * @return array<string, PerformanceBackendStatus>
      */

@@ -1,6 +1,5 @@
 {#
-    Liste görünümü — türe göre belirgin satır düzeni.
-    Beklenen: post (App\Entity\Node, type='post').
+    List view row — layout varies by sub-type. Expects: post (Node, type=post).
 #}
 {% set subType = post.getDataValue('post_sub_type', 'makale') %}
 {% set typeFields = post.getDataValue('type_fields', {}) %}

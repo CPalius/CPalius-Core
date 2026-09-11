@@ -1,25 +1,39 @@
-# Çekirdeğin kendi yetenekleri (capabilities). Modüller kendi yeteneklerini
-# BURAYA değil, kendi Resources/config/capabilities.yaml dosyalarına eklerler
-# (bkz. App\Core\Security\DependencyInjection\Compiler\CapabilityRegistrationPass).
+# Core capabilities. Modules add theirs in Resources/config/capabilities.yaml
+# (see CapabilityRegistrationPass), not here.
 #
-# node.post.* yetenekleri BURADA değildir: Blog modülüne ait olduğu için
-# cp-content/modules/Blog/Resources/config/capabilities.yaml içinde tanımlıdır.
+# node.post.* lives in Blog's capabilities.yaml, not here.
 #
-# İsimlendirme kuralı: <alan>.<varlık>.<eylem>[.<kapsam>]
-#   - system.module.manage    -> AACP'den modül aktif/pasif etme
+# Naming: <domain>.<entity>.<action>[.<scope>]
+#   - system.module.manage    -> enable/disable modules from AACP
 capabilities:
     - system.developer
     - system.module.manage
     - system.aacp.access
     - system.settings.manage
+    - system.security.manage
+    - system.queue.manage
+    - system.logs.manage
     - system.performance.manage
     - system.cron.manage
+    - system.backup.manage
     - system.hooks.manage
     - system.api.manage
+    - system.webhooks.manage
+    - system.fields.manage
+    - taxonomy.manage
+    - content.revision.manage
+    - content.moderate
+    - content.publish
     - system.users.view
     - system.users.manage
     - system.localization.manage
     - account.profile.edit
     - account.avatar.upload
     - core.url_alias.manage
+    - core.path_pattern.manage
+    - core.text_format.manage
+    - text_format.restricted.use
+    - text_format.basic_html.use
+    - text_format.full_html.use
+    - text_format.markdown.use
     - admin.access

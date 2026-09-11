@@ -1,0 +1,3 @@
+studio:
+    quick_links:
+        - { label_key: studio.dashboard.link.seo, route: admin_seo_index, icon: heroicons:magnifying-glass-circle }

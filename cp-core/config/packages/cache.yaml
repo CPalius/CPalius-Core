@@ -3,31 +3,26 @@ framework:
         # Unique name of your app: used to compute stable namespaces for cache keys.
         prefix_seed: cpalius/cmf
 
-        # The "app" cache: genel amaçlı pool, artık dosya sistemi yerine Redis.
+        # The "app" cache: general-purpose pool, Redis instead of filesystem.
         app: cache.adapter.redis
         default_redis_provider: '%env(REDIS_URL)%'
 
         # Namespaced pools use the above "app" backend by default
         pools:
-            # Doctrine query/metadata/result cache — doctrine.yaml'daki
-            # when@prod bloğu bu iki pool'u zaten adapter: cache.system /
-            # cache.app ile referans alıyordu; burada Redis'e bağlanır.
+            # Doctrine query/metadata/result cache — referenced from doctrine.yaml;
+            # wired to Redis here.
             doctrine.result_cache_pool:
                 adapter: cache.adapter.redis
             doctrine.system_cache_pool:
                 adapter: cache.adapter.redis
 
-            # Memcached: app cache'ten (Redis) AYRI, sadece HTTP
-            # fragment/ESI cache için ikinci bir pool (bkz. plan — Redis
-            # zaten genel cache'i karşılıyor, Memcached'e ayrı bir rol
-            # verildi).
+            # Memcached: separate from app cache (Redis), dedicated to HTTP fragment/ESI cache.
             cache.fragments:
                 adapter: cache.adapter.memcached
                 provider: '%env(MEMCACHED_DSN)%'
 
-# Laragon/local: Redis & Memcached çoğu kurulumda KAPALI. Her istekte
-# default TCP timeout birikip 30–60 sn "donma" yaratır. Dev'de dosya
-# tabanlı adapter kullan; prod/canlı Redis URL'ini korur.
+# Laragon/local: Redis & Memcached are usually off; TCP timeouts freeze requests.
+# Dev uses filesystem adapters; prod keeps the Redis URL.
 when@dev:
     framework:
         cache:
@@ -40,21 +35,17 @@ when@dev:
                     adapter: cache.adapter.filesystem
                 cache.fragments:
                     adapter: cache.adapter.filesystem
+                    # Base config's Memcached DSN is a keyed value, not wholesale replaced by
+                    # this block — must be cleared explicitly or AbstractAdapter::createConnection()
+                    # still tries to dial Memcached underneath the filesystem adapter (T2.3 found
+                    # this while wiring the first real consumer of this pool, CacheTagIndex).
+                    provider: ~
 
-# FAZ 2: test ortamı, dev ile AYNI gerekçeyle harici servislerden tamamen
-# koparılır — ama burada gerekçe rahatlık değil, DOĞRULUK.
+# Phase 2: test env is isolated from external services (correctness, not convenience).
 #
-# Bu blok olmadan test ortamı kök yapılandırmayı miras alır ve Redis
-# (cache.adapter.redis) ile Memcached (cache.fragments) bağlantısı
-# denemeye çalışır. CI koşucusunda bu servisler YOKTUR: sonuç, gerçek bir
-# regresyonu değil yalnızca ortamın eksikliğini raporlayan, üstelik TCP
-# zaman aşımı süresince asılı kalan bir test paketi olurdu.
+# Without this block, CI tries Redis/Memcached and hangs on TCP timeouts.
 #
-# "array" adapter, "filesystem"e TERCİH EDİLİR: her test kendi süreç
-# belleğinde tamamen boş bir önbellekle başlar, testler arasında disk
-# üzerinden sızıntı olmaz ve temizlik gerektirmez. Testin ölçtüğü şey
-# önbellek davranışının kendisiyse (ileride) o test kendi pool'unu açıkça
-# kurmalıdır.
+# "array" adapter preferred over filesystem: fresh in-memory cache per test, no disk leakage.
 when@test:
     framework:
         cache:
@@ -67,3 +58,4 @@ when@test:
                     adapter: cache.adapter.array
                 cache.fragments:
                     adapter: cache.adapter.array
+                    provider: ~

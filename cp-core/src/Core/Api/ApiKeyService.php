@@ -7,6 +7,7 @@ namespace App\Core\Api;
 use App\Entity\Setting;
 use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * API keys stored as one JSON list in cp_settings (core.api_keys), not as #[CpSetting] scalars.
@@ -20,16 +21,24 @@ final class ApiKeyService
     public function __construct(
         private readonly SettingRepository $settingRepository,
         private readonly EntityManagerInterface $entityManager,
+        private readonly ApiCapabilityPolicy $capabilityPolicy = new ApiCapabilityPolicy(),
+        private readonly ApiClientIpPolicy $ipPolicy = new ApiClientIpPolicy(),
     ) {
     }
 
     /**
-     * Create a random key, persist its hash, and return the plaintext once.
+     * @param list<string> $capabilities
+     * @param list<string> $ipAllowlist
      *
      * @return array{key: string, apiKey: ApiKey}
      */
-    public function generate(string $label): array
-    {
+    public function generate(
+        string $label,
+        array $capabilities = [],
+        ?string $tenantId = null,
+        array $ipAllowlist = [],
+        ?\DateTimeImmutable $expiresAt = null,
+    ): array {
         $rawKey = self::KEY_PREFIX.bin2hex(random_bytes(32));
         $hash = hash('sha256', $rawKey);
 
@@ -40,6 +49,10 @@ final class ApiKeyService
             lastFourChars: substr($rawKey, -4),
             createdAt: new \DateTimeImmutable(),
             active: true,
+            capabilities: $this->capabilityPolicy->sanitizeGrants($capabilities),
+            tenantId: $tenantId !== null && $tenantId !== '' ? $tenantId : null,
+            ipAllowlist: $this->sanitizeIpAllowlist($ipAllowlist),
+            expiresAt: $expiresAt,
         );
 
         $keys = $this->loadAll();
@@ -98,8 +111,36 @@ final class ApiKeyService
      */
     public function isValid(string $providedKey): bool
     {
+        return $this->matchActiveKey($providedKey) !== null;
+    }
+
+    /**
+     * Full machine-identity check: hash, active, expiry, IP allowlist. Never returns a revoked key.
+     */
+    public function authenticate(Request $request): ?ApiKey
+    {
+        $providedKey = (string) $request->headers->get('X-CP-API-KEY', '');
+        $matched = $this->matchActiveKey($providedKey);
+        if ($matched === null) {
+            return null;
+        }
+
+        if ($matched->isExpired()) {
+            return null;
+        }
+
+        $clientIp = (string) $request->getClientIp();
+        if (!$this->ipPolicy->allows($clientIp, $matched->ipAllowlist)) {
+            return null;
+        }
+
+        return $matched;
+    }
+
+    private function matchActiveKey(string $providedKey): ?ApiKey
+    {
         if ($providedKey === '') {
-            return false;
+            return null;
         }
 
         $providedHash = hash('sha256', $providedKey);
@@ -110,11 +151,33 @@ final class ApiKeyService
             }
 
             if (hash_equals($apiKey->hash, $providedHash)) {
-                return true;
+                return $apiKey;
             }
         }
 
-        return false;
+        return null;
+    }
+
+    /**
+     * @param list<string> $entries
+     *
+     * @return list<string>
+     */
+    private function sanitizeIpAllowlist(array $entries): array
+    {
+        $clean = [];
+        foreach ($entries as $entry) {
+            $entry = trim($entry);
+            if ($entry === '' || \strlen($entry) > 64) {
+                continue;
+            }
+            if (preg_match('#^[0-9a-fA-F:.]+(/\d{1,3})?$#', $entry) !== 1) {
+                continue;
+            }
+            $clean[] = $entry;
+        }
+
+        return array_values(array_unique($clean));
     }
 
     /**

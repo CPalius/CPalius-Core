@@ -10,7 +10,7 @@ use Symfony\Bundle\SecurityBundle\Security;
 
 /**
  * Law 6.2: push .any/.own into SQL WHERE before the query runs (no per-row voter on list screens).
- * No .any and no .own → 1=0 (empty result), never an unfiltered table.
+ * No .any, no .own, and no matching per-record grant → 1=0 (empty result), never an unfiltered table.
  */
 final class QueryScopeApplier
 {
@@ -20,18 +20,21 @@ final class QueryScopeApplier
     public function __construct(
         private readonly Security $security,
         private readonly RoleConfigManager $roleConfigManager,
+        private readonly EntityAccessManager $entityAccessManager,
     ) {
     }
 
     /**
      * @param string $capabilityBase Root without suffix (e.g. "node.post.edit"); this method adds .any/.own.
      * @param string $ownerField     Ownership column compared as $rootAlias.$ownerField.
+     * @param string $entityType     #[CpEntityType] id for row-level grants (T1.4); "node" by default.
      */
     public function apply(
         QueryBuilder $qb,
         string $rootAlias,
         string $capabilityBase,
         string $ownerField = 'author',
+        string $entityType = 'node',
     ): QueryBuilder {
         $user = $this->security->getUser();
 
@@ -45,13 +48,18 @@ final class QueryScopeApplier
             return $qb;
         }
 
+        $conditions = [];
+
         if (in_array($capabilityBase.self::OWN_SUFFIX, $granted, true)) {
-            return $qb
-                ->andWhere(sprintf('%s.%s = :cpScopeCurrentUser', $rootAlias, $ownerField))
-                ->setParameter('cpScopeCurrentUser', $user->getId());
+            $qb->setParameter('cpScopeCurrentUser', $user->getId());
+            $conditions[] = sprintf('%s.%s = :cpScopeCurrentUser', $rootAlias, $ownerField);
         }
 
-        return $this->denyAll($qb);
+        // T1.4: a record-specific grant reaches records .own/.any never would
+        // (shared with someone who is neither the owner nor role-wide granted).
+        $conditions[] = $this->entityAccessManager->buildScopeCondition($qb, $rootAlias, $entityType, $capabilityBase, $user);
+
+        return $qb->andWhere(implode(' OR ', array_map(static fn (string $c): string => '('.$c.')', $conditions)));
     }
 
     /**

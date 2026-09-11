@@ -9,6 +9,7 @@
 {% endblock %}
 
 {% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
     <twig:studio:card padded="{{ false }}">
         <twig:studio:table headers="{{ [
             'studio.forum.ranks.index.column.rank'|trans,
@@ -64,7 +65,7 @@
                 </div>
                 <div>
                     <label class="form-label">{{ 'studio.forum.ranks.ban.duration'|trans({}, 'forums') }}</label>
-                    <input type="number" name="duration_days" class="form-control" min="0" placeholder="0 = kalıcı">
+                    <input type="number" name="duration_days" class="form-control" min="0" placeholder="{{ 'studio.forum.ranks.ban.duration_placeholder'|trans({}, 'forums') }}">
                 </div>
                 <div>
                     <label class="form-label">{{ 'studio.forum.ranks.ban.reason'|trans({}, 'forums') }}</label>
@@ -84,7 +85,17 @@
                 <twig:block name="rows">
                     {% for ban in activeBans %}
                         <tr>
-                            <td>{{ ban.user.fullName }} <span class="text-fs-xs text-neutral-500">#{{ ban.user.id }}</span></td>
+                            <td>
+                                {% if ban.user %}
+                                    {{ ban.user.fullName }} <span class="text-fs-xs text-neutral-500">#{{ ban.user.id }}</span>
+                                {% elseif ban.ipAddress %}
+                                    IP {{ ban.ipAddress }}
+                                {% elseif ban.email %}
+                                    {{ ban.email }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
                             <td class="text-fs-xs">
                                 {% if ban.ban %}
                                     {{ 'studio.forum.ranks.ban.type_ban'|trans({}, 'forums') }}

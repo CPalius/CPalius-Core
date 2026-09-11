@@ -47,6 +47,17 @@ final class ModuleActivator
         }
 
         $manifest = $this->manifestFor($target['dirName']);
+        $moduleDir = $this->modulesDir.'/'.$target['dirName'];
+        $contractProblems = ModulePackageContract::problems($moduleDir);
+
+        if ($contractProblems !== []) {
+            return [
+                'success' => false,
+                'message' => sprintf('"%s" cannot be activated: module contract is not satisfied.', $target['name']),
+                'output' => implode(\PHP_EOL, $contractProblems),
+                'problems' => $contractProblems,
+            ];
+        }
 
         // The dependency matrix is checked BEFORE the dry-run: a missing requirement
         // is a contract error, not a compile error, and must not quarantine the module.

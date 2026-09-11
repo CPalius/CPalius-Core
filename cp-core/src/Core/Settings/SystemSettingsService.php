@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Settings;
 
+use App\Core\Annotation\CpSetting;
 use App\Core\Localization\LocaleDefinition;
 use App\Core\Localization\LocaleProvider;
 use App\Entity\Setting;
@@ -11,19 +12,24 @@ use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Tabs and persistence logic for the AACP System Management screen.
+ * Tabs and persistence for the single AACP System Settings screen.
  */
 final class SystemSettingsService
 {
     public const CSRF_TOKEN_ID = 'aacp_system_settings';
 
+    /** Virtual tab backing the AACP Security Center; see filtersForTab(). */
+    public const TAB_SECURITY_CENTER = 'security_center';
+
     public function __construct(
         private readonly LocaleProvider $localeProvider,
+        private readonly SettingScopeResolver $scopeResolver,
+        private readonly SettingSecretCodec $secretCodec,
     ) {
     }
 
     /**
-     * @return array<string, array{label: string, icon: string, description: string, isLocales?: bool}>
+     * @return array<string, array{label: string, icon: string, description: string, isLocales?: bool, grouped?: bool}>
      */
     public function tabs(): array
     {
@@ -43,6 +49,11 @@ final class SystemSettingsService
                 'icon' => 'heroicons:shield-check',
                 'description' => 'aacp.system_settings.tab.security_desc',
             ],
+            'telemetry' => [
+                'label' => 'aacp.system_settings.tab.telemetry',
+                'icon' => 'heroicons:shield-exclamation',
+                'description' => 'aacp.system_settings.tab.telemetry_desc',
+            ],
             'registration' => [
                 'label' => 'aacp.system_settings.tab.registration',
                 'icon' => 'heroicons:user-plus',
@@ -54,6 +65,18 @@ final class SystemSettingsService
                 'description' => 'aacp.system_settings.tab.locales_desc',
                 'isLocales' => true,
             ],
+            'modules' => [
+                'label' => 'aacp.system_settings.tab.modules',
+                'icon' => 'heroicons:puzzle-piece',
+                'description' => 'aacp.system_settings.tab.modules_desc',
+                'grouped' => true,
+            ],
+            'plugins' => [
+                'label' => 'aacp.system_settings.tab.plugins',
+                'icon' => 'heroicons:squares-2x2',
+                'description' => 'aacp.system_settings.tab.plugins_desc',
+                'grouped' => true,
+            ],
         ];
     }
 
@@ -62,6 +85,10 @@ final class SystemSettingsService
      */
     public function definitionsForTab(string $tab, SettingsRegistry $settingsRegistry): array
     {
+        if ($tab === 'modules' || $tab === 'plugins') {
+            return $this->definitionsForScope($tab, $settingsRegistry);
+        }
+
         $filters = $this->filtersForTab($tab);
 
         if ($filters === null) {
@@ -80,6 +107,24 @@ final class SystemSettingsService
                 return false;
             },
         ));
+    }
+
+    /**
+     * @param list<SettingDefinition> $definitions
+     *
+     * @return array<string, list<SettingDefinition>>
+     */
+    public function groupDefinitions(array $definitions): array
+    {
+        $grouped = [];
+
+        foreach ($definitions as $definition) {
+            $grouped[$definition->group][] = $definition;
+        }
+
+        ksort($grouped);
+
+        return $grouped;
     }
 
     /**
@@ -153,7 +198,9 @@ final class SystemSettingsService
             $value = match ($definition->type) {
                 // An unchecked checkbox is never submitted, so a missing key means false.
                 'checkbox' => $raw !== null ? '1' : '0',
-                'password' => \is_string($raw) && trim($raw) !== '' ? trim($raw) : null,
+                // An empty password field means "leave the stored secret alone",
+                // because the form never renders the current value back.
+                'password' => \is_string($raw) && trim($raw) !== '' ? $this->secretCodec->seal(trim($raw)) : null,
                 default => \is_string($raw) ? trim($raw) : null,
             };
 
@@ -190,7 +237,7 @@ final class SystemSettingsService
         }
 
         $entityManager->flush();
-        $settingsRegistry->clearCache();
+        $settingsRegistry->clearCache(...array_keys($pendingValues));
 
         return null;
     }
@@ -246,10 +293,45 @@ final class SystemSettingsService
             'general' => [['module' => 'core', 'group' => 'genel']],
             'email' => [['module' => 'core', 'group' => 'mail']],
             'security' => [['module' => 'core', 'group' => 'security']],
+            // Not one of tabs(): the Security Center renders these itself at
+            // /aacp/security, but reuses updateTab() so validation stays shared.
+            self::TAB_SECURITY_CENTER => [
+                ['module' => 'core', 'group' => 'security.headers'],
+                ['module' => 'core', 'group' => 'security.waf'],
+                ['module' => 'core', 'group' => 'security.flood'],
+                ['module' => 'core', 'group' => 'security.password'],
+                ['module' => 'core', 'group' => 'security.twofactor'],
+                ['module' => 'core', 'group' => 'security.session'],
+            ],
+            'telemetry' => [['module' => 'core', 'group' => 'telemetry']],
             'registration' => [['module' => 'account', 'group' => 'account.registration']],
             'locales' => null,
             default => null,
         };
+    }
+
+    /**
+     * Module/plugin tabs: everything in that scope except keys already on a curated tab.
+     *
+     * @return list<SettingDefinition>
+     */
+    private function definitionsForScope(string $tab, SettingsRegistry $settingsRegistry): array
+    {
+        $scope = $tab === 'plugins' ? CpSetting::SCOPE_PLUGIN : CpSetting::SCOPE_MODULE;
+        $grouped = $this->scopeResolver->groupByScope($settingsRegistry->all(), $scope);
+        $flat = [];
+
+        foreach ($grouped as $definitions) {
+            foreach ($definitions as $definition) {
+                if ($definition->module === 'account' && $definition->group === 'account.registration') {
+                    continue;
+                }
+
+                $flat[] = $definition;
+            }
+        }
+
+        return $flat;
     }
 
     private function isValidInteger(string $value): bool

@@ -1,0 +1,64 @@
+{% extends '@Theme/account/layout.html.twig' %}
+
+{% block title %}{{ 'account.two_factor.setup_title'|trans }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-nav fade-in" aria-label="{{ 'account.nav_aria'|trans }}">
+        <div class="container">
+            <div class="forum-nav__inner">
+                <ol class="forum-nav__crumbs">
+                    <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+                    <li class="is-active">{{ 'account.two_factor.setup_breadcrumb'|trans }}</li>
+                </ol>
+            </div>
+        </div>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in" style="text-align:center; max-width: 520px; margin: 0 auto var(--sp-lg);">
+    <span class="section-label">{{ 'account.two_factor.label'|trans }}</span>
+    <h1 class="section-title">{{ 'account.two_factor.setup_heading'|trans }}</h1>
+    <p class="forum-header__desc" style="margin: 0 auto;">{{ 'account.two_factor.setup_desc'|trans }}</p>
+</div>
+
+{% if mandatory %}
+    <div class="forum-flash forum-flash--warning" style="max-width: 520px; margin: 0 auto var(--sp-md);">
+        {{ 'account.two_factor.mandatory_notice'|trans }}
+    </div>
+{% endif %}
+
+{% if error is not null %}
+    <div class="forum-flash forum-flash--error" style="max-width: 520px; margin: 0 auto var(--sp-md);">{{ error }}</div>
+{% endif %}
+
+<div class="forum-form fade-in" style="max-width: 520px; margin: 0 auto;">
+    <ol style="padding-left: var(--sp-md); font-size: var(--fs-sm); color: var(--slw-text-muted); line-height: 1.8;">
+        <li>{{ 'account.two_factor.step_install'|trans }}</li>
+        <li>{{ 'account.two_factor.step_scan'|trans }}</li>
+        <li>{{ 'account.two_factor.step_confirm'|trans }}</li>
+    </ol>
+
+    <div style="margin: var(--sp-md) 0; padding: var(--sp-sm); border: 1px solid var(--slw-border); border-radius: 8px;">
+        <p style="margin: 0 0 var(--sp-xs); font-size: var(--fs-sm); font-weight: 600;">{{ 'account.two_factor.manual_entry'|trans }}</p>
+        <code style="display:block; word-break: break-all; font-size: var(--fs-md); letter-spacing: 0.08em;">{{ secret }}</code>
+        <p style="margin: var(--sp-xs) 0 0; font-size: var(--fs-sm); color: var(--slw-text-muted);">
+            <a href="{{ provisioningUri }}" style="color: var(--cp-accent); text-decoration: underline;">{{ 'account.two_factor.open_in_app'|trans }}</a>
+        </p>
+    </div>
+
+    <form method="post" action="{{ path('account_two_factor_setup') }}">
+        <div class="forum-field">
+            <label for="two-factor-setup-code">{{ 'account.two_factor.code_label'|trans }}</label>
+            <input type="text" id="two-factor-setup-code" name="code" required autofocus autocomplete="one-time-code"
+                   inputmode="numeric" pattern="[0-9]*" maxlength="6" spellcheck="false">
+        </div>
+
+        <input type="hidden" name="_token" value="{{ csrf_token('account_two_factor_setup') }}">
+
+        <div class="forum-form__actions">
+            <button type="submit" class="btn btn-primary btn-sm">{{ 'account.two_factor.confirm'|trans }}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

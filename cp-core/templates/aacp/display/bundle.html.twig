@@ -1,0 +1,79 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.display.header'|trans }} — {{ bundle }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <a href="{{ path('aacp_display') }}" class="text-fs-sm !text-slate-500 hover:!text-slate-200">
+            &larr; {{ 'aacp.display.back'|trans }}
+        </a>
+
+        <p class="text-fs-sm !text-slate-500">{{ 'aacp.display.bundle_intro'|trans }}</p>
+
+        <form method="post" action="{{ path('aacp_display_save', {bundle: bundle}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+            <twig:cp:card padded="{{ false }}">
+                <div class="table-responsive">
+                    <table class="table !border-white/10">
+                        <thead>
+                            <tr class="!bg-white/5 text-fs-xs uppercase tracking-wider !text-slate-400">
+                                <th class="!border-white/10 font-medium">{{ 'aacp.fields.column.label'|trans }}</th>
+                                {% for id, label in viewModes %}
+                                    <th class="!border-white/10 font-medium">{{ label|trans }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if fields is empty %}
+                                <tr>
+                                    <td colspan="{{ viewModes|length + 1 }}" class="!border-white/10 py-6 text-center text-fs-sm !text-slate-500">
+                                        {{ 'aacp.display.no_fields'|trans }}
+                                    </td>
+                                </tr>
+                            {% endif %}
+                            {% for definition in fields %}
+                                <tr>
+                                    <td class="!text-slate-200 align-top">
+                                        {{ definition.label }}
+                                        <span class="block font-mono text-fs-xs !text-slate-500">{{ definition.name }}</span>
+                                    </td>
+                                    {% for viewMode, label in viewModes %}
+                                        {% set cell = matrix[definition.name][viewMode] %}
+                                        <td class="align-top">
+                                            <div class="flex flex-col gap-1">
+                                                <label class="flex items-center gap-1.5 text-fs-xs !text-slate-300">
+                                                    <input type="checkbox" class="form-check-input"
+                                                           name="display[{{ viewMode }}][{{ definition.name }}][visible]" value="1"
+                                                           {{ cell.visible ? 'checked' : '' }}>
+                                                    {{ 'aacp.display.visible'|trans }}
+                                                </label>
+                                                <input type="number" class="form-control !border-white/10 !bg-dark-1 !text-slate-100 !py-1 !text-fs-xs w-20"
+                                                       name="display[{{ viewMode }}][{{ definition.name }}][weight]" value="{{ cell.weight }}"
+                                                       title="{{ 'aacp.fields.column.weight'|trans }}">
+                                                <select class="form-select !border-white/10 !bg-dark-1 !text-slate-100 !py-1 !text-fs-xs"
+                                                        name="display[{{ viewMode }}][{{ definition.name }}][label]">
+                                                    {% for choice in labelChoices %}
+                                                        <option value="{{ choice }}" {{ choice == cell.label ? 'selected' : '' }}>
+                                                            {{ ('aacp.display.label_display.' ~ choice)|trans }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </twig:cp:card>
+
+            {% if fields is not empty %}
+                <div class="mt-sp-sm">
+                    <button type="submit" class="btn btn-primary">{{ 'aacp.display.save'|trans }}</button>
+                </div>
+            {% endif %}
+        </form>
+    </div>
+{% endblock %}

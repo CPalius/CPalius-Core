@@ -23,6 +23,7 @@
 {% endblock %}
 
 {% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
     <div class="grid gap-4 md:grid-cols-5 mb-6">
         <twig:studio:card title="{{ 'studio.forum.dashboard.stat.total_topics'|trans }}">
             <p class="text-2xl font-semibold">{{ totalTopics }}</p>
@@ -44,7 +45,7 @@
     <div class="grid gap-4 md:grid-cols-3 mb-6">
         <twig:studio:card title="{{ 'studio.forum.dashboard.chart.moderation_health'|trans }}">
             <div style="height: 200px; position: relative;">
-                <canvas id="forum-chart-moderation-gauge" data-open="{{ openReportCount }}" data-total="{{ totalReportCount }}"></canvas>
+                <canvas id="forum-chart-moderation-gauge" data-open="{{ openReportCount }}" data-total="{{ totalReportCount }}" data-i18n-open="{{ 'studio.forum.chart.open'|trans }}" data-i18n-closed="{{ 'studio.forum.chart.closed'|trans }}" data-i18n-open-reports="{{ 'studio.forum.chart.open_reports'|trans }}"></canvas>
             </div>
         </twig:studio:card>
         <twig:studio:card title="{{ 'studio.forum.dashboard.chart.posts_by_section'|trans }}">
@@ -54,7 +55,7 @@
         </twig:studio:card>
         <twig:studio:card title="{{ 'studio.forum.dashboard.chart.topics_by_section'|trans }}">
             <div style="height: 200px; position: relative;">
-                <canvas id="forum-chart-section-bar" data-labels="{{ chartSectionLabels|json_encode }}" data-values="{{ chartSectionTopicCounts|json_encode }}"></canvas>
+                <canvas id="forum-chart-section-bar" data-labels="{{ chartSectionLabels|json_encode }}" data-values="{{ chartSectionTopicCounts|json_encode }}" data-i18n-topics="{{ 'studio.forum.dashboard.column.topic'|trans }}"></canvas>
             </div>
         </twig:studio:card>
     </div>

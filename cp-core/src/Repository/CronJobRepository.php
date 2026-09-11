@@ -19,10 +19,7 @@ class CronJobRepository extends ServiceEntityRepository
     }
 
     /**
-     * cp:cron:run dispatcher'ının TEK sorguda okuduğu aktif iş listesi —
-     * "zamanı geldi mi?" hesaplaması burada DEĞİL, CronExpressionEvaluator
-     * içinde yapılır (bu repository sadece "aktif olanlar" filtresini
-     * DB seviyesinde uygular, cron ifadesi eşleştirmesi PHP tarafında).
+     * Active jobs for cp:cron:run; due-time check is in CronExpressionEvaluator.
      *
      * @return list<CronJob>
      */

@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block body %}
-    <div id="post-form-container" data-post-form-root data-current-url="{{ post ? path('admin_posts_edit', {id: post.id}) : path('admin_posts_create', {translation_group: translationGroupId, locale: currentLocale}) }}">
+    <div id="post-form-container" data-post-form-root data-i18n-save-first="{{ 'blog.posts.form.save_before_translate'|trans }}" data-current-url="{{ post ? path('admin_posts_edit', {id: post.id}) : path('admin_posts_create', {translation_group: translationGroupId, locale: currentLocale}) }}">
     {% if activeLocales|default([])|length > 1 %}
         <div class="mb-sp-md flex flex-wrap items-center gap-2" data-post-translation-tabs>
             {% for locale in activeLocales %}
@@ -117,6 +117,7 @@
                     {{ form_row(form.status) }}
                     {{ form_row(form.publishedAt) }}
                     {{ form_row(form.isFeatured) }}
+                    {{ form_row(form.commentsEnabled) }}
 
                     {% if post %}
                         <div class="border-t border-neutral-200 pt-sp-sm">

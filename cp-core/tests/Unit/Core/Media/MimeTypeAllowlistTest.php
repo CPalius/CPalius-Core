@@ -10,14 +10,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * SEC-01 / SEC-02 regresyon testi — çekirdek izin listesinin kendisi.
- *
- * Bu sınıf, AssetManagerTest'in dayandığı güvenlik POLİTİKASINI ayrı
- * ayrı doğrular: hangi MIME tipinin kabul edildiği ve her birinin hangi
- * KANONİK uzantıya eşlendiği. İkisini ayırmanın sebebi, bir gün birinin
- * "sadece bir tür daha ekleyeyim" diyerek haritaya image/svg+xml
- * yazmasının, dosya yükleme testlerini hiç kırmadan sistemi yeniden
- * savunmasız bırakabilmesidir.
+ * SEC-01 / SEC-02 regression test — core allowlist policy in isolation.
+ * Guards MIME acceptance and canonical extension mapping separately from AssetManagerTest.
  */
 #[CoversClass(MimeTypeAllowlist::class)]
 final class MimeTypeAllowlistTest extends TestCase
@@ -58,35 +52,33 @@ final class MimeTypeAllowlistTest extends TestCase
     }
 
     /**
-     * Reddedilmesi gereken tipler. Her satır ayrı bir saldırı ya da
-     * belirsizlik sınıfını temsil eder; hiçbiri "sadece listede yok"
-     * diye değil, SOMUT bir gerekçeyle dışarıdadır.
+     * Rejected types — each row represents a concrete attack or ambiguity class.
      *
      * @return iterable<string, array{string}>
      */
     public static function rejectedTypeProvider(): iterable
     {
-        // XML tabanlı, tarayıcıda script çalıştırabilen belgeler.
+        // XML-based documents that can run scripts in browsers.
         yield 'SVG (script tasiyabilir)'  => ['image/svg+xml'];
         yield 'HTML'                      => ['text/html'];
         yield 'XHTML'                     => ['application/xhtml+xml'];
         yield 'XML'                       => ['text/xml'];
 
-        // Doğrudan çalıştırılabilir kaynak kod.
+        // Directly executable source code.
         yield 'PHP kaynak'                => ['text/x-php'];
         yield 'PHP (httpd)'               => ['application/x-httpd-php'];
         yield 'Shell script'              => ['text/x-shellscript'];
         yield 'JavaScript'                => ['application/javascript'];
 
-        // İçeriği taranmadan güvenli sayılamayacak kapsayıcılar.
+        // Containers whose contents cannot be deemed safe without scanning.
         yield 'ZIP'                       => ['application/zip'];
         yield 'RAR'                       => ['application/x-rar-compressed'];
         yield 'Windows calistirilabilir'  => ['application/x-dosexec'];
 
-        // finfo'nun "bilmiyorum" cevabı: fail-closed olmak ZORUNDA.
+        // finfo "unknown" answer — must fail-closed.
         yield 'octet-stream (bilinmeyen)' => ['application/octet-stream'];
 
-        // Kapsam dışı bırakılan aile (bilinçli karar, bkz. MimeTypeAllowlist).
+        // Out-of-scope family (deliberate decision — see MimeTypeAllowlist).
         yield 'Ses (kapsam disi)'         => ['audio/mpeg'];
 
         yield 'Bos dize'                  => [''];
@@ -105,11 +97,7 @@ final class MimeTypeAllowlistTest extends TestCase
         );
     }
 
-    /**
-     * finfo bazı sistemlerde MIME tipine parametre ekler. Normalizasyon
-     * çalışmazsa "image/jpeg; charset=binary" reddedilir ve meşru
-     * yüklemeler sessizce kırılır.
-     */
+    /** finfo may append parameters — normalization must strip them for valid uploads. */
     public function testMimeTypeParametersAreStripped(): void
     {
         self::assertSame('jpg', $this->allowlist->extensionFor('image/jpeg; charset=binary'));
@@ -123,10 +111,7 @@ final class MimeTypeAllowlistTest extends TestCase
         self::assertSame('jpg', $this->allowlist->extensionFor('Image/Jpeg'));
     }
 
-    /**
-     * Normalizasyon, parametreleri soyarken izin listesini GENİŞLETMEMELİ:
-     * "image/svg+xml; charset=utf-8" hâlâ reddedilmelidir.
-     */
+    /** Normalisation must not widen the allowlist — SVG with params still rejected. */
     public function testNormalisationDoesNotWidenTheAllowlist(): void
     {
         self::assertNull($this->allowlist->extensionFor('image/svg+xml; charset=utf-8'));
@@ -144,9 +129,7 @@ final class MimeTypeAllowlistTest extends TestCase
         sort($sorted);
         self::assertSame($sorted, $extensions, 'Uzantilar alfabetik sirali olmali.');
 
-        // Tehlikeli uzantılar listede ASLA görünmemeli — bu, arayüzde
-        // gösterilen "kabul edilen türler" ipucunun da doğru olmasını
-        // garanti eder.
+        // Dangerous extensions must never appear — keeps UI hints accurate.
         foreach (['php', 'phtml', 'svg', 'html', 'exe', 'sh'] as $dangerous) {
             self::assertNotContains($dangerous, $extensions);
         }

@@ -8,19 +8,8 @@ use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\Pagination\Paginator as DoctrinePaginator;
 
 /**
- * KnpPaginatorBundle KURULU DEĞİL (composer.json'da yok) — bu servis onun
- * yerine, projede zaten bağımlılık olarak var olan doctrine/orm'un dahili
- * Doctrine\ORM\Tools\Pagination\Paginator'ını sarmalayan hafif bir katman.
- * Ekstra bir bundle/config yükü olmadan hem Studio (admin) hem tema
- * (frontend) sayfalarında aynı ?page= sözleşmesiyle kullanılır.
- *
- * Doctrine'in dahili Paginator'ı BİLİNÇLİ OLARAK tercih edildi (ör.
- * "$qb->getQuery()->setMaxResults()/setFirstResult()" + ayrı bir
- * "COUNT(*)" sorgusu yazmak yerine): innerJoin('n.categories', ...) gibi
- * bire-çok join'ler yüzünden satır çoğalması olduğunda dahili Paginator
- * fetch-join'i algılayıp COUNT'u otomatik doğru hesaplar — elle yazılan
- * bir COUNT sorgusu bu çoğalmayı gözden kaçırıp yanlış toplam/sayfa
- * sayısı üretebilirdi.
+ * Lightweight pagination wrapper around Doctrine ORM Paginator (no KnpPaginatorBundle).
+ * Uses Doctrine's fetch-join-aware COUNT for correct totals with one-to-many joins.
  */
 final class Paginator
 {
@@ -29,8 +18,7 @@ final class Paginator
     /**
      * @template T
      *
-     * @param QueryBuilder $queryBuilder ORDER BY dahil, setMaxResults/setFirstResult
-     *   ÇAĞRILMAMIŞ bir QueryBuilder — limit/offset burada uygulanır.
+     * @param QueryBuilder $queryBuilder QueryBuilder with ORDER BY; limit/offset applied here.
      *
      * @return PaginatedResult<T>
      */

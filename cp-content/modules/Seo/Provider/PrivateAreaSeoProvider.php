@@ -79,7 +79,7 @@ final class PrivateAreaSeoProvider implements SeoPageProviderInterface
 
     private function isSearch(string $route): bool
     {
-        return \in_array($route, ['blog_search', 'forum_search'], true);
+        return \in_array($route, ['site_search', 'blog_search', 'forum_search'], true);
     }
 
     private function isOn(string $key): bool

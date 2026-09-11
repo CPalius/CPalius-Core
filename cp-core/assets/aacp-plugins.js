@@ -1,12 +1,8 @@
 /**
- * AACP "Modül Eklentileri" sayfası — tek tıkla AJAX aktif/pasif toggle.
+ * AACP module plugins page — one-click AJAX active/inactive toggle.
  *
- * aacp-system.js ile aynı desen (bilinçli olarak framework'süz/vanilla
- * JS — AACP'nin "sıfır bağımlılık" ilkesi): data-plugin-toggle-root
- * bulunamazsa sessizce hiçbir şey yapmaz.
- *
- * Sayfa YENİDEN YÜKLENMEZ: fetch yanıtından dönen yeni "active" durumuna
- * göre satırdaki rozet/buton metni/rengi DOM üzerinde anında güncellenir.
+ * Same vanilla-JS pattern as aacp-system.js; no-ops without data-plugin-toggle-root.
+ * Page does not reload — badge/button text and colors update from the fetch response.
  */
 function initAacpPluginToggle(root) {
     const csrfToken = root.dataset.pluginToggleCsrf;
@@ -14,16 +10,23 @@ function initAacpPluginToggle(root) {
         return;
     }
 
+    const i18n = {
+        active: root.dataset.i18nActive || 'Active',
+        inactive: root.dataset.i18nInactive || 'Inactive',
+        deactivate: root.dataset.i18nDeactivate || 'Deactivate',
+        activate: root.dataset.i18nActivate || 'Activate',
+    };
+
     function applyState(button, statusEl, active) {
         button.dataset.pluginActive = active ? '1' : '0';
-        button.textContent = active ? 'Pasif Et' : 'Aktif Et';
+        button.textContent = active ? i18n.deactivate : i18n.activate;
         button.classList.toggle('text-slate-400', active);
         button.classList.toggle('hover:text-red-300', active);
         button.classList.toggle('text-cp-accent', !active);
         button.classList.toggle('hover:text-emerald-300', !active);
 
         if (statusEl) {
-            statusEl.textContent = active ? 'Aktif' : 'Pasif';
+            statusEl.textContent = active ? i18n.active : i18n.inactive;
             statusEl.classList.toggle('bg-emerald-500/10', active);
             statusEl.classList.toggle('text-emerald-300', active);
             statusEl.classList.toggle('bg-slate-500/10', !active);
@@ -60,8 +63,7 @@ function initAacpPluginToggle(root) {
 
             applyState(button, statusEl, data.active);
         } catch (error) {
-            // Fail-safe: AJAX isteği başarısız olursa buton eski durumunu
-            // korur, sayfa çökmez — kullanıcı tekrar deneyebilir.
+            // Fail-safe: failed AJAX keeps button state; user can retry.
         } finally {
             button.disabled = false;
         }

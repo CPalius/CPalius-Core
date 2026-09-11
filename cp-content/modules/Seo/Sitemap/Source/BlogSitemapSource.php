@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Seo\Sitemap\Source;
 
+use App\Core\Settings\SettingsRegistry;
 use App\Entity\Asset;
 use App\Entity\Node;
 use App\Repository\AssetRepository;
 use App\Repository\CategoryRepository;
 use App\Repository\NodeRepository;
 use App\Repository\TagRepository;
-use App\Core\Settings\SettingsRegistry;
 use Modules\Seo\Contract\SeoSitemapSourceInterface;
 use Modules\Seo\Engine\SeoUrlBuilder;
 use Modules\Seo\Sitemap\SitemapUrl;
@@ -43,7 +43,7 @@ final class BlogSitemapSource implements SeoSitemapSourceInterface
             );
         }
 
-        foreach ($this->tags->findBy(['locale' => $locale]) as $tag) {
+        foreach ($this->tags->findByLocale($locale) as $tag) {
             yield new SitemapUrl(
                 loc: $this->urls->absolute('blog_tag', ['_locale' => $locale, 'slug' => $tag->getSlug()], $locale),
                 changefreq: 'weekly',

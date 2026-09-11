@@ -20,9 +20,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * AACP Dashboard "Toplam İçerik" kartı için: tüm tip/durum/dillerdeki
-     * Node sayısı (soft-delete edilmişler hariç, SoftDeletableTrait'in
-     * varsayılan filtreleme davranışı bu sorguya da uygulanır).
+     * Total node count for dashboard (excludes soft-deleted by default).
      */
     public function countAll(): int
     {
@@ -33,8 +31,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Dashboard'daki "Tipe Göre İçerik" stacked-bar widget'ının veri
-     * kaynağı — sabit `type` kolonu üzerinden (JSON'a dokunmaz).
+     * Node counts by type for dashboard stacked bar.
      *
      * @return list<array{type: string, count: int}>
      */
@@ -52,8 +49,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Dashboard'daki "Duruma Göre İçerik" doughnut widget'ının veri kaynağı
-     * — sabit `status` kolonu üzerinden (draft/published/scheduled).
+     * Node counts by status for dashboard doughnut.
      *
      * @return list<array{status: string, count: int}>
      */
@@ -70,13 +66,20 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * FrontMenuRuntime::resolveUrl() için: bir menünün tüm öğelerinin
-     * nodeId'lerini TEK sorguda çeker (id => Node haritası olarak) — öğe
-     * başına ayrı find() çağrısı yerine (bkz. o sınıfın docblock'u, aynı
-     * N+1 deseni MenuItem tarafında da vardı). Soft-delete/durum filtresi
-     * BİLİNÇLİ OLARAK burada uygulanmaz: resolveUrl() zaten silinmiş/
-     * yayından kalkmış Node'ları sessizce atlıyor, bu karar tek bir yerde
-     * (çağıran taraf) kalmalı.
+     * Studio command desk: last editor activity, newest first.
+     */
+    public function createRecentlyUpdatedQueryBuilder(): QueryBuilder
+    {
+        return $this->createQueryBuilder('n')
+            ->leftJoin('n.author', 'author')
+            ->addSelect('author')
+            ->andWhere('n.deletedAt IS NULL')
+            ->orderBy('n.updatedAt', 'DESC')
+            ->addOrderBy('n.id', 'DESC');
+    }
+
+    /**
+     * Batch-load nodes by id for FrontMenuRuntime (no status filter; caller skips missing).
      *
      * @param list<int> $nodeIds
      *
@@ -103,8 +106,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Belirli bir slug + locale kombinasyonunun kullanımda olup olmadığını
-     * kontrol eder. SlugGenerator'ın benzersizlik doğrulaması için kullanılır.
+     * Whether slug+locale is taken (SlugGenerator uniqueness check).
      */
     public function slugExists(string $slug, string $locale, ?int $excludeId = null): bool
     {
@@ -124,9 +126,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Aktif dile göre, slug ile tek bir yayınlanmış içeriği bulur.
-     * Front-end controller'ların temel sorgusu budur: "/tr/hakkimizda"
-     * geldiğinde locale=tr + slug=hakkimizda + status=published eşleşmesi.
+     * One published node by slug and locale (front-end page resolver).
      */
     public function findOnePublishedBySlugAndLocale(string $slug, string $locale): ?Node
     {
@@ -164,10 +164,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Bir içeriğin AYNI translation_group_id'yi paylaşan tüm dil
-     * çevirilerini döner. Örn. "Hakkımızda" sayfasının tr+en Node
-     * kayıtlarının ikisini birden almak için kullanılır (dil değiştirme
-     * linki, hreflang etiketleri vb. için).
+     * All translation siblings sharing translation_group_id.
      *
      * @return list<Node>
      */
@@ -181,9 +178,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * findTranslations()'un tek fark: aynı gruptaki BAŞKA bir dildeki
-     * çeviriyi bulur. "Bu sayfanın İngilizcesi var mı?" sorusuna cevap
-     * verir — dil değiştirici linkinde kullanılır.
+     * One translation in the group for target locale (language switcher).
      */
     public function findTranslation(Uuid $translationGroupId, string $targetLocale): ?Node
     {
@@ -197,8 +192,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Belirli bir tipe (ör. 'post') ve dile göre, yayınlanmış içerikleri
-     * en yeniden eskiye sıralı listeler. Blog listesi gibi sayfalar için.
+     * Published nodes by type and locale, newest first.
      *
      * @return list<Node>
      */
@@ -219,12 +213,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * "blog.publish_scheduled" cron görevinin (bkz.
-     * Modules\Blog\Cron\PublishScheduledPostsTask) tek veri kaynağı: durumu
-     * STATUS_SCHEDULED olan VE yayın tarihi (publishedAt) şu ana kadar
-     * gelmiş (<=) tüm Node'ları döner. Tip veya modülle sınırlanmaz —
-     * Node çekirdek bir kavram olduğu için (bkz. sınıfın kendi docblock'u)
-     * bu sorgu tüm content type'ları kapsar.
+     * Scheduled nodes due for publish (all content types).
      *
      * @return list<Node>
      */
@@ -241,14 +230,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * AACP Sistem Monitörü'ndeki "Zamanlanmış Yayın" widget'ları için:
-     * durumu hâlâ STATUS_SCHEDULED olan (yayın zamanı gelmiş veya
-     * gelmemiş, hepsi) içerik SAYISINI döner. COUNT ile tek skaler değer
-     * okur — widget'ın tüm Node listesini çekmesine gerek yoktur.
-     *
-     * $type verilirse (ör. Blog modülünün 'post' widget'ı) sadece o
-     * content type'a göre daraltılır; null ise tüm type'lar toplanır
-     * (cp-core'un genel amaçlı widget'ı için).
+     * Count of STATUS_SCHEDULED nodes; optional $type filter for module widgets.
      */
     public function countPendingScheduledNodes(?string $type = null): int
     {
@@ -265,13 +247,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * findPublishedByTypeAndLocale()'in QueryBuilder döndüren hâli — sabit
-     * bir dizi yerine App\Core\Pagination\Paginator::paginate()'e verilmek
-     * üzere tasarlanmıştır (limit/offset ÇAĞIRAN tarafça, Paginator
-     * içinde uygulanır). Blog ana listesi (/blog) ve kategori/etiket
-     * listeleri bu tek metodu paylaşır; SADECE Node'un sabit kolonları
-     * (type, locale, status) üzerinden filtreler — JOIN yoktur, bu yüzden
-     * Paginator'ın fetch-join COUNT düzeltmesine ihtiyaç duymaz.
+     * Paginator-ready published list by type/locale (no joins).
      */
     public function createPublishedByTypeAndLocaleQueryBuilder(string $type, string $locale): QueryBuilder
     {
@@ -287,10 +263,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Belirli bir kategoriye (n.categories many-to-many) ait, yayınlanmış
-     * içerikleri döndüren QueryBuilder. innerJoin bire-çok olduğundan
-     * (bir Node birden fazla kategoriye ait olabilir) Paginator'a
-     * fetchJoinCollection açık geçirilerek COUNT doğru hesaplanır.
+     * Published nodes in a category (many-to-many join; use Paginator fetchJoinCollection).
      */
     public function createPublishedByCategoryQueryBuilder(int $categoryId, string $type, string $locale): QueryBuilder
     {
@@ -309,9 +282,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Belirli bir etikete (n.tags many-to-many) ait, yayınlanmış içerikleri
-     * döndüren QueryBuilder — createPublishedByCategoryQueryBuilder ile
-     * aynı gerekçe (bire-çok join + Paginator fetchJoinCollection).
+     * Published nodes by tag slug (same join/count pattern as category query).
      */
     public function createPublishedByTagQueryBuilder(string $tagSlug, string $type, string $locale): QueryBuilder
     {
@@ -330,22 +301,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Modules\Blog\Plugin\BlogArchivePlugin'in tek veri kaynağı: yayınlanmış
-     * içerikleri publishedAt'ın yıl/ay bileşenine göre gruplayıp kronolojik
-     * (en yeni önce) bir özet döner — createPublishedByDateRangeQueryBuilder()
-     * ile birlikte "sidebar'da yıl/ay listesi -> tıklanınca o aya filtrelenmiş
-     * arşiv sayfası" akışını besler.
-     *
-     * DQL'in YEAR()/MONTH() fonksiyonları BİLİNÇLİ OLARAK KULLANILMAZ:
-     * bunlar SQL seviyesinde MySQL/Postgres'te var olsa da Doctrine'in
-     * temel DQL dilinde (ekstra bir custom fonksiyon kaydı olmadan)
-     * TANIMLI DEĞİLDİR ve "Expected known function, got 'YEAR'" hatasıyla
-     * patlar (bkz. bu metodun ilk halinde alınan gerçek hata, Faz 3
-     * fail-safe testinde module_quarantine.log'a düştü). Ekstra bir DQL
-     * fonksiyon kaydı (yeni bir soyutlama katmanı) yerine, blog'un yıllık
-     * arşiv hacmi doğası gereği küçük olduğundan (bir blogda binlerce
-     * farklı ay olmaz), tüm yayınlanmış publishedAt değerleri tek bir
-     * sorguyla çekilip PHP tarafında gruplanır — hem taşınabilir hem basit.
+     * Archive year/month groups in PHP (avoids non-portable DQL YEAR()/MONTH()).
      *
      * @return list<array{year: int, month: int, count: int}>
      */
@@ -384,16 +340,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * findPublishedArchiveGroups()'un ürettiği bir yıl/ay grubuna tıklanınca
-     * açılan arşiv sayfasının veri kaynağı — createPublishedByCategoryQueryBuilder
-     * ile aynı QueryBuilder-döndüren imza deseni (Paginator::paginate()'e
-     * verilmek üzere).
-     *
-     * findPublishedArchiveGroups() ile aynı gerekçeyle YEAR()/MONTH() DQL
-     * fonksiyonları KULLANILMAZ; bunun yerine ayın başlangıcı/bitişi PHP
-     * tarafında \DateTimeImmutable ile hesaplanıp standart bir BETWEEN
-     * aralığına çevrilir — bu, DQL'in çekirdek dilinde her zaman
-     * desteklenen, veritabanı bağımsız bir karşılaştırmadır.
+     * Paginator query for one archive month (BETWEEN range computed in PHP).
      */
     public function createPublishedByDateRangeQueryBuilder(string $type, string $locale, int $year, int $month): QueryBuilder
     {
@@ -416,13 +363,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Başlıkta serbest metin araması. Bilinçli olarak SADECE n.title (sabit
-     * SQL kolonu) üzerinden filtreler: Node::data['excerpt']/['body'] JSON
-     * içinde tutulur ve JSON içi LIKE taraması indekslenemez, büyük
-     * tablolarda tam tablo taraması anlamına gelir (Manifesto Law 6.3'ün
-     * ruhu — sorgulanabilir her şey ya sabit kolon ya da flat index olmalı).
-     * Zengin bir arama deneyimi gerekiyorsa gelecekte ayrı bir arama
-     * indeksi (ör. NodeFieldIndex'e 'search_text' alanı) eklenmelidir.
+     * Title-only LIKE search (Law 6.3: no unindexed JSON scan).
      */
     public function createSearchQueryBuilder(string $searchTerm, string $type, string $locale): QueryBuilder
     {
@@ -440,13 +381,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Bir yazının detay sayfasındaki "İlgili Yazılar" widget'ı için: aynı
-     * birincil kategoriyi (Node::$category) paylaşan, kendisi HARİÇ, en
-     * güncel yayınlanmış diğer yazıları döner. Node::$categories (çoklu
-     * ManyToMany) yerine bilinçli olarak $category (birincil kategori)
-     * kullanılır — "ilgili" tanımı burada tek ve net bir sinyale
-     * dayanmalıdır, çoklu kategori kesişimi gereksiz karmaşıklık katardı.
-     * $category null ise (kategorisiz yazı) boş dizi döner.
+     * Related published posts by primary category (excludes self; empty if uncategorized).
      *
      * @return list<Node>
      */
@@ -476,27 +411,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * CPalius Manifesto 3.3 (High-Performance Querying): Node::data JSON
-     * kolonuna dokunmadan, NodeFieldIndex "düz indeks" tablosuna join
-     * atarak dinamik bir alanı standart SQL karşılaştırma operatörleriyle
-     * (=, <, <=, >, >=, !=) filtreler.
-     *
-     * Örnek: "'product' tipinde, 'price' değeri 1500'den küçük, 'tr'
-     * dilinde yayınlanmış tüm node'lar":
-     *
-     *   $nodeRepository->findByIndexedField(
-     *       type: 'product',
-     *       locale: 'tr',
-     *       fieldName: 'price',
-     *       value: '1500',
-     *       valueColumn: 'valueDecimal',
-     *       operator: '<',
-     *   );
-     *
-     * $valueColumn, NodeFieldIndex'te sorgulanan alanın hangi value*
-     * kolonuna endekslendiğini belirtir ('valueString'|'valueInt'|
-     * 'valueDecimal'|'valueDatetime') — çağıran taraf bunu
-     * QueryableFieldsRegistry::getFieldsForType() üzerinden bilir.
+     * Manifesto 3.3: filter by flat NodeFieldIndex column with SQL operators.
      *
      * @return list<Node>
      */
@@ -512,12 +427,12 @@ class NodeRepository extends ServiceEntityRepository
     ): array {
         $allowedColumns = ['valueString', 'valueInt', 'valueDecimal', 'valueDatetime'];
         if (!\in_array($valueColumn, $allowedColumns, true)) {
-            throw new \InvalidArgumentException(sprintf('Geçersiz valueColumn: "%s"', $valueColumn));
+            throw new \InvalidArgumentException(sprintf('Invalid valueColumn: "%s"', $valueColumn));
         }
 
         $allowedOperators = ['=', '!=', '<', '<=', '>', '>='];
         if (!\in_array($operator, $allowedOperators, true)) {
-            throw new \InvalidArgumentException(sprintf('Geçersiz operator: "%s"', $operator));
+            throw new \InvalidArgumentException(sprintf('Invalid operator: "%s"', $operator));
         }
 
         return $this->createQueryBuilder('n')
@@ -540,32 +455,11 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * ProcessWire'ın "sihirli sorgu" (Selector API) fikrinden ilham alan,
-     * insan tarafından okunabilir tek bir string ile Node sorgulama arayüzü:
+     * ProcessWire-style selector string query (fixed columns, modifiers, flat index fields).
+     * Invalid segments are skipped fail-safe.
      *
-     *   $nodeRepository->findNodesBySelector('type=post, status=published, limit=5, sort=created_at:desc');
-     *   $nodeRepository->findNodesBySelector('type=product, price<1500, locale=tr');
-     *
-     * Format: virgülle ayrılmış "anahtar=deger" (veya "anahtar<deger",
-     * "anahtar>deger" vb.) ikilileri. Desteklenen operatörler: =, !=, <,
-     * <=, >, >= (sıralama: en uzun operatör önce denenir, böylece "!="
-     * "!"+"=" olarak yanlış bölünmez).
-     *
-     * İki anahtar sınıfı vardır:
-     *   1) Sabit Node kolonları (type, status, locale, slug, category) ->
-     *      doğrudan n.<alan> üzerinden filtrelenir.
-     *   2) Modifier'lar (limit, offset, sort) -> sorgunun sayfalama/sıralama
-     *      davranışını belirler, WHERE'e dahil edilmez.
-     *   3) Yukarıdakilerin dışındaki her anahtar, Manifesto Law 3.3 (High-
-     *      Performance Flat Field Index) gereği NodeFieldIndex tablosuna
-     *      join atılarak dinamik bir alan olarak sorgulanır — value_string/
-     *      value_int/value_decimal kolonundan hangisinin kullanılacağı,
-     *      verilen değerin PHP tipinden (sayısal mı, ondalıklı mı, düz
-     *      string mi) otomatik çıkarılır.
-     *
-     * Bozuk/tanınmayan bir parça (ör. "=" içermeyen bir segment) sessizce
-     * ATLANIR — RoleConfigManager'daki fail-safe felsefesiyle aynı: bir
-     * yazım hatası tüm sorguyu patlatmak yerine sadece o filtreyi yok sayar.
+     * @deprecated Use App\Core\Entity\Query\CpEntityQueryFactory::fromSelector()
+     *             which adds OR groups, access checks and shared column resolution.
      *
      * @return list<Node>
      */
@@ -610,8 +504,7 @@ class NodeRepository extends ServiceEntityRepository
                     break;
 
                 default:
-                    // Bilinmeyen anahtar: Node'un sabit kolonu değil,
-                    // dinamik (JSON->flat index) bir alan olarak ele al.
+                    // Unknown key: treat as flat-indexed dynamic field.
                     if (!$joinedIndex) {
                         $qb->innerJoin(NodeFieldIndex::class, 'idx', 'WITH', 'idx.node = n.id');
                         $joinedIndex = true;
@@ -644,15 +537,13 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * "type=post, status=published, limit=5" gibi bir selector string'ini
-     * [anahtar, operatör, değer] üçlülerine ayrıştırır.
+     * Parse selector string into [key, operator, value] triples.
      *
      * @return list<array{0: string, 1: string, 2: string}>
      */
     private function parseSelectorParts(string $selector): array
     {
-        // En uzun operatör önce denenmeli: "!=" ve "<=" gibi iki karakterli
-        // operatörler, tek karakterli "=" veya "<" ile yanlış bölünmemeli.
+        // Try longer operators first so != and <= are not split incorrectly.
         $operators = ['!=', '<=', '>=', '=', '<', '>'];
 
         $parts = [];
@@ -680,17 +571,14 @@ class NodeRepository extends ServiceEntityRepository
                 continue 2;
             }
 
-            // Hiçbir operatör bulunamadı: bu segment sessizce atlanır
-            // (fail-safe — bkz. metod dokümantasyonu).
+            // No operator: skip segment fail-safe.
         }
 
         return $parts;
     }
 
     /**
-     * "created_at:desc" -> ['createdAt', 'DESC']. Yön verilmezse (ör.
-     * sadece "created_at") varsayılan DESC kullanılır. Alan adı snake_case
-     * geldiğinde Node entity'sinin camelCase property'sine çevrilir.
+     * Parse sort token (snake_case field + optional ASC/DESC).
      *
      * @return array{0: string, 1: string}
      */
@@ -710,13 +598,7 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Bir selector değerinin, NodeFieldIndex'te hangi value* kolonuna karşı
-     * karşılaştırılacağını değerin GÖRÜNÜMÜNDEN tahmin eder: tamsayı
-     * görünüyorsa valueInt, ondalıklı görünüyorsa valueDecimal, aksi halde
-     * valueString. Tarih tahmini bilinçli olarak yapılmaz (ISO 8601 bir
-     * string olarak da valueString ile hâlâ eşit/karşılaştırma çalışır);
-     * hassas tarih filtreleme gerekiyorsa findByIndexedField() doğrudan
-     * kullanılmalıdır.
+     * Guess NodeFieldIndex value column from selector value shape.
      */
     private function guessValueColumn(string $rawValue): string
     {

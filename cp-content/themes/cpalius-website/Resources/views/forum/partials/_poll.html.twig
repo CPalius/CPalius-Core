@@ -1,0 +1,39 @@
+{% set voted = pollVotedIds|default([]) %}
+{% set showResults = poll.isClosed or voted is not empty or not poll.hideUntilClose %}
+<div class="forum-poll fade-in">
+    <h2 class="forum-poll__title"><i class="bi bi-bar-chart"></i> {{ poll.question }}</h2>
+    {% if not poll.isClosed and cp_user() and voted is empty %}
+        <form method="post" action="{{ path('forum_poll_vote', {topicId: topic.id}) }}" class="forum-poll__form">
+            <input type="hidden" name="_token" value="{{ csrf_token('forum_poll_vote') }}">
+            {% for option in poll.options %}
+                <label class="forum-poll__option">
+                    {% if poll.maxChoices > 1 %}
+                        <input type="checkbox" name="option_ids[]" value="{{ option.id }}">
+                    {% else %}
+                        <input type="radio" name="option_id" value="{{ option.id }}" required>
+                    {% endif %}
+                    {{ option.label }}
+                </label>
+            {% endfor %}
+            <button type="submit" class="btn btn-sm btn-primary">{{ 'forum.poll.vote'|trans }}</button>
+        </form>
+    {% endif %}
+    {% if showResults %}
+        <ul class="forum-poll__results">
+            {% set total = poll.totalVotes %}
+            {% for option in poll.options %}
+                {% set pct = total > 0 ? ((option.voteCount / total) * 100)|round : 0 %}
+                <li>
+                    <span>{{ option.label }}</span>
+                    <span class="forum-poll__bar" style="--pct: {{ pct }}%;"></span>
+                    <strong>{{ option.voteCount }} ({{ pct }}%)</strong>
+                </li>
+            {% endfor %}
+        </ul>
+    {% elseif poll.hideUntilClose %}
+        <p class="forum-poll__hidden">{{ 'forum.poll.hidden'|trans }}</p>
+    {% endif %}
+    {% if poll.closesAt %}
+        <p class="forum-poll__closes">{{ 'forum.poll.closes'|trans({date: poll.closesAt|date('d.m.Y H:i')}) }}</p>
+    {% endif %}
+</div>

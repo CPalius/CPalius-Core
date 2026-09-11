@@ -8,7 +8,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Roadmap modülü: native kayıt tablosu + menü #roadmap → /tr/roadmap.
+ * Roadmap module: native record table + menu #roadmap → /tr/roadmap.
  */
 final class Version20260902180000 extends AbstractMigration
 {

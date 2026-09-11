@@ -7,35 +7,12 @@
             <p class="section-desc">{{ 'roadmap.desc'|trans({}, t) }}</p>
         </div>
 
-        <div class="roadmap-timeline fade-in">
-            <div class="roadmap-item">
-                <span class="roadmap-phase">{{ 'roadmap.sprint1'|trans({}, t) }}</span>
-                <h4><i class="bi bi-diagram-3"></i> <span>{{ 'roadmap.sprint1_title'|trans({}, t) }}</span></h4>
-                <p>{{ 'roadmap.sprint1_text_html'|trans({}, t)|raw }}</p>
-            </div>
-
-            <div class="roadmap-item">
-                <span class="roadmap-phase">{{ 'roadmap.sprint2'|trans({}, t) }}</span>
-                <h4><i class="bi bi-crop"></i> <span>{{ 'roadmap.sprint2_title'|trans({}, t) }}</span></h4>
-                <p>{{ 'roadmap.sprint2_text_html'|trans({}, t)|raw }}</p>
-            </div>
-
-            <div class="roadmap-item">
-                <span class="roadmap-phase">{{ 'roadmap.sprint3'|trans({}, t) }}</span>
-                <h4><i class="bi bi-shield-check"></i> <span>{{ 'roadmap.sprint3_title'|trans({}, t) }}</span></h4>
-                <p>{{ 'roadmap.sprint3_text_html'|trans({}, t)|raw }}</p>
-            </div>
-
-            <div class="roadmap-item">
-                <span class="roadmap-phase">{{ 'roadmap.sprint4'|trans({}, t) }}</span>
-                <h4><i class="bi bi-envelope-paper"></i> <span>{{ 'roadmap.sprint4_title'|trans({}, t) }}</span></h4>
-                <p>{{ 'roadmap.sprint4_text_html'|trans({}, t)|raw }}</p>
-            </div>
-        </div>
-
-        <p style="margin-top: var(--sp-md); text-align:center;">
+        <p class="fade-in" style="text-align:center;">
             <a href="{{ path('roadmap_index') }}" class="btn btn-outline">
                 <i class="bi bi-signpost-2"></i> {{ 'nav.roadmap'|trans({}, 'portal') }}
+            </a>
+            <a href="{{ path('theme_whitepaper', {_locale: app.request.locale}) }}#roadmap" class="btn btn-primary">
+                <i class="bi bi-book"></i> {{ 'whitepaper.cta'|trans({}, t) }}
             </a>
         </p>
     </div>

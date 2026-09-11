@@ -1,6 +1,5 @@
 {#
-    Blog hero — Studio Blog Ayarlarından beslenir.
-    Beklenen: blogHero, blogStats (opsiyonel), heading (sayfa bağlamı)
+    Blog hero from Studio Blog settings. Expects: blogHero, blogStats (optional), heading.
 #}
 {% if blogHero is defined and blogHero.enabled %}
 <section class="blog-hero{% if blogHero.imageUrl %} blog-hero--has-media{% endif %}" id="blog-hero">

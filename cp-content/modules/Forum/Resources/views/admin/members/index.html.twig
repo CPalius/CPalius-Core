@@ -7,6 +7,29 @@
 {% endblock %}
 
 {% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+    <twig:studio:card title="{{ 'studio.forum.members.target_ban.header'|trans }}">
+        <form method="post" action="{{ path('admin_forum_members_target_ban') }}" class="flex flex-wrap gap-2 items-end">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_member') }}">
+            <div>
+                <label class="form-label">IP</label>
+                <input type="text" name="ip_address" class="form-control" placeholder="203.0.113.10">
+            </div>
+            <div>
+                <label class="form-label">E-posta</label>
+                <input type="email" name="email" class="form-control" placeholder="spam@example.com">
+            </div>
+            <div>
+                <label class="form-label">{{ 'studio.forum.members.reason_placeholder'|trans }}</label>
+                <input type="text" name="reason" class="form-control" required>
+            </div>
+            <div>
+                <label class="form-label">{{ 'studio.forum.members.duration_placeholder'|trans }}</label>
+                <input type="number" name="duration_days" class="form-control" min="0">
+            </div>
+            <button type="submit" class="btn btn-outline-danger">{{ 'studio.forum.members.action.apply'|trans }}</button>
+        </form>
+    </twig:studio:card>
     <twig:studio:card padded="{{ false }}">
         <twig:studio:table headers="{{ [
             'studio.forum.members.column.member'|trans,

@@ -1,0 +1,62 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ vocabulary.label }}{% endblock %}
+
+{% macro branch(nodes, machineName, depth) %}
+    {% import _self as macros %}
+    {% for row in nodes %}
+        <tr>
+            <td class="!text-slate-200">
+                <span style="padding-left: {{ depth * 1.25 }}rem;">
+                    {{ depth > 0 ? '— ' : '' }}{{ row.term.name }}
+                </span>
+                <span class="ml-1 font-mono text-fs-xs !text-slate-500">{{ row.term.slug }}</span>
+            </td>
+            <td class="text-fs-sm !text-slate-400">{{ row.term.weight }}</td>
+            <td class="text-right">
+                <a href="{{ path('aacp_taxonomy_term_edit', {machineName: machineName, id: row.term.id}) }}"
+                   class="text-fs-xs font-medium !text-primary-400 hover:!text-success-300 mr-3">
+                    {{ 'aacp.taxonomy.edit'|trans }}
+                </a>
+                <form method="post" class="inline"
+                      action="{{ path('aacp_taxonomy_term_delete', {machineName: machineName, id: row.term.id}) }}"
+                      onsubmit="return confirm('{{ 'aacp.taxonomy.confirm_delete_term'|trans|e('js') }}');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('aacp_taxonomy_term') }}">
+                    <button type="submit" class="text-fs-xs font-medium !text-danger-400 hover:!text-danger-300">
+                        {{ 'aacp.taxonomy.delete'|trans }}
+                    </button>
+                </form>
+            </td>
+        </tr>
+        {{ macros.branch(row.children, machineName, depth + 1) }}
+    {% endfor %}
+{% endmacro %}
+
+{% block body %}
+    {% import _self as macros %}
+    <div class="space-y-sp-md">
+        <div class="flex items-center justify-between">
+            <a href="{{ path('aacp_taxonomy_index') }}" class="text-fs-sm !text-slate-500 hover:!text-slate-200">
+                &larr; {{ 'aacp.taxonomy.back_to_vocabularies'|trans }}
+            </a>
+            <a href="{{ path('aacp_taxonomy_term_new', {machineName: vocabulary.machineName, locale: locale}) }}" class="btn btn-primary">
+                {{ 'aacp.taxonomy.new_term'|trans }}
+            </a>
+        </div>
+
+        <twig:cp:locale_filter locales="{{ locales }}" current="{{ locale }}" route="aacp_taxonomy_terms"
+            extraParams="{{ {machineName: vocabulary.machineName} }}" />
+
+        <twig:cp:card padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.taxonomy.column.term'|trans,
+                'aacp.taxonomy.column.weight'|trans,
+                '',
+            ] }}" empty="{{ termTree is empty }}" emptyText="{{ 'aacp.taxonomy.no_terms'|trans }}">
+                <twig:block name="rows">
+                    {{ macros.branch(termTree, vocabulary.machineName, 0) }}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+{% endblock %}

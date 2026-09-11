@@ -45,7 +45,7 @@
                     {% if avatarUrl %}
                         <img src="{{ avatarUrl }}" class="max-h-40 rounded-lg" alt="">
                     {% else %}
-                        {% include '@CpaliusWebsiteTheme/forum/partials/_avatar.html.twig' with {name: app.user.fullName, user: app.user, size: 'lg', square: true} %}
+                        {% include '@Theme/forum/partials/_avatar.html.twig' with {name: app.user.fullName, user: app.user, size: 'lg', square: true} %}
                     {% endif %}
                 </div>
                 <form method="post" action="{{ path('account_avatar_upload') }}" enctype="multipart/form-data">

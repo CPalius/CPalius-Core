@@ -17,10 +17,7 @@ class SettingRepository extends ServiceEntityRepository
     }
 
     /**
-     * Tüm ayar override'larını TEK bir sorguda okur (Manifesto Law 6.1
-     * ruhu: N adet ayrı findOneBy() yerine tek SELECT). SettingsRegistry
-     * bu haritayı lazy olarak, sadece ilk get() çağrısında istemesi
-     * bekleniyor, bkz. SettingsRegistry::loadValues().
+     * All setting overrides in one query (Law 6.1); lazy-loaded by SettingsRegistry.
      *
      * @return array<string, string>
      */
@@ -42,9 +39,7 @@ class SettingRepository extends ServiceEntityRepository
     }
 
     /**
-     * Verilen anahtarlar için Setting entity'lerini TEK sorguda yükler.
-     * Modül ayar güncelleme ekranlarında döngü içi findOneBy() N+1'ini
-     * önlemek için kullanılır (bkz. ForumSettingsAdminController::update).
+     * Load settings by keys in one query (avoids N+1 on module settings screens).
      *
      * @param list<string> $keys
      *

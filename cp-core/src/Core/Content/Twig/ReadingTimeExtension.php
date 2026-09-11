@@ -8,9 +8,7 @@ use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 
 /**
- * SchemaOrgExtension (cp-core/src/Core/Content/Twig/SchemaOrgExtension.php)
- * ile aynı desen: bu sınıf SADECE filtre kaydı yapar, asıl mantık
- * ReadingTimeRuntime'da (RuntimeExtensionInterface, lazy-loaded) yaşar.
+ * Same pattern as SchemaOrgExtension: registers the filter only; logic lives in ReadingTimeRuntime (lazy-loaded).
  */
 final class ReadingTimeExtension extends AbstractExtension
 {

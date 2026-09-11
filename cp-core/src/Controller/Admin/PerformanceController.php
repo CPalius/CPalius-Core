@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
+use App\Core\OriginCache\OriginCachePurger;
 use App\Core\Performance\PerformanceBackendRegistry;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -28,16 +29,17 @@ final class PerformanceController
         private readonly Environment $twig,
         private readonly CsrfTokenManagerInterface $csrfTokenManager,
         private readonly PerformanceBackendRegistry $registry,
+        private readonly OriginCachePurger $originCachePurger,
         private readonly TranslatorInterface $translator,
     ) {
     }
 
     #[Route('/aacp/performance', name: 'aacp_performance', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.performance_rmvp', icon: 'heroicons:cpu-chip', panel: 'aacp', priority: 25, capability: 'system.performance.manage', group: 'aacp.group.performance')]
+    #[CpAdminMenu(label: 'aacp.menu.performance_rmvp', icon: 'heroicons:cpu-chip', panel: 'aacp', priority: 25, capability: 'system.performance.manage', parent: 'aacp_tools')]
     #[IsGranted('system.performance.manage')]
     public function index(): Response
     {
-        $backends = ['redis', 'memcached', 'varnish', 'pagespeed'];
+        $backends = ['cpalius', 'redis', 'memcached', 'varnish', 'pagespeed'];
         $statuses = $this->registry->getAllStatuses();
 
         $sections = [];
@@ -59,7 +61,7 @@ final class PerformanceController
         return $response;
     }
 
-    #[Route('/aacp/performance/{backend}/test', name: 'aacp_performance_test', methods: ['POST'], requirements: ['backend' => 'redis|memcached|varnish|pagespeed'])]
+    #[Route('/aacp/performance/{backend}/test', name: 'aacp_performance_test', methods: ['POST'], requirements: ['backend' => 'cpalius|redis|memcached|varnish|pagespeed'])]
     #[IsGranted('system.performance.manage')]
     public function test(string $backend, Request $request): JsonResponse
     {
@@ -75,7 +77,7 @@ final class PerformanceController
         return new JsonResponse($this->translateResult($result->toArray()));
     }
 
-    #[Route('/aacp/performance/{backend}/enable', name: 'aacp_performance_enable', methods: ['POST'], requirements: ['backend' => 'redis|memcached|varnish|pagespeed'])]
+    #[Route('/aacp/performance/{backend}/enable', name: 'aacp_performance_enable', methods: ['POST'], requirements: ['backend' => 'cpalius|redis|memcached|varnish|pagespeed'])]
     #[IsGranted('system.performance.manage')]
     public function enable(string $backend, Request $request): JsonResponse
     {
@@ -92,7 +94,7 @@ final class PerformanceController
         return new JsonResponse(['success' => true]);
     }
 
-    #[Route('/aacp/performance/{backend}/disable', name: 'aacp_performance_disable', methods: ['POST'], requirements: ['backend' => 'redis|memcached|varnish|pagespeed'])]
+    #[Route('/aacp/performance/{backend}/disable', name: 'aacp_performance_disable', methods: ['POST'], requirements: ['backend' => 'cpalius|redis|memcached|varnish|pagespeed'])]
     #[IsGranted('system.performance.manage')]
     public function disable(string $backend, Request $request): JsonResponse
     {
@@ -103,6 +105,22 @@ final class PerformanceController
         $this->registry->disable($backend);
 
         return new JsonResponse(['success' => true]);
+    }
+
+    #[Route('/aacp/performance/cpalius/purge', name: 'aacp_performance_cpalius_purge', methods: ['POST'])]
+    #[IsGranted('system.performance.manage')]
+    public function purgeOriginCache(Request $request): JsonResponse
+    {
+        if (!$this->isValidToken($request)) {
+            return new JsonResponse(['success' => false, 'message' => $this->translator->trans('aacp.performance.invalid_csrf')], 400);
+        }
+
+        $deleted = $this->originCachePurger->purgeAll();
+
+        return new JsonResponse([
+            'success' => true,
+            'message' => $this->translator->trans('aacp.performance.cpalius.purged', ['count' => $deleted]),
+        ]);
     }
 
     /**

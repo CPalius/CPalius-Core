@@ -11,7 +11,7 @@ use App\Core\Annotation\CpSetting;
  */
 #[CpSetting(
     key: 'account.registration_enabled',
-    label: 'Kayıt Açık',
+    label: 'settings.account.registration_enabled',
     type: 'checkbox',
     default: true,
     module: 'account',
@@ -19,7 +19,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'account.require_email_verification',
-    label: 'E-posta Doğrulaması Zorunlu',
+    label: 'settings.account.require_email_verification',
     type: 'checkbox',
     default: false,
     module: 'account',
@@ -27,7 +27,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'account.require_admin_approval',
-    label: 'Yönetici Onayı Zorunlu',
+    label: 'settings.account.require_admin_approval',
     type: 'checkbox',
     default: false,
     module: 'account',
@@ -35,7 +35,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'account.username_required',
-    label: 'Kullanıcı Adı Zorunlu',
+    label: 'settings.account.username_required',
     type: 'checkbox',
     default: true,
     module: 'account',
@@ -43,25 +43,33 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'account.show_first_name',
-    label: 'Ad Alanı',
+    label: 'settings.account.show_first_name',
     type: 'select',
     default: '2',
-    variants: ['0' => 'Gizli', '1' => 'Opsiyonel', '2' => 'Zorunlu'],
+    variants: [
+        '0' => 'settings.account.field_hidden',
+        '1' => 'settings.account.field_optional',
+        '2' => 'settings.account.field_required',
+    ],
     module: 'account',
     group: 'account.registration',
 )]
 #[CpSetting(
     key: 'account.show_last_name',
-    label: 'Soyad Alanı',
+    label: 'settings.account.show_last_name',
     type: 'select',
     default: '2',
-    variants: ['0' => 'Gizli', '1' => 'Opsiyonel', '2' => 'Zorunlu'],
+    variants: [
+        '0' => 'settings.account.field_hidden',
+        '1' => 'settings.account.field_optional',
+        '2' => 'settings.account.field_required',
+    ],
     module: 'account',
     group: 'account.registration',
 )]
 #[CpSetting(
     key: 'account.require_terms',
-    label: 'Kullanım Koşulları Onayı Zorunlu',
+    label: 'settings.account.require_terms',
     type: 'checkbox',
     default: true,
     module: 'account',

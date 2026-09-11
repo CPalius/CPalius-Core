@@ -1,0 +1,18 @@
+{% extends '@Theme/layout.html.twig' %}
+
+{% block title %}{{ heading }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
+{% block meta_robots %}noindex, follow{% endblock %}
+
+{% block content %}
+<section class="section" id="page-unavailable">
+    <div class="container container-narrow">
+        <h1 class="post-hero-title">{{ heading }}</h1>
+        {% if sourcePage %}
+            <p>{{ 'pages.front.unavailable.translation_body'|trans }}</p>
+        {% else %}
+            <p>{{ 'pages.front.unavailable.not_found_body'|trans }}</p>
+        {% endif %}
+        <p><a href="{{ path('theme_cpalius_website_home') }}">{{ 'pages.front.unavailable.home'|trans }}</a></p>
+    </div>
+</section>
+{% endblock %}

@@ -5,8 +5,11 @@ namespace App\Entity;
 use App\Core\Annotation\Publishable;
 use App\Core\Annotation\SoftDeletable;
 use App\Core\Database\Traits\SoftDeletableTrait;
+use App\Core\Entity\Attribute\CpEntityType;
+use App\Core\Entity\FieldableInterface;
 use App\Core\Localization\Contract\TranslatableInterface;
 use App\Core\Security\OwnableInterface;
+use App\Core\Taxonomy\Entity\Term;
 use App\Repository\NodeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -15,35 +18,22 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Botble'ın posts/pages gibi ayrı tablolara bölünmüş içerik modeli yerine,
- * Cotonti'nin tek tablo yaklaşımından ilham alan ama JSON ile genişletilmiş
- * "hibrit" model: sık sorgulanan alanlar (title, slug, status, locale) sabit
- * kolon, geri kalan her şey (gövde metni, SEO alanları, galeri vb.) `data`
- * JSON kolonunda tutulur. Böylece yeni bir içerik tipi ('portfolio' gibi)
- * eklemek için migration gerekmez.
- *
- * #[Publishable]: Node kendi status/publishedAt alanlarını ZATEN elle
- * tanımlıyordu (aşağıdaki property'lere bakın) ve touch()/updatedAt ile
- * entegre, daha zengin bir publish() implementasyonuna sahip — bu yüzden
- * PublishableTrait KULLANILMAZ (çakışır), sadece #[Publishable] attribute'u
- * eklenir ki ResourceRegistry Node'u "bu davranışı destekliyor" olarak
- * tanısın (bkz. ResourceRegistrationPass::detectBehaviors).
- *
- * #[SoftDeletable] + SoftDeletableTrait ise BİRE BİR entegre edildi:
- * deletedAt alanı önceden yoktu, "Çöp Kutusu" desteği bu adımda gerçek
- * anlamda kazanıldı.
+ * Hybrid single-table content model: hot fields as columns, rest in JSON data.
+ * Uses #[Publishable] without PublishableTrait; SoftDeletableTrait adds trash support.
  */
 #[ORM\Entity(repositoryClass: NodeRepository::class)]
 #[ORM\Table(name: 'nodes')]
 #[ORM\Index(columns: ['type'], name: 'idx_node_type')]
 #[ORM\Index(columns: ['status'], name: 'idx_node_status')]
 #[ORM\Index(columns: ['locale'], name: 'idx_node_locale')]
+#[ORM\Index(columns: ['moderation_state'], name: 'idx_node_moderation_state')]
 #[ORM\Index(columns: ['type', 'locale', 'status', 'published_at'], name: 'idx_node_type_locale_status_published')]
 #[ORM\UniqueConstraint(name: 'uniq_node_slug_locale', columns: ['slug', 'locale'])]
 #[ORM\UniqueConstraint(name: 'uniq_node_translation_group_locale', columns: ['translation_group_id', 'locale'])]
 #[Publishable(defaultStatus: Node::STATUS_DRAFT)]
 #[SoftDeletable]
-class Node implements OwnableInterface, TranslatableInterface
+#[CpEntityType(id: 'node', label: 'entity.type.node', bundleable: true, revisionable: true, translatable: true)]
+class Node implements OwnableInterface, TranslatableInterface, FieldableInterface
 {
     use SoftDeletableTrait;
 
@@ -60,19 +50,13 @@ class Node implements OwnableInterface, TranslatableInterface
     private string $title;
 
     /**
-     * Slug tek başına global-unique DEĞİLDİR; slug + locale birlikte
-     * unique'tir (bkz. uniq_node_slug_locale). Böylece "/tr/hakkimizda"
-     * ve "/en/about-us" aynı translation_group_id'ye ait olsa bile
-     * birbirinden bağımsız slug'lar taşıyabilir.
+     * Slug is unique per locale (uniq_node_slug_locale), not globally.
      */
     #[ORM\Column(type: 'string', length: 255)]
     private string $slug;
 
     /**
-     * İçerik tipi: 'page', 'post', 'portfolio' vb. Bilinçli olarak bir
-     * PHP enum DEĞİL, string kolon — modüllerin kendi tiplerini
-     * (ör. Blog modülü 'post', Portfolio modülü 'portfolio') çekirdeği
-     * değiştirmeden ekleyebilmesi için.
+     * Content type string (page, post, portfolio, …) so modules can add types without core changes.
      */
     #[ORM\Column(type: 'string', length: 50)]
     private string $type;
@@ -80,30 +64,24 @@ class Node implements OwnableInterface, TranslatableInterface
     #[ORM\Column(type: 'string', length: 20)]
     private string $status = self::STATUS_DRAFT;
 
+    /**
+     * Editorial workflow place (Content Moderation). Null = moderation not enabled
+     * for this content type; kept separate from $status (publication).
+     */
+    #[ORM\Column(name: 'moderation_state', type: 'string', length: 32, nullable: true)]
+    private ?string $moderationState = null;
+
     #[ORM\Column(type: 'string', length: 5)]
     private string $locale;
 
     /**
-     * Bir içeriğin tüm dil çevirilerini birbirine bağlayan mantıksal
-     * kimlik. Foreign key DEĞİLDİR (kendine referans veren bir "master"
-     * satır yoktur) — aynı UUID'yi taşıyan tüm Node satırları eşit
-     * statüde birer çeviridir. Yeni bir içerik oluşturulurken ilk dil
-     * için yeni bir UUID üretilir; sonraki diller aynı UUID'yi paylaşır.
-     *
-     * Nullable'dır: henüz hiçbir çeviri grubuna dahil edilmemiş (tekil,
-     * çevirisi olmayan) içerikler için NULL bırakılabilir. NULL değerler
-     * uniq_node_translation_group_locale kısıtını ihlal etmez (MySQL/
-     * PostgreSQL, UNIQUE kısıtlarında birden fazla NULL'a izin verir),
-     * yani birden çok "grupsuz" Node aynı locale'de var olabilir.
+     * Shared UUID linking translation siblings (not an FK). Nullable for ungrouped nodes.
      */
     #[ORM\Column(type: UuidType::NAME, nullable: true)]
     private ?Uuid $translationGroupId;
 
     /**
-     * İçeriğin tüm dinamik alanları: gövde metni, öne çıkan görsel yolu,
-     * SEO başlığı/açıklaması, modüle özel galeri/meta alanları vb.
-     * Sık filtrelenen/sıralanan bir alan burada DEĞİL, yukarıdaki sabit
-     * kolonlarda tutulmalıdır (JSON içi sorgular pahalı ve indekslenemez).
+     * Dynamic fields (body, SEO, module meta). Filter/sort hot fields via columns, not JSON.
      *
      * @var array<string, mixed>
      */
@@ -111,42 +89,36 @@ class Node implements OwnableInterface, TranslatableInterface
     private array $data = [];
 
     /**
-     * İçeriğin yazarı. Nullable'dır: sistem tarafından üretilen veya
-     * içe aktarılan içerikler sahipsiz olabilir — bu durumda
-     * OwnableInterface::getOwnerId() null döner ve CPaliusVoter/
-     * QueryScopeApplier'daki ".own" yetkileri fail-safe gereği bu
-     * Node'u kimseye "kendi içeriğiymiş" gibi göstermez.
+     * Nullable author; null ownerId means .own capabilities fail-safe to deny.
      */
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(name: 'author_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
     private ?User $author = null;
 
-    #[ORM\ManyToOne(targetEntity: Category::class)]
+    #[ORM\ManyToOne(targetEntity: Term::class)]
     #[ORM\JoinColumn(name: 'category_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
-    private ?Category $category = null;
+    private ?Term $category = null;
 
     /**
-     * Yukarıdaki tekil $category ("birincil kategori" — breadcrumb/URL için)
-     * İLE ÇAKIŞMAZ: bu, WordPress tarzı çoklu kategori atamasını (checkbox
-     * listesi) destekleyen İKİNCİL bir ilişkidir. Bilinçli olarak Node::data
-     * JSON'unda DEĞİL, gerçek bir join table'da tutulur — "hangi postlar X
-     * kategorisinde" sorgusu sık ve JOIN ile ucuz olmalı, JSON'da hiç
-     * indekslenemezdi (Manifesto'nun hibrit model ruhuyla tutarlı).
+     * Many-to-many category terms (join table), separate from primary $category for cheap queries.
      *
-     * @var Collection<int, Category>
+     * @var Collection<int, Term>
      */
-    #[ORM\ManyToMany(targetEntity: Category::class)]
+    #[ORM\ManyToMany(targetEntity: Term::class)]
     #[ORM\JoinTable(name: 'node_category')]
+    #[ORM\JoinColumn(name: 'node_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    #[ORM\InverseJoinColumn(name: 'category_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     private Collection $categories;
 
     /**
-     * Category'nin aksine hiyerarşisiz, generic bir sınıflandırma (bkz.
-     * Tag entity doc-block'u).
+     * Flat tag terms (vocabulary blog_tag).
      *
-     * @var Collection<int, Tag>
+     * @var Collection<int, Term>
      */
-    #[ORM\ManyToMany(targetEntity: Tag::class)]
+    #[ORM\ManyToMany(targetEntity: Term::class)]
     #[ORM\JoinTable(name: 'node_tag')]
+    #[ORM\JoinColumn(name: 'node_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    #[ORM\InverseJoinColumn(name: 'tag_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     private Collection $tags;
 
     #[ORM\Column(type: 'datetime_immutable')]
@@ -159,12 +131,7 @@ class Node implements OwnableInterface, TranslatableInterface
     private ?\DateTimeImmutable $publishedAt = null;
 
     /**
-     * @param Uuid|null $translationGroupId Bir çeviri grubuna dahil etmek
-     *   için var olan bir grup UUID'si verin. Bu içeriğin YENİ bir çeviri
-     *   grubunun ilk dili olmasını istiyorsanız Uuid::v7() üretip geçin.
-     *   Hiç geçmezseniz (null), içerik hiçbir çeviri grubuna dahil
-     *   edilmez — ileride assignToNewTranslationGroup() veya
-     *   joinTranslationGroup() ile sonradan gruplandırılabilir.
+     * @param Uuid|null $translationGroupId Existing group UUID, new Uuid::v7(), or null.
      */
     public function __construct(string $title, string $slug, string $type, string $locale, ?Uuid $translationGroupId = null)
     {
@@ -228,6 +195,19 @@ class Node implements OwnableInterface, TranslatableInterface
         return $this;
     }
 
+    public function getModerationState(): ?string
+    {
+        return $this->moderationState;
+    }
+
+    public function setModerationState(?string $moderationState): static
+    {
+        $this->moderationState = $moderationState;
+        $this->touch();
+
+        return $this;
+    }
+
     public function getLocale(): string
     {
         return $this->locale;
@@ -239,8 +219,7 @@ class Node implements OwnableInterface, TranslatableInterface
     }
 
     /**
-     * Bu içeriği yeni ve boş bir çeviri grubuna dahil eder (bu içerik o
-     * grubun ilk/tek dilidir). Halihazırda bir gruba dahilse üzerine yazar.
+     * Assigns this node to a new translation group (overwrites any existing group).
      */
     public function assignToNewTranslationGroup(): static
     {
@@ -251,9 +230,7 @@ class Node implements OwnableInterface, TranslatableInterface
     }
 
     /**
-     * Bu içeriği VAR OLAN bir çeviri grubuna katar — ör. "Hakkımızda"nın
-     * TR'si zaten bir gruba sahipken, yeni oluşturulan EN çevirisini o
-     * gruba dahil etmek için kullanılır.
+     * Joins an existing translation group (e.g. add EN to an existing TR page group).
      */
     public function joinTranslationGroup(Uuid $translationGroupId): static
     {
@@ -264,8 +241,7 @@ class Node implements OwnableInterface, TranslatableInterface
     }
 
     /**
-     * FAZ 3: içeriği grubundan çıkarır (tekilleştirir). Gruptaki diğer
-     * diller etkilenmez — grup bir FK değil, paylaşılan bir etikettir.
+     * Phase 3: removes this node from its translation group; siblings unchanged.
      */
     public function leaveTranslationGroup(): static
     {
@@ -276,8 +252,7 @@ class Node implements OwnableInterface, TranslatableInterface
     }
 
     /**
-     * FAZ 3: içerik bir gruba dahil değilse yeni bir grup üretir, dahilse
-     * mevcut grubu döndürür (bkz. TranslationGroupResolver::link()).
+     * Phase 3: returns existing group UUID or creates one if missing.
      */
     public function ensureTranslationGroup(): Uuid
     {
@@ -285,7 +260,7 @@ class Node implements OwnableInterface, TranslatableInterface
             $this->assignToNewTranslationGroup();
         }
 
-        /** @var Uuid $translationGroupId assignToNewTranslationGroup() her zaman doldurur */
+        /** @var Uuid $translationGroupId assignToNewTranslationGroup() always sets this */
         $translationGroupId = $this->translationGroupId;
 
         return $translationGroupId;
@@ -323,6 +298,42 @@ class Node implements OwnableInterface, TranslatableInterface
         return $this;
     }
 
+    /**
+     * FieldableInterface: the Field API binds definitions to Node::type and stores
+     * values in the same $data bag, leaving non-field keys untouched.
+     */
+    public function fieldableEntityTypeId(): string
+    {
+        return 'node';
+    }
+
+    public function fieldableBundle(): string
+    {
+        return $this->type;
+    }
+
+    public function fieldableLocale(): string
+    {
+        return $this->locale;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getFieldableData(): array
+    {
+        return $this->data;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function setFieldableData(array $data): void
+    {
+        $this->data = $data;
+        $this->touch();
+    }
+
     public function getAuthor(): ?User
     {
         return $this->author;
@@ -337,20 +348,19 @@ class Node implements OwnableInterface, TranslatableInterface
     }
 
     /**
-     * OwnableInterface sözleşmesi: CPaliusVoter ve QueryScopeApplier'ın
-     * "node.post.edit.own" gibi parametrik yetkileri çözebilmesi için.
+     * OwnableInterface: owner id for .own capability checks.
      */
     public function getOwnerId(): ?int
     {
         return $this->author?->getId();
     }
 
-    public function getCategory(): ?Category
+    public function getCategory(): ?Term
     {
         return $this->category;
     }
 
-    public function setCategory(?Category $category): static
+    public function setCategory(?Term $category): static
     {
         $this->category = $category;
         $this->touch();
@@ -359,14 +369,14 @@ class Node implements OwnableInterface, TranslatableInterface
     }
 
     /**
-     * @return Collection<int, Category>
+     * @return Collection<int, Term>
      */
     public function getCategories(): Collection
     {
         return $this->categories;
     }
 
-    public function addCategory(Category $category): static
+    public function addCategory(Term $category): static
     {
         if (!$this->categories->contains($category)) {
             $this->categories->add($category);
@@ -376,7 +386,7 @@ class Node implements OwnableInterface, TranslatableInterface
         return $this;
     }
 
-    public function removeCategory(Category $category): static
+    public function removeCategory(Term $category): static
     {
         if ($this->categories->removeElement($category)) {
             $this->touch();
@@ -386,14 +396,14 @@ class Node implements OwnableInterface, TranslatableInterface
     }
 
     /**
-     * @return Collection<int, Tag>
+     * @return Collection<int, Term>
      */
     public function getTags(): Collection
     {
         return $this->tags;
     }
 
-    public function addTag(Tag $tag): static
+    public function addTag(Term $tag): static
     {
         if (!$this->tags->contains($tag)) {
             $this->tags->add($tag);
@@ -403,7 +413,7 @@ class Node implements OwnableInterface, TranslatableInterface
         return $this;
     }
 
-    public function removeTag(Tag $tag): static
+    public function removeTag(Term $tag): static
     {
         if ($this->tags->removeElement($tag)) {
             $this->touch();

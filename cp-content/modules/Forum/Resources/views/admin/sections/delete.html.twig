@@ -7,13 +7,14 @@
 {% endblock %}
 
 {% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
     <twig:studio:card>
         <div class="space-y-4">
             <div>
                 <p class="text-fs-sm text-neutral-600">{{ 'studio.forum.sections.delete.intro'|trans }}</p>
                 <h2 class="mt-2 text-lg font-semibold text-neutral-900">{{ section.title }}</h2>
                 <p class="text-fs-sm text-neutral-500">
-                    {{ section.getSectionType().label() }} · <code>{{ section.slug }}</code>
+                    {{ section.getSectionType().label()|trans }} · <code>{{ section.slug }}</code>
                 </p>
             </div>
 

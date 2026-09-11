@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Core\Module;
 
 use App\Core\Module\ModuleEntityMappingResolver;
-use Modules\Blog\BlogModule;
 use Modules\Forum\ForumModule;
 use Modules\Media\MediaModule;
 use Modules\Menu\MenuModule;
@@ -28,7 +27,7 @@ final class ModuleEntityMappingResolverTest extends TestCase
 
     public function testSkipsModulesWithoutEntityDirectory(): void
     {
-        self::assertNull(ModuleEntityMappingResolver::resolve(BlogModule::class));
+        // Media has no Entity/ directory — it must not produce a mapping.
         self::assertNull(ModuleEntityMappingResolver::resolve(MediaModule::class));
     }
 
@@ -36,7 +35,7 @@ final class ModuleEntityMappingResolverTest extends TestCase
     {
         $mappings = ModuleEntityMappingResolver::resolveMany([
             ForumModule::class,
-            BlogModule::class,
+            MediaModule::class,
             MenuModule::class,
             RoadmapModule::class,
         ]);
@@ -44,6 +43,7 @@ final class ModuleEntityMappingResolverTest extends TestCase
         $aliases = array_column($mappings, 'alias');
         sort($aliases);
 
+        // Media drops out (no Entity/); the rest map by Modules{Name} alias.
         self::assertSame(['ModulesForum', 'ModulesMenu', 'ModulesRoadmap'], $aliases);
     }
 }

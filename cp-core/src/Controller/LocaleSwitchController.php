@@ -12,11 +12,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Ön yüz dil değiştirici — /hesap/profil gibi dil ön eki taşımayan
- * sayfalarda LocaleSwitchService bu uca yönlendirir. Çerez yazılır,
- * referer'a (veya ana sayfaya) dönülür.
- *
- * AACP karşılığı: AACPLocaleController (/aacp/locale/{locale}).
+ * Front-end locale switch for unprefixed routes; sets cookie and redirects to referer/home.
+ * AACP equivalent: AACPLocaleController (/aacp/locale/{locale}).
  */
 final class LocaleSwitchController extends AbstractController
 {
@@ -64,9 +61,7 @@ final class LocaleSwitchController extends AbstractController
     }
 
     /**
-     * Open-redirect koruması + ?_locale= kalıntısını silme.
-     * Dil ön eki taşımayan sayfalarda eski değiştirici ?_locale=en
-     * üretiyordu; çerez yazıldıktan sonra query eski dili geri dayatmasın.
+     * Open-redirect guard; strip stale ?_locale= so cookie choice wins.
      */
     private function sameHostReturnUrl(string $referer, Request $request): ?string
     {

@@ -7,6 +7,7 @@ namespace Modules\Forum\Repository;
 use Modules\Forum\Entity\ForumSection;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * @extends ServiceEntityRepository<ForumSection>
@@ -101,5 +102,61 @@ final class ForumSectionRepository extends ServiceEntityRepository
             ->getScalarResult();
 
         return array_map(static fn (array $row) => (string) $row['title'], $rows);
+    }
+
+    public function findOneByCodeAndLocale(string $code, string $locale): ?ForumSection
+    {
+        return $this->findOneBy(['code' => $code, 'locale' => $locale]);
+    }
+
+    public function findTranslation(Uuid $groupId, string $locale): ?ForumSection
+    {
+        return $this->findOneBy(['translationGroupId' => $groupId, 'locale' => $locale]);
+    }
+
+    public function findLocaleSibling(ForumSection $section, string $locale): ?ForumSection
+    {
+        if ($section->getLocale() === $locale) {
+            return $section;
+        }
+
+        $groupId = $section->getTranslationGroupId();
+        if (!$groupId instanceof Uuid) {
+            return null;
+        }
+
+        return $this->findTranslation($groupId, $locale);
+    }
+
+    /**
+     * All section ids in the same translation group (or just this row).
+     *
+     * @return list<int>
+     */
+    public function findGroupSectionIds(ForumSection $section): array
+    {
+        $id = $section->getId();
+        if ($id === null) {
+            return [];
+        }
+
+        $groupId = $section->getTranslationGroupId();
+        if (!$groupId instanceof Uuid) {
+            return [$id];
+        }
+
+        $rows = $this->createQueryBuilder('s')
+            ->select('s.id')
+            ->andWhere('s.translationGroupId = :groupId')
+            ->setParameter('groupId', $groupId)
+            ->getQuery()
+            ->getScalarResult();
+
+        $ids = array_values(array_filter(
+            array_map(static fn (array $row): int => (int) $row['id'], $rows),
+            static fn (int $sectionId): bool => $sectionId > 0,
+        ));
+
+        return $ids !== [] ? $ids : [$id];
     }
 }

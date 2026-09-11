@@ -1,6 +1,5 @@
 {#
-    Proje show — full-bleed toolbar + proje meta kenar çubuğu.
-    Beklenen: post, postBody, typeFields, relatedPosts.
+    Project show — full-bleed toolbar + project meta sidebar. Expects: post, postBody, typeFields, relatedPosts.
 #}
 {% if (typeFields.repo_url is defined and typeFields.repo_url) or (typeFields.demo_url is defined and typeFields.demo_url) %}
 <section class="project-toolbar" aria-label="{{ 'blog.card.type.project'|trans }}">
@@ -39,6 +38,11 @@
                         </div>
                     {% endif %}
                 </div>
+
+                {% include '@Theme/blog/partials/comments.html.twig' with {
+                    post: post,
+                    commentContext: commentContext|default({enabled: false, canSubmit: false, threads: [], approvedCount: 0}),
+                } %}
             </div>
 
             <aside class="grid-golden-minor">

@@ -12,13 +12,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Twig\Environment;
 
 /**
- * Faz 7A: AACP "Kancalar & Hook Gezgini" — sistemde o an kayıtlı olan
- * flat-file (Cotonti tarzı) ve attribute (Symfony tarzı) TÜM hook
- * noktalarını tek bir salt-okunur, canlı tabloda listeler.
- *
- * AACPCronController ile aynı iskelet (plain class + inject edilen
- * Twig\Environment, AbstractController KULLANILMAZ) — cp-core controller'ları
- * arasındaki mevcut konvansiyon.
+ * Phase 7A read-only hook explorer (flat-file and attribute hooks).
+ * Plain Twig controller, same convention as AACPCronController.
  */
 final class AACPHookController
 {
@@ -29,7 +24,7 @@ final class AACPHookController
     }
 
     #[Route('/aacp/hooks', name: 'aacp_hooks', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.hooks', icon: 'heroicons:bolt', panel: 'aacp', priority: 22, capability: 'system.hooks.manage', group: 'aacp.group.system')]
+    #[CpAdminMenu(label: 'aacp.menu.hooks', icon: 'heroicons:bolt', panel: 'aacp', priority: 23, capability: 'system.hooks.manage', parent: 'aacp_tools')]
     #[IsGranted('system.hooks.manage')]
     public function index(): Response
     {

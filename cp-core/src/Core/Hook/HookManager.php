@@ -13,7 +13,7 @@ use Throwable;
  * Isolated hook runner: flat-file Closures plus lazy #[CpHook] services in one trigger().
  * Each invocation is try/caught (Law 2.1/2.3); failures go to module_quarantine.log, never HTTP 500.
  */
-final class HookManager
+final class HookManager implements HookDispatcherInterface
 {
     /**
      * @param iterable<int, array{hookPoint: string, priority: int, serviceId: string, method: string}> $attributeHooks Compile-time #[CpHook] defs.
@@ -54,7 +54,7 @@ final class HookManager
                 'hookPoint' => $hook['hookPoint'],
                 'type' => 'attribute',
                 'source' => $hook['serviceId'],
-                'detail' => sprintf('%s::%s() (öncelik: %d)', $hook['serviceId'], $hook['method'], $hook['priority']),
+                'detail' => sprintf('%s::%s() (priority: %d)', $hook['serviceId'], $hook['method'], $hook['priority']),
             ];
         }
 
@@ -212,7 +212,7 @@ final class HookManager
 
     private function quarantineHookFailure(string $source, string $hookPoint, string $detail, Throwable $e): void
     {
-        $this->logger->warning('Hook çalıştırılırken hata oluştu, sessizce atlandı.', [
+        $this->logger->warning('Hook failed during execution and was silently skipped.', [
             'source' => $source,
             'hook_point' => $hookPoint,
             'exception' => $e->getMessage(),
@@ -225,7 +225,7 @@ final class HookManager
         }
 
         $line = sprintf(
-            '[%s] "%s" kanca noktasındaki %s hata verdiği için çalışma anında atlandı. Sebep: %s',
+            '[%s] Hook point "%s": %s skipped at runtime because it failed. Reason: %s',
             date('Y-m-d H:i:s'),
             $hookPoint,
             $detail,

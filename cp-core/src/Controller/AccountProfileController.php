@@ -4,15 +4,20 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Core\Account\AccountLandingResolver;
+use App\Core\Account\AccountProfileExtensionInterface;
 use App\Core\Account\UserAvatarService;
 use App\Core\Media\Exception\InvalidUploadException;
 use App\Core\Media\Exception\UnsupportedAssetTypeException;
+use App\Core\Security\Password\PasswordChanger;
+use App\Core\Security\Password\PasswordPolicy;
 use App\Entity\User;
 use App\Form\AccountProfileType;
 use App\Form\DTO\AccountProfileFormModel;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -25,17 +30,24 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Site geneli hesap profili — avatar, bildirim tercihleri, şifre.
- * AACP/media picker gerektirmez; tüm giriş yapmış üyeler erişebilir.
+ * Site-wide account profile: avatar, preferences, password. No AACP/media picker required.
  */
 final class AccountProfileController extends AbstractController
 {
+    /**
+     * @param iterable<AccountProfileExtensionInterface> $profileExtensions
+     */
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly UserRepository $userRepository,
         private readonly UserPasswordHasherInterface $passwordHasher,
+        private readonly PasswordPolicy $passwordPolicy,
+        private readonly PasswordChanger $passwordChanger,
         private readonly UserAvatarService $avatarService,
         private readonly TranslatorInterface $translator,
+        private readonly AccountLandingResolver $landingResolver,
+        #[TaggedIterator('cpalius.account.profile_extension')]
+        private readonly iterable $profileExtensions = [],
     ) {
     }
 
@@ -46,15 +58,22 @@ final class AccountProfileController extends AbstractController
         $user = $this->getCurrentUserOrFail();
         $dto = AccountProfileFormModel::fromUser($user);
         $form = $this->createForm(AccountProfileType::class, $dto);
+        foreach ($this->profileExtensions as $extension) {
+            foreach ($extension->valuesFromUser($user) as $field => $value) {
+                if ($form->has($field)) {
+                    $form->get($field)->setData($value);
+                }
+            }
+        }
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             if ($this->userRepository->isEmailTakenByAnotherUser($dto->email, $user->getId())) {
                 $form->get('email')->addError(new FormError($this->translator->trans('account.profile.email_taken')));
             } elseif (!$this->applyPasswordChangeIfRequested($dto, $user, $form)) {
-                // forma hata eklendi
+                // errors added to form
             } else {
-                $this->mapDtoToUser($dto, $user);
+                $this->mapDtoToUser($dto, $user, $form);
                 $this->entityManager->flush();
 
                 $this->addFlash('success', $this->translator->trans('account.profile.saved'));
@@ -66,6 +85,7 @@ final class AccountProfileController extends AbstractController
         return $this->render('account/profile.html.twig', [
             'form' => $form,
             'avatarUrl' => $this->avatarService->resolveUrl($user),
+            'accountHomeRoute' => $this->landingResolver->routeName(),
         ]);
     }
 
@@ -139,24 +159,30 @@ final class AccountProfileController extends AbstractController
             return false;
         }
 
-        $user->setPassword($this->passwordHasher->hashPassword($user, $newPassword));
+        $violations = $this->passwordPolicy->validate($newPassword, $this->passwordChanger->identityOf($user), $user);
+        if ($violations !== []) {
+            foreach ($violations as $violation) {
+                $form->get('newPassword')->addError(new FormError($violation));
+            }
+
+            return false;
+        }
+
+        $this->passwordChanger->change($user, $newPassword);
 
         return true;
     }
 
-    private function mapDtoToUser(AccountProfileFormModel $dto, User $user): void
+    private function mapDtoToUser(AccountProfileFormModel $dto, User $user, FormInterface $form): void
     {
         $user->setEmail($dto->email);
         $user->setUsername(trim((string) $dto->username) !== '' ? trim((string) $dto->username) : null);
         $user->setFirstName(trim($dto->firstName));
         $user->setLastName(trim($dto->lastName));
 
-        $user->setDataValue('forum_notif_reply', $dto->forumNotifReply);
-        $user->setDataValue('forum_notif_thread', $dto->forumNotifThread);
-        $user->setDataValue('forum_notif_quote', $dto->forumNotifQuote);
-        $user->setDataValue('forum_notif_reaction', $dto->forumNotifReaction);
-        $user->setDataValue('forum_notif_dislike', $dto->forumNotifDislike);
-        $user->setDataValue('forum_notif_mention', $dto->forumNotifMention);
+        foreach ($this->profileExtensions as $extension) {
+            $extension->saveToUser($user, $form);
+        }
     }
 
     private function getCurrentUserOrFail(): User

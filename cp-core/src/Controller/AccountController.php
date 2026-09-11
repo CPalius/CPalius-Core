@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Core\Account\AccountLandingResolver;
 use App\Core\Account\AccountRegistrationService;
 use App\Core\Localization\LocaleProvider;
 use App\Core\Mail\CpMailerService;
 use App\Core\Security\CaptchaService;
+use App\Core\Security\Password\PasswordChanger;
+use App\Core\Security\Service\LoginDefenseService;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -23,31 +26,9 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Site geneli, public temaya entegre hesap sayfaları (giriş/kayıt) —
- * App\Entity\User çekirdeğini kullanır, bu yüzden burada oluşturulan
- * hesap forum, blog, medya vb. HER modülde aynı oturumla aktiftir.
- *
- * "/login" (App\Controller\Admin\SecurityController::login) BİLİNÇLİ
- * OLARAK dokunulmadan bırakıldı: security.yaml'daki tek firewall'ın
- * form_login "check_path"i hâlâ o rotadır (kimlik doğrulama akışı
- * değişmedi), sadece "login_path" (kullanıcının YÖNLENDİRİLECEĞİ/
- * GÖRECEĞİ sayfa) buradaki temaya entegre görünüme çevrildi — bkz.
- * security.yaml yorumu. Bu sayede AACP/recovery zinciri hâlâ tema
- * bağımlılığı OLMAYAN admin/login.html.twig'e güvenebiliyor (Manifesto
- * Law 2.3), ama normal site/forum ziyaretçisi artık "admin girişi"
- * gibi görünen bir sayfa yerine markaya uygun bir sayfa görüyor. Bu
- * sayfadaki form, kimlik doğrulamayı GERÇEKTEN yapan check_path'e
- * (admin_login) post eder — kendi controller mantığı YOKTUR.
- *
- * security.yaml'daki login_path/default_target_path/logout.target
- * BİLİNÇLİ OLARAK DEĞİŞTİRİLMEDİ: bunlar hâlâ admin_login/admin_dashboard'a
- * işaret eder, çünkü AACP'nin auth-gerektiren korumalı bir sayfaya
- * (/admin, /aacp) yönlendirme akışı bu ayarlara bağlıdır ve tema kırılsa
- * bile çalışabilmesi gerekir. Bunun yerine login() burada, "hedef sayfa"yı
- * (giriş sonrası nereye dönüleceğini) Symfony'nin zaten desteklediği
- * session anahtarına (bkz. login() içindeki $targetPathKey) ELLE yazarak
- * çözer — global config'e dokunmadan, sadece BU sayfadan giriş yapanlar
- * için doğru (forum'a/geldiği sayfaya) yönlendirme sağlar.
+ * Public themed login/register pages using App\Entity\User (one session site-wide).
+ * Form posts to admin_login check_path; login_path points here for themed UX.
+ * Post-login redirect is set via session target_path without changing security.yaml defaults.
  */
 final class AccountController extends AbstractController
 {
@@ -61,8 +42,11 @@ final class AccountController extends AbstractController
         private readonly TranslatorInterface $translator,
         private readonly AccountRegistrationService $registrationService,
         private readonly CaptchaService $captchaService,
+        private readonly LoginDefenseService $loginDefense,
+        private readonly PasswordChanger $passwordChanger,
         private readonly CpMailerService $mailerService,
         private readonly LocaleProvider $localeProvider,
+        private readonly AccountLandingResolver $landingResolver,
     ) {
     }
 
@@ -73,23 +57,19 @@ final class AccountController extends AbstractController
             return $this->redirectToRoute('theme_cpalius_website_home');
         }
 
-        // Symfony'nin form_login başarı işleyicisi bu session anahtarı
-        // doluysa default_target_path'i (admin_dashboard) YOK SAYAR (bkz.
-        // sınıf üstü doküman). Zaten set edilmişse (korumalı bir forum
-        // eylemine — ör. yeni konu — erişim engellenip BURAYA yönlendirilmiş
-        // olabilir) dokunulmaz; öyle değilse "nereden geldiği" (referer)
-        // veya forum ana sayfası hedef alınır.
+        // When set, form_login ignores default_target_path. Keep existing target;
+        // otherwise use referer or the account landing route.
         $targetPathKey = '_security.main.target_path';
         $session = $request->getSession();
         if (!$session->has($targetPathKey)) {
             $referer = $request->headers->get('referer');
-            $session->set($targetPathKey, $referer ?: $this->generateUrl('forum_index'));
+            $session->set($targetPathKey, $referer ?: $this->generateUrl($this->landingResolver->routeName()));
         }
 
         return $this->render('account/login.html.twig', [
             'last_username' => $authenticationUtils->getLastUsername(),
             'error' => $authenticationUtils->getLastAuthenticationError(),
-            'captchaEnabled' => $this->captchaService->enabledOnLogin(),
+            'captchaEnabled' => $this->loginDefense->captchaRequiredOnLogin((string) ($request->getClientIp() ?? '')),
             'captchaConfig' => $this->captchaService->getWidgetConfig(),
         ]);
     }
@@ -124,8 +104,7 @@ final class AccountController extends AbstractController
                 'username' => $username,
                 'firstName' => $firstName,
                 'lastName' => $lastName,
-                // FAZ 3: kayit dili aktif diller icinden secilir; gecersiz bir
-                // deger sessizce varsayilana duser (bkz. LocaleProvider::resolve).
+                // Phase 3: registration locale from active list; invalid falls back silently.
                 'locale' => $this->localeProvider->resolve($locale),
             ];
 
@@ -153,7 +132,7 @@ final class AccountController extends AbstractController
                 if ($this->registrationService->lastNameMode() !== AccountRegistrationService::FIELD_HIDDEN) {
                     $user->setLastName($lastName);
                 }
-                $user->setPassword($this->passwordHasher->hashPassword($user, $password));
+                $this->passwordChanger->change($user, $password);
                 $user->setCpaliusRoles([self::DEFAULT_ROLE]);
                 $user->setDataValue('locale', $formValues['locale']);
 
@@ -177,7 +156,7 @@ final class AccountController extends AbstractController
                 $this->security->login($user, null, 'main');
                 $this->addFlash('success', $this->translator->trans('account.register.welcome', ['fullName' => $user->getFullName()]));
 
-                return $this->redirectToRoute('forum_index');
+                return $this->redirectToRoute($this->landingResolver->routeName());
             }
 
             foreach ($errors as $error) {

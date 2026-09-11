@@ -7,23 +7,76 @@
 {% endblock %}
 
 {% block body %}
-    <div class="space-y-sp-md" data-api-keys-root data-api-keys-csrf="{{ csrf_token }}">
+    <div class="space-y-sp-md" data-api-keys-root data-api-keys-csrf="{{ csrf_token }}"
+         data-i18n-active="{{ 'aacp.plugins.active'|trans }}"
+         data-i18n-inactive="{{ 'aacp.plugins.inactive'|trans }}"
+         data-i18n-deactivate="{{ 'aacp.plugins.deactivate'|trans }}"
+         data-i18n-activate="{{ 'aacp.plugins.activate'|trans }}"
+         data-i18n-delete="{{ 'aacp.cron.delete'|trans }}"
+         data-i18n-delete-confirm="{{ 'aacp.api_keys.delete_confirm'|trans }}"
+         data-locale="{{ app.request.locale }}">
         <div data-api-key-reveal class="hidden rounded-lg border border-primary-500/40 bg-primary-500/5 p-sp-sm">
             <p class="text-fs-xs font-semibold uppercase tracking-wide !text-primary-400">{{ 'aacp.api_keys.reveal_notice'|trans }}</p>
             <p data-api-key-reveal-value class="mt-2 break-all rounded-lg bg-dark-1 px-3 py-2 font-mono text-fs-sm text-slate-100"></p>
         </div>
 
         <twig:cp:card title="{{ 'aacp.api_keys.generate_title'|trans }}">
-            <form data-api-key-create-form class="flex items-end gap-3">
-                <div class="flex-1">
+            <form data-api-key-create-form class="space-y-sp-sm">
+                <div>
                     <label class="form-label !text-slate-400" for="api-key-label">{{ 'aacp.api_keys.label_field'|trans }}</label>
                     <input type="text" id="api-key-label" name="label" required maxlength="191"
                            placeholder="{{ 'aacp.api_keys.label_placeholder'|trans }}"
                            class="form-control !border-white/10 !bg-dark-1 !text-slate-100 placeholder:!text-slate-600">
                 </div>
-                <button type="submit" class="btn btn-primary">
-                    {{ 'aacp.api_keys.generate_action'|trans }}
-                </button>
+
+                <div>
+                    <label class="form-label !text-slate-400" for="api-key-capabilities">{{ 'aacp.api_keys.capabilities_field'|trans }}</label>
+                    <textarea id="api-key-capabilities" name="capabilities" rows="3"
+                              placeholder="invoice.read&#10;ticket.create"
+                              list="api-key-known-capabilities"
+                              class="form-control !border-white/10 !bg-dark-1 font-mono !text-slate-100 placeholder:!text-slate-600"></textarea>
+                    {% if knownCapabilities is not empty %}
+                        <datalist id="api-key-known-capabilities">
+                            {% for capability in knownCapabilities %}
+                                <option value="{{ capability }}"></option>
+                            {% endfor %}
+                        </datalist>
+                        <p class="mt-1 text-fs-xs !text-slate-600">
+                            {{ 'aacp.api_keys.capabilities_hint'|trans }}
+                            <span class="font-mono">{{ knownCapabilities|join(', ') }}</span>
+                        </p>
+                    {% else %}
+                        <p class="mt-1 text-fs-xs !text-slate-600">{{ 'aacp.api_keys.capabilities_hint'|trans }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="grid gap-sp-sm md:grid-cols-2">
+                    <div>
+                        <label class="form-label !text-slate-400" for="api-key-tenant">{{ 'aacp.api_keys.tenant_field'|trans }}</label>
+                        <input type="text" id="api-key-tenant" name="tenant_id" maxlength="64"
+                               placeholder="{{ 'aacp.api_keys.tenant_placeholder'|trans }}"
+                               class="form-control !border-white/10 !bg-dark-1 !text-slate-100 placeholder:!text-slate-600">
+                    </div>
+                    <div>
+                        <label class="form-label !text-slate-400" for="api-key-expires">{{ 'aacp.api_keys.expires_field'|trans }}</label>
+                        <input type="date" id="api-key-expires" name="expires_at"
+                               class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label !text-slate-400" for="api-key-ips">{{ 'aacp.api_keys.ip_allowlist_field'|trans }}</label>
+                    <textarea id="api-key-ips" name="ip_allowlist" rows="2"
+                              placeholder="203.0.113.4&#10;198.51.100.0/24"
+                              class="form-control !border-white/10 !bg-dark-1 font-mono !text-slate-100 placeholder:!text-slate-600"></textarea>
+                    <p class="mt-1 text-fs-xs !text-slate-600">{{ 'aacp.api_keys.ip_allowlist_hint'|trans }}</p>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit" class="btn btn-primary">
+                        {{ 'aacp.api_keys.generate_action'|trans }}
+                    </button>
+                </div>
             </form>
         </twig:cp:card>
 
@@ -39,7 +92,22 @@
                     <twig:block name="rows">
                         {% for apiKey in apiKeys %}
                             <tr data-api-key-row="{{ apiKey.id }}">
-                                <td class="!text-slate-200">{{ apiKey.label }}</td>
+                                <td class="!text-slate-200">
+                                    {{ apiKey.label }}
+                                    <div class="mt-1 flex flex-wrap items-center gap-1">
+                                        {% for capability in apiKey.capabilities %}
+                                            <span class="badge badge-neutral font-mono text-fs-xs">{{ capability }}</span>
+                                        {% else %}
+                                            <span class="text-fs-xs !text-slate-600">{{ 'aacp.api_keys.no_capabilities'|trans }}</span>
+                                        {% endfor %}
+                                        {% if apiKey.tenantId %}
+                                            <span class="badge badge-info text-fs-xs">tenant: {{ apiKey.tenantId }}</span>
+                                        {% endif %}
+                                        {% if apiKey.expiresAt %}
+                                            <span class="badge badge-warning text-fs-xs">{{ 'aacp.api_keys.expires_at'|trans }} {{ apiKey.expiresAt|date('d.m.Y') }}</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
                                 <td class="font-mono text-fs-xs !text-slate-500">••••{{ apiKey.lastFourChars }}</td>
                                 <td class="text-fs-xs !text-slate-500">{{ apiKey.createdAt|date('d.m.Y H:i') }}</td>
                                 <td>

@@ -5,17 +5,12 @@ declare(strict_types=1);
 namespace App\Core\Menu;
 
 /**
- * #[CpAdminMenu] ile işaretlenmiş TÜM action'ların tek doğruluk kaynağı.
- *
- * ResourceRegistry ile aynı ayrım: bu sınıf hiçbir tarama yapmaz, sadece
- * AdminMenuRegistrationPass tarafından derleme zamanında doldurulan pasif
- * bir depodur. Modül aktiflik / yetki filtrelemesi burada YAPILMAZ —
- * bu registry aktif olmayan modüllerin öğelerini de içerir, gerçek
- * filtreleme render zamanında AdminMenuRuntime içinde yapılır.
+ * Single source of truth for all #[CpAdminMenu] actions; passive store filled by AdminMenuRegistrationPass.
+ * No scanning or filtering here — AdminMenuRuntime filters by module/capability at render time.
  */
 final class AdminMenuRegistry
 {
-    /** @var array<string, list<MenuItemDefinition>> panel => öğeler */
+    /** @var array<string, list<MenuItemDefinition>> panel => items */
     private array $byPanel = [];
 
     public function add(MenuItemDefinition $item): void
@@ -24,8 +19,7 @@ final class AdminMenuRegistry
     }
 
     /**
-     * @return list<MenuItemDefinition> priority'ye göre artan sırada
-     *   (eşitlik durumunda ekleme sırası korunur — PHP'nin stabil sort'u).
+     * @return list<MenuItemDefinition> sorted by ascending priority (stable sort preserves insertion order on ties).
      */
     public function byPanel(string $panel): array
     {

@@ -40,6 +40,7 @@
             'mention': 'forum.notifications.tab.mention',
             'reaction': 'forum.notifications.tab.reaction',
             'dislike': 'forum.notifications.tab.dislike',
+            'watch': 'forum.notifications.tab.watch',
             'reputation': 'forum.notifications.tab.reputation'
         } %}
         {% for key, label in tabs %}
@@ -58,6 +59,7 @@
                 {% elseif n.type == 'mention' %}<i class="bi bi-at"></i>
                 {% elseif n.type == 'reaction' %}<i class="bi bi-heart"></i>
                 {% elseif n.type == 'dislike' %}<i class="bi bi-hand-thumbs-down"></i>
+                {% elseif n.type == 'watch' %}<i class="bi bi-bell"></i>
                 {% else %}<i class="bi bi-award"></i>{% endif %}
             </div>
             <div class="forum-notif-item__body">

@@ -14,20 +14,8 @@ use Symfony\Component\Routing\Attribute\Route;
 use Throwable;
 
 /**
- * AdminMenuRegistry'yi container derleme zamanında doldurur.
- *
- * ResourceRegistrationPass ile BİREBİR AYNI iskelet — tek fark taranan
- * hedef (Entity yerine Controller sınıfları/metotları) ve okunan attribute
- * (#[CpAdminMenu], TARGET_METHOD). Aynı modül izolasyonu felsefesi
- * geçerlidir: bir modülün Controller dizini taranırken hata oluşursa
- * (syntax hatası, eksik bağımlılık vb.) sadece o modülün menü öğeleri
- * kayıt olmaz, derleme durmaz.
- *
- * Menü öğelerinin modül aktiflik/yetki filtrelemesi burada YAPILMAZ:
- * bu pass derleme zamanında sabittir, ama active_modules.php çalışma
- * zamanında (cache temizlemeden) değişebilir. Bu yüzden BURADA aktif
- * olmayan modüllerin öğeleri de dahil TÜM öğeler toplanır; gerçek
- * filtreleme AdminMenuRuntime içinde her render'da taze yapılır.
+ * Populates AdminMenuRegistry at compile time (same skeleton as ResourceRegistrationPass; scans controllers for #[CpAdminMenu]).
+ * Module isolation: one broken controller dir skips that module only. Active/capability filtering runs in AdminMenuRuntime at render time.
  */
 final class AdminMenuRegistrationPass implements CompilerPassInterface
 {
@@ -61,8 +49,7 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
                     $collected[] = $item;
                 }
             } catch (Throwable) {
-                // Modül izolasyonu: bir modülün Controller dizini taranırken
-                // hata oluşursa sadece o modülün menü öğeleri kayıt olmaz.
+                // Module isolation: scan failure skips that module's menu items only.
             }
         }
 
@@ -129,8 +116,7 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
 
                 foreach ($reflection->getMethods() as $method) {
                     if ($method->getDeclaringClass()->getName() !== $className) {
-                        // Kalıtımla gelen metotlar (ör. AbstractController'dan)
-                        // bu sınıfa ait değildir, atlanır.
+                        // Skip inherited methods (e.g. from AbstractController).
                         continue;
                     }
 
@@ -141,8 +127,7 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
 
                     $methodRouteAttributes = $method->getAttributes(Route::class);
                     if ($methodRouteAttributes === []) {
-                        // #[CpAdminMenu] taşıyan ama route'u olmayan bir metot
-                        // sidebar'a bağlanamaz; sessizce atlanır.
+                        // #[CpAdminMenu] without #[Route] cannot link in sidebar; skip silently.
                         continue;
                     }
 
@@ -174,9 +159,7 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
                     ];
                 }
             } catch (Throwable) {
-                // Tek bir dosyanın reflection'ı başarısız olursa (namespace
-                // uyuşmazlığı, eksik parent class vb.) o dosya atlanır;
-                // tüm tarama iptal edilmez.
+                // Reflection failure on one file skips that file; scan continues.
                 continue;
             }
         }
@@ -184,11 +167,7 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
         return $collected;
     }
 
-    /**
-     * Menü öğesi için aktif-sayfa eşleştirmesinde kullanılan prefix.
-     * Sınıf düzeyindeki geniş prefix (ör. admin_forum_) yerine, her action
-     * kendi alt rotalarını kapsayan dar bir prefix alır (ör. admin_forum_sections_).
-     */
+    /** Route prefix for active-page matching; narrow per-action prefix instead of broad class-level prefix. */
     private function resolveMenuRoutePrefix(string $classRoutePrefix, string $methodRouteName, string $routeName): string
     {
         if ($classRoutePrefix === '') {
@@ -199,7 +178,7 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
             return $routeName;
         }
 
-        // admin_forum_permissions_, admin_blog_post_ gibi alt-controller prefix'leri
+        // Sub-controller prefixes like admin_forum_permissions_, admin_blog_post_
         $segments = array_values(array_filter(explode('_', rtrim($classRoutePrefix, '_'))));
         if (count($segments) >= 3) {
             return $classRoutePrefix;

@@ -6,10 +6,10 @@
         <title>{% block title %}{{ 'aacp.layout.title.default'|trans }}{% endblock %}</title>
         <meta name="robots" content="noindex, nofollow">
 
-        {# AACP shell uses only the app entrypoint; extra importmap() calls break the browser. #}
+        {# One importmap() call only; extra calls break the browser. #}
         {% block stylesheets %}{% endblock %}
         {% block javascripts %}
-            {{ importmap('app') }}
+            {{ importmap(['app', 'studio-quick-cache-clear']) }}
         {% endblock %}
     </head>
     <body class="aacp-shell h-full bg-dark-1 text-slate-100 antialiased text-fs-base font-sans">
@@ -47,9 +47,11 @@
                                 {% endif %}
                             {% endfor %}
 
+                            {% set isHub = item.hub|default(false) %}
                             <li{% if item.children is not empty %} class="dropdown{{ (itemActive or childActive) ? ' open' : '' }}"{% endif %}>
-                                <a href="{{ path(item.routeName) }}"
-                                   class="{{ itemActive ? 'active-page' : '!text-slate-400 hover:!bg-white/5 hover:!text-slate-200' }}{{ item.children is not empty ? ' has-submenu-trigger' : '' }}">
+                                <a href="{{ isHub ? '#' : path(item.routeName) }}"
+                                   {% if isHub %}data-sidebar-dropdown-trigger{% endif %}
+                                   class="{{ (itemActive or (isHub and childActive)) ? 'active-page' : '!text-slate-400 hover:!bg-white/5 hover:!text-slate-200' }}{{ item.children is not empty ? ' has-submenu-trigger' : '' }}">
                                     <twig:ux:icon name="{{ item.icon }}" class="menu-icon shrink-0" />
                                     <span>{{ item.label|trans }}</span>
                                     {% if item.children is not empty %}
@@ -85,21 +87,65 @@
 
             <main data-sidebar-main class="dashboard-main">
                 <header class="navbar-header !bg-dark-2 !border-white/10">
-                    <div class="flex items-center gap-3">
+                    <div class="flex min-w-0 items-center gap-3">
                         <button type="button" data-sidebar-toggle class="sidebar-toggle !text-slate-300">
                             <twig:ux:icon name="tabler:menu-2" class="h-5 w-5" />
                         </button>
                         <button type="button" data-sidebar-mobile-toggle class="sidebar-mobile-toggle !text-slate-300">
                             <twig:ux:icon name="tabler:menu-2" class="h-5 w-5" />
                         </button>
-                        <h1 class="text-fs-md font-semibold text-slate-200">{% block header %}{{ 'aacp.layout.header.default'|trans }}{% endblock %}</h1>
+                        <h1 class="min-w-0 truncate text-fs-md font-semibold text-slate-200">{% block header %}{{ 'aacp.layout.header.default'|trans }}{% endblock %}</h1>
                     </div>
-                    <div class="flex items-center gap-2">
-                        {% block header_actions %}
-                            {{ include('aacp/_header_actions.html.twig') }}
-                        {% endblock %}
+                    <div class="flex shrink-0 items-center gap-2">
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            {% block header_actions %}{% endblock %}
+                        </div>
+                        <a href="{{ path('theme_cpalius_website_home') }}"
+                           target="_blank"
+                           rel="noopener"
+                           title="{{ 'aacp.layout.header.go_website'|trans }}"
+                           class="header-icon-btn !bg-dark-1 !text-slate-300 hover:!bg-white/5">
+                            <twig:ux:icon name="tabler:external-link" class="h-5 w-5" />
+                        </a>
+                        <button type="button"
+                                data-quick-cache-clear-trigger
+                                data-quick-cache-clear-url="{{ path('aacp_cache_rebuild_clear_symfony') }}"
+                                data-quick-cache-clear-csrf="{{ csrf_token('aacp_cache_rebuild') }}"
+                                title="{{ 'studio.layout.clear_cache'|trans }}"
+                                class="header-icon-btn !bg-dark-1 !text-slate-300 hover:!bg-white/5">
+                            <twig:ux:icon name="heroicons:bolt" class="h-5 w-5" />
+                        </button>
+                        {{ include('aacp/_header_actions.html.twig') }}
                     </div>
                 </header>
+
+                <div data-quick-cache-clear-modal class="modal-overlay">
+                    <div class="modal-panel !bg-dark-2 !text-slate-100 shadow-2xl">
+                        <div class="modal-header !border-white/10">
+                            <h2 class="text-fs-md font-semibold text-slate-100">{{ 'studio.layout.clear_cache_modal.title'|trans }}</h2>
+                            <button type="button" data-quick-cache-clear-modal-close class="text-slate-400 hover:text-slate-200">
+                                <twig:ux:icon name="tabler:x" class="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <p data-quick-cache-clear-modal-status
+                               data-running-text="{{ 'studio.layout.clear_cache_modal.running'|trans }}"
+                               data-success-text="{{ 'studio.layout.clear_cache_modal.success'|trans }}"
+                               data-error-text="{{ 'studio.layout.clear_cache_modal.error'|trans }}"
+                               data-request-failed="{{ 'aacp.cache_rebuild.log.request_failed'|trans({error: '{error}'}) }}"
+                               data-not-json="{{ 'aacp.cache_rebuild.log.not_json'|trans({status: '{status}'}) }}"
+                               class="mb-3 text-fs-sm text-slate-400">
+                                {{ 'studio.layout.clear_cache_modal.running'|trans }}
+                            </p>
+                            <div data-quick-cache-clear-modal-log class="space-y-1"></div>
+                        </div>
+                        <div class="modal-footer !border-white/10">
+                            <button type="button" data-quick-cache-clear-modal-close class="btn btn-sm btn-neutral">
+                                {{ 'studio.layout.clear_cache_modal.close'|trans }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="pointer-events-none fixed right-sp-md top-[5.25rem] z-40 flex flex-col gap-2" data-toast-stack>
                     {% for label, messages in app.flashes %}

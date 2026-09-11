@@ -1,12 +1,19 @@
 role:
     id: editor
-    label: 'Editör'
+    label: 'role.label.editor'
     capabilities:
         - node.post.view.own
         - node.post.create
         - node.post.edit.own
         - node.post.delete.own
         - node.post.publish
+        - node.page.view.own
+        - node.page.create
+        - node.page.edit.own
+        - node.page.delete.own
+        - node.page.publish
+        - pages.field_group.manage
+        - blog.comment.moderate
         - forum.view
         - forum.topic.create
         - forum.thread.create
@@ -20,3 +27,7 @@ role:
         - account.avatar.upload
         - media.view
         - media.upload
+        - text_format.restricted.use
+        - text_format.basic_html.use
+        - text_format.full_html.use
+        - text_format.markdown.use

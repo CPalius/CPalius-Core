@@ -5,30 +5,22 @@ declare(strict_types=1);
 namespace App\Core\Resource;
 
 /**
- * #[CpResource] ile işaretlenmiş TÜM entity'lerin tek doğruluk kaynağı.
- *
- * Bu registry'nin kendisi hiçbir tarama yapmaz (Manifesto Law 2.1 ruhuyla
- * aynı ayrım: runtime servisi ile keşif/derleme mantığı ayrıdır) — sadece
- * ResourceRegistrationPass tarafından derleme zamanında doldurulan pasif
- * bir depodur. CapabilityRegistry, QueryScopeApplier ve TenantFilter gibi
- * tüketiciler buradan okur.
+ * Single source of truth for all #[CpResource] entities; passive store filled by ResourceRegistrationPass.
+ * No scanning at runtime — consumed by CapabilityRegistry, QueryScopeApplier, TenantFilter, etc.
  */
 final class ResourceRegistry
 {
-    /** @var array<string, ResourceDefinition> entity FQCN => tanım */
+    /** @var array<string, ResourceDefinition> entity FQCN => definition */
     private array $byClass = [];
 
-    /** @var array<string, string> kaynak adı => entity FQCN */
+    /** @var array<string, string> resource name => entity FQCN */
     private array $classByName = [];
 
     public function add(ResourceDefinition $definition): void
     {
         $this->byClass[$definition->entityClass] = $definition;
 
-        // İsim boş olabilir: #[CpResource] taşımadan sadece bir davranış
-        // attribute'u (#[Publishable] vb.) ile kaydedilen entity'lerin
-        // platform kaynağı adı yoktur — bunlar getByName() ile ARANAMAZ,
-        // sadece getByClass()/all() üzerinden erişilebilir.
+        // Empty name: behavior-only entities (#[Publishable] etc.) are not reachable via getByName().
         if ($definition->name !== '') {
             $this->classByName[$definition->name] = $definition->entityClass;
         }
@@ -66,8 +58,7 @@ final class ResourceRegistry
     }
 
     /**
-     * multiTenant: true olan kaynakların entity FQCN listesi —
-     * TenantFilter'ın hangi sınıflara kısıt enjekte edeceğini bilmesi için.
+     * Entity FQCNs with multiTenant: true (for TenantFilter).
      *
      * @return list<class-string>
      */
@@ -80,8 +71,7 @@ final class ResourceRegistry
     }
 
     /**
-     * publishable: true olan kaynakların entity FQCN listesi (bkz.
-     * #[Publishable] + PublishableTrait).
+     * Entity FQCNs with publishable: true (#[Publishable] + PublishableTrait).
      *
      * @return list<class-string>
      */
@@ -91,10 +81,7 @@ final class ResourceRegistry
     }
 
     /**
-     * softDeletable: true olan kaynakların entity FQCN listesi (bkz.
-     * #[SoftDeletable] + SoftDeletableTrait) — ör. bir "silinmişleri
-     * gizle" Doctrine filter'ının hangi sınıflara uygulanacağını bilmesi
-     * için.
+     * Entity FQCNs with softDeletable: true (#[SoftDeletable] + SoftDeletableTrait).
      *
      * @return list<class-string>
      */
@@ -104,8 +91,7 @@ final class ResourceRegistry
     }
 
     /**
-     * auditable: true olan kaynakların entity FQCN listesi — bir audit
-     * log event listener'ının hangi entity'leri izleyeceğini bilmesi için.
+     * Entity FQCNs with auditable: true (for audit log listeners).
      *
      * @return list<class-string>
      */

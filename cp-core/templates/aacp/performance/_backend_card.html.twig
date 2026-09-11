@@ -11,7 +11,15 @@
          data-performance-test-url="{{ path('aacp_performance_test', {backend: backendId}) }}"
          data-performance-enable-url="{{ path('aacp_performance_enable', {backend: backendId}) }}"
          data-performance-disable-url="{{ path('aacp_performance_disable', {backend: backendId}) }}"
+         {% if purgeUrl is defined and purgeUrl %}data-performance-purge-url="{{ purgeUrl }}"{% endif %}
          data-performance-csrf="{{ csrf_token }}"
+         data-i18n-last-test="{{ 'aacp.performance.last_test'|trans({date: '{date}', message: '{message}'}) }}"
+         data-i18n-test-started="{{ 'aacp.performance.js.test_started'|trans }}"
+         data-i18n-latency="{{ 'aacp.performance.js.latency'|trans({ms: '{ms}'}) }}"
+         data-i18n-request-failed="{{ 'aacp.cache_rebuild.log.request_failed'|trans({error: '{error}'}) }}"
+         data-i18n-action-failed="{{ 'aacp.cache_rebuild.log.action_failed'|trans }}"
+         data-i18n-enabled="{{ 'aacp.performance.js.enabled'|trans({backend: '{backend}'}) }}"
+         data-i18n-disabled="{{ 'aacp.performance.js.disabled'|trans({backend: '{backend}'}) }}"
          class="space-y-sp-sm">
 
         <div class="flex items-center gap-2">
@@ -26,15 +34,30 @@
             </span>
         </div>
 
+        {% if intro is defined and intro %}
+            <p class="text-fs-sm text-slate-400">{{ intro }}</p>
+        {% endif %}
+
         <div class="grid grid-cols-1 gap-sp-sm sm:grid-cols-2">
             {% for field in fields %}
                 <div class="{{ field.wide|default(false) ? 'sm:col-span-2' : '' }}">
-                    <label class="form-label !text-slate-400">{{ field.label }}</label>
+                    {% if field.type|default('text') != 'checkbox' %}
+                        <label class="form-label !text-slate-400">{{ field.label }}</label>
+                    {% endif %}
                     {% if field.type|default('text') == 'textarea' %}
                         <textarea name="{{ field.key }}"
                                   rows="5"
                                   data-performance-field="{{ field.key }}"
                                   class="form-control !border-white/10 !bg-dark-1 !text-slate-100">{{ config[field.key] }}</textarea>
+                    {% elseif field.type|default('text') == 'checkbox' %}
+                        <label class="mt-1 flex items-center gap-2 text-fs-sm text-slate-200">
+                            <input type="checkbox"
+                                   data-performance-field="{{ field.key }}"
+                                   value="1"
+                                   {{ config[field.key] ? 'checked' : '' }}
+                                   class="rounded border-white/20 bg-dark-1">
+                            {{ field.label }}
+                        </label>
                     {% else %}
                         <input type="{{ field.key starts with 'password' ? 'password' : 'text' }}"
                                name="{{ field.key }}"
@@ -59,6 +82,11 @@
             <button type="button" class="btn btn-sm btn-danger" data-performance-action="disable" {{ enabled ? '' : 'disabled' }}>
                 {{ 'aacp.performance.action.disable'|trans }}
             </button>
+            {% if purgeUrl is defined and purgeUrl %}
+                <button type="button" class="btn btn-sm btn-secondary" data-performance-action="purge">
+                    {{ 'aacp.performance.action.purge'|trans }}
+                </button>
+            {% endif %}
         </div>
 
         <pre class="text-fs-xs text-slate-500 whitespace-pre-wrap" data-performance-log></pre>

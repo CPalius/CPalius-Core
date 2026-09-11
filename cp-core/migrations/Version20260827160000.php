@@ -8,14 +8,13 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * CPalius CMF forum yapısına örnek konular ve mesajlar ekler.
- * Version20260827150000 sırası hatası nedeniyle silinen içeriği geri koyar.
+ * Seeds sample forum topics and posts; restores content removed by Version20260827150000 ordering issue.
  */
 final class Version20260827160000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'CPalius CMF forum panolarına örnek konular ve mesajlar dağıtır.';
+        return 'Seeds sample topics and posts across CPalius CMF forum boards.';
     }
 
     public function up(Schema $schema): void

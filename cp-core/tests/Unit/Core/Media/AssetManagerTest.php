@@ -20,61 +20,21 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
- * SEC-01 / SEC-02 REGRESYON TESTİ — dosya yükleme güvenlik sınırı.
- *
- * ══ Bu testin var olma sebebi ═══════════════════════════════════════════
- *
- * Denetim öncesi AssetManager::upload() iki açık taşıyordu:
- *
- *   SEC-01: depolanan dosya adının uzantısı İSTEMCİDEN alınıyordu
- *           ($uploadedFile->getClientOriginalExtension()). İçeriği geçerli
- *           bir GIF olan ama "evil.php" adıyla gönderilen bir poliglot
- *           dosya, public/uploads altına "<hash>.php" olarak yazılıyor ve
- *           doğrudan çağrılabiliyordu -> uzaktan kod çalıştırma.
- *
- *   SEC-02: MIME doğrulaması çekirdekte DEĞİL, Media modülünün
- *           controller'ındaydı. AssetManager'ı doğrudan çağıran herhangi
- *           bir kod (başka bir modül, bir tema, bir CLI komutu) tüm
- *           kontrolü atlıyordu.
- *
- * ══ Bu test neden mock'lu bir birim testi ═══════════════════════════════
- *
- * Disk ve veritabanı BİLİNÇLİ olarak taklit edilir, ama dosya İÇERİĞİ
- * ve finfo tespiti GERÇEKTİR. Test edilen şey depolama katmanı değil,
- * KARARdır: "hangi baytlar hangi dosya adına dönüşür ve hangileri
- * reddedilir?" Flysystem'e giden storage key'i yakalayarak bu kararı
- * doğrudan gözlemleriz — gerçek bir dosya sistemine yazmadan.
+ * SEC-01 / SEC-02 regression test — upload security boundary.
+ * Storage is mocked; file content and finfo detection are real.
  */
 #[CoversClass(AssetManager::class)]
 final class AssetManagerTest extends TestCase
 {
-    /**
-     * 1x1 saydam GIF'in gerçek baytları. Testlerde "geçerli görsel"
-     * olarak kullanılır; finfo bunu image/gif olarak tanır.
-     */
+    /** Real bytes of a 1x1 transparent GIF — finfo detects image/gif. */
     private const REAL_GIF = "GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;";
 
-    /** 8 baytlık gerçek PNG imzası + minimal IHDR. */
+    /** Real 8-byte PNG signature plus minimal IHDR. */
     private const REAL_PNG = "\x89PNG\r\n\x1a\n\x00\x00\x00\x0dIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89";
 
     /**
-     * Testlerde kullanılan PHP gövdesi ZARARSIZDIR ve bu BİLİNÇLİ bir
-     * karardır.
-     *
-     * Testin iddiası "içeriği PHP olarak tespit edilen dosya reddedilir"
-     * olduğu için, gövdenin gerçekten silahlandırılmış olması gerekmez —
-     * finfo her iki durumda da "text/x-php" döndürür.
-     *
-     * Buna karşılık gerçek bir webshell imzası (ör. system($_GET[...]))
-     * kullanmak testi TAŞINAMAZ hâle getirir: Windows Defender gibi
-     * gerçek zamanlı korumalar böyle bir dosyayı diske yazıldığı anda
-     * kilitler. Dosya var görünür, filesize() doğru değeri döner,
-     * is_readable() bile true der — ama fopen() ve finfo::file()
-     * "Invalid argument" ile başarısız olur. Sonuç, gerçek bir regresyonu
-     * değil yalnızca geliştiricinin antivirüsünü raporlayan bir testtir.
-     *
-     * (Bu davranış FAZ 2 sırasında bu makinede birebir gözlemlendi ve
-     * doğrulandı; bkz. teslim notları.)
+     * Benign PHP body — finfo returns text/x-php without triggering AV locks.
+     * Real webshell signatures break finfo on Windows Defender (see delivery notes).
      */
     private const BENIGN_PHP = '<?php echo 1; ?>';
 
@@ -88,13 +48,12 @@ final class AssetManagerTest extends TestCase
 
     private AssetManager $assetManager;
 
-    /** @var list<string> Flysystem'e yazılan storage key'ler. */
+    /** @var list<string> Storage keys written to Flysystem. */
     private array $writtenKeys = [];
 
     protected function setUp(): void
     {
-        // Çalışma dizini proje ağacındadır: Windows'ta finfo, ASCII
-        // olmayan yollarda (ör. "C:\Users\Ali Çömez\...") dosya açamaz.
+        // Work dir under project tree — finfo fails on non-ASCII Windows paths.
         $this->workDir = \dirname(__DIR__, 4).'/var/test-uploads';
 
         if (!is_dir($this->workDir)) {
@@ -112,8 +71,7 @@ final class AssetManagerTest extends TestCase
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
         $this->assetRepository = $this->createMock(AssetRepository::class);
 
-        // İzin listesi GERÇEKTİR: test edilen güvenlik politikasının
-        // kendisi taklit edilirse test hiçbir şey kanıtlamaz.
+        // Real allowlist — mocking the policy would prove nothing.
         $this->assetManager = new AssetManager(
             $this->storage,
             $this->entityManager,
@@ -129,14 +87,9 @@ final class AssetManagerTest extends TestCase
         }
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // SEC-01 — Uzantı içerikten türetilir, istemciden ASLA
-    // ═════════════════════════════════════════════════════════════════════
+    // SEC-01 — Extension from content, never from client
 
-    /**
-     * Denetim raporundaki tam saldırı zinciri: geçerli GIF başlığı
-     * taşıyan bir poliglot, ".php" adıyla gönderiliyor.
-     */
+    /** Audit-report attack chain: GIF polyglot sent as .php filename. */
     public function testPolyglotGifNamedAsPhpIsStoredWithGifExtension(): void
     {
         $upload = $this->createUpload(
@@ -173,9 +126,7 @@ final class AssetManagerTest extends TestCase
         yield 'uzantisiz'               => ['photo', 'gif'];
     }
 
-    /**
-     * İstemci adı ne olursa olsun, diskteki uzantı içerikten gelir.
-     */
+    /** Stored extension always comes from content, regardless of client name. */
     #[DataProvider('deceptiveFilenameProvider')]
     public function testClientFilenameNeverDeterminesStoredExtension(string $clientName, string $expectedExtension): void
     {
@@ -191,10 +142,7 @@ final class AssetManagerTest extends TestCase
         );
     }
 
-    /**
-     * Depolanan ad tamamen bizim kontrolümüzde olmalı: sha256 hash
-     * (64 onaltılık karakter) + kanonik uzantı, "YYYY/MM/" dizini altında.
-     */
+    /** Stored name is sha256 hash + canonical extension under YYYY/MM/. */
     public function testStoredFilenameIsHashPlusCanonicalExtension(): void
     {
         $bytes = self::REAL_PNG;
@@ -210,15 +158,13 @@ final class AssetManagerTest extends TestCase
         );
         self::assertSame(hash('sha256', $bytes), $asset->getHash());
 
-        // Dizin geçişi denemesi orijinal ada da yansımamalı.
+        // Path traversal must not leak into original name.
         self::assertSame('passwd.php', $asset->getOriginalName());
         self::assertStringNotContainsString('..', $asset->getOriginalName());
         self::assertStringNotContainsString('/', $asset->getOriginalName());
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // SEC-02 — İzin listesi çekirdekte, fail-closed
-    // ═════════════════════════════════════════════════════════════════════
+    // SEC-02 — Allowlist in core, fail-closed
 
     /**
      * @return iterable<string, array{string, string, string}>
@@ -242,10 +188,7 @@ final class AssetManagerTest extends TestCase
         ];
     }
 
-    /**
-     * Reddedilen türler UnsupportedAssetTypeException fırlatmalı ve
-     * diske HİÇBİR ŞEY yazılmamalıdır.
-     */
+    /** Rejected types throw UnsupportedAssetTypeException and write nothing to disk. */
     #[DataProvider('rejectedUploadProvider')]
     public function testDisallowedContentIsRejectedBeforeAnyWrite(
         string $clientName,
@@ -272,10 +215,7 @@ final class AssetManagerTest extends TestCase
         self::assertSame([], $this->writtenKeys, 'Reddedilen dosya diske YAZILMAMALIYDI.');
     }
 
-    /**
-     * SVG, denetimden önce "image/" ön eki tarafından kabul ediliyordu.
-     * Bu test o özel regresyonu izler.
-     */
+    /** SVG was previously accepted via image/ prefix — tracks that regression. */
     public function testSvgIsRejectedEvenThoughItIsAnImageType(): void
     {
         $upload = $this->createUpload(
@@ -288,10 +228,7 @@ final class AssetManagerTest extends TestCase
         $this->assetManager->upload($upload);
     }
 
-    /**
-     * Her reddin ortak atası AssetUploadException olmalı: çağıran taraf
-     * (MediaAdminController) tek bir catch ile 400 döndürebilsin.
-     */
+    /** All rejections extend AssetUploadException for a single catch in controllers. */
     public function testAllRejectionsShareTheCommonBaseException(): void
     {
         $upload = $this->createUpload('shell.php', '<?php echo 1; ?>');
@@ -301,9 +238,7 @@ final class AssetManagerTest extends TestCase
         $this->assetManager->upload($upload);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Geçerli yükleme ve tekrar önleme
-    // ═════════════════════════════════════════════════════════════════════
+    // Valid upload and deduplication
 
     public function testValidPngIsAcceptedAndPersisted(): void
     {
@@ -321,10 +256,7 @@ final class AssetManagerTest extends TestCase
         self::assertSame(\strlen(self::REAL_PNG), $asset->getFileSize());
     }
 
-    /**
-     * Aynı içerik ikinci kez yüklendiğinde diske tekrar yazılmaz ve yeni
-     * bir satır oluşturulmaz — var olan Asset döner.
-     */
+    /** Duplicate content returns existing Asset without writing to disk again. */
     public function testDuplicateContentReturnsExistingAssetWithoutWriting(): void
     {
         $existing = new Asset(
@@ -351,14 +283,9 @@ final class AssetManagerTest extends TestCase
         self::assertSame([], $this->writtenKeys);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Bozuk yüklemeler
-    // ═════════════════════════════════════════════════════════════════════
+    // Broken uploads
 
-    /**
-     * PHP yükleme hatası (ör. boyut aşımı) doğrulamadan ÖNCE yakalanmalı;
-     * kesik bir dosyanın hash'i alınıp "geçerli" bir Asset üretilmemeli.
-     */
+    /** PHP upload error must be caught before validation — no partial Asset. */
     public function testUploadWithPhpErrorIsRejected(): void
     {
         $path = $this->writeTempFile('kirik.png', self::REAL_PNG);
@@ -371,11 +298,7 @@ final class AssetManagerTest extends TestCase
         $this->assetManager->upload($upload);
     }
 
-    /**
-     * Boş dosya: finfo bunu "application/x-empty" veya "inode/x-empty"
-     * olarak tanır; her iki durumda da izin listesinde yoktur ve
-     * reddedilmelidir (fail-closed).
-     */
+    /** Empty file is not on the allowlist and must be rejected (fail-closed). */
     public function testEmptyFileIsRejected(): void
     {
         $upload = $this->createUpload('bos.png', '');
@@ -387,19 +310,13 @@ final class AssetManagerTest extends TestCase
         $this->assetManager->upload($upload);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Yardımcılar
-    // ═════════════════════════════════════════════════════════════════════
+    // Helpers
 
     private function createUpload(string $clientName, string $contents): UploadedFile
     {
         $path = $this->writeTempFile($clientName, $contents);
 
-        // $test: true -> isValid() gerçek bir HTTP yüklemesi olmadan da
-        // UPLOAD_ERR_OK'a bakarak çalışır (is_uploaded_file() atlanır).
-        // MIME argümanı BİLİNÇLİ olarak null: AssetManager onu zaten
-        // kullanmaz, kendi finfo tespitini yapar — ve testin bunu
-        // varsayması değil, doğrulaması gerekir.
+        // $test: true skips is_uploaded_file(); MIME null — AssetManager uses finfo.
         return new UploadedFile($path, $clientName, null, null, true);
     }
 

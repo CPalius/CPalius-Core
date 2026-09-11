@@ -1,10 +1,6 @@
 {#
-    AACP header'ının ortak sağ blok içeriği: arama, dil seçici, bildirim
-    dropdown'u ve profil dropdown'u. layout.html.twig'in varsayılan
-    header_actions block'u tarafından include edilir; bir sayfa
-    header_actions'ı TAMAMEN override ederse (ör. localization/index.html.twig
-    export/import butonları için) bu partial o sayfada görünmez — bu
-    bilinçli bir tasarımdır, "parent()" ile zorunlu birleştirme yapılmaz.
+    AACP chrome: search, locale, notifications, profile. Included outside
+    header_actions so page buttons cannot hide the menu.
 #}
 <form class="hidden sm:block" role="search">
     <label class="relative block">

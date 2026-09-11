@@ -1,0 +1,90 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ term ? 'aacp.taxonomy.term_form.header_edit'|trans : 'aacp.taxonomy.term_form.header_create'|trans }} — {{ vocabulary.label }}{% endblock %}
+
+{% block body %}
+    <div class="max-w-xl space-y-sp-sm">
+        <twig:cp:translation_tabs
+            tabs="{{ translationTabs }}"
+            editRoute="aacp_taxonomy_term_edit"
+            createRoute="aacp_taxonomy_term_new"
+            sourceId="{{ sourceId }}"
+            extraParams="{{ {machineName: vocabulary.machineName} }}" />
+
+        <twig:cp:card>
+            <form method="post"
+                  action="{{ term ? path('aacp_taxonomy_term_edit', {machineName: vocabulary.machineName, id: term.id}) : path('aacp_taxonomy_term_new', {machineName: vocabulary.machineName}) }}"
+                  class="space-y-sp-sm">
+                <input type="hidden" name="_token" value="{{ csrf_token('aacp_taxonomy_term') }}">
+                <input type="hidden" name="locale" value="{{ locale }}">
+                {% if sourceId is not null %}
+                    <input type="hidden" name="translation_of" value="{{ sourceId }}">
+                {% endif %}
+
+                <div>
+                    <span class="form-label">{{ 'cp.form.locale'|trans }}</span>
+                    <p class="text-fs-sm font-medium !text-slate-200">
+                        <code>{{ locale }}</code>
+                        {% if sourceId is not null and not term %}
+                            <span class="ms-1 text-fs-xs font-normal !text-primary-400">
+                                {{ 'cp.form.locale_translation_of'|trans }}
+                            </span>
+                        {% endif %}
+                    </p>
+                </div>
+
+                <div>
+                    <label for="name" class="form-label">{{ 'aacp.taxonomy.term_form.name'|trans }}</label>
+                    <input type="text" id="name" name="name" required value="{{ formValues.name }}"
+                           class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                </div>
+
+                <div>
+                    <label for="slug" class="form-label">{{ 'aacp.taxonomy.term_form.slug'|trans }}</label>
+                    <input type="text" id="slug" name="slug" value="{{ formValues.slug }}"
+                           placeholder="{{ 'aacp.taxonomy.term_form.slug_placeholder'|trans }}"
+                           class="form-control !border-white/10 !bg-dark-1 font-mono !text-slate-100">
+                    <p class="mt-1 text-fs-xs !text-slate-600">{{ 'aacp.taxonomy.term_form.slug_help'|trans }}</p>
+                </div>
+
+                {% if vocabulary.hierarchical %}
+                    <div>
+                        <label for="parent_id" class="form-label">{{ 'aacp.taxonomy.term_form.parent'|trans }}</label>
+                        <select id="parent_id" name="parent_id" class="form-select !border-white/10 !bg-dark-1 !text-slate-100">
+                            <option value="">— {{ 'aacp.taxonomy.term_form.no_parent'|trans }} —</option>
+                            {% for candidate in parentOptions %}
+                                <option value="{{ candidate.id }}" {{ candidate.id == formValues.parentId ? 'selected' : '' }}>
+                                    {{ candidate.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                {% endif %}
+
+                <div>
+                    <label for="weight" class="form-label">{{ 'aacp.taxonomy.form.weight'|trans }}</label>
+                    <input type="number" id="weight" name="weight" value="{{ formValues.weight }}"
+                           class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                </div>
+
+                {% if fieldsForm.fields is defined and fieldsForm.fields|length > 0 %}
+                    <div class="space-y-sp-sm border-t border-white/10 pt-sp-sm">
+                        <p class="text-fs-sm font-medium !text-slate-300">{{ 'aacp.taxonomy.term_form.fields'|trans }}</p>
+                        {{ form_widget(fieldsForm.fields) }}
+                        {{ form_errors(fieldsForm.fields) }}
+                    </div>
+                {% endif %}
+
+                <div class="flex items-center gap-3 border-t border-white/10 pt-sp-sm">
+                    <button type="submit" class="btn btn-primary">
+                        {{ term ? 'aacp.taxonomy.form.submit_edit'|trans : 'aacp.taxonomy.form.submit_create'|trans }}
+                    </button>
+                    <a href="{{ path('aacp_taxonomy_terms', {machineName: vocabulary.machineName, locale: locale}) }}"
+                       class="text-fs-sm font-medium !text-slate-500 hover:!text-slate-200">
+                        {{ 'aacp.users.form.cancel'|trans }}
+                    </a>
+                </div>
+            </form>
+        </twig:cp:card>
+    </div>
+{% endblock %}

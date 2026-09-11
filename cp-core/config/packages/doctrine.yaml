@@ -30,18 +30,76 @@ doctrine:
                 dir: '%kernel.project_dir%/cp-core/src/Core/Audit/Entity'
                 prefix: 'App\Core\Audit\Entity'
                 alias: CpAudit
-            # Modül entity mapping'leri Kernel::registerActiveModuleDoctrineMappings()
-            # ile yalnızca active_modules.php'deki sağlıklı modüller için eklenir.
-        # Manifesto Law 5.1: #[CpResource(multiTenant: true)] işaretli
-        # entity'lerin sorgularına otomatik tenant_id kısıtı enjekte eder.
-        # Etkinleştirme/parametre doldurma TenantFilterActivationListener'da.
+            CpTelemetry:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Security/Entity'
+                prefix: 'App\Core\Security\Entity'
+                alias: CpTelemetry
+            # Platform contracts (Law 2.x): each core slice keeps its Entity/ dir
+            # outside src/Entity, so every one needs an explicit mapping entry.
+            CpQueue:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Queue/Entity'
+                prefix: 'App\Core\Queue\Entity'
+                alias: CpQueue
+            CpApiIdempotency:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Api/Entity'
+                prefix: 'App\Core\Api\Entity'
+                alias: CpApiIdempotency
+            CpWebhook:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Webhook/Entity'
+                prefix: 'App\Core\Webhook\Entity'
+                alias: CpWebhook
+            CpField:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Field/Entity'
+                prefix: 'App\Core\Field\Entity'
+                alias: CpField
+            CpRevision:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Revision/Entity'
+                prefix: 'App\Core\Revision\Entity'
+                alias: CpRevision
+            CpTaxonomy:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Taxonomy/Entity'
+                prefix: 'App\Core\Taxonomy\Entity'
+                alias: CpTaxonomy
+            CpDisplay:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Display/Entity'
+                prefix: 'App\Core\Display\Entity'
+                alias: CpDisplay
+            CpPathAlias:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/PathAlias/Entity'
+                prefix: 'App\Core\PathAlias\Entity'
+                alias: CpPathAlias
+            CpTextFormat:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/TextFormat/Entity'
+                prefix: 'App\Core\TextFormat\Entity'
+                alias: CpTextFormat
+            # Module entity mappings are added by Kernel::registerActiveModuleDoctrineMappings()
+            # only for healthy modules listed in active_modules.php.
+        # Manifesto Law 5.1: auto-injects tenant_id on #[CpResource(multiTenant: true)] queries.
+        # Enabled and parameterized in TenantFilterActivationListener.
         filters:
             tenant: App\Core\Database\TenantFilter
-        # Query/result cache pool'ları her ortamda Redis'e bağlı (bkz.
-        # cache.yaml: doctrine.result_cache_pool / doctrine.system_cache_pool).
-        # when@prod'a özgü ayrı bir tanım yok; dev'de de Redis'in gerçek
-        # davranışını görmek (health-check yanıltıcılığını önlemek) için
-        # aynı pool'lar kullanılır.
+        # Query/result cache pools use Redis in every env (see cache.yaml).
+        # Same pools in dev to avoid misleading health-check behavior.
         query_cache_driver:
             type: pool
             pool: doctrine.system_cache_pool

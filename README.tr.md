@@ -1,6 +1,6 @@
 # CPalius CMF
 
-**PHP 8.2+ ve Symfony 7.4 LTS** üzerine kurulu yeni nesil **İçerik Yönetim Çerçevesi** (Content Management Framework).
+**PHP 8.4+ ve Symfony 7.4 LTS** üzerine kurulu yeni nesil **İçerik Yönetim Çerçevesi** (Content Management Framework).
 
 CPalius, ağır CMS platformları ile sıfırdan yazılan framework’ler arasında durur. Kimlik doğrulama, yetkilendirme, dosya yönetimi, çok dillilik, yönetim paneli ve modüler genişleme sistemi hazır gelir — her projede tekerleği yeniden icat etmezsiniz, klasik CMS’lerin teknik borcunu da taşımazsınız.
 
@@ -22,9 +22,11 @@ Bugün blog ve topluluk siteleri; yarın galeri, acente, CRM veya ERP tarzı uyg
 
 ## Gereksinimler
 
-- PHP 8.2 veya üzeri
+- PHP 8.4 veya üzeri
 - Composer 2
-- SQLite, MySQL veya PostgreSQL
+- MySQL 8+ veya MariaDB 10.6+
+  (PostgreSQL ve SQLite ile kurulum henüz desteklenmiyor: depodaki migration
+  dosyaları MySQL’e özgü DDL üretiyor. ORM katmanının kendisi taşınabilir.)
 - Belge kökü `public/` olan bir web sunucusu
 
 Çekirdek ve yönetim arayüzü için Node.js gerekmez (AssetMapper + bağımsız Tailwind).
@@ -91,7 +93,7 @@ Hatalı modüller karantina günlüğüne yazılır ve AACP’den incelenebilir.
 ### İçerik ve iş verisi
 
 - **Node** — Sayfa, yazı vb.: başlık, slug, durum, dil için SQL kolonları + esnek JSON `data`
-- **Düz alan indeksi** — Sorgulanabilir JSON alanları hızlı filtre için indekslenir (SQLite / MySQL / PostgreSQL)
+- **Düz alan indeksi** — Sorgulanabilir JSON alanları hızlı filtre için indekslenir
 - **Çok dillilik** — Çekirdekte yerleşik (`UNIQUE(slug, locale)`, çeviri grupları)
 - **Resource** — `#[CpResource]` ile iş kayıtları (yetki, çok kiracılı bayraklar, workflow — altyapı hazır)
 

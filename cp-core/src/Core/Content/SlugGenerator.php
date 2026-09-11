@@ -6,14 +6,8 @@ use App\Repository\NodeRepository;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
 /**
- * Başlıktan (locale'e duyarlı transliterasyon ile) benzersiz bir slug
- * üretir. Benzersizlik, Node::slug + Node::locale ikilisine göre
- * kontrol edilir (bkz. NodeRepository::slugExists) — bu, Node entity'sindeki
- * uniq_node_slug_locale kısıtıyla birebir örtüşür.
- *
- * Çakışma durumunda "-2", "-3" gibi sayısal sonekler eklenir (Botble'ın
- * slugs tablosu yerine, burada slug çakışması doğrudan Node tablosu
- * üzerinden kontrol edilir; ayrı bir slug tablosuna ihtiyaç yoktur).
+ * Generates a unique slug from a title with locale-aware transliteration.
+ * Uniqueness is checked on Node::slug + Node::locale (matches uniq_node_slug_locale); conflicts get -2, -3 suffixes.
  */
 final class SlugGenerator
 {

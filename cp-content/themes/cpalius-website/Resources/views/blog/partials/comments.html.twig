@@ -1,0 +1,174 @@
+{#
+    Post comments inside grid-golden-major column. Expects: post, commentContext (BlogCommentService::buildShowContext).
+#}
+{% set ctx = commentContext|default({}) %}
+{% set currentUser = cp_user() %}
+{% set captcha = ctx.captcha|default({mode: 'none'}) %}
+<section class="blog-comments blog-comments--article" id="comments">
+    <div class="blog-comments__panel">
+        <header class="blog-comments__head">
+            <h2 class="blog-comments__title">
+                <i class="bi bi-chat-square-text" aria-hidden="true"></i>
+                {{ 'blog.comments.title'|trans({'count': ctx.approvedCount|default(0)}) }}
+            </h2>
+        </header>
+
+        {% for type, messages in cp_flashes() %}
+            {% for message in messages %}
+                <div class="blog-comments__flash blog-comments__flash--{{ type }}">{{ message }}</div>
+            {% endfor %}
+        {% endfor %}
+
+        {% if not ctx.enabled|default(false) %}
+            {% if ctx.closedNotice|default('') %}
+                <p class="blog-comments__closed">{{ ctx.closedNotice }}</p>
+            {% else %}
+                <p class="blog-comments__closed">{{ 'blog.comments.closed'|trans }}</p>
+            {% endif %}
+        {% else %}
+            {% if ctx.threads|default([]) is empty %}
+                <p class="blog-comments__empty">{{ 'blog.comments.empty'|trans }}</p>
+            {% else %}
+                <ol class="blog-comments__list">
+                    {% for thread in ctx.threads %}
+                        {% set comment = thread.comment %}
+                        <li>
+                            {% include '@Theme/blog/partials/_comment_item.html.twig' with {
+                                comment: comment,
+                                post: post,
+                                ctx: ctx,
+                                currentUser: currentUser,
+                                isReply: false,
+                            } %}
+                            {% if thread.replies is not empty %}
+                                <ol class="blog-comments__replies">
+                                    {% for reply in thread.replies %}
+                                        <li>
+                                            {% include '@Theme/blog/partials/_comment_item.html.twig' with {
+                                                comment: reply,
+                                                post: post,
+                                                ctx: ctx,
+                                                currentUser: currentUser,
+                                                isReply: true,
+                                            } %}
+                                        </li>
+                                    {% endfor %}
+                                </ol>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ol>
+            {% endif %}
+
+            {% set pages = ctx.pagination|default(null) %}
+            {% if pages and pages.totalPages > 1 %}
+                <nav class="blog-pagination" aria-label="{{ 'blog.comments.pagination'|trans }}">
+                    {% if pages.hasPreviousPage %}
+                        <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug, cpage: pages.currentPage - 1}) }}#comments" class="btn btn-outline">‹ {{ 'blog.pagination.previous'|trans }}</a>
+                    {% endif %}
+                    <span class="blog-pagination-info" style="font-family: var(--slw-font-mono);">{{ pages.currentPage }} / {{ pages.totalPages }}</span>
+                    {% if pages.hasNextPage %}
+                        <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug, cpage: pages.currentPage + 1}) }}#comments" class="btn btn-outline">{{ 'blog.pagination.next'|trans }} ›</a>
+                    {% endif %}
+                </nav>
+            {% endif %}
+
+            {% if ctx.canSubmit %}
+                <div class="blog-comments__form" id="comments-form">
+                    <h3 class="blog-comments__form-title">{{ 'blog.comments.form.title'|trans }}</h3>
+                    {% if ctx.requiresApproval %}
+                        <p class="blog-comments__hint">{{ 'blog.comments.form.approval_hint'|trans }}</p>
+                    {% endif %}
+                    <form method="post" action="{{ path('blog_comment_create', {_locale: post.locale, slug: post.slug}) }}" id="blog-comment-form">
+                        <input type="hidden" name="_token" value="{{ csrf_token('blog_comment') }}">
+                        <input type="hidden" name="parent_id" value="" data-comment-parent>
+                        <p class="blog-comments__hp" aria-hidden="true">
+                            <label>{{ 'blog.comments.form.website'|trans }} <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+                        </p>
+                        {% if not currentUser %}
+                            <div class="blog-comments__guest">
+                                <label>
+                                    <span>{{ 'blog.comments.form.name'|trans }}</span>
+                                    <input type="text" name="guest_name" required maxlength="100" class="form-control">
+                                </label>
+                                <label>
+                                    <span>{{ 'blog.comments.form.email'|trans }}</span>
+                                    <input type="email" name="guest_email" required maxlength="180" class="form-control">
+                                </label>
+                            </div>
+                        {% endif %}
+                        <label class="blog-comments__body-label">
+                            <span>{{ 'blog.comments.form.body'|trans }}</span>
+                            <textarea name="body" rows="5" required maxlength="{{ ctx.maxLength }}" class="form-control" placeholder="{{ 'blog.comments.form.body_placeholder'|trans }}"></textarea>
+                        </label>
+                        {% if ctx.captchaRequired|default(false) %}
+                            {% if captcha.mode == 'math' %}
+                                <label class="blog-comments__captcha">
+                                    <span>{{ 'blog.comments.form.captcha'|trans({'a': captcha.a, 'b': captcha.b}) }}</span>
+                                    <input type="number" name="captcha_answer" required inputmode="numeric" class="form-control" autocomplete="off">
+                                </label>
+                            {% elseif captcha.mode == 'provider' %}
+                                <p class="blog-comments__hint">{{ ('aacp.system_settings.security.provider_' ~ captcha.provider)|trans }}</p>
+                                {% include 'account/partials/_captcha_widget.html.twig' with {
+                                    captchaEnabled: true,
+                                    captchaConfig: captcha,
+                                } %}
+                            {% endif %}
+                        {% endif %}
+                        <div class="blog-comments__actions">
+                            <button type="submit" class="btn btn-primary">{{ 'blog.comments.form.submit'|trans }}</button>
+                        </div>
+                    </form>
+                </div>
+            {% elseif not currentUser and not ctx.guestsAllowed %}
+                <p class="blog-comments__login">
+                    {{ 'blog.comments.login_required'|trans }}
+                    <a href="{{ path('account_login') }}">{{ 'website.nav.login'|trans }}</a>
+                    ·
+                    <a href="{{ path('account_register') }}">{{ 'website.nav.register'|trans }}</a>
+                </p>
+            {% endif %}
+        {% endif %}
+    </div>
+</section>
+{% if ctx.captchaRequired|default(false) and captcha.mode == 'provider' and captcha.provider == 'recaptcha' and captcha.recaptcha_version == 'v3' %}
+    <script src="https://www.google.com/recaptcha/api.js?render={{ captcha.site_key }}"></script>
+    <script>
+        (function () {
+            const form = document.getElementById('blog-comment-form');
+            if (!form) return;
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                if (typeof grecaptcha === 'undefined') return;
+                grecaptcha.ready(function () {
+                    grecaptcha.execute('{{ captcha.site_key }}', { action: 'blog_comment' }).then(function (token) {
+                        let input = form.querySelector('[name="g-recaptcha-response"]');
+                        if (!input) {
+                            input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = 'g-recaptcha-response';
+                            form.appendChild(input);
+                        }
+                        input.value = token;
+                        form.submit();
+                    });
+                });
+            });
+        })();
+    </script>
+{% elseif ctx.captchaRequired|default(false) and captcha.mode == 'provider' %}
+    {% include 'account/partials/_captcha_scripts.html.twig' with {
+        captchaEnabled: true,
+        captchaConfig: captcha,
+    } %}
+{% endif %}
+<script>
+document.querySelectorAll('[data-comment-reply]').forEach(function (el) {
+    el.addEventListener('click', function () {
+        var input = document.querySelector('[data-comment-parent]');
+        if (input) {
+            input.value = el.getAttribute('data-comment-reply') || '';
+        }
+    });
+});
+</script>

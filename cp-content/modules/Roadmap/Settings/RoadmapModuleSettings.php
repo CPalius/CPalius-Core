@@ -11,7 +11,7 @@ use App\Core\Annotation\CpSetting;
  */
 #[CpSetting(
     key: 'roadmap.native_enabled',
-    label: 'Native roadmap kayıtlarını göster',
+    label: 'roadmap.settings.native_enabled',
     type: 'checkbox',
     default: '1',
     module: 'roadmap',
@@ -19,7 +19,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'roadmap.blog_enabled',
-    label: 'Blog kategorisini yan panele dahil et',
+    label: 'roadmap.settings.blog_enabled',
     type: 'checkbox',
     default: '0',
     module: 'roadmap',
@@ -27,7 +27,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'roadmap.blog_category_id',
-    label: 'Blog kategori ID',
+    label: 'roadmap.settings.blog_category_id',
     type: 'integer',
     default: 0,
     module: 'roadmap',
@@ -35,7 +35,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'roadmap.forum_enabled',
-    label: 'Forum bölümünü yan panele dahil et',
+    label: 'roadmap.settings.forum_enabled',
     type: 'checkbox',
     default: '0',
     module: 'roadmap',
@@ -43,7 +43,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'roadmap.forum_section_id',
-    label: 'Forum alt kategori (section) ID',
+    label: 'roadmap.settings.forum_section_id',
     type: 'integer',
     default: 0,
     module: 'roadmap',
@@ -51,7 +51,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'roadmap.forum_user_ids',
-    label: 'Forum yazar ID listesi (virgülle; boş = tümü)',
+    label: 'roadmap.settings.forum_user_ids',
     type: 'text',
     default: '',
     module: 'roadmap',
@@ -59,7 +59,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'roadmap.native_limit',
-    label: 'Sayfada gösterilecek Studio (native) kayıt sayısı',
+    label: 'roadmap.settings.native_limit',
     type: 'integer',
     default: 8,
     module: 'roadmap',
@@ -67,7 +67,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'roadmap.blog_limit',
-    label: 'Yan panel Blog içerik sayısı',
+    label: 'roadmap.settings.blog_limit',
     type: 'integer',
     default: 5,
     module: 'roadmap',
@@ -75,7 +75,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'roadmap.forum_limit',
-    label: 'Yan panel Forum içerik sayısı',
+    label: 'roadmap.settings.forum_limit',
     type: 'integer',
     default: 5,
     module: 'roadmap',
@@ -83,7 +83,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'roadmap.portal_native_limit',
-    label: 'Ana sayfa widget — Studio kayıt sayısı',
+    label: 'roadmap.settings.portal_native_limit',
     type: 'integer',
     default: 3,
     module: 'roadmap',
@@ -91,7 +91,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'roadmap.portal_blog_limit',
-    label: 'Ana sayfa widget — Blog kayıt sayısı',
+    label: 'roadmap.settings.portal_blog_limit',
     type: 'integer',
     default: 3,
     module: 'roadmap',
@@ -99,7 +99,7 @@ use App\Core\Annotation\CpSetting;
 )]
 #[CpSetting(
     key: 'roadmap.portal_forum_limit',
-    label: 'Ana sayfa widget — Forum kayıt sayısı',
+    label: 'roadmap.settings.portal_forum_limit',
     type: 'integer',
     default: 3,
     module: 'roadmap',

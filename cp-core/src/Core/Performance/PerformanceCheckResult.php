@@ -5,29 +5,14 @@ declare(strict_types=1);
 namespace App\Core\Performance;
 
 /**
- * Bir performans backend'i (Redis/Memcached/Varnish/PageSpeed) için tek bir
- * bağlantı testinin salt-veri sonucu. Üç durum kasıtlı olarak ayrıştırılır
- * (bkz. PerformanceBackendCheckerInterface): 'not_installed' ve
- * 'connection_failed' arasındaki fark, kullanıcıya "bu sunucuda hiç yok" ile
- * "var ama şu an ulaşılamıyor" mesajlarını doğru vermek için önemlidir —
- * ikisi de PerformanceBackendRegistry::enable() tarafından aktivasyonu
- * engeller, ama arayüz farklı bir mesaj gösterir.
- *
- * $messageKey BİLİNÇLİ OLARAK HAZIR bir metin DEĞİL, bir çeviri anahtarıdır
- * (ör. 'aacp.performance.probe.redis.not_installed') — probe sınıfları
- * (Redis/Memcached/Varnish/PageSpeed) hiçbir zaman kullanıcıya gösterilecek
- * dil-bağımlı bir string üretmez, sadece "hangi durum" bilgisini taşır.
- * Bu sayede sonuç PerformanceBackendStatus'a KEY olarak yazılır, dil
- * değiştiğinde (session'daki aacp locale) aynı satır farklı dilde
- * görüntülenebilir — DB'ye çevrilmiş metin gömülmez.
+ * Value object for a performance backend probe result; $messageKey is a translation key, not display text.
+ * Separates not_installed vs connection_failed so AACP can show the correct message without storing translated strings in DB.
  */
 final class PerformanceCheckResult
 {
     /**
      * @param 'ok'|'not_installed'|'connection_failed'|'misconfigured' $status
-     * @param array<string, string|int|float> $messageParams ICU MessageFormat
-     *   parametreleri (ör. ['host' => '127.0.0.1', 'port' => 6379]) —
-     *   çeviri anahtarının içine görüntüleme anında |trans(params) ile enjekte edilir.
+     * @param array<string, string|int|float> $messageParams ICU MessageFormat params injected at render time via |trans(params).
      * @param array<string, mixed> $details
      */
     private function __construct(

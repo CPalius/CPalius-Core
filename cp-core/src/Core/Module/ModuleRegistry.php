@@ -97,6 +97,8 @@ final class ModuleRegistry
      *     dirName: string,
      *     name: string,
      *     version: string,
+     *     description: string,
+     *     author: string,
      *     class: ?string,
      *     status: 'active'|'inactive'|'quarantined',
      *     reason: ?string,
@@ -131,21 +133,28 @@ final class ModuleRegistry
     /**
      * @param list<mixed> $declaredModules
      *
-     * @return array{dirName: string, name: string, version: string, class: ?string, status: 'active'|'inactive'|'quarantined', reason: ?string}
+     * @return array{dirName: string, name: string, version: string, description: string, author: string, class: ?string, status: 'active'|'inactive'|'quarantined', reason: ?string}
      */
     private function describeModule(string $dirName, string $moduleDir, array $declaredModules): array
     {
         $manifest = ModuleManifest::fromDirectory($moduleDir);
         $name = $manifest?->name ?? $dirName;
         $version = $manifest?->version ?? 'unknown';
+        $description = $manifest?->description ?? '';
+        $author = $manifest?->author ?? '';
         $moduleClass = $manifest?->bundle;
 
+        $base = [
+            'dirName' => $dirName,
+            'name' => $name,
+            'version' => $version,
+            'description' => $description,
+            'author' => $author,
+            'class' => $moduleClass,
+        ];
+
         if ($moduleClass === null) {
-            return [
-                'dirName' => $dirName,
-                'name' => $name,
-                'version' => $version,
-                'class' => null,
+            return $base + [
                 'status' => 'quarantined',
                 'reason' => 'module.json is missing a valid "bundle" field.',
             ];
@@ -155,21 +164,13 @@ final class ModuleRegistry
         $validationError = $this->validate($moduleClass);
 
         if ($validationError !== null) {
-            return [
-                'dirName' => $dirName,
-                'name' => $name,
-                'version' => $version,
-                'class' => $moduleClass,
+            return $base + [
                 'status' => 'quarantined',
                 'reason' => $validationError,
             ];
         }
 
-        return [
-            'dirName' => $dirName,
-            'name' => $name,
-            'version' => $version,
-            'class' => $moduleClass,
+        return $base + [
             'status' => $isDeclared ? 'active' : 'inactive',
             'reason' => null,
         ];

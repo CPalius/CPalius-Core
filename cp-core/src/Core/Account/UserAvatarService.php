@@ -13,8 +13,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
- * Kullanıcı avatarı yükleme ve URL çözümleme — media.view/upload gerektirmez.
- * AssetManager güvenlik sınırını kullanır; yalnızca görsel MIME kabul edilir.
+ * Uploads user avatars and resolves URLs without media.view/upload.
+ * Uses AssetManager security boundaries; only non-SVG image MIME types are accepted.
  */
 final class UserAvatarService
 {

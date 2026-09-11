@@ -17,9 +17,9 @@ enum ForumSectionType: string
     public function label(): string
     {
         return match ($this) {
-            self::Division => 'Bölüm',
-            self::Category => 'Kategori',
-            self::Subcategory => 'Alt Kategori',
+            self::Division => 'forum.section_type.division',
+            self::Category => 'forum.section_type.category',
+            self::Subcategory => 'forum.section_type.subcategory',
         };
     }
 

@@ -8,29 +8,29 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Forum bölüm tipleri: division (bölüm) → category (kategori) → subcategory (alt kategori).
+ * Forum section types: division → category → subcategory.
  */
 final class Version20260827120000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'forum_sections tablosuna section_type ekler ve mevcut kayıtları hiyerarşiye göre günceller.';
+        return 'Adds section_type to forum_sections and updates existing rows by hierarchy.';
     }
 
     public function up(Schema $schema): void
     {
         $this->addSql("ALTER TABLE forum_sections ADD section_type VARCHAR(32) NOT NULL DEFAULT 'subcategory'");
 
-        // Kök konteynerler → bölüm
+        // Root containers → division
         $this->addSql("UPDATE forum_sections SET section_type = 'division' WHERE parent_id IS NULL AND is_container = 1");
 
-        // Alt konteynerler → kategori
+        // Child containers → category
         $this->addSql("UPDATE forum_sections SET section_type = 'category' WHERE parent_id IS NOT NULL AND is_container = 1");
 
-        // Yaprak panolar → alt kategori
+        // Leaf boards → subcategory
         $this->addSql("UPDATE forum_sections SET section_type = 'subcategory' WHERE is_container = 0 AND allow_topics = 1");
 
-        // Örnek okul hiyerarşisi: Genel Forum > Akademik > mevcut panolar
+        // Sample school hierarchy: General Forum > Academic > existing boards
         $this->addSql(<<<'SQL'
             INSERT INTO forum_sections (parent_id, code, slug, locale, title, description, sort_order, is_container, allow_topics, section_type, created_at, updated_at)
             SELECT s.id, 'akademik', 'akademik', 'tr', 'Akademik', 'Dersler, projeler ve okul yaşamı', 0, 1, 0, 'category', NOW(), NOW()

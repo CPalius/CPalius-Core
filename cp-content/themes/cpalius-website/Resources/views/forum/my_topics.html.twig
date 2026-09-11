@@ -1,0 +1,34 @@
+{% extends '@Theme/forum/layout.html.twig' %}
+
+{% block title %}{{ 'forum.my_topics.title'|trans }} — {{ 'forum.breadcrumb.home_title'|trans }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-crumb fade-in" aria-label="{{ 'forum.nav_aria'|trans }}">
+        <ol class="forum-crumb__list">
+            <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+            <li><a href="{{ path('forum_index') }}">{{ 'forum.breadcrumb.home_title'|trans }}</a></li>
+            <li class="is-active">{{ 'forum.my_topics.title'|trans }}</li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+{% include '@Theme/forum/partials/_user_rail.html.twig' %}
+<div class="forum-header fade-in">
+    <h1 class="section-title">{{ 'forum.my_topics.title'|trans }}</h1>
+</div>
+<div class="forum-topics fade-in">
+    {% for topic in topics %}
+        <div class="forum-topic">
+            <div>
+                <div class="forum-topic__title">
+                    <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}">{{ topic.title }}</a>
+                </div>
+                <div class="forum-topic__meta">{{ topic.section.title }} · {{ (topic.lastPostDate ?? topic.updatedAt)|forum_relative_time }}</div>
+            </div>
+        </div>
+    {% else %}
+        <div class="forum-empty">{{ 'forum.my_topics.empty'|trans }}</div>
+    {% endfor %}
+</div>
+{% endblock %}

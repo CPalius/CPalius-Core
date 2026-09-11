@@ -1,18 +1,10 @@
 {#
-    AACP Dil Yönetimi — Translation Explorer.
+    AACP locale management — Translation Explorer.
 
-    FAZ 3: sütunlar SABİT DEĞİLDİR. "locales" değişkeni LocaleProvider'dan
-    (dolayısıyla cp_locales tablosundan) gelir; sisteme yeni bir dil
-    eklendiğinde tabloya otomatik yeni bir sütun ve yeni bir sekme düşer,
-    bu şablonda hiçbir değişiklik gerekmez.
+    Phase 3: columns are dynamic from LocaleProvider; new locales add columns/tabs automatically.
 
-    Beklenen değişkenler:
-      entries         list<{group, key, values: {locale: değer}, incomplete}>
-      locales         list<LocaleDefinition>  (code, name, nativeName, isDefault)
-      groups          list<string>            benzersiz domain etiketleri
-      incompleteCount int                     en az bir dilde boş olan anahtar sayısı
-      focusLocale     string|null             ?locale= ile gelen odak dili
-      csrf_token      string
+    Expected variables:
+      entries, locales, groups, incompleteCount, focusLocale, csrf_token
 #}
 {% extends 'aacp/layout.html.twig' %}
 
@@ -45,7 +37,7 @@
          data-localization-import-url="{{ path('aacp_localization_import') }}"
          data-localization-focus="{{ focusLocale ?? '' }}">
 
-        {# ---- Dil sekmeleri: "Tümü" + her aktif dil ---- #}
+        {# ---- Locale tabs: "All" + each active locale ---- #}
         <div class="flex flex-wrap items-center gap-x-1 border-b border-white/10"
              role="tablist"
              aria-label="{{ 'aacp.localization.tabs_aria'|trans }}">
@@ -77,7 +69,7 @@
             </div>
         {% endif %}
 
-        {# ---- Filtre çubuğu ---- #}
+        {# ---- Filter bar ---- #}
         <div class="flex flex-wrap items-center gap-2">
             <input type="text"
                    data-localization-filter

@@ -4,17 +4,9 @@
         {label: 'page', count: 18, colorClass: 'bg-success-500'},
     ] }}" />
 
-    Tek satırlık, %100 toplamı kabul eden çok-segmentli progress bar —
-    5-6 satırlık bir bar-chart yerine dikey alan tasarrufu sağlayan bir
-    "kokpit göstergesi" (AACP Dashboard "Tipe Göre İçerik"/"Mime Tipi
-    Dağılımı" widget'ları için). twig:cp:gauge'un tek-değerli mantığından
-    farklı olarak çoklu segment destekler.
+    Single-row multi-segment progress bar for AACP dashboard widgets (vs twig:cp:gauge).
 
-    Props:
-      segments (list<array{label: string, count: int, colorClass: string}>)
-        colorClass çağıran taraftan (controller/template) verilir —
-        component kendi renk ataması yapmaz, "diğer" gibi bucket'lanmış
-        kategoriler için nötr bir ton seçimi çağıran tarafın kararıdır.
+    Props: segments (label, count, colorClass) — colorClass supplied by caller.
 #}
 {% props segments = [] %}
 

@@ -7,18 +7,23 @@ namespace App\Controller\Admin;
 use App\Core\Aacp\SystemWidgetData;
 use App\Core\Aacp\SystemWidgetProviderInterface;
 use App\Core\Annotation\CpAdminMenu;
-use App\Core\Annotation\CpSetting;
 use App\Core\Api\ApiKeyService;
+use App\Core\Audit\Entity\AuditLog;
+use App\Core\Audit\Repository\AuditLogRepository;
 use App\Core\Cache\CacheRebuildManager;
+use App\Core\Cache\OptionalRedis;
 use App\Core\Cron\CronManager;
 use App\Core\Hook\HookManager;
 use App\Core\Module\ActiveModulesFileWriter;
-use App\Core\Module\ModuleActivator;
 use App\Core\Module\ModuleRegistry;
+use App\Core\Performance\PerformanceInventory;
 use App\Core\Plugin\PluginInterface;
 use App\Core\Plugin\PluginRegistry;
 use App\Core\Plugin\PluginToggleRepository;
+use App\Core\Queue\QueueStatusService;
+use App\Core\Security\Repository\TelemetryLogRepository;
 use App\Core\Settings\SettingsRegistry;
+use App\Core\Settings\SettingSecretCodec;
 use App\Core\Settings\SystemSettingsService;
 use App\Entity\CronJob;
 use App\Entity\Setting;
@@ -36,6 +41,7 @@ use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -47,23 +53,19 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
 
 /**
- * AACP: sistem çöktüğünde bile ayakta kalması gereken kurtarma konsolu.
- *
- * Bilinçli olarak sade tutulur: AbstractController'ın twig/router kısayolları
- * yerine servisler doğrudan enjekte edilir, böylece bu kontrolcü modül
- * katmanındaki bir hatadan (ör. bozuk bir servis tanımı) mümkün olduğunca
- * izole kalır.
+ * AACP recovery console that must stay up when the system fails.
+ * Services are injected directly to stay isolated from module-layer failures.
  */
 final class AACPController
 {
     public function __construct(
         private readonly ModuleRegistry $moduleRegistry,
         private readonly ActiveModulesFileWriter $activeModulesFileWriter,
-        private readonly ModuleActivator $moduleActivator,
         private readonly Connection $connection,
         private readonly Environment $twig,
         private readonly CsrfTokenManagerInterface $csrfTokenManager,
@@ -71,6 +73,7 @@ final class AACPController
         private readonly string $recoveryToken,
         private readonly SettingsRegistry $settingsRegistry,
         private readonly SystemSettingsService $systemSettingsService,
+        private readonly SettingSecretCodec $settingSecretCodec,
         private readonly SettingRepository $settingRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
@@ -79,6 +82,7 @@ final class AACPController
         private readonly PluginRegistry $pluginRegistry,
         private readonly PluginToggleRepository $pluginToggleRepository,
         private readonly CacheRebuildManager $cacheRebuildManager,
+        private readonly QueueStatusService $queueStatusService,
         private readonly NodeRepository $nodeRepository,
         private readonly CategoryRepository $categoryRepository,
         private readonly TagRepository $tagRepository,
@@ -91,20 +95,22 @@ final class AACPController
         private readonly ApiKeyService $apiKeyService,
         private readonly Security $security,
         private readonly TranslatorInterface $translator,
+        private readonly AuditLogRepository $auditLogRepository,
+        private readonly TelemetryLogRepository $telemetryLogRepository,
+        private readonly PerformanceInventory $performanceInventory,
+        #[Autowire(service: 'cache.app')]
+        private readonly CacheInterface $appCache,
+        #[Autowire('%kernel.debug%')]
+        private readonly bool $kernelDebug,
+        #[Autowire('%env(MAILER_DSN)%')]
+        private readonly string $mailerDsn,
+        private readonly OptionalRedis $redis,
     ) {
     }
 
     /**
-     * Manifesto Law 2.3 (Safe Mode & Recovery Console): normal form_login
-     * akışı veritabanına (User provider) bağımlıdır — DB tamamen erişilemez
-     * olduğunda bu akış işe yaramaz. Bu uç, security firewall'ında BİLİNÇLİ
-     * olarak PUBLIC_ACCESS'tir (bkz. security.yaml) ve yetkilendirmesini
-     * KENDİSİ, .env'deki AACP_RECOVERY_TOKEN ile sabit zamanlı (timing-safe)
-     * karşılaştırma yaparak yapar — hiçbir Doctrine sorgusu içermez, bu
-     * yüzden veritabanı çökmüşken bile çalışır.
-     *
-     * Token boşsa (yani .env'de tanımlanmamışsa) kapı tamamen kapalıdır:
-     * "token yok" asla "herkese izin ver" anlamına gelmez (fail-safe).
+     * Manifesto Law 2.3: PUBLIC recovery gate using AACP_RECOVERY_TOKEN (no DB).
+     * Empty token means closed — fail-safe, never open to everyone.
      */
     #[Route('/aacp/recovery', name: 'aacp_recovery', methods: ['GET'])]
     public function recovery(Request $request): Response
@@ -125,9 +131,7 @@ final class AACPController
     }
 
     /**
-     * Kurtarma modundan modül devre dışı bırakma: aynı deactivateModule()
-     * mantığı ama sonrasında normal /aacp yerine token'ı koruyarak
-     * /aacp/recovery'ye geri döner (aksi halde firewall onu /login'e atar).
+     * Deactivate a module from recovery mode; redirect back to /aacp/recovery with token.
      */
     #[Route('/aacp/recovery/modules/{dirName}/deactivate', name: 'aacp_recovery_module_deactivate', methods: ['POST'])]
     public function recoveryDeactivateModule(string $dirName, Request $request): RedirectResponse
@@ -153,14 +157,7 @@ final class AACPController
     }
 
     /**
-     * Genel Bakış (Dashboard): eskiden ayrı olan "Sistem Monitörü"
-     * (/aacp/system) ile burada BİRLEŞTİRİLDİ — ikisi de aynı canlı sistem
-     * verisini (buildSystemReport) farklı sunumlarla gösteriyordu, bu da
-     * yönetici için iki ayrı ekranda aynı bilgiyi arama kafa karışıklığına
-     * yol açıyordu. Artık AACP'nin TEK giriş noktası burası: hem modül
-     * sağlığı/karantina hem de htop tarzı canlı metrikler (load, memory,
-     * OPcache, DB, queue) aynı sayfada, Chart.js destekli metrik
-     * kartlarıyla gösterilir.
+     * System command desk: health, telemetry, audit feed. No content metrics.
      */
     #[Route('/aacp', name: 'aacp_dashboard', methods: ['GET'])]
     #[CpAdminMenu(label: 'aacp.menu.dashboard', icon: 'heroicons:chart-bar', panel: 'aacp', priority: 10, capability: 'system.aacp.access', group: 'aacp.group.system')]
@@ -169,32 +166,37 @@ final class AACPController
     {
         $health = $this->buildHealthReport();
         $system = $this->buildSystemReport();
-        $modules = $this->moduleRegistry->discoverAllModules();
+        $securityOn = (bool) $this->settingsRegistry->get('telemetry.security_enabled', false);
+        $visitorStats = $securityOn
+            ? [
+                'uniqueIps' => 0,
+                'pageViews' => 0,
+                'hourly' => ['labels' => [], 'hits' => []],
+                'topPages' => [],
+                'topIps' => [],
+            ]
+            : $this->telemetryLogRepository->visitorStats(24);
 
         $html = $this->twig->render('aacp/dashboard.html.twig', [
             'health' => $health,
             'system' => $system,
-            'content' => $this->buildContentReport(),
-            'infrastructure' => $this->buildInfrastructureReport(),
-            'moduleStats' => $this->buildModuleStatsReport($modules),
-            'criticalAlerts' => $this->buildCriticalAlerts($health, $system),
-            'widgetCatalog' => $this->buildWidgetCatalog(),
-            'hiddenWidgetIds' => $this->getHiddenWidgetIdsForCurrentUser(),
-            'modules' => $modules,
-            'csrf_token' => $this->csrfTokenManager->getToken('aacp_module_deactivate')->getValue(),
-            'widget_visibility_csrf_token' => $this->csrfTokenManager->getToken('aacp_widget_visibility')->getValue(),
+            'auditFeed' => $this->buildAuditFeed(),
+            'telemetrySecurityEnabled' => $securityOn,
+            'telemetryFeed' => $this->telemetryLogRepository->findLiveFeed(30, null, !$securityOn),
+            'telemetryTrend' => $securityOn
+                ? $this->telemetryLogRepository->hourlyTrend(24)
+                : $visitorStats['hourly'],
+            'telemetryVectors' => $securityOn ? $this->telemetryLogRepository->vectorBreakdown(24) : [],
+            'topThreatIps' => $securityOn ? $this->telemetryLogRepository->topThreatIps(5) : [],
+            'visitorStats' => $visitorStats,
+            'quarantineLog' => array_slice($this->readQuarantineLog(), 0, 8),
         ]);
 
         return new Response($html);
     }
 
     /**
-     * Dashboard'daki widget aç/kapa panelinin AJAX ucu: kalıcılık
-     * User::$data['dashboard_widgets']['hidden'] JSON alanında tutulur
-     * (bkz. User::getDataValue()/setDataValue() — first_name/bio/
-     * avatar_asset_id ile aynı desen, migration gerekmez). Anlık DOM
-     * güncellemesi zaten JS tarafında yapılıyor; bu uç sadece tercihi
-     * kalıcılaştırır.
+     * AJAX endpoint persisting dashboard widget visibility in User::$data JSON.
      */
     #[Route('/aacp/dashboard/widget-visibility', name: 'aacp_dashboard_widget_visibility', methods: ['POST'])]
     #[IsGranted('system.aacp.access')]
@@ -230,32 +232,12 @@ final class AACPController
         return new JsonResponse(['success' => true, 'hidden' => array_keys($hiddenIds)]);
     }
 
-    #[Route('/aacp/modules', name: 'aacp_modules', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.modules', icon: 'heroicons:puzzle-piece', panel: 'aacp', priority: 30, capability: 'system.module.manage', group: 'aacp.group.tools')]
-    #[IsGranted('system.module.manage')]
-    public function modules(Request $request): Response
-    {
-        $html = $this->twig->render('aacp/modules.html.twig', [
-            'modules' => $this->moduleRegistry->discoverAllModules(),
-            'csrf_token' => $this->csrfTokenManager->getToken('aacp_module_deactivate')->getValue(),
-            'activated' => $request->query->getBoolean('activated'),
-            'activationFailed' => $request->query->getBoolean('activation_failed'),
-        ]);
-
-        return new Response($html);
-    }
-
     /**
-     * Faz 3'te kurulan Modül Eklentisi (Plugin) mimarisinin yönetim
-     * ekranı. isActive() FİLTRESİ OLMADAN TÜM plugin'ler listelenir
-     * (PluginRegistry::getActivePlugins() DEĞİL) — aksi halde yönetici,
-     * zaten AACP'den pasif ettiği bir eklentiyi listede hiç göremez ve
-     * tekrar aktive edemezdi. Aktif/pasif durumu ayrıca
-     * PluginToggleRepository::findAllStates() ile TEK sorguda okunup
-     * şablona geçirilir.
+     * Lists all plugins (including inactive) so admins can re-enable them.
+     * Toggle states come from PluginToggleRepository::findAllStates().
      */
     #[Route('/aacp/plugins', name: 'aacp_plugins', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.plugins', icon: 'heroicons:puzzle-piece', panel: 'aacp', priority: 35, capability: 'system.module.manage', group: 'aacp.group.tools')]
+    #[CpAdminMenu(label: 'aacp.menu.plugins', icon: 'heroicons:squares-plus', panel: 'aacp', priority: 31, capability: 'system.module.manage', parent: 'aacp_modules')]
     #[IsGranted('system.module.manage')]
     public function plugins(): Response
     {
@@ -279,11 +261,7 @@ final class AACPController
     }
 
     /**
-     * Faz 4'ün AJAX ucu: sayfa yeniden yüklenmeden tek bir plugin'in
-     * aktif/pasif durumunu değiştirir. CSRF token'ı, AACP'nin diğer
-     * mutasyon action'larıyla ('aacp_module_deactivate') AYNI token id'yi
-     * paylaşır — ekstra bir token türü icat edilmez, tüm AACP mutasyon
-     * formları/AJAX çağrıları zaten bu tek token'ı kullanıyor.
+     * AJAX toggle for one plugin; shares CSRF token id aacp_module_deactivate.
      */
     #[Route('/aacp/plugins/{name}/toggle', name: 'aacp_plugin_toggle', methods: ['POST'])]
     #[IsGranted('system.module.manage')]
@@ -325,20 +303,20 @@ final class AACPController
         return new Response($html);
     }
 
-    /** Legacy route: module settings are now the "Modules" tab of /aacp/settings. */
+    /** Legacy route: module settings live on the System Settings Modules tab. */
     #[Route('/aacp/settings/modules', name: 'aacp_settings_modules', methods: ['GET'])]
     #[IsGranted('system.settings.manage')]
     public function settingsModules(): RedirectResponse
     {
-        return new RedirectResponse('/aacp/settings?tab='.CpSetting::SCOPE_MODULE);
+        return new RedirectResponse('/aacp/advanced/management?tab=modules');
     }
 
-    /** Legacy route: plugin settings are now the "Plugins" tab of /aacp/settings. */
+    /** Legacy route: plugin settings live on the System Settings Plugins tab. */
     #[Route('/aacp/settings/plugins', name: 'aacp_settings_plugins', methods: ['GET'])]
     #[IsGranted('system.settings.manage')]
     public function settingsPlugins(): RedirectResponse
     {
-        return new RedirectResponse('/aacp/settings?tab='.CpSetting::SCOPE_PLUGIN);
+        return new RedirectResponse('/aacp/advanced/management?tab=plugins');
     }
 
     #[Route('/aacp/settings/update', name: 'aacp_settings_update', methods: ['POST'])]
@@ -360,11 +338,7 @@ final class AACPController
         foreach ($definitions as $definition) {
             $raw = $submitted[$definition->key] ?? null;
 
-            // FAZ 4: çevrilebilir ayar iki boyutlu gelir (settings[key][dil])
-            // ve tek bir JSON dil haritası olarak saklanır. Kodlama
-            // mantığı SystemSettingsService ile PAYLAŞILIR — iki ayar
-            // ekranının aynı veriyi farklı biçimlerde yazması, sessiz bir
-            // veri bozulması kaynağı olurdu.
+            // Phase 4: translatable settings as locale map JSON via SystemSettingsService.
             if ($definition->isTranslatable()) {
                 $encoded = $this->systemSettingsService->encodeTranslationMap($raw);
 
@@ -377,9 +351,9 @@ final class AACPController
             }
 
             $value = match ($definition->type) {
-                // HTML formlarında işaretsiz bir checkbox HİÇ gönderilmez;
-                // bu yüzden "anahtar yok" burada "false" anlamına gelir.
+                // Unchecked checkboxes are omitted from HTML forms — missing key means false.
                 'checkbox' => $raw !== null ? '1' : '0',
+                'password' => \is_string($raw) && trim($raw) !== '' ? $this->settingSecretCodec->seal(trim($raw)) : null,
                 default => \is_string($raw) ? trim($raw) : null,
             };
 
@@ -428,13 +402,15 @@ final class AACPController
     /** Open-redirect guard: only in-app settings paths are accepted. */
     private function safeRedirectTarget(string $candidate): string
     {
-        return str_starts_with($candidate, '/aacp/settings') ? $candidate : '/aacp/settings';
+        if (str_starts_with($candidate, '/aacp/advanced/management')) {
+            return $candidate;
+        }
+
+        return str_starts_with($candidate, '/aacp/settings') ? $candidate : '/aacp/advanced/management';
     }
 
     /**
-     * "integer" tipi #[CpSetting] alanları için sıfır tolerans validasyonu:
-     * yalnızca (isteğe bağlı işaretli) tam sayı string'leri kabul edilir —
-     * "10.5", "abc", "" veya baştaki/sondaki boşluklu varyasyonlar reddedilir.
+     * Strict integer validation for #[CpSetting] integer fields (signed whole numbers only).
      */
     private function isValidInteger(string $value): bool
     {
@@ -442,31 +418,22 @@ final class AACPController
     }
 
     /**
-     * htop panelinin AJAX/polling ile periyodik tazelemesi için sade JSON
-     * ucu. Şablonun tamamını yeniden render etmek yerine sadece canlı
-     * metrikleri döner; Dashboard sayfasındaki fetch+DOM/Chart.js güncellemesi
-     * bunu tüketir (Zero Node.js / Zero build-step: düz importmap JS).
-     *
-     * NOT: eskiden ayrı bir sayfası olan "Sistem Monitörü" (/aacp/system)
-     * Genel Bakış (Dashboard) ile birleştirildiği için bu uç artık
-     * dashboard.html.twig'in canlı polling hedefidir (bkz. dashboard() ve
-     * aacp-dashboard.js).
+     * JSON metrics for dashboard polling (aacp-dashboard.js); replaces old /aacp/system page.
      */
     #[Route('/aacp/system/metrics', name: 'aacp_system_metrics', methods: ['GET'])]
     #[IsGranted('system.aacp.access')]
     public function systemMetrics(): Response
     {
+        $health = $this->buildHealthReport();
         $system = $this->buildSystemReport();
-        $alerts = $this->buildCriticalAlerts($this->buildHealthReport(), $system);
+        $healthy = $health['dbConnected'] && $health['quarantinedModuleCount'] === 0;
+        $statusKey = $health['dbConnected']
+            ? ($healthy ? 'aacp.dashboard.status.healthy' : 'aacp.dashboard.status.degraded')
+            : 'aacp.dashboard.status.down';
 
-        // JS'in Twig |trans filtresine erişimi yok — aynı desen
-        // PerformanceController::translateResult()'ta da kullanılıyor:
-        // mesaj sunucu tarafında, isteğin gerçek locale'ine göre çevrilip
-        // JSON'a hazır metin olarak konur.
-        $system['criticalAlerts'] = array_map(
-            fn (array $alert): array => $alert + ['message' => $this->translator->trans($alert['messageKey'], $alert['params'])],
-            $alerts,
-        );
+        $system['phpVersion'] = $health['phpVersion'];
+        $system['statusLabel'] = $this->translator->trans($statusKey);
+        $system['healthy'] = $healthy;
 
         return new Response(
             json_encode($system, JSON_THROW_ON_ERROR),
@@ -476,23 +443,10 @@ final class AACPController
     }
 
     /**
-     * "Önbellek ve Yeniden Derleme" konsolu — CacheRebuildManager'ın üç
-     * bağımsız işlemini (Symfony cache, OPcache, Tailwind asset rebuild)
-     * tetikleyen AJAX butonlarını barındıran sayfa. Sayfanın kendisi
-     * hiçbir işlemi otomatik ÇALIŞTIRMAZ (salt-okunur GET) — mutasyonlar
-     * yalnızca aşağıdaki üç POST ucundan, kullanıcının bilinçli tıklamasıyla
-     * tetiklenir.
-     *
-     * "Performans" (bkz. PerformanceController::index()'teki 'aacp.group.performance'
-     * ile aynı grup adı) BİLİNÇLİ OLARAK bir $parent İLE DEĞİL, düz bir
-     * $group başlığıyla kurulur: bu sayfa ile RMVP sayfası, "Sistem"/
-     * "Araçlar" gruplarındaki diğer öğelerle simetrik şekilde, aynı
-     * seviyede iki ayrı üst-seviye link olarak yan yana listelenir (bkz.
-     * AdminMenuRuntime::render() — group sadece bir ayırıcı başlık,
-     * kendi başına tıklanabilir bir node değildir).
+     * Cache rebuild console (GET only); three POST actions run CacheRebuildManager jobs.
      */
     #[Route('/aacp/system/cache-rebuild', name: 'aacp_cache_rebuild', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.performance_cp_care', icon: 'heroicons:arrow-path', panel: 'aacp', priority: 26, capability: 'system.aacp.access', group: 'aacp.group.performance')]
+    #[CpAdminMenu(label: 'aacp.menu.performance_cp_care', icon: 'heroicons:arrow-path', panel: 'aacp', priority: 35, capability: 'system.aacp.access', group: 'aacp.group.performance')]
     #[IsGranted('system.aacp.access')]
     public function cacheRebuild(): Response
     {
@@ -511,7 +465,14 @@ final class AACPController
             return new JsonResponse(['success' => false, 'output' => $this->translator->trans('aacp.system.invalid_csrf')], 400);
         }
 
-        return new JsonResponse($this->cacheRebuildManager->clearSymfonyCache());
+        try {
+            return new JsonResponse($this->cacheRebuildManager->clearSymfonyCache());
+        } catch (\Throwable $e) {
+            return new JsonResponse([
+                'success' => false,
+                'output' => '[ERR] '.$e->getMessage(),
+            ]);
+        }
     }
 
     #[Route('/aacp/system/cache-rebuild/reset-opcache', name: 'aacp_cache_rebuild_reset_opcache', methods: ['POST'])]
@@ -537,67 +498,13 @@ final class AACPController
     }
 
     /**
-     * Üç cache-rebuild AJAX ucunun paylaştığı TEK CSRF token id'si
-     * ('aacp_cache_rebuild') — cache_rebuild.html.twig sayfasında bir kez
-     * üretilip her üç butonun isteğine de aynı token gömülür (bkz.
-     * cacheRebuild() action'ının render ettiği csrf_token değişkeni).
+     * Shared CSRF token id aacp_cache_rebuild for all three cache-rebuild POST actions.
      */
     private function isValidCacheRebuildToken(Request $request): bool
     {
         $submitted = (string) $request->request->get('_token');
 
         return $this->csrfTokenManager->isTokenValid(new CsrfToken('aacp_cache_rebuild', $submitted));
-    }
-
-    #[Route('/aacp/modules/{dirName}/deactivate', name: 'aacp_module_deactivate', methods: ['POST'])]
-    #[IsGranted('system.module.manage')]
-    public function deactivateModule(string $dirName, Request $request): RedirectResponse
-    {
-        $submittedToken = (string) $request->request->get('_token');
-        if (!$this->csrfTokenManager->isTokenValid(new CsrfToken('aacp_module_deactivate', $submittedToken))) {
-            throw new BadRequestHttpException($this->translator->trans('aacp.system.invalid_csrf'));
-        }
-
-        // Goes through ModuleActivator so dependents are checked and, when the
-        // caller asks for it, the module's uninstall() hook runs first.
-        $result = $this->moduleActivator->deactivate($dirName, $request->request->getBoolean('purge'));
-
-        $redirectTo = (string) $request->request->get('_redirect', '/aacp');
-        $target = str_starts_with($redirectTo, '/aacp') ? $redirectTo : '/aacp';
-
-        if (!$result['success']) {
-            $separator = str_contains($target, '?') ? '&' : '?';
-
-            return new RedirectResponse($target.$separator.'module_error='.urlencode($result['message']));
-        }
-
-        return new RedirectResponse($target);
-    }
-
-    /**
-     * Bir modülü web arayüzünden aktive eder. CLI'daki cp:module:activate
-     * ile BİREBİR aynı ModuleActivator servisini kullanır — dry-run/lint
-     * doğrulaması (Manifesto Law 2.2) burada da atlanmaz, aksi halde
-     * bozuk bir modül web'den aktive edilip container derlemesini
-     * çökertebilirdi. Doğrulama cache:clear + lint:yaml + lint:container
-     * çalıştırdığı için bu istek birkaç saniye sürebilir.
-     */
-    #[Route('/aacp/modules/{dirName}/activate', name: 'aacp_module_activate', methods: ['POST'])]
-    #[IsGranted('system.module.manage')]
-    public function activateModule(string $dirName, Request $request): RedirectResponse
-    {
-        $submittedToken = (string) $request->request->get('_token');
-        if (!$this->csrfTokenManager->isTokenValid(new CsrfToken('aacp_module_deactivate', $submittedToken))) {
-            throw new BadRequestHttpException($this->translator->trans('aacp.system.invalid_csrf'));
-        }
-
-        $result = $this->moduleActivator->activate($dirName);
-
-        $redirectTo = (string) $request->request->get('_redirect', '/aacp');
-        $target = str_starts_with($redirectTo, '/aacp') ? $redirectTo : '/aacp';
-        $separator = str_contains($target, '?') ? '&' : '?';
-
-        return new RedirectResponse($target.$separator.($result['success'] ? 'activated=1' : 'activation_failed=1'));
     }
 
     /**
@@ -637,10 +544,7 @@ final class AACPController
     }
 
     /**
-     * Dashboard "İçerik" bölümünün tek veri kaynağı — hepsi DB-count/SUM/
-     * GROUP BY sorguları, bilinçli olarak /aacp/system/metrics polling'ine
-     * DAHİL EDİLMEZ (nadiren değişen sayılar için 4 saniyede bir sorgu
-     * atmanın maliyeti yok): sadece tam sayfa yüklemesinde hesaplanır.
+     * Dashboard content stats (full page load only, not live metrics polling).
      *
      * @return array{
      *     nodesTotal: int,
@@ -672,8 +576,7 @@ final class AACPController
     }
 
     /**
-     * Dashboard "Altyapı" bölümü — Cron/Hook/API/Dil sayıları. Aynı
-     * gerekçeyle (nadiren değişir) polling'e dahil edilmez.
+     * Dashboard infrastructure counts; excluded from live metrics polling.
      *
      * @return array{
      *     cronJobsTotal: int,
@@ -713,10 +616,7 @@ final class AACPController
     }
 
     /**
-     * Dashboard "Güvenlik/Modül" bölümündeki modül versiyon dağılımı ve
-     * durum dağılımı grafiklerinin veri kaynağı. discoverAllModules()
-     * zaten dashboard()'da bir kez çağrılmış oluyor, burada tekrar
-     * sorgu atılmaz — sonuç parametre olarak alınır.
+     * Module version/status chart data; reuses $modules from discoverAllModules().
      *
      * @param list<array{dirName: string, name: string, version: string, class: ?string, status: string, reason: ?string}> $modules
      * @return array{
@@ -748,14 +648,7 @@ final class AACPController
     }
 
     /**
-     * Kritik Uyarı Şeridi'nin veri kaynağı — SADECE bugün gerçekten
-     * ölçülebilen koşullardan (karantina/DB/OPcache zaten hesaplanmış
-     * $health/$system'den, ardışık cron hatası yeni bir sorgudan) üretilir.
-     * Uydurma bir "exception_rate" veya "queue.failed_count" burada YOKTUR
-     * — bunlar sistemde hiç ölçülmüyor (bkz. readQueueStatus() docblock'u).
-     *
-     * $health, buildHealthReport()'un; $system, buildSystemReport()'un
-     * dönüş değeridir (bu metodun kendisi tekrar sorgu atmaz).
+     * Critical alert strip from measurable conditions only (no fake metrics).
      *
      * @return list<array{level: 'danger'|'warning', messageKey: string, params: array<string, mixed>}>
      */
@@ -806,9 +699,7 @@ final class AACPController
     }
 
     /**
-     * Widget aç/kapa panelindeki checkbox listesi VE her kartın
-     * data-widget-id'si için TEK doğruluk kaynağı — burası değişmeden bir
-     * widget "yeni" eklenemez, drift önlenir.
+     * Single source of truth for dashboard widget ids and visibility toggles.
      *
      * @return list<array{widgetId: string, titleKey: string, section: string}>
      */
@@ -817,7 +708,7 @@ final class AACPController
         return [
             ['widgetId' => 'system.load', 'titleKey' => 'aacp.system.load_average', 'section' => 'system'],
             ['widgetId' => 'system.memory', 'titleKey' => 'aacp.system.php_memory', 'section' => 'system'],
-            ['widgetId' => 'system.opcache', 'titleKey' => 'OPcache', 'section' => 'system'],
+            ['widgetId' => 'system.opcache', 'titleKey' => 'aacp.dashboard.opcache', 'section' => 'system'],
             ['widgetId' => 'system.database', 'titleKey' => 'aacp.dashboard.database', 'section' => 'system'],
             ['widgetId' => 'system.queue', 'titleKey' => 'aacp.system.queue', 'section' => 'system'],
             ['widgetId' => 'system.quarantine_count', 'titleKey' => 'aacp.system.quarantine_console', 'section' => 'system'],
@@ -845,7 +736,7 @@ final class AACPController
     }
 
     /**
-     * @return array<string, true> widgetId'ye göre O(1) arama için
+     * @return array<string, true> O(1) lookup by widgetId
      */
     private function getHiddenWidgetIdsForCurrentUser(): array
     {
@@ -869,10 +760,7 @@ final class AACPController
     }
 
     /**
-     * htop tarzı canlı sistem raporu. Tamamen salt-okunur ve yan etkisiz:
-     * hiçbir metrik toplama işlemi state değiştirmez, bu yüzden bu metod
-     * hem tam sayfa render'ında hem de /aacp/system/metrics JSON ucunda
-     * güvenle tekrar tekrar çağrılabilir.
+     * Live read-only system report; safe to call from full page and /aacp/system/metrics.
      *
      * @return array{
      *     load: array{available: bool, one: ?float, five: ?float, fifteen: ?float},
@@ -887,12 +775,24 @@ final class AACPController
      */
     private function buildSystemReport(): array
     {
+        $database = $this->readDatabaseStatus();
+        $opcache = $this->readOpcacheStatus();
+        $memory = $this->readMemoryUsage();
+        $queue = $this->readQueueStatus();
+
         return [
             'load' => $this->readLoadAverage(),
-            'memory' => $this->readMemoryUsage(),
-            'opcache' => $this->readOpcacheStatus(),
-            'database' => $this->readDatabaseStatus(),
-            'queue' => $this->readQueueStatus(),
+            'requestDurationMs' => $this->readRequestDurationMs(),
+            'memory' => $memory,
+            'opcache' => $opcache,
+            'database' => $database,
+            'queue' => $queue,
+            'cache' => $this->readCacheStatus(),
+            'mailer' => $this->readMailerStatus(),
+            'cron' => $this->readCronStatus(),
+            'uptime' => $this->readUptime(),
+            'performance' => $this->readPerformanceInventory(),
+            'safeMode' => $this->kernelDebug,
             'quarantine' => $this->readQuarantinedModules(),
             'moduleWidgets' => $this->collectModuleWidgets(),
             'generatedAt' => (new \DateTimeImmutable())->format(DATE_ATOM),
@@ -900,12 +800,7 @@ final class AACPController
     }
 
     /**
-     * Etiketlenmiş (cpalius.aacp.system_widget_provider) tüm modül
-     * provider'larını dolaşıp verilerini toplar. Manifesto Law 2.3 (Safe
-     * Mode & Recovery Console) ruhuyla HER provider ayrı ayrı try/catch
-     * içine alınır: bir modülün widget'ı (ör. henüz migrate edilmemiş bir
-     * tablo yüzünden) hata fırlatırsa sadece o kart atlanır ve loglanır —
-     * tek bir bozuk modül /aacp/system sayfasının tamamını 500'e düşürmez.
+     * Collects tagged system widget providers; each wrapped in try/catch (Law 2.3).
      *
      * @return list<SystemWidgetData>
      */
@@ -921,7 +816,7 @@ final class AACPController
             try {
                 $widgets[] = $provider->getWidget();
             } catch (\Throwable $e) {
-                $this->logger->warning('AACP sistem widget sağlayıcısı başarısız oldu, atlanıyor.', [
+                $this->logger->warning('AACP system widget provider failed; skipping.', [
                     'provider' => $provider::class,
                     'exception' => $e->getMessage(),
                 ]);
@@ -932,24 +827,39 @@ final class AACPController
     }
 
     /**
-     * @return array{available: bool, one: ?float, five: ?float, fifteen: ?float}
+     * @return array{available: bool, one: ?float, five: ?float, fifteen: ?float, label: ?string}
      */
     private function readLoadAverage(): array
     {
-        // sys_getloadavg() Windows'ta desteklenmez ve false döner; bu durumu
-        // hata olarak değil "bu platformda mevcut değil" olarak ele alıyoruz.
+        // sys_getloadavg() is unavailable on Windows; treat that as "n/a", not an error.
         $load = \function_exists('sys_getloadavg') ? sys_getloadavg() : false;
 
         if ($load === false) {
-            return ['available' => false, 'one' => null, 'five' => null, 'fifteen' => null];
+            return ['available' => false, 'one' => null, 'five' => null, 'fifteen' => null, 'label' => null];
         }
+
+        $one = round($load[0], 2);
+        $five = round($load[1], 2);
+        $fifteen = round($load[2], 2);
 
         return [
             'available' => true,
-            'one' => round($load[0], 2),
-            'five' => round($load[1], 2),
-            'fifteen' => round($load[2], 2),
+            'one' => $one,
+            'five' => $five,
+            'fifteen' => $fifteen,
+            'label' => sprintf('%s / %s / %s', $one, $five, $fifteen),
         ];
+    }
+
+    /** Wall-clock time from request start to this report, in milliseconds. */
+    private function readRequestDurationMs(): ?float
+    {
+        $start = $_SERVER['REQUEST_TIME_FLOAT'] ?? null;
+        if (!\is_numeric($start)) {
+            return null;
+        }
+
+        return round((microtime(true) - (float) $start) * 1000, 1);
     }
 
     /**
@@ -976,9 +886,7 @@ final class AACPController
     }
 
     /**
-     * php.ini "memory_limit" string'ini byte'a çevirir. "-1" (sınırsız)
-     * için null döner — gauge'un paydası olamayacağı için bu durum ayrı
-     * ele alınır (bkz. readMemoryUsage()'daki null-check).
+     * Parses php.ini memory_limit to bytes; "-1" (unlimited) returns null.
      */
     private function parseIniMemoryValue(string $value): ?int
     {
@@ -1007,7 +915,7 @@ final class AACPController
             return [
                 'available' => false,
                 'enabled' => false,
-                'message' => 'OPcache eklentisi bu PHP kurulumunda yüklü değil.',
+                'message' => $this->translator->trans('aacp.cache_rebuild.log.opcache_missing'),
                 'hitRate' => null,
                 'usedMemoryMiB' => null,
                 'freeMemoryMiB' => null,
@@ -1022,7 +930,7 @@ final class AACPController
             return [
                 'available' => true,
                 'enabled' => false,
-                'message' => 'OPcache yüklü ama devre dışı (opcache.enable=0 olabilir).',
+                'message' => $this->translator->trans('aacp.cache_rebuild.log.opcache_disabled'),
                 'hitRate' => null,
                 'usedMemoryMiB' => null,
                 'freeMemoryMiB' => null,
@@ -1047,50 +955,179 @@ final class AACPController
     }
 
     /**
-     * @return array{connected: bool, error: ?string, platform: ?string}
+     * @return array{
+     *     connected: bool,
+     *     error: ?string,
+     *     platform: ?string,
+     *     latencyMs: ?float,
+     *     version: ?string,
+     *     name: ?string,
+     *     charset: ?string,
+     *     sizeLabel: ?string,
+     *     tableCount: ?int,
+     *     threadsConnected: ?int,
+     *     maxConnections: ?int,
+     *     slowQueries: ?int,
+     *     serverUptime: ?string,
+     * }
      */
     private function readDatabaseStatus(): array
     {
+        $empty = [
+            'connected' => false,
+            'error' => null,
+            'platform' => null,
+            'latencyMs' => null,
+            'version' => null,
+            'name' => null,
+            'charset' => null,
+            'sizeLabel' => null,
+            'tableCount' => null,
+            'threadsConnected' => null,
+            'maxConnections' => null,
+            'slowQueries' => null,
+            'serverUptime' => null,
+        ];
+
         try {
+            $started = hrtime(true);
             $this->connection->executeQuery('SELECT 1');
+            $latencyMs = round((hrtime(true) - $started) / 1e6, 2);
+            $size = $this->readDatabaseSize();
 
             return [
                 'connected' => true,
                 'error' => null,
                 'platform' => $this->connection->getDatabasePlatform()::class,
+                'latencyMs' => $latencyMs,
+                'version' => $this->fetchScalar('SELECT VERSION()'),
+                'name' => $this->fetchScalar('SELECT DATABASE()'),
+                'charset' => $this->fetchScalar('SELECT @@character_set_database'),
+                'sizeLabel' => $size['sizeLabel'],
+                'tableCount' => $size['tableCount'],
+                'threadsConnected' => $this->fetchMysqlShowInt('STATUS', 'Threads_connected'),
+                'maxConnections' => $this->fetchMysqlShowInt('VARIABLES', 'max_connections'),
+                'slowQueries' => $this->fetchMysqlShowInt('STATUS', 'Slow_queries'),
+                'serverUptime' => $this->formatMysqlUptime($this->fetchMysqlShowInt('STATUS', 'Uptime')),
             ];
         } catch (DBALException $e) {
-            return [
-                'connected' => false,
-                'error' => $e->getMessage(),
-                'platform' => null,
-            ];
+            $empty['error'] = $e->getMessage();
+
+            return $empty;
         }
     }
 
     /**
-     * symfony/messenger bu kurulu (manifesto "Zero
-     * Node.js" ruhuna paralel olarak çekirdek de gereksiz bağımlılık
-     * biriktirmez). Kurulana kadar bu panel dürüstçe "kurulu değil" der;
-     * sahte bir sayı uydurmak yerine kartın kendisi bunu açıkça belirtir.
-     *
-     * @return array{available: bool, message: string, pending: ?int}
+     * @return array{tableCount: ?int, sizeLabel: ?string}
+     */
+    private function readDatabaseSize(): array
+    {
+        try {
+            $row = $this->connection->fetchAssociative(
+                'SELECT COUNT(*) AS table_count, ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb
+                 FROM information_schema.tables WHERE table_schema = DATABASE()',
+            );
+        } catch (\Throwable) {
+            return ['tableCount' => null, 'sizeLabel' => null];
+        }
+
+        if (!\is_array($row)) {
+            return ['tableCount' => null, 'sizeLabel' => null];
+        }
+
+        $tables = isset($row['table_count']) ? (int) $row['table_count'] : null;
+        $sizeMb = isset($row['size_mb']) && is_numeric($row['size_mb']) ? (float) $row['size_mb'] : null;
+
+        return [
+            'tableCount' => $tables,
+            'sizeLabel' => $sizeMb === null
+                ? null
+                : ($sizeMb >= 1024 ? round($sizeMb / 1024, 2).' GB' : round($sizeMb, 2).' MB'),
+        ];
+    }
+
+    private function fetchScalar(string $sql): ?string
+    {
+        try {
+            $value = $this->connection->fetchOne($sql);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if ($value === null || $value === false) {
+            return null;
+        }
+
+        return (string) $value;
+    }
+
+    private function fetchMysqlShowInt(string $kind, string $name): ?int
+    {
+        if (preg_match('/^[A-Za-z_]+$/', $name) !== 1) {
+            return null;
+        }
+
+        $sql = match ($kind) {
+            'STATUS' => 'SHOW STATUS LIKE '.$this->connection->quote($name),
+            'VARIABLES' => 'SHOW VARIABLES LIKE '.$this->connection->quote($name),
+            default => null,
+        };
+
+        if ($sql === null) {
+            return null;
+        }
+
+        try {
+            $row = $this->connection->fetchAssociative($sql);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $raw = \is_array($row) ? ($row['Value'] ?? $row['value'] ?? null) : null;
+
+        return is_numeric($raw) ? (int) $raw : null;
+    }
+
+    private function formatMysqlUptime(?int $seconds): ?string
+    {
+        if ($seconds === null || $seconds < 0) {
+            return null;
+        }
+
+        return $this->formatDuration($seconds);
+    }
+
+    /**
+     * @return array{available: bool, message: string, pending: ?int, messengerPending: int, platformPending: int, messengerFailed: int, platformFailed: int}
      */
     private function readQueueStatus(): array
     {
-        if (!interface_exists(\Symfony\Component\Messenger\MessageBusInterface::class)) {
+        try {
+            $summary = $this->queueStatusService->summary();
+
+            return [
+                'available' => true,
+                'message' => $this->translator->trans('aacp.dashboard.queue.dual_ok', [
+                    'messenger' => $summary['messengerPending'],
+                    'platform' => $summary['platformPending'],
+                ]),
+                'pending' => $summary['pending'],
+                'messengerPending' => $summary['messengerPending'],
+                'platformPending' => $summary['platformPending'],
+                'messengerFailed' => $summary['messengerFailed'],
+                'platformFailed' => $summary['platformFailed'],
+            ];
+        } catch (\Throwable) {
             return [
                 'available' => false,
-                'message' => 'symfony/messenger kurulu değil. Kuyruk izleme için "composer require symfony/messenger" gerekir.',
+                'message' => $this->translator->trans('aacp.dashboard.queue.unavailable'),
                 'pending' => null,
+                'messengerPending' => 0,
+                'platformPending' => 0,
+                'messengerFailed' => 0,
+                'platformFailed' => 0,
             ];
         }
-
-        return [
-            'available' => true,
-            'message' => 'Messenger algılandı.',
-            'pending' => null,
-        ];
     }
 
     /**
@@ -1127,7 +1164,216 @@ final class AACPController
 
         $lines = array_filter(array_map('trim', explode(PHP_EOL, $contents)));
 
-        // En yeni kayıt en üstte görünsün.
+        // Newest log entries first.
         return array_reverse(array_values($lines));
+    }
+
+    /**
+     * @return array{seconds: ?int, label: string}
+     */
+    private function readUptime(): array
+    {
+        $seconds = null;
+        if (is_readable('/proc/uptime')) {
+            $raw = @file_get_contents('/proc/uptime');
+            if (\is_string($raw) && $raw !== '') {
+                $seconds = (int) floatval(explode(' ', $raw)[0]);
+            }
+        }
+        if ($seconds === null && \function_exists('opcache_get_status')) {
+            $status = @opcache_get_status(false);
+            $start = is_array($status) ? ($status['opcache_statistics']['start_time'] ?? null) : null;
+            if (is_numeric($start) && (int) $start > 0) {
+                $seconds = max(0, time() - (int) $start);
+            }
+        }
+
+        return [
+            'seconds' => $seconds,
+            'label' => $seconds === null ? '—' : $this->formatDuration($seconds),
+        ];
+    }
+
+    private function formatDuration(int $seconds): string
+    {
+        $days = intdiv($seconds, 86400);
+        $hours = intdiv($seconds % 86400, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+
+        if ($days > 0) {
+            return sprintf('%dd %dh %dm', $days, $hours, $minutes);
+        }
+        if ($hours > 0) {
+            return sprintf('%dh %dm', $hours, $minutes);
+        }
+
+        return sprintf('%dm', $minutes);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function readPerformanceInventory(): array
+    {
+        try {
+            return $this->appCache->get('aacp.performance.inventory', function ($item) {
+                $item->expiresAfter(8);
+
+                return $this->performanceInventory->snapshot();
+            });
+        } catch (\Throwable $e) {
+            $this->logger->warning('Performance inventory failed.', ['exception' => $e->getMessage()]);
+
+            try {
+                return $this->performanceInventory->snapshot();
+            } catch (\Throwable) {
+                return [];
+            }
+        }
+    }
+
+    /**
+     * @return array{redisOnline: bool, pool: string}
+     */
+    private function readCacheStatus(): array
+    {
+        $redisOnline = $this->redis->isAvailable();
+
+        try {
+            $this->appCache->get('aacp.dashboard.ping', static fn () => 'ok');
+        } catch (\Throwable) {
+            // Cache pool probe is best-effort.
+        }
+
+        $pool = (new \ReflectionClass($this->appCache))->getShortName();
+
+        return [
+            'redisOnline' => $redisOnline,
+            'pool' => $pool,
+        ];
+    }
+
+    /**
+     * @return array{configured: bool, dsn: string}
+     */
+    private function readMailerStatus(): array
+    {
+        $dsn = trim($this->mailerDsn);
+        $configured = $dsn !== '' && !str_starts_with($dsn, 'null://');
+        $masked = preg_replace('#://([^:/@]+):([^@/]+)@#', '://$1:***@', $dsn) ?? $dsn;
+
+        return [
+            'configured' => $configured,
+            'dsn' => $masked !== '' ? $masked : '—',
+        ];
+    }
+
+    /**
+     * @return array{lastRunAt: ?string, lastRunLabel: string}
+     */
+    private function readCronStatus(): array
+    {
+        $latest = null;
+        foreach ($this->cronManager->getTasks() as $task) {
+            if (!$task instanceof CronJob) {
+                continue;
+            }
+            $runAt = $task->getLastRunAt();
+            if ($runAt instanceof \DateTimeImmutable && ($latest === null || $runAt > $latest)) {
+                $latest = $runAt;
+            }
+        }
+
+        if ($latest === null) {
+            $runs = $this->cronJobRunRepository->findLatest(1);
+            $latest = $runs !== [] ? $runs[0]->getStartedAt() : null;
+        }
+
+        return [
+            'lastRunAt' => $latest?->format(DATE_ATOM),
+            'lastRunLabel' => $latest instanceof \DateTimeImmutable
+                ? $latest->format('d.m.Y H:i')
+                : $this->translator->trans('aacp.dashboard.cron_never'),
+        ];
+    }
+
+    /**
+     * @return list<array{time: string, eventKey: string, actor: string, ipStatus: string}>
+     */
+    private function buildAuditFeed(): array
+    {
+        $rows = [];
+
+        try {
+            foreach ($this->cronJobRunRepository->findLatest(10) as $run) {
+                $success = $run->isSuccess();
+                $rows[] = [
+                    'sort' => $run->getStartedAt()->getTimestamp(),
+                    'time' => $run->getStartedAt()->format('H:i:s'),
+                    'eventKey' => 'aacp.dashboard.event.cron',
+                    'actor' => $run->getCronJob()->getName(),
+                    'ipStatus' => $success === false ? 'fail' : ($success === true ? 'ok' : 'running'),
+                ];
+            }
+        } catch (\Throwable) {
+            // Cron history table may be missing; the command desk still renders.
+        }
+
+        try {
+            foreach ($this->auditLogRepository->findRecent(10) as $log) {
+                $rows[] = [
+                    'sort' => $log->getCreatedAt()->getTimestamp(),
+                    'time' => $log->getCreatedAt()->format('H:i:s'),
+                    'eventKey' => $this->auditEventKey($log),
+                    'actor' => $this->auditActorName($log->getUserId()),
+                    'ipStatus' => $log->getAction(),
+                ];
+            }
+        } catch (\Throwable) {
+            // cp_audit_logs may not be migrated yet; AACP must stay up.
+        }
+
+        usort($rows, static fn (array $a, array $b): int => $b['sort'] <=> $a['sort']);
+        $rows = array_slice($rows, 0, 10);
+
+        return array_map(static function (array $row): array {
+            unset($row['sort']);
+
+            return $row;
+        }, $rows);
+    }
+
+    private function auditEventKey(AuditLog $log): string
+    {
+        $resource = strtolower($log->getResourceName());
+        if (str_contains($resource, 'user')) {
+            return 'aacp.dashboard.event.user_login';
+        }
+        if (str_contains($resource, 'setting')) {
+            return 'aacp.dashboard.event.setting_change';
+        }
+        if (str_contains($resource, 'module')) {
+            return 'aacp.dashboard.event.module_boot';
+        }
+        if (str_contains($resource, 'cache')) {
+            return 'aacp.dashboard.event.cache_flush';
+        }
+
+        return match ($log->getAction()) {
+            AuditLog::ACTION_CREATE => 'aacp.dashboard.event.create',
+            AuditLog::ACTION_DELETE => 'aacp.dashboard.event.delete',
+            default => 'aacp.dashboard.event.update',
+        };
+    }
+
+    private function auditActorName(?int $userId): string
+    {
+        if ($userId === null) {
+            return $this->translator->trans('aacp.dashboard.actor.system');
+        }
+
+        $user = $this->userRepository->find($userId);
+
+        return $user instanceof User ? $user->getFullName() : '#'.$userId;
     }
 }

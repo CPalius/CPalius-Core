@@ -35,7 +35,7 @@ final class BlogWidgetPlugin implements PluginInterface
 
     public function getLabel(): string
     {
-        return 'Blog Widget (Son Yazılar & Etiketler)';
+        return 'blog.plugin.widget';
     }
 
     public function isActive(): bool

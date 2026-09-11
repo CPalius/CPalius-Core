@@ -1,0 +1,83 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.themes.editor.header'|trans }}{% endblock %}
+
+{% block javascripts %}
+    {{ importmap(['app', 'aacp-theme-editor']) }}
+{% endblock %}
+
+{% block body %}
+    {% if theme is null %}
+        <twig:cp:card>
+            <p class="text-fs-sm text-slate-500">{{ 'aacp.themes.editor.no_theme'|trans }}</p>
+        </twig:cp:card>
+    {% else %}
+        <div class="space-y-sp-md"
+             data-theme-editor-root
+             data-lint-url="{{ path('aacp_theme_editor_lint') }}"
+             data-i18n-confirm="{{ 'aacp.themes.editor.confirm_save'|trans }}"
+             data-i18n-lint-failed="{{ 'aacp.themes.editor.lint_failed'|trans({error: '{error}'}) }}">
+
+            {% if app.request.query.get('saved') %}
+                <p class="text-fs-xs text-success-300">{{ 'aacp.themes.editor.saved'|trans }}</p>
+            {% endif %}
+            {% if error %}
+                <p class="text-fs-xs text-danger-300">{{ error }}</p>
+            {% endif %}
+            {% if app.request.query.get('lint') %}
+                <pre class="whitespace-pre-wrap rounded-md border border-warning-500/40 bg-warning-500/10 p-sp-sm text-fs-xs text-warning-200">{{ app.request.query.get('lint') }}</pre>
+            {% endif %}
+
+            <div class="grid grid-cols-1 gap-sp-md lg:grid-cols-[16rem_minmax(0,1fr)]">
+                <twig:cp:card title="{{ 'aacp.themes.editor.files'|trans }}" padded="{{ false }}">
+                    <form method="get" action="{{ path('aacp_theme_editor') }}" class="border-b border-white/10 p-sp-sm">
+                        <label class="mb-1 block text-fs-xs text-slate-500">{{ 'aacp.themes.editor.theme'|trans }}</label>
+                        <select name="theme" class="form-control !bg-dark-1 !border-white/10 !text-slate-200" onchange="this.form.submit()">
+                            {% for item in themes %}
+                                <option value="{{ item.dirName }}" {{ item.dirName == theme.dirName ? 'selected' : '' }}>
+                                    {{ item.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                    <ul class="max-h-[32rem] overflow-y-auto p-sp-xs">
+                        {% for file in files %}
+                            <li>
+                                <a href="{{ path('aacp_theme_editor', {theme: theme.dirName, file: file.path}) }}"
+                                   class="block truncate rounded px-2 py-1 font-mono text-fs-xs {{ current and current.path == file.path ? '!bg-primary-500/20 !text-primary-200' : '!text-slate-400 hover:!bg-white/5 hover:!text-slate-200' }}">
+                                    <span class="mr-1 uppercase !text-slate-600">{{ file.kind }}</span>
+                                    {{ file.label }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="px-2 py-3 text-fs-xs text-slate-500">{{ 'aacp.themes.editor.empty'|trans }}</li>
+                        {% endfor %}
+                    </ul>
+                </twig:cp:card>
+
+                <twig:cp:card title="{{ current ? current.path : 'aacp.themes.editor.pick'|trans }}">
+                    {% if current %}
+                        <form method="post" action="{{ path('aacp_theme_editor_save') }}" data-theme-editor-form class="space-y-sp-sm">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="theme" value="{{ theme.dirName }}">
+                            <input type="hidden" name="file" value="{{ current.path }}">
+                            <input type="hidden" name="force" value="0" data-theme-editor-force>
+                            <div class="overflow-hidden rounded-md border border-white/10 bg-black">
+                                <textarea name="content"
+                                          data-theme-editor-source
+                                          data-kind="{{ current.kind }}"
+                                          spellcheck="false"
+                                          class="min-h-[28rem] w-full resize-y bg-black p-sp-sm font-mono text-fs-xs leading-relaxed text-primary-200 outline-none">{{ current.content }}</textarea>
+                            </div>
+                            <p class="text-fs-xs text-slate-500">{{ 'aacp.themes.editor.hint'|trans }}</p>
+                            <pre data-theme-editor-problems class="hidden whitespace-pre-wrap rounded-md border border-warning-500/40 bg-warning-500/10 p-sp-sm text-fs-xs text-warning-200"></pre>
+                            <button type="submit" class="btn btn-primary">{{ 'aacp.themes.editor.save'|trans }}</button>
+                        </form>
+                    {% else %}
+                        <p class="text-fs-sm text-slate-500">{{ 'aacp.themes.editor.pick'|trans }}</p>
+                    {% endif %}
+                </twig:cp:card>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

@@ -1,8 +1,6 @@
 /**
- * CPalius Shell — Wowdash iskeletinin sidebar/dropdown/toast davranışı.
- * Flowbite'a bağımlı değildir (Flowbite yalnızca içerik sayfalarındaki
- * gelişmiş bileşenler için opsiyonel olarak importlanır); bu dosya AACP
- * ve Studio kabuklarının HER ikisinde de çalışan minimal, bağımsız JS'tir.
+ * CPalius Shell — Wowdash sidebar/dropdown/toast behavior.
+ * Flowbite-free minimal JS shared by AACP and Studio chrome.
  */
 
 function initSidebarToggle() {
@@ -40,10 +38,7 @@ function initSidebarToggle() {
 function initSidebarDropdowns() {
     document.querySelectorAll('[data-sidebar-dropdown-trigger]').forEach((trigger) => {
         trigger.addEventListener('click', (event) => {
-            // Bu trigger, kendi sayfası olan bir üst menü linkinin (<a>)
-            // içine gömülü: tıklama <a>'ya taşıp sayfaya gitmesin diye
-            // burada durduruluyor — asıl navigasyon <a>'nın geri kalanına
-            // tıklanınca zaten normal şekilde çalışır.
+            // Nested inside a parent menu <a> — stop propagation so the link does not navigate.
             event.preventDefault();
             event.stopPropagation();
 

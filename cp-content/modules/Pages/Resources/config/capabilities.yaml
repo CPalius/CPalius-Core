@@ -1,0 +1,11 @@
+capabilities:
+    - node.page.view.own
+    - node.page.view.any
+    - node.page.create
+    - node.page.edit.own
+    - node.page.edit.any
+    - node.page.delete.own
+    - node.page.delete.any
+    - node.page.publish
+    - pages.field_group.manage
+    - pages.settings.manage

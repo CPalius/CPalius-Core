@@ -1,10 +1,10 @@
 {% extends 'aacp/layout.html.twig' %}
 
-{% block header %}{{ locale ? 'Dili Düzenle' : 'Yeni Dil Ekle' }}{% endblock %}
+{% block header %}{{ locale ? 'aacp.locales.form.edit'|trans : 'aacp.locales.form.create'|trans }}{% endblock %}
 
 {% block body %}
     <div class="max-w-xl">
-        <twig:cp:card title="Dil Bilgileri">
+        <twig:cp:card title="{{ 'aacp.locales.form.card'|trans }}">
             {% if error %}
                 <div class="mb-sp-sm rounded-lg border border-danger-500/40 bg-danger-500/5 px-3 py-2 text-fs-sm !text-danger-300">
                     {{ error }}
@@ -17,31 +17,31 @@
                 <input type="hidden" name="_token" value="{{ csrf_token }}">
 
                 <div>
-                    <label for="code" class="form-label !text-slate-400">Dil Kodu</label>
+                    <label for="code" class="form-label !text-slate-400">{{ 'aacp.locales.form.code'|trans }}</label>
                     <input type="text" id="code" name="code" value="{{ formValues.code }}" required maxlength="5"
-                           placeholder="ör. tr, en, es"
+                           placeholder="{{ 'aacp.locales.form.placeholder.code'|trans }}"
                            class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
                 </div>
 
                 <div>
-                    <label for="name" class="form-label !text-slate-400">Ad</label>
+                    <label for="name" class="form-label !text-slate-400">{{ 'aacp.locales.form.name'|trans }}</label>
                     <input type="text" id="name" name="name" value="{{ formValues.name }}" required
-                           placeholder="ör. Türkçe"
+                           placeholder="{{ 'aacp.locales.form.placeholder.name'|trans }}"
                            class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
                 </div>
 
                 <div>
-                    <label for="native_name" class="form-label !text-slate-400">Yerel Ad</label>
+                    <label for="native_name" class="form-label !text-slate-400">{{ 'aacp.locales.form.native_name'|trans }}</label>
                     <input type="text" id="native_name" name="native_name" value="{{ formValues.nativeName }}" required
-                           placeholder="ör. Türkçe / English / Español"
+                           placeholder="{{ 'aacp.locales.form.placeholder.native_name'|trans }}"
                            class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
                 </div>
 
                 <div class="flex items-center gap-3 border-t border-white/10 pt-sp-sm">
                     <button type="submit" class="btn btn-primary">
-                        {{ locale ? 'Güncelle' : 'Oluştur' }}
+                        {{ locale ? 'aacp.locales.form.update'|trans : 'aacp.locales.form.create_submit'|trans }}
                     </button>
-                    <a href="{{ path('aacp_advanced_management', {tab: 'locales'}) }}" class="text-fs-sm font-medium !text-slate-400 hover:!text-slate-200">İptal</a>
+                    <a href="{{ path('aacp_advanced_management', {tab: 'locales'}) }}" class="text-fs-sm font-medium !text-slate-400 hover:!text-slate-200">{{ 'aacp.locales.form.cancel'|trans }}</a>
                 </div>
             </form>
         </twig:cp:card>

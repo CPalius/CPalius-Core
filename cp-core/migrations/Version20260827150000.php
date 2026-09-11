@@ -8,8 +8,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * CPalius CMF üretim forum yapısını sıfırdan oluşturur.
- * Eski test/akademik bölümler kaldırılır; mevcut konular yeni panolara dağıtılır.
+ * Builds production CPalius CMF forum structure from scratch and redistributes existing topics to new boards.
  */
 final class Version20260827150000 extends AbstractMigration
 {
@@ -21,14 +20,14 @@ final class Version20260827150000 extends AbstractMigration
 
     public function getDescription(): string
     {
-        return 'CPalius CMF üretim forum bölüm/kategori/alt kategori yapısını oluşturur ve mevcut konuları dağıtır.';
+        return 'Creates the production CPalius CMF forum section/category/subcategory structure and redistributes existing topics.';
     }
 
     public function up(Schema $schema): void
     {
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
-        // addSql kuyruğa alınır; konu taşıma/silme anında çalışmalı — tüm seed işlemleri connection ile yapılır.
+        // Topic moves/deletes must run immediately — seed via connection, not queued addSql().
         $this->seedDivision('baslangic', 'baslangic', 'Başlangıç & Kurulum', 'Kurulum, gereksinimler ve ilk yapılandırma', 0, 'bi-rocket-takeoff', $now);
         $this->seedDivision('studio', 'studio', 'Studio — İçerik Yönetimi', 'Node, blog, medya ve menü yönetimi', 1, 'bi-pencil-square', $now);
         $this->seedDivision('gelistirme', 'gelistirme', 'Geliştirme', 'Modül, tema, migration ve API geliştirme', 2, 'bi-code-slash', $now);
@@ -36,7 +35,7 @@ final class Version20260827150000 extends AbstractMigration
         $this->seedDivision('topluluk', 'topluluk', 'Topluluk', 'Tanışma, vitrin, geri bildirim ve serbest sohbet', 4, 'bi-people', $now);
         $this->seedDivision('destek', 'destek', 'Destek', 'Hata bildirimi, sorun giderme ve yardım', 5, 'bi-life-preserver', $now);
 
-        // Başlangıç
+        // Getting started
         $this->seedCategory('baslangic', 'kurulum', 'kurulum', 'Kurulum', 'Sunucu gereksinimleri ve kurulum adımları', 0, 'bi-download', $now);
         $this->seedSubcategory('kurulum', 'gereksinimler', 'gereksinimler', 'Gereksinimler ve Ortam', 'PHP, Symfony, veritabanı ve sunucu gereksinimleri', 0, 'bi-cpu', $now);
         $this->seedSubcategory('kurulum', 'ilk-kurulum', 'ilk-kurulum', 'İlk Kurulum', 'Composer, .env ve ilk site kurulumu', 1, 'bi-play-circle', $now);
@@ -55,7 +54,7 @@ final class Version20260827150000 extends AbstractMigration
         $this->seedSubcategory('moduller-studio', 'medya-modulu', 'medya', 'Medya Kütüphanesi', 'Dosya yükleme, medya seçici ve varlık yönetimi', 1, 'bi-images', $now);
         $this->seedSubcategory('moduller-studio', 'menu-modulu', 'menu', 'Menü Yönetimi', 'Header, footer ve özel menü yapılandırması', 2, 'bi-list-nested', $now);
 
-        // Geliştirme
+        // Development
         $this->seedCategory('gelistirme', 'cekirdek-dev', 'cekirdek', 'Çekirdek', 'CPalius çekirdek mimarisi ve API\'ler', 0, 'bi-box', $now);
         $this->seedSubcategory('cekirdek-dev', 'mimari-kavramlar', 'mimari', 'Mimari ve Veri Modeli', 'Node/Resource modeli, hibrit alanlar ve indeksleme', 0, 'bi-diagram-3', $now);
         $this->seedSubcategory('cekirdek-dev', 'yetenek-sistemi', 'yetenekler', 'Yetenek ve İzin Sistemi', 'Capability tabanlı yetkilendirme ve roller', 1, 'bi-key', $now);
@@ -65,7 +64,7 @@ final class Version20260827150000 extends AbstractMigration
         $this->seedSubcategory('genisletme', 'tema-gelistirme', 'tema-gelistirme', 'Tema Geliştirme', 'Twig şablonları, AssetMapper ve tema.json', 1, 'bi-palette', $now);
         $this->seedSubcategory('genisletme', 'migration-config', 'migration-config', 'Migration ve Config Sync', 'Doctrine migration, YAML config ve deploy', 2, 'bi-arrow-repeat', $now);
 
-        // AACP & Sistem
+        // AACP & system
         $this->seedCategory('aacp-sistem', 'performans', 'performans', 'Performans', 'Önbellek, RMVP ve optimizasyon', 0, 'bi-speedometer2', $now);
         $this->seedSubcategory('performans', 'onbellek-rmvp', 'onbellek', 'Önbellek ve RMVP', 'Redis, Memcached ve performans backend\'leri', 0, 'bi-lightning', $now);
         $this->seedSubcategory('performans', 'cron-gorevler', 'cron', 'Cron ve Arka Plan İşleri', 'Zamanlanmış görevler ve job yönetimi', 1, 'bi-clock-history', $now);
@@ -74,7 +73,7 @@ final class Version20260827150000 extends AbstractMigration
         $this->seedSubcategory('guvenlik-sistem', 'guvenlik-yedekleme', 'guvenlik-yedekleme', 'Güvenlik ve Yedekleme', 'Erişim kontrolü, yedekleme ve karantina', 0, 'bi-shield-lock', $now);
         $this->seedSubcategory('guvenlik-sistem', 'url-yonetimi', 'url-yonetimi', 'URL Alias Yönetimi', 'Özel URL tanımları ve yönlendirmeler', 1, 'bi-link-45deg', $now);
 
-        // Topluluk
+        // Community
         $this->seedCategory('topluluk', 'genel-topluluk', 'genel', 'Genel', 'Topluluk duyuruları ve tanışma', 0, 'bi-chat-dots', $now);
         $this->seedSubcategory('genel-topluluk', 'tanisma', 'tanisma', 'Tanışma', 'Kendinizi tanıtın, topluluğa katılın', 0, 'bi-hand-wave', $now);
         $this->seedSubcategory('genel-topluluk', 'duyurular', 'duyurular', 'Duyurular ve Haberler', 'CPalius sürüm notları ve topluluk haberleri', 1, 'bi-megaphone', $now);
@@ -85,7 +84,7 @@ final class Version20260827150000 extends AbstractMigration
 
         $this->seedSubcategory('topluluk', 'serbest-konusma', 'serbest', 'Serbest Konuşma', 'CMF dışı konular ve genel sohbet', 2, 'bi-cup-hot', $now);
 
-        // Destek
+        // Support
         $this->seedCategory('destek', 'yardim', 'yardim', 'Yardım', 'Teknik destek ve sorun giderme', 0, 'bi-question-circle', $now);
         $this->seedSubcategory('yardim', 'hata-bildirimi', 'hata-bildirimi', 'Hata Bildirimi', 'Bug raporları ve tekrarlanabilir adımlar', 0, 'bi-bug', $now);
         $this->seedSubcategory('yardim', 'sorun-giderme', 'sorun-giderme', 'Sorun Giderme ve SSS', 'Kurulum ve kullanım sorunları', 1, 'bi-wrench', $now);

@@ -17,9 +17,7 @@ class AssetRepository extends ServiceEntityRepository
     }
 
     /**
-     * Aynı içerik hash'ine sahip var olan bir Asset'i bulur.
-     * AssetManager::upload() bunu kullanarak aynı dosyanın tekrar tekrar
-     * fiziksel olarak depolanmasını ve veritabanında çoğaltılmasını önler.
+     * Find asset by content hash for upload deduplication.
      */
     public function findOneByHash(string $hash): ?Asset
     {
@@ -31,7 +29,7 @@ class AssetRepository extends ServiceEntityRepository
     }
 
     /**
-     * AACP Dashboard "Medya Dosyaları" kartı için toplam sayı.
+     * Total asset count for dashboard card.
      */
     public function countAll(): int
     {
@@ -42,8 +40,7 @@ class AssetRepository extends ServiceEntityRepository
     }
 
     /**
-     * Dashboard'daki "Disk Kullanımı" gauge'unun veri kaynağı, byte
-     * cinsinden. COALESCE ile boş tabloda NULL yerine 0 döner.
+     * Total file size in bytes for dashboard disk gauge (COALESCE to 0).
      */
     public function sumFileSize(): int
     {
@@ -54,11 +51,7 @@ class AssetRepository extends ServiceEntityRepository
     }
 
     /**
-     * Dashboard'daki "Mime Tipi Dağılımı" stacked-bar widget'ının veri
-     * kaynağı — idx_asset_mime_type index'i üzerinden. En çok kullanılan
-     * $limit mime tipini döner; "diğer" bucket'lama işi (limit'i aşan
-     * kalan kısmın toplanması) bilinçli olarak repository'de DEĞİL,
-     * controller katmanında yapılır (repository saf veri döner).
+     * Top mime types by count for dashboard chart; "other" bucketing is in controller.
      *
      * @return list<array{mimeType: string, count: int}>
      */

@@ -8,7 +8,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * CPalius Forum Engine — düğüm bazlı rol/izin matrisi (cp_forum_node_permissions).
+ * CPalius Forum Engine — node-scoped role/permission matrix (cp_forum_node_permissions).
  */
 final class Version20260903010000 extends AbstractMigration
 {

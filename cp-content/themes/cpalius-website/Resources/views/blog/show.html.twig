@@ -38,7 +38,7 @@
             {% endif %}
             {% if post.author %}
                 <span class="slw-detail-meta__sep">·</span>
-                <span class="slw-detail-meta__item"><i class="bi bi-person-workspace"></i> {{ post.author.getDataValue('display_name', post.author.email) }}</span>
+                <span class="slw-detail-meta__item"><i class="bi bi-person-workspace"></i> {{ blog_public_display_name(post.author)|default('blog.author.anonymous'|trans) }}</span>
             {% endif %}
             <span class="slw-detail-meta__sep">·</span>
             <span class="slw-detail-meta__item"><i class="bi bi-clock"></i> {{ 'blog.reading_time'|trans({'minutes': postBody|reading_time}) }}</span>
@@ -60,5 +60,6 @@
     postBody: postBody,
     typeFields: typeFields,
     relatedPosts: relatedPosts,
+    commentContext: commentContext|default({enabled: false, canSubmit: false, threads: [], approvedCount: 0}),
 } %}
 {% endblock %}

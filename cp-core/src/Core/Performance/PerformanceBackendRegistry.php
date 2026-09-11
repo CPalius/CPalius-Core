@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Performance;
 
+use App\Core\OriginCache\OriginCacheStore;
 use App\Core\Settings\SettingsRegistry;
 use App\Entity\PerformanceBackendStatus;
 use App\Entity\Setting;
@@ -22,7 +23,11 @@ final class PerformanceBackendRegistry
         'memcached' => ['host', 'port', 'timeout'],
         'varnish' => ['backend_url', 'port', 'ttl', 'excludes', 'timeout'],
         'pagespeed' => ['check_url', 'timeout'],
+        'cpalius' => ['ttl', 'excludes', 'minify', 'compress_assets', 'compress_images', 'shield'],
     ];
+
+    /** @var list<string> */
+    private const BOOLEAN_FIELDS = ['minify', 'compress_assets', 'compress_images', 'shield'];
 
     private const URL_FIELDS = ['backend_url', 'check_url'];
 
@@ -34,6 +39,8 @@ final class PerformanceBackendRegistry
         MemcachedConnectionTester $memcachedConnectionTester,
         VarnishStatusChecker $varnishStatusChecker,
         NginxPageSpeedStatusChecker $nginxPageSpeedStatusChecker,
+        OriginCacheChecker $originCacheChecker,
+        private readonly OriginCacheStore $originCacheStore,
         private readonly SettingsRegistry $settingsRegistry,
         private readonly SettingRepository $settingRepository,
         private readonly PerformanceBackendStatusRepository $statusRepository,
@@ -44,6 +51,7 @@ final class PerformanceBackendRegistry
             $memcachedConnectionTester,
             $varnishStatusChecker,
             $nginxPageSpeedStatusChecker,
+            $originCacheChecker,
         ];
     }
 
@@ -93,13 +101,17 @@ final class PerformanceBackendRegistry
         $merged = $this->getConfig($backendId);
 
         foreach (self::CONFIG_KEYS[$backendId] as $field) {
-            if (!\array_key_exists($field, $submittedConfig)) {
+            if (\in_array($field, self::BOOLEAN_FIELDS, true)) {
+                $value = isset($submittedConfig[$field]) && $submittedConfig[$field] !== '0' && $submittedConfig[$field] !== ''
+                    ? '1'
+                    : '0';
+            } elseif (!\array_key_exists($field, $submittedConfig)) {
                 continue;
-            }
-
-            $value = \trim((string) $submittedConfig[$field]);
-            if (\in_array($field, self::URL_FIELDS, true)) {
-                $value = HttpHeaderProbe::normalizeUrl($value);
+            } else {
+                $value = \trim((string) $submittedConfig[$field]);
+                if (\in_array($field, self::URL_FIELDS, true)) {
+                    $value = HttpHeaderProbe::normalizeUrl($value);
+                }
             }
 
             $merged[$field] = $value;
@@ -129,6 +141,10 @@ final class PerformanceBackendRegistry
         $status->recordTestResult($result->success, $result->status, $result->messageKey, $result->messageParams);
         $this->entityManager->flush();
 
+        if ($backendId === 'cpalius' && !$result->success) {
+            $this->originCacheStore->disable();
+        }
+
         return $result;
     }
 
@@ -145,6 +161,10 @@ final class PerformanceBackendRegistry
 
         $status->setIsEnabled(true);
         $this->entityManager->flush();
+
+        if ($backendId === 'cpalius') {
+            $this->originCacheStore->enable();
+        }
     }
 
     public function disable(string $backendId): void
@@ -156,6 +176,10 @@ final class PerformanceBackendRegistry
 
         $status->setIsEnabled(false);
         $this->entityManager->flush();
+
+        if ($backendId === 'cpalius') {
+            $this->originCacheStore->disable();
+        }
     }
 
     private function findChecker(string $backendId): PerformanceBackendCheckerInterface

@@ -13,7 +13,7 @@ use Modules\Blog\PostSubType;
  */
 #[CpSetting(
     key: 'blog.default_posts_per_page',
-    label: 'Sayfa Başına Gösterilecek Yazı Sayısı',
+    label: 'blog.settings.default_posts_per_page',
     type: 'integer',
     default: 10,
     module: 'blog',
@@ -22,14 +22,14 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.default_post_sub_type',
-    label: 'Yeni Yazı Eklenirken Varsayılan Tür',
+    label: 'blog.settings.default_post_sub_type',
     type: 'select',
     default: PostSubType::ARTICLE,
     variants: [
-        PostSubType::ARTICLE => 'Makale',
-        PostSubType::PROJECT => 'Proje',
-        PostSubType::SOFTWARE => 'Yazılım / Ürün',
-        PostSubType::NOTE => 'Not',
+        PostSubType::ARTICLE => 'blog.posts.sub_type.article',
+        PostSubType::PROJECT => 'blog.posts.sub_type.project',
+        PostSubType::SOFTWARE => 'blog.posts.sub_type.software',
+        PostSubType::NOTE => 'blog.posts.sub_type.note',
     ],
     module: 'blog',
     group: 'blog',
@@ -40,7 +40,7 @@ use Modules\Blog\PostSubType;
     // cpalius.setting_definitions container parameter and resolves to "%" at runtime.
     default: '%%title%% - %%site_name%%',
     key: 'blog.seo_title_pattern',
-    label: 'Blog SEO Başlık Şablonu',
+    label: 'blog.settings.seo_title_pattern',
     type: 'text',
     module: 'blog',
     group: 'blog',
@@ -48,7 +48,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.meta_description_fallback',
-    label: 'Varsayılan Meta Açıklaması (Yazıda Tanımlı Değilse)',
+    label: 'blog.settings.meta_description_fallback',
     type: 'textarea',
     default: '',
     module: 'blog',
@@ -58,7 +58,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.list_excerpt_length',
-    label: 'Liste Özet Uzunluğu',
+    label: 'blog.settings.list_excerpt_length',
     type: 'integer',
     default: 160,
     module: 'blog',
@@ -67,12 +67,12 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.list_excerpt_unit',
-    label: 'Liste Özet Birimi',
+    label: 'blog.settings.list_excerpt_unit',
     type: 'select',
     default: 'chars',
     variants: [
-        'chars' => 'Karakter',
-        'words' => 'Kelime',
+        'chars' => 'blog.settings.excerpt_unit.chars',
+        'words' => 'blog.settings.excerpt_unit.words',
     ],
     module: 'blog',
     group: 'blog',
@@ -80,12 +80,12 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.list_layout',
-    label: 'Blog Liste Görünümü',
+    label: 'blog.settings.list_layout',
     type: 'select',
     default: 'grid',
     variants: [
-        'grid' => 'Izgara (Kartlar)',
-        'list' => 'Liste',
+        'grid' => 'blog.settings.list_layout.grid',
+        'list' => 'blog.settings.list_layout.list',
     ],
     module: 'blog',
     group: 'blog',
@@ -93,7 +93,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.hero_enabled',
-    label: 'Hero Alanını Göster',
+    label: 'blog.settings.hero_enabled',
     type: 'checkbox',
     default: true,
     module: 'blog',
@@ -102,7 +102,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.hero_label',
-    label: 'Hero Üst Etiket',
+    label: 'blog.settings.hero_label',
     type: 'text',
     default: 'CPalius Blog',
     module: 'blog',
@@ -112,7 +112,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.hero_title',
-    label: 'Hero Başlık',
+    label: 'blog.settings.hero_title',
     type: 'text',
     default: 'Mimari, ürün ve mühendislik notları',
     module: 'blog',
@@ -122,7 +122,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.hero_subtitle',
-    label: 'Hero Alt Başlık',
+    label: 'blog.settings.hero_subtitle',
     type: 'text',
     default: 'Kurumsal CMF deneyiminden süzülen yazılar',
     module: 'blog',
@@ -132,7 +132,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.hero_description',
-    label: 'Hero Açıklama',
+    label: 'blog.settings.hero_description',
     type: 'textarea',
     default: 'Modüler mimari, güvenlik anayasası, performans ve Studio içerik akışı üzerine derinlemesine makaleler, proje güncellemeleri ve mühendislik notları.',
     module: 'blog',
@@ -142,7 +142,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.hero_cta_primary_label',
-    label: 'Birincil Buton Metni',
+    label: 'blog.settings.hero_cta_primary_label',
     type: 'text',
     default: 'Son yazıları oku',
     module: 'blog',
@@ -152,7 +152,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.hero_cta_primary_href',
-    label: 'Birincil Buton Linki',
+    label: 'blog.settings.hero_cta_primary_href',
     type: 'text',
     default: '#blog-feed',
     module: 'blog',
@@ -161,7 +161,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.hero_cta_secondary_label',
-    label: 'İkincil Buton Metni',
+    label: 'blog.settings.hero_cta_secondary_label',
     type: 'text',
     default: 'Kategorilere göz at',
     module: 'blog',
@@ -171,7 +171,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.hero_cta_secondary_href',
-    label: 'İkincil Buton Linki',
+    label: 'blog.settings.hero_cta_secondary_href',
     type: 'text',
     default: '#blog-categories',
     module: 'blog',
@@ -180,7 +180,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.hero_image_asset_id',
-    label: 'Hero Görseli (Medya Asset ID)',
+    label: 'blog.settings.hero_image_asset_id',
     type: 'text',
     default: '',
     module: 'blog',
@@ -189,7 +189,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.hero_show_stats',
-    label: 'Hero İstatistiklerini Göster',
+    label: 'blog.settings.hero_show_stats',
     type: 'checkbox',
     default: true,
     module: 'blog',
@@ -198,7 +198,7 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.featured_enabled',
-    label: 'Öne Çıkan Yazı Şeridini Göster',
+    label: 'blog.settings.featured_enabled',
     type: 'checkbox',
     default: true,
     module: 'blog',
@@ -207,12 +207,112 @@ use Modules\Blog\PostSubType;
 )]
 #[CpSetting(
     key: 'blog.featured_limit',
-    label: 'Öne Çıkan Yazı Adedi',
+    label: 'blog.settings.featured_limit',
     type: 'integer',
     default: 8,
     module: 'blog',
     group: 'blog_showcase',
     scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    key: 'blog.comments_enabled',
+    label: 'blog.settings.comments_enabled',
+    type: 'checkbox',
+    default: true,
+    module: 'blog',
+    group: 'blog_comments',
+    scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    key: 'blog.comments_allow_guests',
+    label: 'blog.settings.comments_allow_guests',
+    type: 'checkbox',
+    default: true,
+    module: 'blog',
+    group: 'blog_comments',
+    scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    key: 'blog.comments_guest_require_approval',
+    label: 'blog.settings.comments_guest_require_approval',
+    type: 'checkbox',
+    default: true,
+    module: 'blog',
+    group: 'blog_comments',
+    scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    key: 'blog.comments_member_require_approval',
+    label: 'blog.settings.comments_member_require_approval',
+    type: 'checkbox',
+    default: false,
+    module: 'blog',
+    group: 'blog_comments',
+    scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    key: 'blog.comments_allow_replies',
+    label: 'blog.settings.comments_allow_replies',
+    type: 'checkbox',
+    default: true,
+    module: 'blog',
+    group: 'blog_comments',
+    scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    key: 'blog.comments_allow_edit',
+    label: 'blog.settings.comments_allow_edit',
+    type: 'checkbox',
+    default: false,
+    module: 'blog',
+    group: 'blog_comments',
+    scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    key: 'blog.comments_require_captcha',
+    label: 'blog.settings.comments_require_captcha',
+    type: 'checkbox',
+    default: true,
+    module: 'blog',
+    group: 'blog_comments',
+    scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    key: 'blog.comments_captcha_members',
+    label: 'blog.settings.comments_captcha_members',
+    type: 'checkbox',
+    default: false,
+    module: 'blog',
+    group: 'blog_comments',
+    scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    key: 'blog.comments_per_page',
+    label: 'blog.settings.comments_per_page',
+    type: 'integer',
+    default: 20,
+    module: 'blog',
+    group: 'blog_comments',
+    scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    key: 'blog.comments_max_length',
+    label: 'blog.settings.comments_max_length',
+    type: 'integer',
+    default: 4000,
+    module: 'blog',
+    group: 'blog_comments',
+    scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    key: 'blog.comments_closed_notice',
+    label: 'blog.settings.comments_closed_notice',
+    type: 'textarea',
+    default: '',
+    module: 'blog',
+    group: 'blog_comments',
+    scope: CpSetting::SCOPE_MODULE,
+    translatable: true,
 )]
 final class BlogSettings
 {

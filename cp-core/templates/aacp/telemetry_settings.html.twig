@@ -1,0 +1,59 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.telemetry.settings.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        {% if app.request.query.get('saved') %}
+            <div class="rounded-lg border border-success-500/30 bg-success-500/10 px-sp-sm py-3 text-fs-sm !text-success-300">
+                {{ 'aacp.system_settings.saved'|trans }}
+            </div>
+        {% endif %}
+
+        {% if app.request.query.get('invalid_setting') %}
+            <div class="rounded-lg border border-danger-500/30 bg-danger-500/10 px-sp-sm py-3 text-fs-sm !text-danger-300">
+                {{ 'aacp.settings.invalid_value'|trans({key: app.request.query.get('invalid_setting')}) }}
+            </div>
+        {% endif %}
+
+        <twig:cp:card padded="{{ true }}">
+            <p class="text-fs-sm font-semibold !text-slate-200">{{ 'aacp.telemetry.settings.header'|trans }}</p>
+            <p class="mt-1 text-fs-sm !text-slate-400">{{ 'aacp.system_settings.tab.telemetry_desc'|trans }}</p>
+        </twig:cp:card>
+
+        {% if definitions is empty %}
+            <twig:cp:card>
+                <p class="text-fs-sm !text-slate-500">{{ 'aacp.settings.no_settings'|trans }}</p>
+            </twig:cp:card>
+        {% else %}
+            <form method="post" action="{{ path('aacp_telemetry_settings_update') }}" class="space-y-sp-sm">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <input type="hidden" name="_tab" value="telemetry">
+
+                <twig:cp:card title="{{ 'aacp.telemetry.settings.header'|trans }}" padded="{{ false }}">
+                    <twig:cp:table headers="{{ [
+                        'aacp.system_settings.column.setting'|trans,
+                        'aacp.system_settings.column.value'|trans,
+                    ] }}">
+                        <twig:block name="rows">
+                            {% for setting in definitions %}
+                                {% include 'aacp/partials/_system_setting_row.html.twig' with {
+                                    setting: setting,
+                                    value: values[setting.key]|default(null),
+                                } %}
+                            {% endfor %}
+                        </twig:block>
+                    </twig:cp:table>
+                </twig:cp:card>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 !bg-dark-1/60 px-sp-sm py-3">
+                    <p class="text-fs-xs !text-slate-500">{{ 'aacp.telemetry.settings.hint'|trans }}</p>
+                    <button type="submit" class="btn btn-primary">
+                        <twig:ux:icon name="heroicons:check" class="h-4 w-4" />
+                        {{ 'aacp.settings.save'|trans }}
+                    </button>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -8,7 +8,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * CPalius Forum Engine 2.x hizalaması: node (last_post, node_type, link, capability),
+ * CPalius Forum Engine 2.x alignment: node (last_post, node_type, link, capability),
  * thread (discussion_state, locked, first/last post), post (edit/attach),
  * prefix css_class.
  */

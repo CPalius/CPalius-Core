@@ -17,9 +17,7 @@ class UrlAliasRepository extends ServiceEntityRepository
     }
 
     /**
-     * UrlAliasListener'ın tek sorgusu: gelen isteğin normalize edilmiş
-     * path'ine + locale'ine göre aktif bir alias arar. Bulunamazsa null
-     * döner ve listener orijinal 404'ü olduğu gibi bırakır (fail-safe).
+     * UrlAliasListener lookup by normalized path + locale; null preserves original 404.
      */
     public function findOneActiveByPathAndLocale(string $aliasPath, string $locale): ?UrlAlias
     {
@@ -34,8 +32,7 @@ class UrlAliasRepository extends ServiceEntityRepository
     }
 
     /**
-     * Belirli bir yolun bu locale'de zaten kullanımda olup olmadığını
-     * kontrol eder (AACP CRUD formundaki benzersizlik doğrulaması için).
+     * Whether alias path is taken for locale (AACP form uniqueness check).
      */
     public function pathExists(string $aliasPath, string $locale, ?int $excludeId = null): bool
     {

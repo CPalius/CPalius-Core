@@ -6,17 +6,8 @@ use App\Repository\UrlAliasRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Node/Category'lerin kendi otomatik slug+locale URL'inin (bkz. Node,
- * Category doc-block'ları) YERİNE GEÇMEZ — üstüne EK, isteğe bağlı bir
- * kısayol/özel yol tanımlar (Drupal'ın url_alias'ına karşılık gelir).
- * Bir alias'a girildiğinde, ziyaretçi hedefin gerçek kanonik URL'ine
- * 301 ile yönlendirilir (bkz. Core\Routing\UrlAliasListener) — ayrı bir
- * içerik render'ı DEĞİLDİR.
- *
- * targetNodeId/targetCategoryId BİLİNÇLİ OLARAK FK DEĞİLDİR (MenuItem::nodeId
- * ile aynı gerekçe): hedef silinirse/yayından kalkarsa alias sessizce
- * çözülemez kalır, listener fail-safe olarak orijinal 404'ü olduğu gibi
- * bırakır — bir içeriği silmek site genelinde alias kayıtlarını kırmaz.
+ * Optional URL shortcuts (Drupal-style); 301 to canonical target via UrlAliasListener.
+ * Target ids are not FKs — deleted targets fail-safe to 404 without breaking aliases.
  */
 #[ORM\Entity(repositoryClass: UrlAliasRepository::class)]
 #[ORM\Table(name: 'url_aliases')]
@@ -34,9 +25,7 @@ class UrlAlias
     private ?int $id = null;
 
     /**
-     * Baştaki "/" olmadan normalize edilmiş yol (ör. "kampanya/yaz-indirimi").
-     * UrlAliasListener bu alanı, gelen isteğin path_info'sundan aynı
-     * normalizasyonla üretilen değerle karşılaştırır.
+     * Normalized path without leading slash; matched by UrlAliasListener.
      */
     #[ORM\Column(name: 'alias_path', type: 'string', length: 255)]
     private string $aliasPath;

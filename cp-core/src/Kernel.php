@@ -5,17 +5,24 @@ namespace App;
 use App\Core\Api\DependencyInjection\Compiler\ApiRegistrationPass;
 use App\Core\Cron\DependencyInjection\Compiler\CronCommandRegistrationPass;
 use App\Core\Cron\DependencyInjection\Compiler\CronRegistrationPass;
+use App\Core\Display\DependencyInjection\Compiler\ViewModeRegistrationPass;
+use App\Core\Entity\DependencyInjection\Compiler\EntityTypeRegistrationPass;
 use App\Core\DependencyInjection\Compiler\TailwindVarDirPass;
+use App\Core\Field\DependencyInjection\Compiler\FieldTypeRegistrationPass;
 use App\Core\Hook\DependencyInjection\Compiler\HookRegistrationPass;
 use App\Core\Localization\DependencyInjection\Compiler\LocalesPatternPass;
 use App\Core\Menu\DependencyInjection\Compiler\AdminMenuRegistrationPass;
 use App\Core\Module\ModuleEntityMappingResolver;
+use App\Core\Module\DependencyInjection\Compiler\ModuleContributionPass;
 use App\Core\Module\DependencyInjection\Compiler\ModuleMigrationsPass;
 use App\Core\Theme\DependencyInjection\Compiler\ThemeTwigPathPass;
+use App\Core\Webhook\DependencyInjection\Compiler\InboundWebhookHandlerPass;
 use App\Core\Module\ModuleRegistry;
 use App\Core\Resource\DependencyInjection\Compiler\ResourceRegistrationPass;
 use App\Core\Security\DependencyInjection\Compiler\CapabilityRegistrationPass;
 use App\Core\Settings\DependencyInjection\Compiler\SettingsRegistrationPass;
+use App\Core\Token\DependencyInjection\Compiler\TokenTypeRegistrationPass;
+use App\Core\TextFormat\DependencyInjection\Compiler\TextFormatRegistrationPass;
 use Doctrine\Bundle\DoctrineBundle\DependencyInjection\Compiler\DoctrineOrmMappingsPass;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\Config\FileLocator;
@@ -29,33 +36,21 @@ class Kernel extends BaseKernel
     use MicroKernelTrait;
 
     /**
-     * PSR-4 kökü olan Modules\ namespace'i sadece cp-content/modules/
-     * altındaki modüllere ait. Bu prefix'i taşıyan bir bundle'ın boot()
-     * hatası "modül hatası" sayılır ve izole edilir; FrameworkBundle gibi
-     * çekirdek bundle'ların hataları asla yutulmaz.
+     * The Modules\ PSR-4 root covers only cp-content/modules/ bundles.
+     * Boot failures there are quarantined; core bundle errors are never swallowed.
      */
     private const MODULE_NAMESPACE_PREFIX = 'Modules\\';
 
     public function getProjectDir(): string
     {
-        // cp-core/src/Kernel.php -> cp-core/src -> cp-core -> proje kökü
+        // cp-core/src/Kernel.php -> cp-core/src -> cp-core -> project root
         return \dirname(__DIR__, 2);
     }
 
     /**
-     * Manifesto Law 2.1 (Dynamic & Safe Booting): MicroKernelTrait'in
-     * varsayılan registerBundles() implementasyonu SADECE config/bundles.php
-     * dosyasını okur — Modules\ namespace'i altındaki modül bundle'ları
-     * o dosyaya asla yazılmaz (bkz. bundles.php üstündeki not). Bunun
-     * yerine ModuleRegistry::getHealthyModuleBundles() ile config/
-     * active_modules.php dosyasını okuyup, karantina/doğrulama
-     * kurallarından geçen modül bundle'larını buraya ekliyoruz.
-     *
-     * ModuleRegistry burada bir SERVİS olarak değil, doğrudan `new` ile
-     * kullanılır: bu metot container henüz inşa edilmeden (hatta
-     * inşa sürecinin bir parçası olarak) çağrılır, bu yüzden DI container'a
-     * bağımlı olamaz — tıpkı bundles.php'nin kendisi gibi saf dosya sistemi
-     * okumasıdır.
+     * Manifesto Law 2.1: core bundles come from bundles.php; healthy module
+     * bundles are added from active_modules.php via ModuleRegistry.
+     * ModuleRegistry is instantiated directly — the container is not built yet.
      */
     public function registerBundles(): iterable
     {
@@ -97,27 +92,21 @@ class Kernel extends BaseKernel
     }
 
     /**
-     * Üst sınıfın davranışı: herhangi bir bundle'ın boot() metodu hata
-     * fırlatırsa tüm uygulama çöker. Burada, sadece bir "Modül"e ait
-     * (Modules\ namespace'i altındaki) bundle'ların boot() hatalarını
-     * izole ediyoruz — Core bundle'lar (FrameworkBundle vb.) hâlâ normal
-     * davranır ve hataları olduğu gibi yükselir.
+     * Parent boot() fails the whole app on any bundle error. Only Modules\
+     * bundle boot failures are quarantined; core bundles still propagate errors.
      */
     public function boot(): void
     {
         if ($this->booted) {
-            // Zaten boot edilmiş: üst sınıfın kısa devre (services_resetter
-            // vb.) mantığını olduğu gibi kullan.
+            // Already booted: use parent short-circuit (services_resetter, etc.).
             parent::boot();
 
             return;
         }
 
         if (!$this->container) {
-            // BaseKernel::preBoot() private olduğu için doğrudan
-            // çağrılamıyor; aynı iki adımı (initializeBundles +
-            // initializeContainer) kendimiz tetikliyoruz. Bu adımlarda
-            // hata olursa (Core seviyesinde) hata olduğu gibi yükselir.
+            // BaseKernel::preBoot() is private; run initializeBundles +
+            // initializeContainer ourselves. Core errors still propagate.
             $this->initializeBundles();
             $this->initializeContainer();
         }
@@ -141,16 +130,8 @@ class Kernel extends BaseKernel
     }
 
     /**
-     * Her bundle'ın (Core dahil) kendi Resources/config/services.yaml
-     * dosyasını (varsa) container'a yükler. Modül bundle'ları için bu
-     * adım izole edilir: bir modülün services.yaml'ı bozuksa (syntax
-     * hatası, geçersiz servis tanımı) sadece o modülün servisleri devre
-     * dışı kalır, container derlemesi ve diğer modüller etkilenmez.
-     *
-     * Not: Controller'ların autowire edilebilmesi (ör. TranslatorInterface
-     * enjeksiyonu) için modülün kendi controller/servis sınıflarının bir
-     * yerde "services" olarak tanımlı olması gerekir; wildcard resource
-     * taraması modül geliştiricisinin kendi services.yaml'ında yapılır.
+     * Loads each bundle's Resources/config/services.yaml when present.
+     * Broken module YAML is quarantined so other modules and compilation continue.
      */
     public function build(ContainerBuilder $container): void
     {
@@ -160,42 +141,42 @@ class Kernel extends BaseKernel
 
         $container->addCompilerPass(new TailwindVarDirPass());
 
-        // FAZ 3: %cpalius.locales_pattern% (ve kardeş parametreleri) diğer
-        // TÜM pass'lerden ÖNCE üretilmelidir — modül rota tanımları ve
-        // #[Route] requirements'ları bu parametreye referans verir, dolayısıyla
-        // container'da her şeyden önce var olmak zorundadır.
+        // Phase 3: %cpalius.locales_pattern% must exist before routes reference it.
         $container->addCompilerPass(new LocalesPatternPass(), priority: 100);
 
-        // FAZ 6: theme Twig namespaces and module migration directories are both
+        // Phase 6: theme Twig namespaces and module migration directories are both
         // compile-time concerns, resolved before the registration passes below.
         $container->addCompilerPass(new ThemeTwigPathPass(), priority: 90);
         $container->addCompilerPass(new ModuleMigrationsPass(), priority: 90);
+        $container->addCompilerPass(new ModuleContributionPass(), priority: 90);
 
-        // Sıralama kritik: ResourceRegistrationPass önce çalışıp
-        // #[CpResource] taramasını ResourceRegistrationPass::CONTAINER_PARAMETER
-        // altına yazmalı; CapabilityRegistrationPass bu parametreyi okuyarak
-        // otomatik yetenekleri üretir (Manifesto Law 4.2). Symfony aynı
-        // önceliğe sahip pass'leri ekleme sırasına göre çalıştırır, ama
-        // burada niyeti açık kılmak için farklı öncelik veriyoruz.
+        // ResourceRegistrationPass must run before CapabilityRegistrationPass (Law 4.2).
         $container->addCompilerPass(new ResourceRegistrationPass(), priority: 10);
         $container->addCompilerPass(new CapabilityRegistrationPass(), priority: 0);
 
-        // Menü ve ayar taramaları diğer pass'lerden bağımsızdır (aralarında
-        // bir veri akışı yok), bu yüzden aynı öncelik tercih edilir.
+        // Menu and settings passes are independent; same priority is fine.
         $container->addCompilerPass(new AdminMenuRegistrationPass(), priority: 10);
         $container->addCompilerPass(new SettingsRegistrationPass(), priority: 10);
         $container->addCompilerPass(new CronCommandRegistrationPass(), priority: 10);
+        $container->addCompilerPass(new ViewModeRegistrationPass(), priority: 10);
+        $container->addCompilerPass(new TokenTypeRegistrationPass(), priority: 10);
+        $container->addCompilerPass(new TextFormatRegistrationPass(), priority: 10);
 
-        // HookRegistrationPass: ServiceLocatorTagPass::register() ile bir
-        // "service_locator.xxx" servisi üretir; bu servisin de HookManager
-        // argümanına referans olarak bağlanabilmesi için normal (autowire)
-        // derleme geçişlerinden SONRA, ama container "removing" (private
-        // servisleri temizleme) aşamasından ÖNCE çalışmalıdır. Varsayılan
-        // öncelik (priority: 0) bu sırayı sağlar; diğer pass'lerle veri
-        // bağımlılığı olmadığından erken çalışmasına gerek yoktur.
+        // HookRegistrationPass needs default priority: after autowire, before removing.
         $container->addCompilerPass(new HookRegistrationPass());
         $container->addCompilerPass(new ApiRegistrationPass());
         $container->addCompilerPass(new CronRegistrationPass());
+
+        // Collects #[CpEntityType] classes (core + modules) into EntityTypeRegistry.
+        // Runs before the field pass so the field layer can trust the type list.
+        $container->addCompilerPass(new EntityTypeRegistrationPass());
+
+        // Collects #[CpFieldType] classes (core + modules) into FieldTypeRegistry.
+        $container->addCompilerPass(new FieldTypeRegistrationPass());
+
+        // Maps registered inbound webhook endpoint ids to their module handler
+        // services for InboundWebhookJobHandler. Runs after autowiring.
+        $container->addCompilerPass(new InboundWebhookHandlerPass());
 
         foreach ($this->getBundles() as $bundle) {
             $servicesFile = $bundle->getPath().'/Resources/config/services.yaml';
@@ -205,8 +186,7 @@ class Kernel extends BaseKernel
             }
 
             if (!str_starts_with($bundle::class, self::MODULE_NAMESPACE_PREFIX)) {
-                // Core bundle'ların services.yaml'ı hata verirse bu gerçek
-                // bir çekirdek hatasıdır, izole edilmeden yükselmelidir.
+                // Core services.yaml errors are real core failures — do not quarantine.
                 $this->loadBundleServices($container, $servicesFile);
                 continue;
             }
@@ -226,9 +206,8 @@ class Kernel extends BaseKernel
     }
 
     /**
-     * Yalnızca active_modules.php'de sağlıklı olan ve Entity/ dizini
-     * taşıyan modüller için Doctrine attribute mapping kaydeder.
-     * Modül devre dışıysa ne mapping ne servis yüklenir.
+     * Registers Doctrine attribute mappings for healthy modules with an Entity/ dir.
+     * Disabled modules get neither mapping nor services.
      */
     private function registerActiveModuleDoctrineMappings(ContainerBuilder $container): void
     {
@@ -260,7 +239,7 @@ class Kernel extends BaseKernel
         }
 
         $line = sprintf(
-            '[%s] %s modülü boot() aşamasında hata verdiği için çalışma anında atlandı. Sebep: %s',
+            '[%s] %s module skipped at runtime because boot() failed. Reason: %s',
             date('Y-m-d H:i:s'),
             $bundleClass,
             $e->getMessage(),

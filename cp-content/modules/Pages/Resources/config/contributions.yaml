@@ -1,0 +1,24 @@
+node_show_routes:
+    page: page_show
+
+queryable_fields:
+    page:
+        is_featured: int
+        template: string
+
+schema_types:
+    page: WebPage
+
+studio:
+    type_labels:
+        page: studio.dashboard.type.page
+    edit_routes:
+        page: [admin_pages_edit, id]
+    view_routes:
+        page: [page_show, slug]
+    hidden_node_types:
+        - page_field_group
+    quick_create:
+        - { label_key: studio.dashboard.create.page, route: admin_pages_create, icon: heroicons:document-duplicate }
+    quick_links:
+        - { label_key: studio.dashboard.link.pages, route: admin_pages_index, icon: heroicons:document-duplicate }

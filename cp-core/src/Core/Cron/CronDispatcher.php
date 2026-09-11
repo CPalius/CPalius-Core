@@ -70,7 +70,7 @@ final class CronDispatcher
         $this->entityManager->persist($run);
 
         if (!$this->cronCommandWhitelist->isAllowed($job->getCommandName())) {
-            $message = sprintf('"%s" izin verilen (whitelist) komutlar arasında değil, çalıştırılmadı.', $job->getCommandName());
+            $message = sprintf('"%s" is not in the allowed (whitelist) commands and was not executed.', $job->getCommandName());
             $run->markFinished(false, $message);
 
             return ['jobName' => $job->getName(), 'sourceType' => 'db', 'success' => false, 'message' => $message];
@@ -88,8 +88,8 @@ final class CronDispatcher
             'sourceType' => 'db',
             'success' => $process->isSuccessful(),
             'message' => $process->isSuccessful()
-                ? sprintf('"%s" çalıştırıldı.', $job->getCommandName())
-                : sprintf('"%s" başarısız oldu (exit code %d).', $job->getCommandName(), $process->getExitCode() ?? -1),
+                ? sprintf('"%s" executed.', $job->getCommandName())
+                : sprintf('"%s" failed (exit code %d).', $job->getCommandName(), $process->getExitCode() ?? -1),
         ];
     }
 
@@ -106,8 +106,8 @@ final class CronDispatcher
             'sourceType' => 'code',
             'success' => $process->isSuccessful(),
             'message' => $process->isSuccessful()
-                ? '[KOD] çalıştırıldı.'
-                : sprintf('[KOD] başarısız oldu (exit code %d).', $process->getExitCode() ?? -1),
+                ? '[CODE] executed.'
+                : sprintf('[CODE] failed (exit code %d).', $process->getExitCode() ?? -1),
         ];
     }
 }

@@ -4,11 +4,18 @@
 
 {% block header_actions %}
     <a href="{{ path('admin_roadmap_settings_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.roadmap.menu.settings'|trans }}</a>
-    <a href="{{ path('admin_roadmap_create') }}" class="btn btn-sm btn-primary">{{ 'studio.roadmap.entries.create'|trans }}</a>
+    <a href="{{ path('admin_roadmap_create', {locale: currentLocale}) }}" class="btn btn-sm btn-primary">{{ 'studio.roadmap.entries.create'|trans }}</a>
 {% endblock %}
 
 {% block body %}
+    <twig:studio:locale_filter
+        locales="{{ locales }}"
+        current="{{ currentLocale }}"
+        route="admin_roadmap_index"
+        extraParams="{{ {status: statusFilter, kind: kindFilter} }}" />
+
     <form method="get" class="mb-sp-sm flex flex-wrap gap-3">
+        <input type="hidden" name="locale" value="{{ currentLocale }}">
         <select name="status" class="form-select" onchange="this.form.submit()">
             <option value="">{{ 'studio.roadmap.filter.all_statuses'|trans }}</option>
             {% for status in statuses %}

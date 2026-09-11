@@ -7,7 +7,8 @@ namespace Modules\Blog\Controller\Admin;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Localization\LocaleProvider;
 use App\Core\Localization\TranslationGroupResolver;
-use App\Entity\Tag;
+use App\Core\OriginCache\OriginCachePurger;
+use App\Core\Taxonomy\Entity\Term;
 use App\Repository\TagRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -21,7 +22,7 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Flat tag CRUD (no parent). Same locale/translation-group pattern as CategoryAdminController.
+ * Flat blog tag admin backed by Vocabulary terms (blog_tag).
  */
 #[Route('/admin/tags', name: 'admin_tags_')]
 #[IsGranted('blog.category.manage')]
@@ -33,17 +34,18 @@ final class TagAdminController extends AbstractController
         private readonly LocaleProvider $localeProvider,
         private readonly TranslationGroupResolver $translationGroupResolver,
         private readonly TranslatorInterface $translator,
+        private readonly OriginCachePurger $originCachePurger,
     ) {
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Etiketler', icon: 'heroicons:tag', panel: 'studio', priority: 22, capability: 'blog.category.manage', parent: 'admin_posts_index')]
+    #[CpAdminMenu(label: 'blog.tags.header', icon: 'heroicons:hashtag', panel: 'studio', priority: 22, capability: 'blog.category.manage', parent: 'admin_posts_index')]
     public function index(Request $request): Response
     {
         $locale = $this->resolveLocale($request->query->get('locale'));
 
         return $this->render('@BlogModule/admin/tags/index.html.twig', [
-            'tags' => $this->tagRepository->findBy(['locale' => $locale], ['name' => 'ASC']),
+            'tags' => $this->tagRepository->findByLocale($locale),
             'locales' => $this->localeProvider->getLocales(),
             'currentLocale' => $locale,
         ]);
@@ -69,23 +71,23 @@ final class TagAdminController extends AbstractController
 
             $slug = $this->buildSlug($name, $locale);
 
-            // Uniqueness is per locale: the same slug may exist in TR and EN.
             if ($this->tagRepository->findOneBySlug($slug, $locale) !== null) {
                 $this->addFlash('error', $this->translator->trans('blog.tags.error.already_exists', ['name' => $name]));
 
                 return $this->renderForm(null, $locale, $source, ['name' => $name]);
             }
 
-            $tag = new Tag($name, $slug, $locale);
+            $tag = new Term($this->tagRepository->vocabulary(), $name, $slug, $locale);
 
-            if ($source instanceof Tag && $source->getLocale() !== $locale) {
+            if ($source instanceof Term && $source->getLocale() !== $locale) {
                 $this->translationGroupResolver->link($source, $tag);
             }
 
             $this->entityManager->persist($tag);
             $this->entityManager->flush();
+            $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
-            $this->addFlash('success', $source instanceof Tag
+            $this->addFlash('success', $source instanceof Term
                 ? $this->translator->trans('cp.translation_tabs.linked_flash', ['name' => $name, 'locale' => $locale])
                 : $this->translator->trans('blog.tags.flash.created', ['name' => $name]));
 
@@ -105,7 +107,6 @@ final class TagAdminController extends AbstractController
             $this->assertValidCsrf($request, 'admin_tag_form');
 
             $name = trim((string) $request->request->get('name'));
-
             if ($name === '') {
                 $this->addFlash('error', $this->translator->trans('blog.tags.error.name_required'));
 
@@ -114,6 +115,7 @@ final class TagAdminController extends AbstractController
 
             $tag->setName($name);
             $this->entityManager->flush();
+            $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
             $this->addFlash('success', $this->translator->trans('blog.tags.flash.updated', ['name' => $name]));
 
@@ -130,11 +132,13 @@ final class TagAdminController extends AbstractController
         $this->assertValidCsrf($request, 'admin_tag_form');
 
         $locale = $tag->getLocale();
+        $name = $tag->getName();
 
         $this->entityManager->remove($tag);
         $this->entityManager->flush();
+        $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
-        $this->addFlash('success', $this->translator->trans('blog.tags.flash.deleted', ['name' => $tag->getName()]));
+        $this->addFlash('success', $this->translator->trans('blog.tags.flash.deleted', ['name' => $name]));
 
         return $this->redirectToRoute('admin_tags_index', ['locale' => $locale]);
     }
@@ -142,23 +146,23 @@ final class TagAdminController extends AbstractController
     /**
      * @param array<string, mixed> $formValues
      */
-    private function renderForm(?Tag $tag, string $locale, ?Tag $source, array $formValues): Response
+    private function renderForm(?Term $tag, string $locale, ?Term $source, array $formValues): Response
     {
         return $this->render('@BlogModule/admin/tags/form.html.twig', [
             'tag' => $tag,
             'formValues' => $formValues,
             'locale' => $locale,
             'sourceId' => $source?->getId(),
-            'translationTabs' => $tag instanceof Tag
+            'translationTabs' => $tag instanceof Term
                 ? $this->translationGroupResolver->tabsFor($tag)
-                : ($source instanceof Tag ? $this->translationGroupResolver->tabsFor($source) : []),
+                : ($source instanceof Term ? $this->translationGroupResolver->tabsFor($source) : []),
             'tabsSourceId' => $tag?->getId() ?? $source?->getId(),
         ]);
     }
 
-    private function findTranslationSource(mixed $rawId): ?Tag
+    private function findTranslationSource(mixed $rawId): ?Term
     {
-        $id = $rawId !== null && ctype_digit((string) $rawId) ? (int) $rawId : null;
+        $id = $this->intOrNull($rawId);
 
         return $id !== null ? $this->tagRepository->find($id) : null;
     }
@@ -175,10 +179,15 @@ final class TagAdminController extends AbstractController
         return $this->localeProvider->resolve(\is_string($raw) ? $raw : null);
     }
 
-    private function findTagOrFail(int $id): Tag
+    private function intOrNull(mixed $raw): ?int
+    {
+        return $raw !== null && ctype_digit((string) $raw) ? (int) $raw : null;
+    }
+
+    private function findTagOrFail(int $id): Term
     {
         $tag = $this->tagRepository->find($id);
-        if (!$tag instanceof Tag) {
+        if (!$tag instanceof Term) {
             throw new NotFoundHttpException($this->translator->trans('blog.tags.error.not_found'));
         }
 

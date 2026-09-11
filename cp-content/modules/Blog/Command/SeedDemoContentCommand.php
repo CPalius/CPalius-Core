@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Modules\Blog\Command;
 
 use App\Core\Localization\LocaleProvider;
-use App\Entity\Category;
+use App\Core\Taxonomy\Entity\Term;
 use App\Entity\Node;
 use App\Entity\User;
 use App\Repository\CategoryRepository;
@@ -25,17 +25,16 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  */
 #[AsCommand(
     name: 'cp:blog:seed-demo-content',
-    description: 'Blog için örnek kategori ve farklı türlerde uzun demo yazılar oluşturur.',
+    description: 'Creates a sample blog category and long demo posts of different types.',
 )]
 final class SeedDemoContentCommand extends Command
 {
-
-
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly CategoryRepository $categories,
         private readonly NodeRepository $nodes,
         private readonly UserRepository $users,
+        private readonly LocaleProvider $localeProvider,
     ) {
         parent::__construct();
     }
@@ -43,8 +42,8 @@ final class SeedDemoContentCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('author-email', null, InputOption::VALUE_REQUIRED, 'Yazar e-posta', 'sys@rootali.net')
-            ->addOption('update', null, InputOption::VALUE_NONE, 'Aynı slug varsa içeriği güncelle');
+            ->addOption('author-email', null, InputOption::VALUE_REQUIRED, 'Author email', 'sys@rootali.net')
+            ->addOption('update', null, InputOption::VALUE_NONE, 'Update content when the same slug already exists');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -58,7 +57,7 @@ final class SeedDemoContentCommand extends Command
             $author = $this->users->findOneBy([]);
         }
         if (!$author instanceof User) {
-            $io->error('Yazar kullanıcı bulunamadı.');
+            $io->error('Author user was not found.');
 
             return Command::FAILURE;
         }
@@ -80,7 +79,7 @@ final class SeedDemoContentCommand extends Command
         foreach ($this->definitions($newCategory, $ai, $cms, $sys) as $def) {
             $existing = $this->nodes->findOneBy(['slug' => $def['slug'], 'locale' => $this->localeProvider->getDefaultCode()]);
             if ($existing !== null && !$update) {
-                $io->writeln(sprintf('  · atlandı (var): %s', $def['slug']));
+                $io->writeln(sprintf('  · skipped (exists): %s', $def['slug']));
                 ++$skipped;
                 continue;
             }
@@ -113,19 +112,19 @@ final class SeedDemoContentCommand extends Command
                 $node->publish();
                 $this->em->persist($node);
                 ++$created;
-                $io->writeln(sprintf('  + oluşturuldu: [%s] %s', $def['subType'], $def['title']));
+                $io->writeln(sprintf('  + created: [%s] %s', $def['subType'], $def['title']));
             } else {
                 if ($node->getStatus() !== Node::STATUS_PUBLISHED) {
                     $node->publish();
                 }
                 ++$updated;
-                $io->writeln(sprintf('  ~ güncellendi: [%s] %s', $def['subType'], $def['title']));
+                $io->writeln(sprintf('  ~ updated: [%s] %s', $def['subType'], $def['title']));
             }
         }
 
         $this->em->flush();
         $io->success(sprintf(
-            'Tamam: %d eklendi, %d güncellendi, %d atlandı. Yeni kategori: %s',
+            'Done: %d added, %d updated, %d skipped. New category: %s',
             $created,
             $updated,
             $skipped,
@@ -135,14 +134,14 @@ final class SeedDemoContentCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function ensureCategory(string $name, string $slug, string $description): Category
+    private function ensureCategory(string $name, string $slug, string $description): Term
     {
         $existing = $this->categories->findOneBySlug($slug, $this->localeProvider->getDefaultCode());
         if ($existing !== null) {
             return $existing;
         }
 
-        $category = new Category($name, $slug, $this->localeProvider->getDefaultCode());
+        $category = new Term($this->categories->vocabulary(), $name, $slug, $this->localeProvider->getDefaultCode());
         $category->setDescription($description);
         $this->em->persist($category);
         $this->em->flush();
@@ -150,11 +149,11 @@ final class SeedDemoContentCommand extends Command
         return $category;
     }
 
-    private function requireCategory(string $slug): Category
+    private function requireCategory(string $slug): Term
     {
         $category = $this->categories->findOneBySlug($slug, $this->localeProvider->getDefaultCode());
         if ($category === null) {
-            throw new \RuntimeException(sprintf('Kategori bulunamadı: %s', $slug));
+            throw new \RuntimeException(sprintf('Category not found: %s', $slug));
         }
 
         return $category;
@@ -169,11 +168,11 @@ final class SeedDemoContentCommand extends Command
      *     subType: string,
      *     imageAssetId: int,
      *     typeFields: array<string, string>,
-     *     category: Category,
+     *     category: Term,
      *     body: string
      * }>
      */
-    private function definitions(Category $tools, Category $ai, Category $cms, Category $sys): array
+    private function definitions(Term $tools, Term $ai, Term $cms, Term $sys): array
     {
         return [
             [

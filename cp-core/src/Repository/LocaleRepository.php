@@ -17,8 +17,7 @@ class LocaleRepository extends ServiceEntityRepository
     }
 
     /**
-     * Aktif diller: içerik formundaki dil sekmelerinin ve ön yüzdeki dil
-     * değiştiricinin tek veri kaynağı. sortOrder'a göre sıralı döner.
+     * Active locales for forms and the front-end switcher, ordered by sortOrder.
      *
      * @return list<Locale>
      */
@@ -41,7 +40,7 @@ class LocaleRepository extends ServiceEntityRepository
     }
 
     /**
-     * AACP Dashboard "Aktif Diller" gauge'unun payda değeri (toplam dil).
+     * Total locale count for dashboard gauge denominator.
      */
     public function countAll(): int
     {
@@ -52,8 +51,7 @@ class LocaleRepository extends ServiceEntityRepository
     }
 
     /**
-     * Aynı gauge'un pay değeri — findActive()'in tam entity hydration'ı
-     * yerine tek bir COUNT sorgusu (dashboard'un tek ihtiyacı sayı).
+     * Active locale count (COUNT only, for dashboard gauge numerator).
      */
     public function countActive(): int
     {

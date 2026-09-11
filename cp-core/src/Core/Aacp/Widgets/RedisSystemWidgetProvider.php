@@ -10,16 +10,8 @@ use App\Repository\PerformanceBackendStatusRepository;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Ana AACP dashboard'unda Redis durumunu gösteren kart. BİLİNÇLİ OLARAK
- * canlı bir bağlantı denemesi YAPMAZ — sadece son kaydedilmiş
- * PerformanceBackendStatus satırını okur (bkz. PerformanceBackendRegistry
- * docblock'u): her dashboard görüntülemesinde 4 harici servise ağ isteği
- * atmak gereksiz gecikme/kırılganlık riski taşır (Manifesto Law 6.1 ruhu).
- *
- * SystemWidgetData::$description dashboard.html.twig'de HAM basılır (|trans
- * UYGULANMAZ — bu DTO Blog modülü gibi başka sağlayıcılar tarafından da
- * paylaşılır, ona yeni bir alan eklemek yerine burada, PHP tarafında,
- * $translator ile ÖNCEDEN çevrilmiş metin üretilir).
+ * Redis status card on AACP dashboard; reads last PerformanceBackendStatus row only (no live probe).
+ * Description is pre-translated in PHP because the template renders it raw without |trans.
  */
 final class RedisSystemWidgetProvider implements SystemWidgetProviderInterface
 {

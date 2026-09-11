@@ -45,7 +45,7 @@ final class HomepageSettingsController extends AbstractController
     }
 
     #[Route('/admin/homepage', name: 'admin_homepage_settings', methods: ['GET'])]
-    #[CpAdminMenu(label: 'Ana Sayfa', icon: 'heroicons:home-modern', panel: 'studio', priority: 11, group: 'İçerik')]
+    #[CpAdminMenu(label: 'studio.homepage.header', icon: 'heroicons:home-modern', panel: 'studio', priority: 11, group: 'studio.group.content')]
     #[IsGranted('admin.access')]
     public function index(): Response
     {

@@ -1,0 +1,19 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.blog.comments.edit.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_blog_comments_index', {status: comment.status}) }}" class="btn btn-sm btn-neutral">{{ 'studio.blog.comments.action.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card title="{{ comment.displayName }}">
+        <p class="mb-sp-sm text-fs-sm text-neutral-500">{{ comment.node.title }} · {{ comment.createdAt|date('d.m.Y H:i') }}</p>
+        <form method="post" action="{{ path('admin_blog_comments_edit', {id: comment.id}) }}" class="space-y-sp-sm">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_blog_comment') }}">
+            <label class="form-label">{{ 'studio.blog.comments.field.body'|trans }}</label>
+            <textarea name="body" rows="10" class="form-control" required>{{ comment.body }}</textarea>
+            <button type="submit" class="btn btn-primary">{{ 'studio.blog.comments.action.save'|trans }}</button>
+        </form>
+    </twig:studio:card>
+{% endblock %}

@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace App\Core\Pagination;
 
 /**
- * Paginator::paginate()'in döndürdüğü, tek bir sayfaya ait sonuçları ve
- * sayfalama meta verisini (toplam kayıt, toplam sayfa, mevcut sayfa) bir
- * arada taşıyan salt-okunur DTO. Twig şablonları bu nesneyi doğrudan
- * iterate edebilir (IteratorAggregate) ve `.pagination` partial'ı meta
- * verilerini (currentPage, totalPages vb.) okuyabilir.
+ * Read-only DTO for one paginated page plus metadata (totalItems, currentPage, etc.).
+ * Twig may iterate items directly; pagination partial reads meta fields.
  *
  * @template T
  *
@@ -18,7 +15,7 @@ namespace App\Core\Pagination;
 final class PaginatedResult implements \IteratorAggregate, \Countable
 {
     /**
-     * @param list<T> $items Mevcut sayfadaki öğeler (zaten limit/offset uygulanmış)
+     * @param list<T> $items Items on the current page (limit/offset already applied).
      */
     public function __construct(
         private readonly array $items,

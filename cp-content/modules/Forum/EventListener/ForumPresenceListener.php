@@ -41,19 +41,32 @@ final class ForumPresenceListener implements EventSubscriberInterface
             return;
         }
 
-        if (!$request->hasSession()) {
-            return;
-        }
-
-        $session = $request->getSession();
-        if (!$session->isStarted()) {
-            $session->start();
-        }
-
         $user = $this->security->getUser();
+        $topicId = $request->attributes->get('topicId');
+
+        if ($user instanceof User) {
+            if (!$request->hasSession()) {
+                return;
+            }
+
+            $session = $request->getSession();
+            if (!$session->isStarted()) {
+                $session->start();
+            }
+
+            $hash = $this->presenceService->hashSessionId($session->getId());
+        } else {
+            // Guests must not start PHPSESSID — that cookie blocks origin HTML cache site-wide.
+            $hash = $this->presenceService->hashAnonymousVisitor(
+                (string) $request->getClientIp(),
+                (string) $request->headers->get('User-Agent', ''),
+            );
+        }
+
         $this->presenceService->touch(
-            $this->presenceService->hashSessionId($session->getId()),
+            $hash,
             $user instanceof User ? $user : null,
+            is_numeric($topicId) ? (int) $topicId : null,
         );
     }
 }

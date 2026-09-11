@@ -1,0 +1,67 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.fields.bundle_header'|trans({'bundle': bundleLabel}) }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <div class="flex items-center justify-between">
+            <a href="{{ path('aacp_fields') }}" class="text-fs-sm !text-slate-400 hover:!text-slate-200">&larr; {{ 'aacp.fields.all_bundles'|trans }}</a>
+            <a href="{{ path('aacp_fields_new', {bundle: bundle}) }}" class="btn btn-primary">{{ 'aacp.fields.add_field'|trans }}</a>
+        </div>
+
+        <twig:cp:card title="{{ 'aacp.fields.fields_in'|trans({'bundle': bundle}) }}" padded="{{ false }}">
+            <form method="post" action="{{ path('aacp_fields_reorder', {bundle: bundle}) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <twig:cp:table headers="{{ [
+                    'aacp.fields.column.label'|trans,
+                    'aacp.fields.column.name'|trans,
+                    'aacp.fields.column.type'|trans,
+                    'aacp.fields.column.flags'|trans,
+                    'aacp.fields.column.weight'|trans,
+                    '',
+                ] }}" empty="{{ fields is empty }}" emptyText="{{ 'aacp.fields.bundle_empty'|trans }}">
+                    <twig:block name="rows">
+                        {% for field in fields %}
+                            <tr>
+                                <td class="!text-slate-200">
+                                    <a href="{{ path('aacp_fields_edit', {bundle: bundle, name: field.name}) }}" class="hover:text-primary-400">{{ field.label }}</a>
+                                    {% if field.fieldGroup %}<span class="ml-1 badge badge-neutral text-fs-xs">{{ field.fieldGroup }}</span>{% endif %}
+                                </td>
+                                <td class="font-mono text-fs-xs !text-slate-500">{{ field.name }}</td>
+                                <td class="text-fs-xs !text-slate-400">{{ typeChoices[field.type]|default(field.type)|trans }}</td>
+                                <td class="text-fs-xs !text-slate-500">
+                                    {% if field.required %}<span class="badge badge-warning">req</span>{% endif %}
+                                    {% if field.multiValue %}<span class="badge badge-info">multi</span>{% endif %}
+                                    {% if field.queryable %}<span class="badge badge-success">indexed</span>{% endif %}
+                                    {% if not field.translatable %}<span class="badge badge-neutral">no-i18n</span>{% endif %}
+                                </td>
+                                <td class="w-20">
+                                    <input type="number" name="weight[{{ field.name }}]" value="{{ field.weight }}"
+                                           class="form-control !border-white/10 !bg-dark-1 !text-slate-100 w-16 text-fs-xs">
+                                </td>
+                                <td class="text-right">
+                                    <div class="flex items-center justify-end gap-3">
+                                        <a href="{{ path('aacp_fields_edit', {bundle: bundle, name: field.name}) }}" class="text-fs-xs font-medium !text-slate-400 hover:!text-slate-200">{{ 'aacp.users.edit_action'|trans }}</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+                {% if fields is not empty %}
+                    <div class="flex justify-end p-sp-sm">
+                        <button type="submit" class="btn btn-secondary text-fs-xs">{{ 'aacp.fields.save_order'|trans }}</button>
+                    </div>
+                {% endif %}
+            </form>
+        </twig:cp:card>
+
+        {% for field in fields %}
+            <form method="post" action="{{ path('aacp_fields_delete', {bundle: bundle, name: field.name}) }}" class="hidden"
+                  id="delete-{{ field.name }}"
+                  onsubmit="return confirm({{ 'aacp.fields.delete_confirm'|trans({'field': field.name})|json_encode|raw }});">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+            </form>
+        {% endfor %}
+    </div>
+{% endblock %}

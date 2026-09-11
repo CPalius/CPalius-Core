@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Security\EventListener;
 
 use App\Core\Security\CaptchaService;
+use App\Core\Security\Service\LoginDefenseService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -20,6 +21,7 @@ final class LoginCaptchaSubscriber implements EventSubscriberInterface
 {
     public function __construct(
         private readonly CaptchaService $captchaService,
+        private readonly LoginDefenseService $loginDefense,
         private readonly TranslatorInterface $translator,
     ) {
     }
@@ -42,7 +44,7 @@ final class LoginCaptchaSubscriber implements EventSubscriberInterface
             return;
         }
 
-        if (!$this->captchaService->enabledOnLogin()) {
+        if (!$this->loginDefense->captchaRequiredOnLogin((string) ($request->getClientIp() ?? ''))) {
             return;
         }
 

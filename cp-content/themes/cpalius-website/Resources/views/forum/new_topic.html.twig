@@ -21,7 +21,7 @@
 {% block forum_content %}
 <div class="forum-form fade-in">
     <div class="forum-form__title"><i class="bi bi-plus-circle"></i> {{ 'forum.new_topic.form_title'|trans }}</div>
-    <form action="{{ path('forum_new_topic', {sectionSlug: section.slug}) }}" method="post">
+    <form action="{{ path('forum_new_topic', {sectionSlug: section.slug}) }}" method="post" enctype="multipart/form-data" data-forum-draft data-draft-section="{{ section.id }}" data-draft-token="{{ csrf_token('forum_draft') }}" data-draft-url="{{ path('forum_draft_save') }}">
         <div class="forum-field">
             <label for="ft-title">{{ 'forum.field.title'|trans }}</label>
             <input type="text" id="ft-title" name="title" value="{{ formValues.title }}" maxlength="255" required autofocus>
@@ -44,11 +44,57 @@
             </div>
         {% endif %}
 
+        {% if contentLocales is defined and contentLocales|length > 1 %}
+            <div class="forum-field">
+                <label for="ft-content-locale">{{ 'forum.field.content_locale'|trans }}</label>
+                <select id="ft-content-locale" name="content_locale">
+                    {% for loc in contentLocales %}
+                        <option value="{{ loc.code }}" {{ (formValues.contentLocale|default(app.request.locale)) == loc.code ? 'selected' : '' }}>{{ loc.nativeName }} ({{ loc.code }})</option>
+                    {% endfor %}
+                </select>
+                <p class="forum-field-hint">{{ 'forum.field.content_locale_hint'|trans }}</p>
+            </div>
+        {% else %}
+            <input type="hidden" name="content_locale" value="{{ formValues.contentLocale|default(app.request.locale) }}">
+        {% endif %}
+
         <div class="forum-field forum-composer">
             <label>{{ 'forum.field.message'|trans }}</label>
             <textarea id="ft-body" name="body" data-forum-editor data-forum-editor-min-height="450" required placeholder="{{ 'forum.field.message_placeholder'|trans }}">{{ formValues.body }}</textarea>
             <p class="forum-field-hint">{{ 'forum.new_topic.edit_hint'|trans }}</p>
         </div>
+
+        {% if attachmentsEnabled|default(false) %}
+            <div class="forum-field">
+                <label>{{ 'forum.attach.label'|trans }}</label>
+                <input type="file" name="attachments[]" multiple>
+            </div>
+        {% endif %}
+
+        {% if pollsEnabled|default(false) %}
+            <details class="forum-poll-composer">
+                <summary>{{ 'forum.poll.add'|trans }}</summary>
+                <div class="forum-field">
+                    <label>{{ 'forum.poll.question'|trans }}</label>
+                    <input type="text" name="poll_question" maxlength="255">
+                </div>
+                <div class="forum-field">
+                    <label>{{ 'forum.poll.options'|trans }}</label>
+                    <textarea name="poll_options" rows="4" placeholder="{{ 'forum.poll.options_hint'|trans }}"></textarea>
+                </div>
+                <div class="forum-field">
+                    <label>{{ 'forum.poll.max_choices'|trans }}</label>
+                    <input type="number" name="poll_max_choices" value="1" min="1" max="10">
+                </div>
+                <div class="forum-field">
+                    <label class="forum-checkbox"><input type="checkbox" name="poll_hide_until_close" value="1"> {{ 'forum.poll.hide'|trans }}</label>
+                </div>
+                <div class="forum-field">
+                    <label>{{ 'forum.poll.closes_at'|trans }}</label>
+                    <input type="datetime-local" name="poll_closes_at">
+                </div>
+            </details>
+        {% endif %}
 
         <div class="forum-field">
             <label class="forum-checkbox">
@@ -59,6 +105,7 @@
 
         <div class="forum-form__actions">
             <input type="hidden" name="_token" value="{{ csrf_token('forum_new_topic') }}">
+            {% if draftsEnabled|default(false) %}<span class="forum-draft-status" data-draft-status hidden>{{ 'forum.draft.saved'|trans }}</span>{% endif %}
             <button type="submit" class="btn btn-primary btn-sm">{{ 'forum.action.publish_topic'|trans }}</button>
             <a href="{{ path('forum_section', {sectionSlug: section.slug}) }}" class="forum-form__cancel">{{ 'forum.action.cancel'|trans }}</a>
         </div>

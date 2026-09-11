@@ -1,0 +1,46 @@
+# CPalius editorial workflow — content moderation.
+# Bound to Node::moderation_state (see content.moderation.enabled_types setting).
+# Config-as-code: edit here, clear the cache. File name is the workflow id.
+places: [draft, review, published, archived]
+initial: draft
+property: moderation_state
+auditable: true
+# Places where the content counts as "live" — ContentModerationManager keeps
+# Node::status in sync with these.
+publish_places: [published]
+labels:
+  draft: 'Draft'
+  review: 'In review'
+  published: 'Published'
+  archived: 'Archived'
+transitions:
+  submit:
+    from: [draft]
+    to: review
+    capability: content.moderate
+    label: 'Submit for review'
+  approve:
+    from: [review]
+    to: published
+    capability: content.publish
+    label: 'Approve & publish'
+  reject:
+    from: [review]
+    to: draft
+    capability: content.moderate
+    label: 'Send back to draft'
+  unpublish:
+    from: [published]
+    to: draft
+    capability: content.publish
+    label: 'Unpublish'
+  archive:
+    from: [published, draft, review]
+    to: archived
+    capability: content.moderate
+    label: 'Archive'
+  restore:
+    from: [archived]
+    to: draft
+    capability: content.moderate
+    label: 'Restore from archive'

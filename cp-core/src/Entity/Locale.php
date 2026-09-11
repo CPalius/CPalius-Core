@@ -6,13 +6,8 @@ use App\Repository\LocaleRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Sistemde aktif edilebilir dillerin tek doğruluk kaynağı (WordPress/Drupal
- * tarzı dil yönetimi). Node::$locale hâlâ serbest bir string kolondur —
- * bu entity o string'in HANGİ değerlerinin geçerli/aktif olduğunu tanımlar.
- *
- * core.default_locale CpSetting'i (bkz. CoreSettings) bu entity'den ÖNCE
- * var olan bir ayardır ve kırıcı olmaması için korunmuştur; $isDefault
- * artık yeni doğruluk kaynağıdır (bkz. LocaleRepository::findDefault()).
+ * Source of truth for active locales. Node::$locale remains a string; this defines valid values.
+ * $isDefault supersedes legacy core.default_locale for new code.
  */
 #[ORM\Entity(repositoryClass: LocaleRepository::class)]
 #[ORM\Table(name: 'cp_locales')]

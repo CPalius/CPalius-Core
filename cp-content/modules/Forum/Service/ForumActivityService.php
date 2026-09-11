@@ -81,7 +81,7 @@ final class ForumActivityService
      *     initial: array<string, array{items: list<array<string, mixed>>, hasMore: bool}>
      * }
      */
-    public function buildPanelState(): array
+    public function buildPanelState(?string $contentLocale = null): array
     {
         if (!$this->isEnabled()) {
             return [
@@ -97,7 +97,7 @@ final class ForumActivityService
         $perTab = $this->perTab();
         $initial = [];
         foreach ($tabs as $tab) {
-            $initial[$tab] = $this->fetchTab($tab, 0, $perTab);
+            $initial[$tab] = $this->fetchTab($tab, 0, $perTab, $contentLocale);
         }
 
         return [
@@ -112,7 +112,7 @@ final class ForumActivityService
     /**
      * @return array{items: list<array<string, mixed>>, hasMore: bool}
      */
-    public function fetchTab(string $tab, int $offset, int $limit): array
+    public function fetchTab(string $tab, int $offset, int $limit, ?string $contentLocale = null): array
     {
         if (!\in_array($tab, $this->enabledTabs(), true)) {
             return ['items' => [], 'hasMore' => false];
@@ -123,12 +123,12 @@ final class ForumActivityService
         // Fetch one extra row to know whether hasMore is true.
         $rows = match ($tab) {
             self::TAB_LATEST_TOPICS => $this->mapTopics(
-                $this->topicRepository->findNewestOpened($limit + 1, $offset),
+                $this->topicRepository->findNewestOpened($limit + 1, $offset, $contentLocale),
                 self::TAB_LATEST_TOPICS,
                 useCreatedAt: true
             ),
             self::TAB_LATEST_POSTS => $this->mapTopics(
-                $this->topicRepository->findLatestReplied($limit + 1, $offset),
+                $this->topicRepository->findLatestReplied($limit + 1, $offset, $contentLocale),
                 self::TAB_LATEST_POSTS,
                 useCreatedAt: false
             ),
@@ -272,16 +272,8 @@ final class ForumActivityService
      */
     private function resolveMemberLabel(User $user): string
     {
-        $username = trim((string) ($user->getUsername() ?? ''));
-        if ($username !== '') {
-            return $username;
-        }
+        $label = $user->getPublicDisplayName();
 
-        $fullName = trim($user->getFirstName().' '.$user->getLastName());
-        if ($fullName !== '') {
-            return $fullName;
-        }
-
-        return (string) $user->getEmail();
+        return $label !== '' ? $label : ('#'.(string) $user->getId());
     }
 }

@@ -1,0 +1,8 @@
+<p>{{ 'notification.mail.body.generic'|trans({'event': eventKey}) }}</p>
+{% if payload.title is defined %}
+    <p><strong>{{ payload.title }}</strong></p>
+{% endif %}
+{% if payload.from is defined and payload.to is defined %}
+    <p>{{ payload.from }} → {{ payload.to }}</p>
+{% endif %}
+<p><a href="{{ absolute_url(path('account_notifications')) }}">{{ 'notification.mail.open_inbox'|trans }}</a></p>

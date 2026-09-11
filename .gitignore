@@ -69,6 +69,11 @@
 !/public/uploads/.gitkeep
 !/public/uploads/.htaccess
 
+# Generated origin HTML cache (keep hardening + placeholder)
+/public/page-cache/*
+!/public/page-cache/.gitkeep
+!/public/page-cache/.htaccess
+
 # Local IDE / AI tooling
 /.cursor/
 /.claude/
@@ -84,6 +89,9 @@ Thumbs.db
 
 # Local holding area for files removed from the tree (never deploy)
 /_archive/
+
+# One-off public user importer (delete after use — do not deploy)
+/public/import-users.php
 
 # Logs & temp
 *.log

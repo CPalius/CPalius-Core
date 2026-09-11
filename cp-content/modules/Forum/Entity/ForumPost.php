@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Forum\Entity;
 
 use App\Entity\User;
+use Modules\Forum\ForumDiscussionState;
 use Modules\Forum\Repository\ForumPostRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -63,6 +64,9 @@ class ForumPost
 
     #[ORM\Column(name: 'poster_ip', type: 'string', length: 64, nullable: true)]
     private ?string $posterIp = null;
+
+    #[ORM\Column(name: 'discussion_state', type: 'string', length: 16, enumType: ForumDiscussionState::class)]
+    private ForumDiscussionState $discussionState = ForumDiscussionState::Visible;
 
     public function __construct(ForumTopic $topic, ForumSection $section, string $posterName, string $body)
     {
@@ -248,5 +252,27 @@ class ForumPost
     public function getIpAddress(): ?string
     {
         return $this->posterIp;
+    }
+
+    public function getDiscussionState(): ForumDiscussionState
+    {
+        return $this->discussionState;
+    }
+
+    public function setDiscussionState(ForumDiscussionState $discussionState): static
+    {
+        $this->discussionState = $discussionState;
+
+        return $this;
+    }
+
+    public function isVisible(): bool
+    {
+        return $this->discussionState === ForumDiscussionState::Visible;
+    }
+
+    public function isModerated(): bool
+    {
+        return $this->discussionState === ForumDiscussionState::Moderated;
     }
 }

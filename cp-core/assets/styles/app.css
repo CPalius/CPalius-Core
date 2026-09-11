@@ -223,7 +223,7 @@
 
     /* --- Navbar / Header --- */
     .navbar-header {
-        @apply h-[4.5rem] bg-white sticky top-0 py-4 px-6 z-20 border-b border-neutral-200 flex items-center justify-between gap-3;
+        @apply sticky top-0 z-20 flex min-h-[4.5rem] min-w-0 items-center justify-between gap-3 border-b border-neutral-200 bg-white px-6 py-4;
     }
     .sidebar-toggle,
     .sidebar-mobile-toggle {
@@ -405,91 +405,86 @@
         @apply font-mono text-fs-xs leading-relaxed;
     }
 
-    /* --- Studio Dashboard --- */
-    .studio-dash {
+    .table-compact th {
+        @apply px-3 py-2;
+    }
+    .table-compact td {
+        @apply px-3 py-1.5 text-fs-xs;
+    }
+
+    /* --- Studio Command Desk --- */
+    .studio-cmd {
         @apply mx-auto w-full max-w-[1600px] space-y-sp-sm pb-sp-sm;
     }
-    .studio-dash-hero {
-        @apply relative overflow-hidden rounded-xl px-sp-sm py-sp-md text-white shadow-md;
-        background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-800) 55%, #2d4a9e 100%);
+    .studio-cmd-actionbar {
+        @apply flex flex-wrap items-start justify-between gap-3;
     }
-    .studio-dash-hero-glow {
-        @apply pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full opacity-30;
-        background: radial-gradient(circle, rgba(255,255,255,0.45) 0%, transparent 70%);
+    .studio-cmd-welcome {
+        @apply text-fs-lg font-semibold text-neutral-900;
     }
-    .studio-dash-hero-stat {
-        @apply flex min-w-0 flex-col gap-0.5;
+    .studio-cmd-welcome-sub {
+        @apply mt-0.5 text-fs-xs text-neutral-500;
     }
-    .studio-dash-hero-label {
-        @apply truncate text-[0.65rem] font-medium uppercase tracking-wider text-primary-100/90;
+    .studio-cmd-dropdown {
+        @apply relative;
     }
-    .studio-dash-hero-value {
-        @apply text-2xl font-bold leading-none sm:text-3xl;
+    .studio-cmd-dropdown-menu {
+        @apply absolute right-0 z-20 mt-1 min-w-[14rem] rounded-lg border border-neutral-200 bg-white py-1 shadow-lg;
+    }
+    .studio-cmd-dropdown-item {
+        @apply flex items-center gap-2 px-3 py-2 text-fs-sm text-neutral-700 hover:bg-neutral-50;
+    }
+    .studio-cmd-kpis {
+        @apply grid grid-cols-2 gap-sp-xs lg:grid-cols-4;
+    }
+    .studio-cmd-kpi {
+        @apply rounded-lg border border-neutral-200 bg-white px-sp-sm py-sp-xs shadow-sm;
+    }
+    .studio-cmd-kpi--action {
+        @apply border-warning-300 bg-warning-50;
+    }
+    .studio-cmd-kpi-label {
+        @apply block text-[0.65rem] font-semibold uppercase tracking-wide text-neutral-500;
+    }
+    .studio-cmd-kpi--action .studio-cmd-kpi-label {
+        @apply text-warning-800;
+    }
+    .studio-cmd-kpi-value {
+        @apply mt-1 block text-xl font-bold leading-none text-neutral-900;
         font-family: 'Roboto Condensed', Arial, sans-serif;
     }
-    .studio-dash-section {
-        @apply overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm;
+    .studio-cmd-grid {
+        @apply grid grid-cols-1 gap-sp-sm;
     }
-    .studio-dash-section-toggle {
-        @apply flex w-full items-center gap-2 px-sp-sm py-2.5 text-left text-fs-sm font-semibold text-neutral-800 transition hover:bg-neutral-50;
+    @media (min-width: 1024px) {
+        .studio-cmd-grid {
+            grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
+        }
     }
-    .studio-dash-section-toggle--collapsed {
-        @apply border-b-0;
+    .studio-cmd-side {
+        @apply flex flex-col gap-sp-sm;
     }
-    .studio-dash-chevron {
-        @apply shrink-0 text-neutral-400 transition-transform duration-200;
+    .studio-cmd-panel {
+        @apply rounded-lg border border-neutral-200 bg-white p-sp-sm shadow-sm;
     }
-    .studio-dash-section-body {
-        @apply border-t border-neutral-100 px-sp-xs pb-sp-xs pt-sp-xs;
+    .studio-cmd-panel-title {
+        @apply mb-2 text-[0.65rem] font-semibold uppercase tracking-wide text-neutral-500;
     }
-    .studio-dash-section-body--collapsed {
-        @apply hidden;
+    .studio-cmd-donut {
+        @apply relative mx-auto w-full;
+        height: 11rem;
+        max-height: 11rem;
     }
-    .studio-dash-grid {
-        @apply grid grid-cols-1 gap-sp-xs min-w-0 sm:grid-cols-2 xl:grid-cols-3;
-    }
-    .studio-dash-widget {
-        @apply min-w-0;
-    }
-    .studio-dash-widget--wide {
-        @apply sm:col-span-2 xl:col-span-2;
-    }
-    .studio-dash-panel {
-        @apply flex h-full min-h-0 flex-col rounded-lg border border-neutral-100 bg-gradient-to-b from-white to-neutral-50/80 p-3;
-    }
-    .studio-dash-panel--links {
-        @apply justify-center;
-    }
-    .studio-dash-panel-title {
-        @apply mb-2 shrink-0 text-[0.65rem] font-semibold uppercase tracking-wide text-neutral-500;
-    }
-    .studio-dash-chart {
-        @apply relative min-h-0 w-full flex-1;
-        height: 10.5rem;
-        max-height: 10.5rem;
-    }
-    .studio-dash-chart--center {
-        height: 9.5rem;
-        max-height: 9.5rem;
-    }
-    .studio-dash-chart--wide {
-        height: 8.75rem;
-        max-height: 8.75rem;
-    }
-    .studio-dash-chart canvas {
+    .studio-cmd-donut canvas {
         display: block;
         width: 100% !important;
         height: 100% !important;
-        max-height: 100%;
     }
-    .studio-dash-links {
-        @apply flex flex-wrap gap-1.5;
+    .studio-cmd-shortcuts {
+        @apply flex flex-col gap-1.5;
     }
-    .studio-dash-link {
-        @apply inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-fs-xs font-medium text-neutral-700 shadow-sm transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700;
-    }
-    .studio-dash-settings {
-        @apply fixed inset-y-0 right-0 z-50 w-full max-w-sm overflow-y-auto border-l border-neutral-200 bg-white p-sp-md shadow-2xl;
+    .studio-cmd-shortcut {
+        @apply inline-flex items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-fs-sm font-medium text-neutral-700 transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700;
     }
 
     /* --- AACP (dark admin shell) --- */
@@ -498,6 +493,209 @@
     }
     .aacp-main-content {
         @apply mx-auto w-full max-w-[1400px];
+    }
+    .aacp-cmd {
+        @apply space-y-sp-sm;
+    }
+    .aacp-cmd-status {
+        @apply flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-dark-2 px-sp-sm py-sp-xs;
+    }
+    .aacp-cmd-status-left {
+        @apply flex flex-wrap items-center gap-2;
+    }
+    .aacp-cmd-dot {
+        @apply relative flex h-2.5 w-2.5;
+    }
+    .aacp-cmd-dot-ping {
+        @apply absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75;
+    }
+    .aacp-cmd-dot-core {
+        @apply relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.85)];
+    }
+    .aacp-cmd-dot-core.is-down {
+        @apply bg-danger-500 shadow-[0_0_10px_rgba(239,68,68,0.85)];
+    }
+    .aacp-cmd-dot-ping.is-down {
+        @apply bg-danger-400;
+    }
+    .aacp-cmd-status-label {
+        @apply font-mono text-fs-xs font-semibold uppercase tracking-wide text-emerald-400;
+    }
+    .aacp-cmd-status-label.is-down {
+        @apply text-danger-400;
+    }
+    .aacp-cmd-uptime {
+        @apply font-mono text-fs-xs text-slate-500;
+    }
+    .aacp-cmd-actions {
+        @apply flex flex-wrap items-center gap-1.5;
+    }
+    .aacp-cyber-btn {
+        @apply inline-flex items-center gap-1.5 rounded border border-emerald-400/40 bg-emerald-500/10 px-2.5 py-1.5 font-mono text-[0.65rem] font-semibold uppercase tracking-wide text-emerald-300 transition hover:border-emerald-300 hover:bg-emerald-500/20 disabled:cursor-wait disabled:opacity-60;
+    }
+    .aacp-cmd-kpis {
+        @apply grid grid-cols-2 gap-sp-xs lg:grid-cols-4;
+    }
+    .aacp-cmd-kpi {
+        @apply rounded-lg border border-white/10 bg-dark-2 px-sp-sm py-sp-xs;
+    }
+    .aacp-cmd-kpi-label {
+        @apply block text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500;
+    }
+    .aacp-cmd-kpi-value {
+        @apply mt-1 block font-mono text-lg font-semibold leading-none text-slate-100;
+    }
+    .aacp-cmd-kpi-meta {
+        @apply mt-1 block font-mono text-fs-xs text-slate-500;
+    }
+    .aacp-neon-bar {
+        @apply mt-2 h-1 overflow-hidden rounded-full bg-white/10;
+    }
+    .aacp-neon-bar-fill {
+        @apply h-full rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)];
+    }
+    .aacp-cmd-grid {
+        @apply grid grid-cols-1 gap-sp-sm;
+    }
+    @media (min-width: 1024px) {
+        .aacp-cmd-grid {
+            grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
+        }
+    }
+    .aacp-cmd-panel {
+        @apply rounded-lg border border-white/10 bg-dark-2 p-sp-sm;
+    }
+    .aacp-cmd-panel-title {
+        @apply mb-2 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500;
+    }
+    .aacp-cmd-feed {
+        @apply w-full border-separate border-spacing-0;
+    }
+    .aacp-cmd-feed th {
+        @apply border-b border-white/10 px-2 py-2 text-start font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-cmd-feed td {
+        @apply border-b border-white/5 px-2 py-2 font-mono text-fs-xs text-slate-300;
+    }
+    .aacp-cmd-feed tr:last-child td {
+        @apply border-b-0;
+    }
+    .aacp-perf {
+        @apply mt-sp-sm;
+    }
+    .aacp-perf-grid {
+        @apply grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6;
+    }
+    .aacp-perf-card {
+        @apply rounded-md border border-white/10 bg-dark-1 px-2.5 py-2;
+    }
+    .aacp-perf-card-name {
+        @apply block font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-perf-card-status {
+        @apply mt-1 inline-block font-mono text-[0.65rem] uppercase;
+    }
+    .aacp-perf-card-status.is-on {
+        @apply text-emerald-300;
+    }
+    .aacp-perf-card-status.is-off {
+        @apply text-slate-500;
+    }
+    .aacp-perf-card-count {
+        @apply mt-1 block font-mono text-lg text-slate-100;
+    }
+    .aacp-perf-card-size {
+        @apply block font-mono text-fs-xs text-emerald-300;
+    }
+    .aacp-perf-card-meta {
+        @apply mt-0.5 block font-mono text-[0.65rem] text-slate-500;
+    }
+    .aacp-sev {
+        @apply inline-flex rounded px-1.5 py-0.5 font-mono text-[0.65rem] font-semibold uppercase tracking-wide;
+    }
+    .aacp-sev-info {
+        @apply border border-emerald-400/40 bg-emerald-500/10 text-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.35)];
+    }
+    .aacp-sev-warning {
+        @apply border border-warning-400/50 bg-warning-500/10 text-warning-300 shadow-[0_0_8px_rgba(250,204,21,0.35)];
+    }
+    .aacp-sev-critical {
+        @apply border border-warning-600/50 bg-warning-600/15 text-warning-200 shadow-[0_0_8px_rgba(255,159,41,0.4)];
+    }
+    .aacp-sev-threat {
+        @apply border border-danger-400/50 bg-danger-500/15 text-danger-300 shadow-[0_0_8px_rgba(248,113,113,0.45)];
+    }
+    .aacp-chart-box {
+        position: relative;
+        height: 9.5rem;
+    }
+    .aacp-chart-box--donut {
+        height: 11rem;
+    }
+    .aacp-top-ips {
+        @apply space-y-1.5;
+    }
+    .aacp-top-ips li {
+        @apply flex items-center justify-between gap-2 rounded-md border border-white/10 bg-dark-1 px-2.5 py-1.5;
+    }
+    .aacp-modal {
+        @apply fixed inset-0 z-50 items-center justify-center bg-neutral-900/70 p-sp-md;
+        display: none;
+    }
+    .aacp-modal.is-open {
+        display: flex;
+    }
+    .aacp-modal-panel {
+        @apply w-full max-w-2xl overflow-y-auto rounded-lg border border-white/10 bg-dark-2 p-sp-sm shadow-2xl;
+        max-height: 85vh;
+    }
+    .aacp-modal-fields {
+        @apply mt-3 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2;
+    }
+    .aacp-modal-fields dt {
+        @apply font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-modal-fields dd {
+        @apply break-all font-mono text-fs-xs text-slate-200;
+    }
+    .aacp-modal-fields-span {
+        @apply sm:col-span-2;
+    }
+    .aacp-visitor-kpis {
+        @apply mb-3 grid grid-cols-2 gap-2;
+    }
+    .aacp-visitor-kpis > div {
+        @apply rounded-md border border-white/10 bg-dark-1 px-2.5 py-2;
+    }
+    .aacp-visitor-kpis span {
+        @apply block font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-visitor-kpis strong {
+        @apply mt-0.5 block font-mono text-lg text-emerald-300;
+    }
+    .aacp-cmd-subsys {
+        @apply space-y-2;
+    }
+    .aacp-cmd-subsys-item {
+        @apply rounded-md border border-white/10 bg-dark-1 px-3 py-2;
+    }
+    .aacp-cmd-subsys-name {
+        @apply font-mono text-fs-xs font-semibold uppercase tracking-wide text-slate-400;
+    }
+    .aacp-cmd-subsys-value {
+        @apply mt-0.5 break-all font-mono text-fs-xs text-slate-200;
+    }
+    .aacp-cmd-db {
+        @apply mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5;
+    }
+    .aacp-cmd-db dt {
+        @apply font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-cmd-db dd {
+        @apply font-mono text-fs-xs text-slate-200;
+    }
+    .aacp-cmd-log {
+        @apply mt-2 max-h-40 overflow-y-auto font-mono text-[0.65rem] leading-relaxed text-slate-500;
     }
     .aacp-page {
         @apply space-y-sp-md;

@@ -9,21 +9,8 @@ use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Faz 4 — AACP "Modül Eklentileri" sayfasının aktif/pasif toggle deposu.
- *
- * Yeni bir tablo/entity YARATMAZ: mevcut App\Entity\Setting (cp_settings
- * tablosu) generic bir key-value store olduğundan, "plugin.{isim}.active"
- * anahtarlarıyla doğrudan kullanılır — tıpkı AACPController::updateSettings()'in
- * #[CpSetting] dışı, elle Setting upsert ettiği desende olduğu gibi.
- *
- * #[CpSetting] attribute mekanizması BİLİNÇLİ OLARAK KULLANILMAZ: o
- * derleme-zamanında SABİT bir tanım listesi taramak için var (bkz.
- * SettingsRegistrationPass) — burada ise plugin isimleri PluginRegistry'den
- * ÇALIŞMA ZAMANINDA gelen dinamik bir küme, derleme-zamanı taramaya uymaz.
- *
- * SettingRepository'yi EXTEND ETMEZ (farklı bir okuma/yazma sözleşmesi
- * sunar — "tüm ayarlar" değil "sadece plugin.* prefix'li ayarlar"), sadece
- * kompozisyonla kullanır.
+ * AACP module plugin active/disabled toggles stored as plugin.{name}.active in cp_settings (no new table).
+ * Uses Setting via composition, not #[CpSetting] (plugin names are runtime-dynamic from PluginRegistry).
  */
 final class PluginToggleRepository
 {
@@ -36,13 +23,7 @@ final class PluginToggleRepository
     ) {
     }
 
-    /**
-     * Varsayılan (DB'de hiç kayıt yoksa) davranış: AKTİF. Bir plugin
-     * SADECE DB'de açıkça '0' olarak işaretlenmişse pasif sayılır — bu,
-     * Faz 3'te zaten var olan plugin'lerin bu fazın migration'sız devreye
-     * girmesiyle aniden kaybolmamasını garanti eder (fail-safe: "kayıt
-     * yok" asla "gizle" anlamına gelmez).
-     */
+    /** Default when no DB row: active. Only explicit '0' disables (fail-safe: missing row ≠ hidden). */
     public function isDisabled(string $pluginName): bool
     {
         $setting = $this->settingRepository->findOneBy(['settingKey' => $this->keyFor($pluginName)]);
@@ -51,9 +32,7 @@ final class PluginToggleRepository
     }
 
     /**
-     * AACP "Modül Eklentileri" listeleme sayfası için: TÜM plugin toggle
-     * durumlarını TEK bir sorguda okur (SettingRepository::findAllAsMap()
-     * ile aynı N+1 önleme gerekçesi — Manifesto Law 6.1).
+     * Loads all plugin toggle states in one query (avoids N+1).
      *
      * @return array<string, bool> pluginName => isActive
      */
@@ -80,13 +59,7 @@ final class PluginToggleRepository
         return $states;
     }
 
-    /**
-     * Var olan bir Setting satırını günceller, yoksa yeni bir tane
-     * persist eder — AACPController::updateSettings()'teki upsert
-     * deseniyle birebir aynı. Bilinçli olarak flush() ÇAĞIRMAZ: çağıran
-     * controller kendi akışında (CSRF doğrulama, JSON response hazırlama)
-     * TEK bir flush ile tutarlılık sağlar.
-     */
+    /** Upserts a Setting row (same pattern as AACPController::updateSettings()); does not flush(). */
     public function setActive(string $pluginName, bool $active): void
     {
         $key = $this->keyFor($pluginName);

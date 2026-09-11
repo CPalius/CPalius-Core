@@ -8,18 +8,13 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Bu migration dosyası, ilk sürümü kaybolduktan sonra veritabanının
- * doctrine_migration_versions kaydıyla tutarlı kalması için yeniden
- * oluşturulmuştur. Veritabanı zaten bu migration'ın hedeflediği şemaya
- * (categories/nodes tabloları, ilk hali) sahip olduğundan up()/down()
- * bilinçli olarak boş bırakılmıştır — gerçek şema değişiklikleri bir
- * sonraki migration'da (Version20260714195853) uygulanır.
+ * Recreated no-op placeholder after the original file was lost; schema already matches (see Version20260714195853).
  */
 final class Version20260714194222 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'categories ve nodes tablolarının ilk oluşturulması (dosyası kaybolduğu için yeniden oluşturuldu, no-op).';
+        return 'Initial creation of categories and nodes tables (recreated because the file was lost; no-op).';
     }
 
     public function up(Schema $schema): void

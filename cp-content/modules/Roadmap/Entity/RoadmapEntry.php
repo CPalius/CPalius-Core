@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\Roadmap\Entity;
 
+use App\Core\Localization\Contract\TranslatableInterface;
+use App\Core\Localization\Contract\TranslatableTrait;
 use Modules\Roadmap\Repository\RoadmapEntryRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
  * Native roadmap row: milestone card or changelog update (not a Blog Node / Forum Topic hybrid).
+ * One row per locale; siblings share translation_group_id (Blog category pattern).
  */
 #[ORM\Entity(repositoryClass: RoadmapEntryRepository::class)]
 #[ORM\Table(name: 'roadmap_entries')]
@@ -17,8 +20,11 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(columns: ['locale', 'kind'], name: 'idx_roadmap_locale_kind')]
 #[ORM\Index(columns: ['published_at'], name: 'idx_roadmap_published')]
 #[ORM\UniqueConstraint(name: 'uniq_roadmap_slug_locale', columns: ['slug', 'locale'])]
-class RoadmapEntry
+#[ORM\UniqueConstraint(name: 'uniq_roadmap_translation_group_locale', columns: ['translation_group_id', 'locale'])]
+class RoadmapEntry implements TranslatableInterface
 {
+    use TranslatableTrait;
+
     public const STATUS_PLANNED = 'planned';
     public const STATUS_IN_PROGRESS = 'in_progress';
     public const STATUS_SHIPPED = 'shipped';

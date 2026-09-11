@@ -11,17 +11,8 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Twig\Extension\RuntimeExtensionInterface;
 
 /**
- * Sidebar'a sunulacak menü öğelerinin GERÇEK filtrelemesi burada,
- * HER render'da taze yapılır (bkz. AdminMenuRegistrationPass'in
- * derleme-zamanı toplama ile bilinçli olarak filtrelemeyi ayırma
- * gerekçesi): active_modules.php AACP üzerinden runtime'da cache
- * temizlemeden değişebilir, bu yüzden "modül aktif mi" sorusu asla
- * derleme zamanında sabitlenmemelidir.
- *
- * Security::isGranted(), firewall dışı/anonim bağlamlarda (ör. henüz
- * giriş yapılmamış bir istek) exception fırlatmak yerine güvenle false
- * döner — bu yüzden AACP recovery gibi bilinçli olarak "her zaman ayakta"
- * kalması gereken akışlarda bile bu servis çağrısı güvenlidir.
+ * Filters sidebar menu items on every render (active_modules.php can change at runtime without cache clear).
+ * Security::isGranted() returns false safely for anonymous contexts — safe for AACP recovery flows.
  */
 final class AdminMenuRuntime implements RuntimeExtensionInterface
 {
@@ -33,16 +24,9 @@ final class AdminMenuRuntime implements RuntimeExtensionInterface
     }
 
     /**
-     * İki seviyeli sidebar ağacını kurar: $parent'ı NULL olan öğeler üst
-     * seviye link olarak döner, $parent'ı dolu (bir başka öğenin
-     * routeName'ine eşit) öğeler o üst öğenin "children" listesine gömülür.
+     * Builds a two-level sidebar tree; children attach to visible parents; orphans are skipped.
      *
-     * Bir öğenin $parent'ı, filtrelemeden ELENMİŞ (modül pasif veya
-     * yetkisiz) bir routeName'e işaret ediyorsa, o alt öğe de sessizce
-     * atlanır (yetim/orphan bırakılmaz) — aksi halde sidebar'da hiçbir
-     * üst öğenin altına bağlanmayan başıboş bir link belirirdi.
-     *
-     * @return list<array{label: string, icon: string, routeName: string, routePrefix: string, group: ?string, children: list<array{label: string, icon: string, routeName: string, routePrefix: string}>}>
+     * @return list<array{label: string, icon: string, routeName: string, routePrefix: string, group: ?string, hub: bool, children: list<array{label: string, icon: string, routeName: string, routePrefix: string}>}>
      */
     public function render(string $panel): array
     {
@@ -79,6 +63,7 @@ final class AdminMenuRuntime implements RuntimeExtensionInterface
                 'routeName' => $item->routeName,
                 'routePrefix' => $item->routePrefix,
                 'group' => $item->group,
+                'hub' => $item->routeName === 'aacp_tools',
                 'children' => [],
             ];
         }
@@ -102,7 +87,10 @@ final class AdminMenuRuntime implements RuntimeExtensionInterface
             unset($parentEntry);
         }
 
-        return $topLevel;
+        return array_values(array_filter(
+            $topLevel,
+            static fn (array $item): bool => $item['hub'] === false || $item['children'] !== [],
+        ));
     }
 
     /**

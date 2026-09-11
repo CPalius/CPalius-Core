@@ -10,9 +10,7 @@ use App\Repository\PerformanceBackendStatusRepository;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Ana AACP dashboard'unda Memcached durumunu gösteren kart — bkz.
- * RedisSystemWidgetProvider docblock'u (aynı "sadece son kayıt, canlı
- * probe yok" ve "description PHP tarafında önceden çevrilir" ilkeleri).
+ * Memcached status card on AACP dashboard — see RedisSystemWidgetProvider (last DB record, no live probe).
  */
 final class MemcachedSystemWidgetProvider implements SystemWidgetProviderInterface
 {
