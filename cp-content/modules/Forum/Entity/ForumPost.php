@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Modules\Forum\Entity;
 
 use App\Entity\User;
+use Doctrine\ORM\Mapping as ORM;
 use Modules\Forum\ForumDiscussionState;
 use Modules\Forum\Repository\ForumPostRepository;
-use Doctrine\ORM\Mapping as ORM;
 
 /**
  * CPalius Forum Engine post (cp_forum_post).

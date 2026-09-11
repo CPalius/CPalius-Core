@@ -15,7 +15,7 @@ use Twig\Source;
 final class ThemeSourceLinter
 {
     /**
-     * @return list<string> Human-readable problems; empty means the source parses.
+     * @return list<string> human-readable problems; empty means the source parses
      */
     public function problems(string $kind, string $content, string $label): array
     {

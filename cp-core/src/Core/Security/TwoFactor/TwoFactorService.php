@@ -130,8 +130,8 @@ final class TwoFactorService
     }
 
     /**
-     * @return list<string>|null Plain recovery codes, shown exactly once, or null
-     *   when the submitted code did not match.
+     * @return list<string>|null plain recovery codes, shown exactly once, or null
+     *                           when the submitted code did not match
      */
     public function confirmEnrollment(User $user, string $code): ?array
     {

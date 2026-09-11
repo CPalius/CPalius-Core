@@ -80,8 +80,7 @@ final class OriginCacheStore
         string $html,
         ?int $ttlOverride = null,
         ?OriginCacheVaryContext $ctx = null,
-    ): bool
-    {
+    ): bool {
         $file = $this->htmlPath($pathInfo, $queryString, $ctx);
         $dir = \dirname($file);
         if (!$this->ensureDir($dir)) {
@@ -102,8 +101,7 @@ final class OriginCacheStore
         string $queryString,
         int $ttl,
         ?OriginCacheVaryContext $ctx = null,
-    ): ?string
-    {
+    ): ?string {
         $file = $this->htmlPath($pathInfo, $queryString, $ctx);
         if (!is_file($file)) {
             // Legacy pre-GC1 snapshots (no _ctx prefix) — serve once, then they age out.

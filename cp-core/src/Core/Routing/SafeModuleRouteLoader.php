@@ -1,12 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core\Routing;
 
 use App\Core\Module\ModuleRegistry;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Config\Loader\Loader;
 use Symfony\Component\Routing\RouteCollection;
-use Throwable;
 
 /**
  * Loads each module Resources/config/routes.yaml in isolation.
@@ -50,7 +51,7 @@ final class SafeModuleRouteLoader extends Loader
         try {
             $reflection = new \ReflectionClass($moduleClass);
             $moduleDir = \dirname($reflection->getFileName());
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $this->logger?->error('{module} module directory could not be resolved: {message}', [
                 'module' => $moduleClass,
                 'message' => $e->getMessage(),
@@ -71,7 +72,7 @@ final class SafeModuleRouteLoader extends Loader
             $subLoader = $this->resolve($routesFile, 'yaml');
             $moduleCollection = $subLoader->load($routesFile, 'yaml');
             $collection->addCollection($moduleCollection);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $this->logger?->error('{module} module route file could not be loaded; module routes skipped: {message}', [
                 'module' => $moduleClass,
                 'message' => $e->getMessage(),

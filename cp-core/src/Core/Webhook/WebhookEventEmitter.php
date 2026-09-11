@@ -55,7 +55,7 @@ final class WebhookEventEmitter
                 'subscription_id' => $subscription->getId(),
                 'envelope' => $envelope,
             ], $tenantId);
-            $queued++;
+            ++$queued;
         }
 
         return $queued;
@@ -89,7 +89,7 @@ final class WebhookEventEmitter
                 $value = substr($value, 0, 1024);
             }
             $clean[$key] = $value;
-            $count++;
+            ++$count;
         }
 
         return $clean;

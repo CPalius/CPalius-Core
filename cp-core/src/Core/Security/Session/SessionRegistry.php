@@ -89,8 +89,8 @@ final class SessionRegistry
     }
 
     /**
-     * @param string|null $exceptSessionId Keeps the caller's own session alive, so
-     *   "sign out everywhere else" does not also sign the user out here.
+     * @param string|null $exceptSessionId keeps the caller's own session alive, so
+     *                                     "sign out everywhere else" does not also sign the user out here
      */
     public function revokeAllForUser(User $user, ?string $exceptSessionId = null): int
     {

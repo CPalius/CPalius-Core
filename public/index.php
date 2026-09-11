@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Kernel;
 
 require_once dirname(__DIR__).'/cp-includes/vendor/autoload_runtime.php';

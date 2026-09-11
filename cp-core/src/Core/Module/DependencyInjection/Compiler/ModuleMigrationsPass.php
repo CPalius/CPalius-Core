@@ -8,7 +8,6 @@ use App\Core\Module\ModuleManifest;
 use Symfony\Component\Config\Resource\DirectoryResource;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Throwable;
 
 /**
  * Registers every ACTIVE module's Resources/migrations directory with Doctrine Migrations.
@@ -75,7 +74,7 @@ final class ModuleMigrationsPass implements CompilerPassInterface
 
             try {
                 $manifest = ModuleManifest::fromDirectory($path);
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 continue;
             }
 

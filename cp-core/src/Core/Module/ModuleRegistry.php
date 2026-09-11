@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Core\Module;
 
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
-use Throwable;
 
 /**
  * Resolves the active module list and applies the quarantine rules.
@@ -187,7 +186,7 @@ final class ModuleRegistry
 
         try {
             $modules = require $this->activeModulesFile;
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             // Even active_modules.php itself may be broken; the module system then
             // stays disabled while the core still boots.
             $this->quarantine('(active_modules.php)', 'File could not be read: '.$e->getMessage());
@@ -206,7 +205,7 @@ final class ModuleRegistry
         // class_exists() triggers the autoloader, so a syntax error surfaces here.
         try {
             $exists = class_exists($moduleClass);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             return sprintf('Class could not be loaded: %s', $e->getMessage());
         }
 
@@ -218,7 +217,7 @@ final class ModuleRegistry
         try {
             $implementsBundle = is_subclass_of($moduleClass, BundleInterface::class)
                 || \in_array(BundleInterface::class, class_implements($moduleClass) ?: [], true);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             return sprintf('Class could not be inspected: %s', $e->getMessage());
         }
 

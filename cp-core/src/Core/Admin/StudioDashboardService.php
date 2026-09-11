@@ -236,6 +236,7 @@ final class StudioDashboardService
 
     /**
      * @param list<array{labelKey: string, routeName: string, icon: string}> $links
+     *
      * @return list<array{labelKey: string, routeName: string, icon: string}>
      */
     private function existingLinks(array $links): array

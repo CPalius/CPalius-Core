@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Core\Performance;
 
-use App\Repository\PerformanceBackendStatusRepository;
 use App\Core\Settings\SettingsRegistry;
+use App\Repository\PerformanceBackendStatusRepository;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Response;

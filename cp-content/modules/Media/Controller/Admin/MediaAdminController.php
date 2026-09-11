@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Modules\Media\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
@@ -65,10 +67,7 @@ final class MediaAdminController extends AbstractController
             $asset = $this->assetManager->upload($uploadedFile);
         } catch (UnsupportedAssetTypeException $e) {
             // Wrong file type is a client error (400), not 500.
-            throw new BadRequestHttpException($this->translator->trans('media.admin.error.unsupported_type', [
-                'mimeType' => $e->detectedMimeType,
-                'allowed' => implode(', ', $this->mimeTypeAllowlist->allowedExtensions()),
-            ]), $e);
+            throw new BadRequestHttpException($this->translator->trans('media.admin.error.unsupported_type', ['mimeType' => $e->detectedMimeType, 'allowed' => implode(', ', $this->mimeTypeAllowlist->allowedExtensions())]), $e);
         } catch (InvalidUploadException $e) {
             // Upload did not arrive intact (PHP/temp/content) — still 400 for the client.
             throw new BadRequestHttpException($this->translator->trans('media.admin.error.upload_failed'), $e);

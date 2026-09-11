@@ -6,8 +6,8 @@ namespace Modules\Blog\Form\DTO;
 
 use App\Entity\Node;
 use Modules\Blog\PostSubType;
-use Symfony\Component\Validator\Context\ExecutionContextInterface;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 /**
  * Form-layer DTO for post CRUD; not a Doctrine entity (Law 3.1). Body is sanitized in mapDtoToNode().

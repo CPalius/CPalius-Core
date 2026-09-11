@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Core\Taxonomy;
 
-use App\Core\Taxonomy\Entity\Vocabulary;
 use App\Core\Taxonomy\Repository\VocabularyRepository;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
-use Throwable;
 
 /**
  * Cached read model for vocabularies (structure, rarely changed, read on every
@@ -52,7 +50,7 @@ class VocabularyRegistry
 
                 return $out;
             });
-        } catch (Throwable) {
+        } catch (\Throwable) {
             $rows = [];
             foreach ($this->repository->findAllOrdered() as $vocabulary) {
                 $rows[$vocabulary->getMachineName()] = $vocabulary->toArray();
@@ -105,7 +103,7 @@ class VocabularyRegistry
         if ($this->cache instanceof CacheItemPoolInterface) {
             try {
                 $this->cache->deleteItem(self::CACHE_KEY);
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Stale entry expires within the TTL; a write must not fail here.
             }
         }

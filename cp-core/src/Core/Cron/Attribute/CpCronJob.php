@@ -12,9 +12,9 @@ namespace App\Core\Cron\Attribute;
 final class CpCronJob
 {
     /**
-     * @param string $schedule Standard 5-field cron (same syntax as CronJob.cronExpression).
-     * @param string $name     Unique job id (separate namespace from CronJob.name).
-     * @param string $description Short text for AACP and CLI.
+     * @param string $schedule    Standard 5-field cron (same syntax as CronJob.cronExpression).
+     * @param string $name        Unique job id (separate namespace from CronJob.name).
+     * @param string $description short text for AACP and CLI
      */
     public function __construct(
         public readonly string $schedule,

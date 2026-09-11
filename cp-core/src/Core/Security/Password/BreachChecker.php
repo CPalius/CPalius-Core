@@ -29,8 +29,8 @@ final class BreachChecker
 
     /**
      * @return int|null Times the password appears in known breaches, or null when
-     *   the corpus could not be consulted. Callers decide whether an unknown
-     *   result blocks (fail closed) or passes (fail open).
+     *                  the corpus could not be consulted. Callers decide whether an unknown
+     *                  result blocks (fail closed) or passes (fail open).
      */
     public function occurrences(string $password): ?int
     {
@@ -51,7 +51,7 @@ final class BreachChecker
     }
 
     /**
-     * @return array<string, int>|null Suffix => breach count for one hash prefix.
+     * @return array<string, int>|null suffix => breach count for one hash prefix
      */
     private function bucket(string $prefix): ?array
     {

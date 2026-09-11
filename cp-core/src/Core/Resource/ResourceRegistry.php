@@ -102,6 +102,7 @@ final class ResourceRegistry
 
     /**
      * @param callable(ResourceDefinition): bool $predicate
+     *
      * @return list<class-string>
      */
     private function filterEntityClasses(callable $predicate): array

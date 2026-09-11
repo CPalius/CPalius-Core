@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
-use App\Core\Cache\CacheRebuildManager;
 use App\Core\Annotation\CpAdminMenu;
+use App\Core\Cache\CacheRebuildManager;
 use App\Core\Theme\ThemeDefinition;
 use App\Core\Theme\ThemeFileEditor;
 use App\Core\Theme\ThemePackageService;

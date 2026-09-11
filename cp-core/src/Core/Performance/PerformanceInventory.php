@@ -42,9 +42,6 @@ final class PerformanceInventory
         ];
     }
 
-    /**
-     * @param array<string, mixed> $row
-     */
     public static function formatBytes(?int $bytes): ?string
     {
         if ($bytes === null || $bytes < 0) {

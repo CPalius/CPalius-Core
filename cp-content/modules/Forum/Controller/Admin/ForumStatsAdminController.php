@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Modules\Forum\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
+use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
+use Modules\Forum\ForumDiscussionState;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
-use App\Repository\UserRepository;
-use Doctrine\ORM\EntityManagerInterface;
-use Modules\Forum\ForumDiscussionState;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;

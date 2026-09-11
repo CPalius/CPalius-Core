@@ -15,7 +15,7 @@ namespace App\Core\Pagination;
 final class PaginatedResult implements \IteratorAggregate, \Countable
 {
     /**
-     * @param list<T> $items Items on the current page (limit/offset already applied).
+     * @param list<T> $items items on the current page (limit/offset already applied)
      */
     public function __construct(
         private readonly array $items,

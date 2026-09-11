@@ -1,35 +1,36 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App;
 
 use App\Core\Api\DependencyInjection\Compiler\ApiRegistrationPass;
 use App\Core\Cron\DependencyInjection\Compiler\CronCommandRegistrationPass;
 use App\Core\Cron\DependencyInjection\Compiler\CronRegistrationPass;
+use App\Core\DependencyInjection\Compiler\TailwindVarDirPass;
 use App\Core\Display\DependencyInjection\Compiler\ViewModeRegistrationPass;
 use App\Core\Entity\DependencyInjection\Compiler\EntityTypeRegistrationPass;
-use App\Core\DependencyInjection\Compiler\TailwindVarDirPass;
 use App\Core\Field\DependencyInjection\Compiler\FieldTypeRegistrationPass;
 use App\Core\Hook\DependencyInjection\Compiler\HookRegistrationPass;
 use App\Core\Localization\DependencyInjection\Compiler\LocalesPatternPass;
 use App\Core\Menu\DependencyInjection\Compiler\AdminMenuRegistrationPass;
-use App\Core\Module\ModuleEntityMappingResolver;
 use App\Core\Module\DependencyInjection\Compiler\ModuleContributionPass;
 use App\Core\Module\DependencyInjection\Compiler\ModuleMigrationsPass;
-use App\Core\Theme\DependencyInjection\Compiler\ThemeTwigPathPass;
-use App\Core\Webhook\DependencyInjection\Compiler\InboundWebhookHandlerPass;
+use App\Core\Module\ModuleEntityMappingResolver;
 use App\Core\Module\ModuleRegistry;
 use App\Core\Resource\DependencyInjection\Compiler\ResourceRegistrationPass;
 use App\Core\Security\DependencyInjection\Compiler\CapabilityRegistrationPass;
 use App\Core\Settings\DependencyInjection\Compiler\SettingsRegistrationPass;
-use App\Core\Token\DependencyInjection\Compiler\TokenTypeRegistrationPass;
 use App\Core\TextFormat\DependencyInjection\Compiler\TextFormatRegistrationPass;
+use App\Core\Theme\DependencyInjection\Compiler\ThemeTwigPathPass;
+use App\Core\Token\DependencyInjection\Compiler\TokenTypeRegistrationPass;
+use App\Core\Webhook\DependencyInjection\Compiler\InboundWebhookHandlerPass;
 use Doctrine\Bundle\DoctrineBundle\DependencyInjection\Compiler\DoctrineOrmMappingsPass;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\HttpKernel\Kernel as BaseKernel;
-use Throwable;
 
 class Kernel extends BaseKernel
 {
@@ -121,7 +122,7 @@ class Kernel extends BaseKernel
 
             try {
                 $bundle->boot();
-            } catch (Throwable $e) {
+            } catch (\Throwable $e) {
                 $this->quarantineModuleAtRuntime($bundle::class, $e);
             }
         }
@@ -193,7 +194,7 @@ class Kernel extends BaseKernel
 
             try {
                 $this->loadBundleServices($container, $servicesFile);
-            } catch (Throwable $e) {
+            } catch (\Throwable $e) {
                 $this->quarantineModuleAtRuntime($bundle::class, $e);
             }
         }
@@ -230,7 +231,7 @@ class Kernel extends BaseKernel
         }
     }
 
-    private function quarantineModuleAtRuntime(string $bundleClass, Throwable $e): void
+    private function quarantineModuleAtRuntime(string $bundleClass, \Throwable $e): void
     {
         $logFile = $this->getProjectDir().'/cp-core/var/log/module_quarantine.log';
         $dir = \dirname($logFile);

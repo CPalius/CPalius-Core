@@ -12,8 +12,8 @@ final class PerformanceCheckResult
 {
     /**
      * @param 'ok'|'not_installed'|'connection_failed'|'misconfigured' $status
-     * @param array<string, string|int|float> $messageParams ICU MessageFormat params injected at render time via |trans(params).
-     * @param array<string, mixed> $details
+     * @param array<string, string|int|float>                          $messageParams ICU MessageFormat params injected at render time via |trans(params)
+     * @param array<string, mixed>                                     $details
      */
     private function __construct(
         public readonly bool $success,
@@ -27,7 +27,7 @@ final class PerformanceCheckResult
 
     /**
      * @param array<string, string|int|float> $messageParams
-     * @param array<string, mixed> $details
+     * @param array<string, mixed>            $details
      */
     public static function ok(string $messageKey, array $messageParams, float $latencyMs, array $details = []): self
     {

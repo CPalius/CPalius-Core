@@ -6,12 +6,10 @@ namespace App\Core\Display;
 
 use App\Core\Display\Entity\EntityDisplay;
 use App\Core\Display\Repository\EntityDisplayRepository;
-use App\Core\Field\Entity\FieldDefinition;
 use App\Core\Field\FieldDefinitionRegistry;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
-use Throwable;
 
 /**
  * Merges FieldDefinitionRegistry (what fields a bundle has) with any explicit
@@ -98,7 +96,7 @@ final class EntityDisplayRegistry
                     $this->cache->deleteItem(self::CACHE_PREFIX.$known.'.'.$viewMode);
                 }
             }
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // Stale cache expires within the TTL; a write must not 500.
         }
     }
@@ -119,7 +117,7 @@ final class EntityDisplayRegistry
             });
 
             return $result;
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return $this->loadOverrides($bundle, $viewMode);
         }
     }

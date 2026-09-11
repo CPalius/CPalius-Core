@@ -69,6 +69,6 @@ final class ApiClientIpPolicy
 
         $mask = (0xFF << (8 - $remainder)) & 0xFF;
 
-        return ((\ord($ipBin[$fullBytes]) & $mask) === (\ord($subnetBin[$fullBytes]) & $mask));
+        return (\ord($ipBin[$fullBytes]) & $mask) === (\ord($subnetBin[$fullBytes]) & $mask);
     }
 }

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Event;
 
-use Modules\Forum\Entity\ForumUserReputation;
 use App\Entity\User;
+use Modules\Forum\Entity\ForumUserReputation;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /** Dispatched after a reputation vote is recorded. */

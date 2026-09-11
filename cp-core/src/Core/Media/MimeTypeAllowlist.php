@@ -20,29 +20,29 @@ final class MimeTypeAllowlist
      */
     private const MAP = [
         // Images
-        'image/jpeg'                => 'jpg',
-        'image/pjpeg'               => 'jpg',
-        'image/png'                 => 'png',
-        'image/gif'                 => 'gif',
-        'image/webp'                => 'webp',
-        'image/avif'                => 'avif',
-        'image/bmp'                 => 'bmp',
-        'image/x-ms-bmp'            => 'bmp',
-        'image/tiff'                => 'tiff',
-        'image/heic'                => 'heic',
-        'image/heif'                => 'heif',
-        'image/vnd.microsoft.icon'  => 'ico',
-        'image/x-icon'              => 'ico',
+        'image/jpeg' => 'jpg',
+        'image/pjpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp',
+        'image/avif' => 'avif',
+        'image/bmp' => 'bmp',
+        'image/x-ms-bmp' => 'bmp',
+        'image/tiff' => 'tiff',
+        'image/heic' => 'heic',
+        'image/heif' => 'heif',
+        'image/vnd.microsoft.icon' => 'ico',
+        'image/x-icon' => 'ico',
 
         // Documents — PDF only (browser sandbox + uploads/.htaccess CSP).
-        'application/pdf'           => 'pdf',
+        'application/pdf' => 'pdf',
 
         // Video
-        'video/mp4'                 => 'mp4',
-        'video/webm'                => 'webm',
-        'video/ogg'                 => 'ogv',
-        'video/quicktime'           => 'mov',
-        'video/x-matroska'          => 'mkv',
+        'video/mp4' => 'mp4',
+        'video/webm' => 'webm',
+        'video/ogg' => 'ogv',
+        'video/quicktime' => 'mov',
+        'video/x-matroska' => 'mkv',
 
         // Audio — intentionally excluded until explicitly added to this map.
     ];

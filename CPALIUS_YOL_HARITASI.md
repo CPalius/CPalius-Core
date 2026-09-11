@@ -25,19 +25,17 @@
 ## 0. NEREDE KALDIK? (her oturum başında güncelle)
 
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
-  **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı) bitti.
+  **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı), **GC3** bitti.
   **T3.2 (multisite/org) İPTAL** (öncelik dışı).
-- **Son oturum:** 2026-09-12 — **GC3: kalite kapıları + kanıt borcu kapatıldı.**
-  CI/PHPStan/cs-fixer/README/LICENSE/SECURITY.md yoktu, kuruldu; güvenlik katmanı
-  ilk kez test edildi (537 test, 17 bulgu düzeltildi); `cp:doctor` ve `cp:update`
-  yazıldı; entegrasyon paketinin kararsızlığı çözüldü. **Her şey git'te** (12 commit).
-- **Sıradaki iş:** T3.4 Migrate API · T5.1 maker · T5.5 el kitabı · ya da
-  birikmiş teknik borç (strict_types + stil sweep, aşağıda).
+- **Son oturum:** 2026-09-12 — **teknik borç: strict_types + stil sweep.**
+  `php-cs-fixer` 531/900 dosyayı tek geçişte düzeltti (`declare_strict_types` dahil;
+  `Kernel`/`Node`/`User`/`CPaliusVoter` artık strict). Eşleşmeyen 4 PHPStan baseline
+  kaydı düşürüldü (374 → 372). **Commit hazır, push yok.**
+- **Sıradaki iş:** T5.1 maker (`cp:make:*`) · T3.4 Migrate API · T5.5 el kitabı.
 - **Bekleyen migration:** yok. Artık `cp:doctor` bunu kendisi söylüyor.
-- **Doğrulama durumu (2026-09-12):** PHPStan level 6 temiz (baseline 374) ·
-  php-cs-fixer temiz · **966 unit + 71 entegrasyon testi yeşil** ·
-  `cp:doctor --fail-on=high` gerçek DB'de 0 · lint:container dev+prod OK.
-  Entegrasyon paketi arka arkaya iki koşumda birebir aynı sonucu verdi.
+- **Doğrulama durumu (2026-09-12):** PHPStan level 6 temiz (baseline **372**) ·
+  php-cs-fixer temiz (0/900) · **966 unit + 71 entegrasyon testi yeşil** ·
+  `cp:doctor --fail-on=high` gerçek DB'de 0 · lint:container dev OK.
 - **Bilinen ön koşullar:** DB için `C:\laragon\bin\php\php-8.4.14-nts-Win32-vs17-x64\php.exe`
   (bkz. memory `php-cli-environment`). Test DB `cpalius-cmf_test` (MySQL; `dbname_suffix`
   ile). `phpunit.xml.dist` kök dizinde.
@@ -45,10 +43,9 @@
   küçülen dosya ve sır içeren commit'leri engeller (bkz. §4, 2026-09-12 (19)).
 - **Kalan GC borcu (bilinçli):** webhook → Messenger (hibrit kuyruk kararı); flat index
   Term; auth context-vary.
-- **Kalan teknik borç (bilinçli değil, sıraya alındı):** 51 dosyada
-  `declare(strict_types=1)` eksik (aralarında `Kernel.php`, `Node.php`, `User.php`,
-  `CPaliusVoter.php`); toplu stil sweep'i (452/850 dosya) tek commit olarak bekliyor;
-  migration'lar MySQL'e çivili (bkz. skor satırı 40).
+- **Kalan teknik borç:** migration'lar MySQL'e çivili (bkz. skor satırı 40 —
+  **karar bekliyor:** "MySQL-only, bilinçli" mi, DBAL-taşınabilir mi).
+  `SECURITY.md` / `LICENSE` iletişim adresi (`sys@rootali.net`) onay bekliyor.
 
 ---
 
@@ -97,7 +94,7 @@ güvenlik-varsayılan** ekseninde dört rakibi de geçmiş durumda.
 > **BAKIM KURALI:** Her tier adımı bittiğinde bu bölüm güncellenir. Değişen satırın
 > CPalius puanı yükseltilir, "CPalius bugün" notu yeni gerçeğe göre yazılır, gerekiyorsa
 > "en iyi kim" değerlendirmesi gözden geçirilir. Küçük bir geliştirme bile buraya yansır.
-> Son güncelleme: **2026-09-12 (GC3 + T3.6 sonrası).**
+> Son güncelleme: **2026-09-12 (strict_types + stil sweep sonrası).**
 >
 > **HEDEF KRİTERİ (2026-09-11'den itibaren):** Her satırda amaç sadece rakiplere yetişmek
 > (`A`) değil, **o satırın `A+`ı olmak.** Bir tier adımını tasarlarken "Drupal/ProcessWire/
@@ -708,6 +705,27 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 ## 4. İLERLEME GÜNLÜĞÜ
 
 > En yeni en üstte. Her oturum sonunda: değişen dosyalar, doğrulama, kalan risk.
+
+### 2026-09-12 (20) — Teknik borç: strict_types + stil sweep
+**Amaç:** GC3 sonrası bilinçli olmayan borç — 49 dosyada `declare(strict_types=1)`
+eksikti (`Kernel`, `Node`, `User`, `CPaliusVoter` dahil); finder altındaki stil sapması
+tek commit'te kapanacaktı. 71 entegrasyon testi + pre-commit koruması varken risksiz.
+
+**Yöntem (veri kaybı dersi):** özel regex betiği yok. Önce `php-cs-fixer --dry-run`
+(531/900), sonra resmi `fix`. Uygulama sonrası: boş dosya = 0, HEAD'e göre %80+ küçülen
+= 0, eksik `strict_types` = 0. Git blob hash'leri, status'taki sahte `M` satırlarının
+içerik farkı olmadığını doğruladı (stat cache / CRLF uyarısı).
+
+**Yan etki:** cs-fixer PHPDoc `@param` adlarını parametrelerle hizalayınca 4 baseline
+`parameter.notFound` kaydı `ignore.unmatched` oldu → silindi. Baseline hata toplamı
+**374 → 372**.
+
+**Doğrulama:** PHPStan L6 temiz · cs-fixer 0/900 · **966 unit + 71 entegrasyon**
+(Assertions: 271; 3 deprecation, exit 0) · `cp:doctor --fail-on=high` 0 ·
+lint:container dev OK. İçerik diff: **272 dosya** (+721 / −768).
+
+**Kalan:** T5.1 / T3.4 / T5.5 · satır 40 MySQL kararı · `sys@rootali.net` onayı ·
+push henüz yok.
 
 ### 2026-09-12 (19) — GC3: kalite kapıları, kanıt borcu, T3.6 · **+ veri kaybı olayı**
 **Bağlam:** Bu oturum bir denetimle başladı: yol haritası birçok satırda `A++` diyordu

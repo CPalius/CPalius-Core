@@ -8,7 +8,6 @@ use App\Core\Plugin\PluginInterface;
 use App\Core\Plugin\PluginRegistry;
 use App\Core\Plugin\PluginToggleRepository;
 use Psr\Log\LoggerInterface;
-use Throwable;
 use Twig\Extension\RuntimeExtensionInterface;
 
 /**
@@ -46,14 +45,14 @@ final class PluginRuntime implements RuntimeExtensionInterface
 
         try {
             return $plugin->render($context);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $this->logPluginFailure($plugin, $e);
 
             return '';
         }
     }
 
-    private function logPluginFailure(PluginInterface $plugin, Throwable $e): void
+    private function logPluginFailure(PluginInterface $plugin, \Throwable $e): void
     {
         $this->logger->warning('Module plugin skipped because render() failed.', [
             'plugin' => $plugin->getName(),

@@ -119,7 +119,7 @@ final class SecurityAuditCommand extends Command
 
     /**
      * @param list<SecurityFinding> $findings
-     * @param array<string, int> $summary
+     * @param array<string, int>    $summary
      */
     private function toJson(array $findings, int $score, array $summary): string
     {

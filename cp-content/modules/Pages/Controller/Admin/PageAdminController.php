@@ -352,7 +352,7 @@ final class PageAdminController extends AbstractController
             $decoded = [];
         }
 
-        /** @var list<mixed> $decoded */
+        /* @var list<mixed> $decoded */
         return $this->fieldNormalizer->normalizeList($decoded, $includeValues);
     }
 

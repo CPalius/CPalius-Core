@@ -22,7 +22,6 @@ use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
-use Throwable;
 
 /**
  * Studio homepage: root route mode, portal block layout, and bilingual showcase copy.
@@ -89,15 +88,12 @@ final class HomepageSettingsController extends AbstractController
         $this->persistModeAndLayout($request);
 
         $copyJson = (string) $request->request->get('portal_copy', '{}');
-        /** @var mixed $copyDecoded */
         $copyDecoded = json_decode($copyJson, true);
         if (\is_array($copyDecoded)) {
             try {
                 $this->portalCopyService->saveAll($copyDecoded);
-            } catch (Throwable $e) {
-                throw new BadRequestHttpException(
-                    $this->translator->trans('studio.homepage.copy_save_failed', ['error' => $e->getMessage()]),
-                );
+            } catch (\Throwable $e) {
+                throw new BadRequestHttpException($this->translator->trans('studio.homepage.copy_save_failed', ['error' => $e->getMessage()]));
             }
         }
 
@@ -120,7 +116,6 @@ final class HomepageSettingsController extends AbstractController
             return $this->jsonError($this->translator->trans('studio.homepage.unknown_block'));
         }
 
-        /** @var mixed $decoded */
         $decoded = json_decode((string) $request->request->get('copy', '{}'), true);
         if (!\is_array($decoded)) {
             return $this->jsonError($this->translator->trans('studio.homepage.copy_save_failed', ['error' => 'invalid JSON']));
@@ -128,7 +123,7 @@ final class HomepageSettingsController extends AbstractController
 
         try {
             $this->portalCopyService->saveBlock($blockId, $decoded);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             return $this->jsonError($this->translator->trans('studio.homepage.copy_save_failed', ['error' => $e->getMessage()]));
         }
 
@@ -152,7 +147,7 @@ final class HomepageSettingsController extends AbstractController
 
         try {
             $values = $this->portalCopyService->resetBlock($blockId);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             return $this->jsonError($this->translator->trans('studio.homepage.reset_failed', ['error' => $e->getMessage()]));
         }
 
@@ -171,10 +166,8 @@ final class HomepageSettingsController extends AbstractController
 
         try {
             $this->portalCopyService->resetAll();
-        } catch (Throwable $e) {
-            throw new BadRequestHttpException(
-                $this->translator->trans('studio.homepage.reset_failed', ['error' => $e->getMessage()]),
-            );
+        } catch (\Throwable $e) {
+            throw new BadRequestHttpException($this->translator->trans('studio.homepage.reset_failed', ['error' => $e->getMessage()]));
         }
 
         $this->addFlash('success', $this->translator->trans('studio.homepage.reset_all_done'));
@@ -208,13 +201,12 @@ final class HomepageSettingsController extends AbstractController
         $modeSetting->setSettingValue($mode);
 
         $layoutJson = (string) $request->request->get('portal_layout', '[]');
-        /** @var mixed $decoded */
         $decoded = json_decode($layoutJson, true);
         if (!is_array($decoded)) {
             throw new BadRequestHttpException($this->translator->trans('studio.homepage.invalid_layout'));
         }
 
-        /** @var list<array<string, mixed>> $decoded */
+        /* @var list<array<string, mixed>> $decoded */
         $this->portalLayoutService->saveLayout($decoded);
     }
 

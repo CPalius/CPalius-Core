@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Core\Module;
 
 use Doctrine\DBAL\Connection;
-use Throwable;
 
 /**
  * Everything an installer is allowed to touch. Deliberately narrow: installers run
@@ -32,7 +31,7 @@ final class ModuleInstallContext
                 'DELETE FROM cp_settings WHERE module = :module',
                 ['module' => $moduleId],
             );
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return 0;
         }
     }
@@ -48,7 +47,7 @@ final class ModuleInstallContext
 
         try {
             $this->connection->executeStatement(sprintf('DROP TABLE IF EXISTS %s', $table));
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // Uninstall must never block deactivation.
         }
     }
@@ -57,7 +56,7 @@ final class ModuleInstallContext
     {
         try {
             return $this->connection->createSchemaManager()->tablesExist([$table]);
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return false;
         }
     }
@@ -116,7 +115,7 @@ final class ModuleInstallContext
                 'DELETE FROM cp_settings WHERE setting_key = :key',
                 ['key' => $this->appliedSqlKey()],
             );
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // Uninstall must never block deactivation.
         }
     }
@@ -139,7 +138,7 @@ final class ModuleInstallContext
                 'SELECT setting_value FROM cp_settings WHERE setting_key = :key LIMIT 1',
                 ['key' => $this->appliedSqlKey()],
             );
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return [];
         }
 
@@ -149,7 +148,7 @@ final class ModuleInstallContext
 
         try {
             $decoded = json_decode($raw, true, 8, \JSON_THROW_ON_ERROR);
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return [];
         }
 
@@ -188,7 +187,7 @@ final class ModuleInstallContext
                 'UPDATE cp_settings SET setting_value = :value, updated_at = :now WHERE setting_key = :key',
                 ['key' => $key, 'value' => $json, 'now' => $now],
             );
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // Losing the marker means the file runs again; SQL files must be idempotent.
         }
     }

@@ -13,8 +13,8 @@ use Psr\Container\ContainerInterface;
 final class FieldTypeRegistry
 {
     /**
-     * @param ContainerInterface     $locator        Lazy locator for field-type services.
-     * @param array<string, string>  $serviceByType  type id => service id
+     * @param ContainerInterface    $locator       lazy locator for field-type services
+     * @param array<string, string> $serviceByType type id => service id
      */
     public function __construct(
         private readonly ContainerInterface $locator,

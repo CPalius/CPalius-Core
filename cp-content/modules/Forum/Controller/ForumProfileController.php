@@ -5,18 +5,17 @@ declare(strict_types=1);
 namespace Modules\Forum\Controller;
 
 use App\Core\Pagination\Paginator;
+use App\Entity\User;
+use App\Repository\UserRepository;
 use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\Entity\ForumUserReputation;
-use App\Entity\User;
+use Modules\Forum\ForumDictionary;
 use Modules\Forum\Repository\ForumPostDislikeRepository;
 use Modules\Forum\Repository\ForumPostLikeRepository;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
 use Modules\Forum\Repository\ForumUserReputationRepository;
-use App\Repository\UserRepository;
-use InvalidArgumentException;
-use Modules\Forum\ForumDictionary;
 use Modules\Forum\Service\ForumProfileStatsService;
 use Modules\Forum\Service\ForumRankService;
 use Modules\Forum\Service\ForumReputationService;
@@ -149,7 +148,7 @@ final class ForumProfileController extends AbstractController
                 $comment !== '' ? $comment : null,
             );
             $this->addFlash('success', $this->translator->trans('site.forum.reputation.given'));
-        } catch (InvalidArgumentException $e) {
+        } catch (\InvalidArgumentException $e) {
             $this->addFlash('error', $this->translator->trans('site.forum.reputation.'.$e->getMessage()));
         }
 

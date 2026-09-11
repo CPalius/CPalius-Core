@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Core\Webhook;
 
-use App\Core\Queue\Entity\AsyncJob;
 use App\Core\Queue\AsyncJobHandlerInterface;
+use App\Core\Queue\Entity\AsyncJob;
 use Psr\Container\ContainerInterface;
-use Throwable;
 
 /**
  * Dispatches verified inbound payloads to the contributing module handler in isolation.
@@ -49,13 +48,13 @@ final class InboundWebhookJobHandler implements AsyncJobHandlerInterface
                 throw new \RuntimeException('Inbound webhook handler contract mismatch.');
             }
             $handler->handle($body);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $this->quarantine($endpointId, $e);
             throw $e;
         }
     }
 
-    private function quarantine(string $endpointId, Throwable $e): void
+    private function quarantine(string $endpointId, \Throwable $e): void
     {
         $logFile = $this->projectDir.'/cp-core/var/log/module_quarantine.log';
         $dir = \dirname($logFile);

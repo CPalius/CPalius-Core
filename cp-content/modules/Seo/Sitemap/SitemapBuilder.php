@@ -14,7 +14,6 @@ use Modules\Seo\Sitemap\Source\RoadmapSitemapSource;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
-use Throwable;
 
 final class SitemapBuilder
 {
@@ -120,7 +119,7 @@ final class SitemapBuilder
             if ($this->cache instanceof CacheItemPoolInterface) {
                 $this->cache->deleteItem($key);
             }
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // Stale sitemap lasts at most TTL.
         }
     }

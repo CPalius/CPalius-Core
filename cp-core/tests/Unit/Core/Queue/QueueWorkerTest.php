@@ -74,8 +74,8 @@ final class QueueWorkerTest extends TestCase
     }
 
     /**
-     * @param list<AsyncJob>                  $due
-     * @param list<AsyncJobHandlerInterface>  $handlers
+     * @param list<AsyncJob>                 $due
+     * @param list<AsyncJobHandlerInterface> $handlers
      */
     private function worker(array $due, array $handlers): QueueWorker
     {

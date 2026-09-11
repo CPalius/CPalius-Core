@@ -9,7 +9,6 @@ use App\Core\Field\Repository\FieldDefinitionRepository;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
-use Throwable;
 
 /**
  * Cached read model for FieldDefinition rows, keyed by bundle.
@@ -54,7 +53,7 @@ class FieldDefinitionRegistry
                     $this->repository->findByBundle($bundle),
                 );
             });
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return $this->memo[$bundle] = $this->repository->findByBundle($bundle);
         }
 
@@ -106,7 +105,7 @@ class FieldDefinitionRegistry
             foreach ($this->repository->distinctBundles() as $known) {
                 $this->cache->deleteItem(self::CACHE_PREFIX.$known);
             }
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // Stale cache expires within the TTL; a field write must not 500.
         }
     }

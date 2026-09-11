@@ -26,10 +26,10 @@ final class SecurityFinding
     ];
 
     /**
-     * @param string $id Stable identifier, so a finding can be referenced in docs.
-     * @param string $titleKey Translation key for the check name.
-     * @param string $detailKey Translation key explaining the current state.
-     * @param array<string, mixed> $parameters Translation parameters for $detailKey.
+     * @param string               $id         stable identifier, so a finding can be referenced in docs
+     * @param string               $titleKey   translation key for the check name
+     * @param string               $detailKey  translation key explaining the current state
+     * @param array<string, mixed> $parameters translation parameters for $detailKey
      */
     public function __construct(
         public readonly string $id,

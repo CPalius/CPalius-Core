@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Core\Security;
 
 use App\Core\Security\TwoFactor\TotpGenerator;
+use App\Tests\Unit\Core\Security\Support\SecurityClock;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use App\Tests\Unit\Core\Security\Support\SecurityClock;
 
 #[CoversClass(TotpGenerator::class)]
 final class TotpGeneratorTest extends TestCase

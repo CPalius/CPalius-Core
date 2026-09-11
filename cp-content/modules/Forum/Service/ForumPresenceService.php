@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Modules\Forum\Service;
 
 use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumPresence;
 use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\Repository\ForumPresenceRepository;
-use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Tracks who is currently browsing the forum and builds the stats-bar online list.

@@ -11,14 +11,14 @@ namespace App\Core\Aacp;
 final class SystemWidgetData
 {
     /**
-     * @param string $title Card title.
-     * @param int|float $value Primary displayed number.
-     * @param string|null $unit Unit suffix (e.g. MiB, %).
-     * @param string|null $description Short footer description.
-     * @param string|null $linkRoute Detail link route name.
-     * @param array<string, mixed> $linkRouteParams Route parameters for $linkRoute.
-     * @param 'default'|'danger' $variant twig:cp:card variant ('danger' = red emphasis).
-     * @param float|null $gaugeMax When set, renders twig:cp:gauge at $value/$gaugeMax.
+     * @param string               $title           card title
+     * @param int|float            $value           primary displayed number
+     * @param string|null          $unit            Unit suffix (e.g. MiB, %).
+     * @param string|null          $description     short footer description
+     * @param string|null          $linkRoute       detail link route name
+     * @param array<string, mixed> $linkRouteParams route parameters for $linkRoute
+     * @param 'default'|'danger'   $variant         twig:cp:card variant ('danger' = red emphasis)
+     * @param float|null           $gaugeMax        when set, renders twig:cp:gauge at $value/$gaugeMax
      */
     public function __construct(
         public readonly string $title,

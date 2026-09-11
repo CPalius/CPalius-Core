@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Entity;
 
-use App\Entity\User;
 use App\Core\Localization\Contract\TranslatableInterface;
 use App\Core\Localization\Contract\TranslatableTrait;
-use Modules\Forum\Repository\ForumSectionRepository;
+use App\Entity\User;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Modules\Forum\ForumNodeType;
 use Modules\Forum\ForumSectionType;
+use Modules\Forum\Repository\ForumSectionRepository;
 
 /**
  * CPalius Forum Engine node (cp_forum_node).

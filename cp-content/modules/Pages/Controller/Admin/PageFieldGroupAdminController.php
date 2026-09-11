@@ -200,7 +200,7 @@ final class PageFieldGroupAdminController extends AbstractController
             $decoded = [];
         }
 
-        /** @var list<mixed> $decoded */
+        /* @var list<mixed> $decoded */
         return $this->fieldNormalizer->normalizeList($decoded, false);
     }
 

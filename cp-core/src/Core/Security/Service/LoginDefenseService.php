@@ -37,7 +37,7 @@ final class LoginDefenseService
     }
 
     /**
-     * @return int|null Unix timestamp the block lifts at, or null when not blocked.
+     * @return int|null unix timestamp the block lifts at, or null when not blocked
      */
     public function lockedUntil(string $ip, string $identifier): ?int
     {

@@ -126,8 +126,6 @@ final class ApiKey
     }
 
     /**
-     * @param mixed $raw
-     *
      * @return list<string>
      */
     private static function normalizeStringList(mixed $raw): array

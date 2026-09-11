@@ -80,7 +80,7 @@ final class CpMailerService
      * Deliver immediately over SMTP. Used by the Messenger worker and AACP test mail.
      *
      * @throws TransportExceptionInterface
-     * @throws \RuntimeException when mail is not configured
+     * @throws \RuntimeException           when mail is not configured
      */
     public function sendNow(
         string $to,

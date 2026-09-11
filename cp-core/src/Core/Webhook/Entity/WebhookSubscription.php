@@ -140,7 +140,7 @@ class WebhookSubscription
 
     public function recordFailure(): void
     {
-        $this->consecutiveFailures++;
+        ++$this->consecutiveFailures;
         if ($this->consecutiveFailures >= self::QUARANTINE_AFTER) {
             $this->active = false;
             $this->quarantinedAt = new \DateTimeImmutable();

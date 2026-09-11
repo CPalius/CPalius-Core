@@ -18,7 +18,7 @@ final class ModuleTranslationContract
     }
 
     /**
-     * @return list<string> Empty when the contract is satisfied.
+     * @return list<string> empty when the contract is satisfied
      */
     public static function problems(string $moduleDir): array
     {

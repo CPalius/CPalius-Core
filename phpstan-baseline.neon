@@ -1147,12 +1147,6 @@ parameters:
 			path: cp-core/src/Core/OriginCache/OriginCachePolicy.php
 
 		-
-			message: '#^PHPDoc tag @param references unknown parameter\: \$excludes$#'
-			identifier: parameter.notFound
-			count: 1
-			path: cp-core/src/Core/OriginCache/OriginCachePolicy.php
-
-		-
 			message: '#^Template type T of method App\\Core\\Pagination\\Paginator\:\:paginate\(\) is not referenced in a parameter\.$#'
 			identifier: method.templateTypeNotInParameter
 			count: 1
@@ -1173,12 +1167,6 @@ parameters:
 		-
 			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
-			count: 1
-			path: cp-core/src/Core/Performance/PerformanceInventory.php
-
-		-
-			message: '#^PHPDoc tag @param references unknown parameter\: \$row$#'
-			identifier: parameter.notFound
 			count: 1
 			path: cp-core/src/Core/Performance/PerformanceInventory.php
 
@@ -1421,12 +1409,6 @@ parameters:
 			identifier: deadCode.unreachable
 			count: 1
 			path: cp-core/src/Core/TextFormat/Filter/MarkdownFilter.php
-
-		-
-			message: '#^PHPDoc tag @param references unknown parameter\: \$spec$#'
-			identifier: parameter.notFound
-			count: 1
-			path: cp-core/src/Core/TextFormat/ResolvedTextFormat.php
 
 		-
 			message: '#^Method App\\Core\\TextFormat\\TextFormatAccess\:\:resolve\(\) has parameter \$fieldAllowlist with no value type specified in iterable type array\.$#'
@@ -1899,12 +1881,6 @@ parameters:
 		-
 			message: '#^Method App\\Tests\\Unit\\Core\\Content\\ContentModerationManagerTest\:\:manager\(\) has parameter \$applyResult with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: cp-core/tests/Unit/Core/Content/ContentModerationManagerTest.php
-
-		-
-			message: '#^PHPDoc tag @param references unknown parameter\: \$workflowManagerStubs$#'
-			identifier: parameter.notFound
 			count: 1
 			path: cp-core/tests/Unit/Core/Content/ContentModerationManagerTest.php
 

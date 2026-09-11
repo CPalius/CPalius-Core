@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Core\Module;
 
 use Doctrine\DBAL\Connection;
-use Throwable;
 
 /**
  * Runs install/uninstall/upgrade hooks and tracks the installed version per module.
@@ -58,7 +57,7 @@ final class ModuleLifecycleManager
 
                 return ['ran' => 'upgrade', 'message' => null];
             }
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             return ['ran' => 'none', 'message' => $e->getMessage()];
         }
 
@@ -83,7 +82,7 @@ final class ModuleLifecycleManager
 
         try {
             $installer->uninstall($this->buildContext($manifest));
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             return ['ran' => false, 'message' => $e->getMessage()];
         }
 
@@ -104,7 +103,7 @@ final class ModuleLifecycleManager
                 'SELECT setting_value FROM cp_settings WHERE setting_key = :key LIMIT 1',
                 ['key' => $this->stateKey($dirName)],
             );
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return null;
         }
 
@@ -131,7 +130,7 @@ final class ModuleLifecycleManager
             }
 
             return $reflection->newInstance();
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return null;
         }
     }
@@ -167,7 +166,7 @@ final class ModuleLifecycleManager
                 'UPDATE cp_settings SET setting_value = :value, updated_at = :now WHERE setting_key = :key',
                 ['key' => $key, 'value' => $version, 'now' => $now],
             );
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // Losing the marker only means install() runs again; it is idempotent.
         }
     }
@@ -179,7 +178,7 @@ final class ModuleLifecycleManager
                 'DELETE FROM cp_settings WHERE setting_key = :key',
                 ['key' => $this->stateKey($dirName)],
             );
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // Non-fatal, see rememberVersion().
         }
     }

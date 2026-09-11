@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Roadmap\Repository;
 
-use Modules\Roadmap\Entity\RoadmapEntry;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use Modules\Roadmap\Entity\RoadmapEntry;
 use Symfony\Component\Uid\Uuid;
 
 /**

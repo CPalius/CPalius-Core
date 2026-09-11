@@ -116,14 +116,14 @@ final class AssetManagerTest extends TestCase
      */
     public static function deceptiveFilenameProvider(): iterable
     {
-        yield 'php uzantisi'            => ['evil.php', 'gif'];
-        yield 'phtml uzantisi'          => ['evil.phtml', 'gif'];
-        yield 'phar uzantisi'           => ['evil.phar', 'gif'];
-        yield 'cift uzanti'             => ['evil.gif.php', 'gif'];
-        yield 'buyuk harf PHP'          => ['EVIL.PHP', 'gif'];
-        yield 'bosluk sonlu'            => ['evil.php ', 'gif'];
-        yield 'yanlis ama zararsiz'     => ['photo.jpg', 'gif'];
-        yield 'uzantisiz'               => ['photo', 'gif'];
+        yield 'php uzantisi' => ['evil.php', 'gif'];
+        yield 'phtml uzantisi' => ['evil.phtml', 'gif'];
+        yield 'phar uzantisi' => ['evil.phar', 'gif'];
+        yield 'cift uzanti' => ['evil.gif.php', 'gif'];
+        yield 'buyuk harf PHP' => ['EVIL.PHP', 'gif'];
+        yield 'bosluk sonlu' => ['evil.php ', 'gif'];
+        yield 'yanlis ama zararsiz' => ['photo.jpg', 'gif'];
+        yield 'uzantisiz' => ['photo', 'gif'];
     }
 
     /** Stored extension always comes from content, regardless of client name. */

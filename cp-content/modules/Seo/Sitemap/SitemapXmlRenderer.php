@@ -49,7 +49,7 @@ final class SitemapXmlRenderer
                 $body .= '    <xhtml:link rel="alternate" hreflang="'.$this->esc((string) $code).'" href="'.$this->esc($href).'"/>'."\n";
             }
             foreach ($url->images as $image) {
-                $body .= "    <image:image><image:loc>".$this->esc($image)."</image:loc></image:image>\n";
+                $body .= '    <image:image><image:loc>'.$this->esc($image)."</image:loc></image:image>\n";
             }
             if ($url->videoUrl !== null && $url->videoUrl !== '') {
                 $body .= "    <video:video>\n";

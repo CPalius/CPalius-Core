@@ -10,8 +10,8 @@ use App\Core\Annotation\CpAdminMenu;
 use App\Core\Content\RichTextSanitizer;
 use App\Core\Field\FieldDefinitionRegistry;
 use App\Core\Field\FieldValuePersister;
-use App\Core\Pagination\Paginator;
 use App\Core\Pagination\PaginatedResult;
+use App\Core\Pagination\Paginator;
 use App\Core\Security\Password\PasswordChanger;
 use App\Core\Security\Password\PasswordPolicy;
 use App\Core\Security\RoleCapabilityPresenter;
@@ -164,19 +164,19 @@ final class AACPUserController extends AbstractController
                 } elseif (!$this->validateAssignedPassword($dto, $draftUser, $form)) {
                     // validateAssignedPassword added form errors.
                 } else {
-                $user = new User($dto->email);
-                $this->mapDtoToUser($dto, $user);
+                    $user = new User($dto->email);
+                    $this->mapDtoToUser($dto, $user);
 
-                if (!$this->persistUserFields($user, $form)) {
-                    // persistUserFields added violations to the "fields" sub-form.
-                } else {
-                    $this->entityManager->persist($user);
-                    $this->entityManager->flush();
+                    if (!$this->persistUserFields($user, $form)) {
+                        // persistUserFields added violations to the "fields" sub-form.
+                    } else {
+                        $this->entityManager->persist($user);
+                        $this->entityManager->flush();
 
-                    $this->addFlash('success', $this->translator->trans('aacp.users.create_success', ['email' => $user->getEmail()]));
+                        $this->addFlash('success', $this->translator->trans('aacp.users.create_success', ['email' => $user->getEmail()]));
 
-                    return $this->redirectToRoute('aacp_users');
-                }
+                        return $this->redirectToRoute('aacp_users');
+                    }
                 }
             }
         }

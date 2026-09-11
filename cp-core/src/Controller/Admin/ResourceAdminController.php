@@ -274,7 +274,7 @@ final class ResourceAdminController
     {
         try {
             return new $entityClass();
-        } catch (\ArgumentCountError | \Error) {
+        } catch (\ArgumentCountError|\Error) {
             return (new \ReflectionClass($entityClass))->newInstanceWithoutConstructor();
         }
     }

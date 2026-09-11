@@ -12,10 +12,10 @@ namespace App\Core\Workflow;
 final class WorkflowDefinition
 {
     /**
-     * @param list<string>                     $places
-     * @param array<string, WorkflowTransition> $transitions transition name => transition
-     * @param array<string, string>            $placeLabels
-     * @param list<string>                     $publishPlaces places that mean "content is live"
+     * @param list<string>                      $places
+     * @param array<string, WorkflowTransition> $transitions   transition name => transition
+     * @param array<string, string>             $placeLabels
+     * @param list<string>                      $publishPlaces places that mean "content is live"
      */
     public function __construct(
         public readonly string $name,

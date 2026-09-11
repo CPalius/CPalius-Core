@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\Seo\Provider;
 
+use App\Core\Settings\SettingsRegistry;
 use App\Entity\Asset;
 use App\Entity\Node;
 use App\Repository\AssetRepository;
 use App\Repository\NodeRepository;
-use App\Core\Settings\SettingsRegistry;
 use Modules\Seo\Contract\SeoPageProviderInterface;
 use Modules\Seo\Document\SeoDocument;
 use Modules\Seo\Engine\SeoUrlBuilder;

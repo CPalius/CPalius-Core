@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Core\Module;
 
-use ReflectionClass;
-
 /**
  * Resolve Doctrine ORM mapping for active modules that have an Entity/ directory.
  * Namespace Modules\{Name}\Entity, alias Modules{Name}; modules without an Entity/
@@ -28,7 +26,7 @@ final class ModuleEntityMappingResolver
         }
 
         $moduleName = $parts[1];
-        $reflection = new ReflectionClass($moduleClass);
+        $reflection = new \ReflectionClass($moduleClass);
         $entityDir = \dirname($reflection->getFileName()).'/Entity';
 
         if (!is_dir($entityDir)) {

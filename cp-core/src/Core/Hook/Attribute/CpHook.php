@@ -13,7 +13,7 @@ final class CpHook
 {
     /**
      * @param string $hookPoint Unique hook id (e.g. "theme.render.sidebar").
-     * @param int    $priority  Lower runs first (default 100); tracks are ordered separately.
+     * @param int    $priority  lower runs first (default 100); tracks are ordered separately
      */
     public function __construct(
         public readonly string $hookPoint,

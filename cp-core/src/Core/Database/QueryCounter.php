@@ -19,7 +19,7 @@ final class QueryCounter
     }
 
     /**
-     * @throws MaxQueriesExceededException When this table exceeds the per-request limit.
+     * @throws MaxQueriesExceededException when this table exceeds the per-request limit
      */
     public function increment(string $table): void
     {

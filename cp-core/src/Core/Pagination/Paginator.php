@@ -18,7 +18,7 @@ final class Paginator
     /**
      * @template T
      *
-     * @param QueryBuilder $queryBuilder QueryBuilder with ORDER BY; limit/offset applied here.
+     * @param QueryBuilder $queryBuilder queryBuilder with ORDER BY; limit/offset applied here
      *
      * @return PaginatedResult<T>
      */

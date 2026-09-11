@@ -7,13 +7,13 @@ namespace Modules\Menu\Controller\Admin;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Localization\LocaleProvider;
 use App\Core\OriginCache\OriginCachePurger;
-use Modules\Menu\Twig\FrontMenuRuntime;
+use App\Repository\NodeRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Modules\Menu\Entity\Menu;
 use Modules\Menu\Entity\MenuItem;
 use Modules\Menu\Repository\MenuItemRepository;
 use Modules\Menu\Repository\MenuRepository;
-use App\Repository\NodeRepository;
-use Doctrine\ORM\EntityManagerInterface;
+use Modules\Menu\Twig\FrontMenuRuntime;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -81,7 +81,7 @@ final class MenuAdminController extends AbstractController
             $menu = new Menu($name, $identifier);
             $this->entityManager->persist($menu);
             $this->entityManager->flush();
-        $this->originCachePurger->purgeAll();
+            $this->originCachePurger->purgeAll();
 
             $this->addFlash('success', $this->translator->trans('menu.admin.flash.created', ['name' => $name]));
 
@@ -243,7 +243,7 @@ final class MenuAdminController extends AbstractController
     /**
      * Source parent's counterpart in the target locale, or null (root).
      *
-     * @param list<MenuItem> $allItems Preloaded menu items (no extra query).
+     * @param list<MenuItem> $allItems preloaded menu items (no extra query)
      */
     private function mapParentToLocale(MenuItem $item, string $target, array $allItems): ?MenuItem
     {

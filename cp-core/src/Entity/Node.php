@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use App\Core\Annotation\Publishable;
@@ -131,7 +133,7 @@ class Node implements OwnableInterface, TranslatableInterface, FieldableInterfac
     private ?\DateTimeImmutable $publishedAt = null;
 
     /**
-     * @param Uuid|null $translationGroupId Existing group UUID, new Uuid::v7(), or null.
+     * @param Uuid|null $translationGroupId existing group UUID, new Uuid::v7(), or null
      */
     public function __construct(string $title, string $slug, string $type, string $locale, ?Uuid $translationGroupId = null)
     {

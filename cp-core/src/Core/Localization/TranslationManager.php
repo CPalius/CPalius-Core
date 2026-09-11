@@ -7,7 +7,6 @@ namespace App\Core\Localization;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
-use Throwable;
 
 /**
  * AACP translation explorer: read/write YAML (core + modules), flatten entries, import/export JSON/YAML.
@@ -32,7 +31,7 @@ final class TranslationManager
     }
 
     /**
-     * @return list<TranslationEntry> Sorted by group then key, all groups merged.
+     * @return list<TranslationEntry> sorted by group then key, all groups merged
      */
     public function listAll(): array
     {
@@ -126,7 +125,7 @@ final class TranslationManager
      * Import JSON/YAML. New format is grouped; legacy flat {tr,en} maps keys to their current group (or core).
      * Invalid payload throws and writes nothing (all-or-nothing).
      *
-     * @return int Number of key-locale pairs written.
+     * @return int number of key-locale pairs written
      *
      * @throws TranslationManagerException
      */
@@ -176,7 +175,7 @@ final class TranslationManager
             };
         } catch (TranslationManagerException $e) {
             throw $e;
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             throw new TranslationManagerException('Could not read file: content is not valid '.strtoupper($format).'. ('.$e->getMessage().')');
         }
 
@@ -375,7 +374,7 @@ final class TranslationManager
 
             $this->filesystem->dumpFile($tmpPath, $yaml);
             $this->filesystem->rename($tmpPath, $filePath, true);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             throw new TranslationManagerException(sprintf('Could not write to file "%s": %s', basename($filePath), $e->getMessage()), previous: $e);
         }
     }

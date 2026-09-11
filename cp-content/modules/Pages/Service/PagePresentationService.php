@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Pages\Service;
 
+use App\Core\Settings\SettingsRegistry;
 use App\Entity\Asset;
 use App\Entity\Node;
 use App\Repository\AssetRepository;
-use App\Core\Settings\SettingsRegistry;
 use Modules\Pages\Field\PageFieldType;
 use Modules\Pages\PageTemplate;
 

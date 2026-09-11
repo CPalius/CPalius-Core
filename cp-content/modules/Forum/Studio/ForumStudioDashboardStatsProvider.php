@@ -6,9 +6,9 @@ namespace Modules\Forum\Studio;
 
 use App\Core\Admin\StudioDashboardContribution;
 use App\Core\Admin\StudioDashboardStatsProviderInterface;
+use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Repository\ForumPostRepository;
-use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Supplies Forum mix and 24h activity to the Studio command desk.

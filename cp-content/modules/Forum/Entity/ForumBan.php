@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Modules\Forum\Entity;
 
 use App\Entity\User;
-use Modules\Forum\Repository\ForumBanRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Modules\Forum\Repository\ForumBanRepository;
 
 /**
  * Forum-only ban/mute; does not affect the site-wide account.

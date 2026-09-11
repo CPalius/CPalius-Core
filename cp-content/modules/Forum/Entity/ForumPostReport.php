@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Modules\Forum\Entity;
 
 use App\Entity\User;
-use Modules\Forum\Repository\ForumPostReportRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Modules\Forum\Repository\ForumPostReportRepository;
 
 /**
  * Flagged-post report feeding the AACP moderation queue.

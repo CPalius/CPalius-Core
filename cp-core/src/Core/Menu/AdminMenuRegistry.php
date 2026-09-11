@@ -19,7 +19,7 @@ final class AdminMenuRegistry
     }
 
     /**
-     * @return list<MenuItemDefinition> sorted by ascending priority (stable sort preserves insertion order on ties).
+     * @return list<MenuItemDefinition> sorted by ascending priority (stable sort preserves insertion order on ties)
      */
     public function byPanel(string $panel): array
     {

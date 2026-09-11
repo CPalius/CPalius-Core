@@ -8,7 +8,6 @@ use App\Core\Settings\SettingsRegistry;
 use App\Entity\Setting;
 use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Throwable;
 
 /**
  * Discovers themes under cp-content/themes and tracks which one is active.
@@ -130,7 +129,7 @@ final class ThemeRegistry
             $setting->setSettingValue($dirName);
             $this->entityManager->flush();
             $this->settingsRegistry->clearCache();
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             return $e->getMessage();
         }
 

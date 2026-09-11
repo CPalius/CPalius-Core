@@ -101,7 +101,7 @@ class AsyncJob
 
     public function markRetry(string $error, \DateTimeImmutable $nextAttempt): void
     {
-        $this->attempts++;
+        ++$this->attempts;
         $this->lastError = mb_substr($error, 0, 500);
         $this->availableAt = $nextAttempt;
         if ($this->attempts >= self::MAX_ATTEMPTS) {

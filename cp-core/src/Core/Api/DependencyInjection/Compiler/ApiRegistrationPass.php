@@ -11,7 +11,6 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\Compiler\ServiceLocatorTagPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
-use Throwable;
 
 /**
  * Compile-time collector for #[CpApi] methods; binds them to the gateway's lazy locator.
@@ -62,7 +61,7 @@ final class ApiRegistrationPass implements CompilerPassInterface
                     $collected[] = $item;
                     $serviceIds[$item['serviceId']] = true;
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Module isolation: a scan error drops only that module's API endpoints.
             }
         }
@@ -149,7 +148,7 @@ final class ApiRegistrationPass implements CompilerPassInterface
                         'method' => $method->getName(),
                     ];
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 continue;
             }
         }

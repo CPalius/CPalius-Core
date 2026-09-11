@@ -6,9 +6,9 @@ namespace Modules\Roadmap\Entity;
 
 use App\Core\Localization\Contract\TranslatableInterface;
 use App\Core\Localization\Contract\TranslatableTrait;
-use Modules\Roadmap\Repository\RoadmapEntryRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Modules\Roadmap\Repository\RoadmapEntryRepository;
 
 /**
  * Native roadmap row: milestone card or changelog update (not a Blog Node / Forum Topic hybrid).

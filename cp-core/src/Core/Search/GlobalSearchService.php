@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Core\Search;
 
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
-use Throwable;
 
 /**
  * Aggregates tagged module search providers. One provider failing does not 500 the page.
@@ -35,7 +34,7 @@ final class GlobalSearchService
         foreach ($this->sortedProviders() as $provider) {
             try {
                 $group = $provider->search($term, $locale, $limitPerSource);
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 continue;
             }
 

@@ -125,6 +125,7 @@ final class PerformanceController
 
     /**
      * @param array{success: bool, status: string, messageKey: string, messageParams: array<string, mixed>, latencyMs: ?float, details: array<string, mixed>} $result
+     *
      * @return array{success: bool, status: string, message: string, latencyMs: ?float, details: array<string, mixed>}
      */
     private function translateResult(array $result): array

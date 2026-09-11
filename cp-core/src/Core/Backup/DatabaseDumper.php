@@ -175,7 +175,7 @@ final class DatabaseDumper
     }
 
     /**
-     * @param resource $handle
+     * @param resource     $handle
      * @param list<string> $values
      */
     private function flushInsert($handle, string $quotedTable, string $columnSql, array $values): void

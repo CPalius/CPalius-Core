@@ -11,7 +11,6 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\Compiler\ServiceLocatorTagPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
-use Throwable;
 
 /**
  * Compile-time collector for #[CpHook] methods; registers them on HookManager's lazy locator (Law 6.1).
@@ -51,7 +50,7 @@ final class HookRegistrationPass implements CompilerPassInterface
                     $collected[] = ['hookPoint' => $item['hookPoint'], 'priority' => $item['priority'], 'serviceId' => $item['serviceId'], 'method' => $item['method']];
                     $serviceIds[$item['serviceId']] = true;
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Module isolation: a scan error drops only that module's attribute hooks.
             }
         }
@@ -132,7 +131,7 @@ final class HookRegistrationPass implements CompilerPassInterface
                         ];
                     }
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 continue;
             }
         }

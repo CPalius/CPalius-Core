@@ -160,7 +160,7 @@ final class HttpHeaderProbe
             return ['ok' => false, 'headers' => [], 'latencyMs' => $latencyMs];
         }
 
-        /** @var list<string> $headers */
+        /* @var list<string> $headers */
         return ['ok' => true, 'headers' => $headers, 'latencyMs' => $latencyMs];
     }
 

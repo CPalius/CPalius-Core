@@ -31,7 +31,7 @@ final class ThreatAnalyzer
         ['pattern' => '/load_file\s*\(/i', 'label' => 'LOAD_FILE()'],
         ['pattern' => '/into\s+(out|dump)file/i', 'label' => 'INTO OUTFILE'],
         ['pattern' => '/;\s*drop\s+table/i', 'label' => 'DROP TABLE'],
-        ['pattern' => '/\'\s*or\s+\'/i', 'label' => "quote-OR"],
+        ['pattern' => '/\'\s*or\s+\'/i', 'label' => 'quote-OR'],
         ['pattern' => '/--\s*$/m', 'label' => 'SQL comment --'],
         ['pattern' => '/\/\*!\d+/', 'label' => 'MySQL versioned comment'],
     ];
@@ -190,7 +190,7 @@ final class ThreatAnalyzer
     }
 
     /**
-     * @param list<string> $haystack
+     * @param list<string>                                $haystack
      * @param list<array{pattern: string, label: string}> $signatures
      *
      * @return list<string>

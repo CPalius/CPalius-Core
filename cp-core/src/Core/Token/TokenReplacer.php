@@ -26,12 +26,12 @@ final class TokenReplacer
     }
 
     /**
-     * @param array<string, mixed> $context token type => subject object (e.g. ['node' => $post])
+     * @param array<string, mixed> $context    token type => subject object (e.g. ['node' => $post])
      * @param bool                 $escapeHtml htmlspecialchars() each resolved value. Use this
-     *                                        whenever the template is HTML (mail bodies, SEO,
-     *                                        text-format token filter) so a title like
-     *                                        `A < B` cannot break out of markup. Path aliases
-     *                                        slugify afterwards and must pass false.
+     *                                         whenever the template is HTML (mail bodies, SEO,
+     *                                         text-format token filter) so a title like
+     *                                         `A < B` cannot break out of markup. Path aliases
+     *                                         slugify afterwards and must pass false.
      */
     public function replace(string $template, array $context = [], bool $escapeHtml = false): string
     {

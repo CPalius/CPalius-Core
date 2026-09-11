@@ -11,7 +11,6 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Throwable;
 
 /**
  * OS entry point for code-based virtual cron tasks (Attribute or flat-file); bridges to CronManager::runVirtualTask().
@@ -41,7 +40,7 @@ final class RunVirtualCronJobCommand extends Command
 
         try {
             $result = $this->cronManager->runVirtualTask($jobName);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;

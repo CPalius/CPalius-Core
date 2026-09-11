@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\Seo\Install;
 
 use Doctrine\DBAL\Connection;
-use Throwable;
 
 /**
  * Inserts CPalius identity copy when a key is missing or an empty locale map.
@@ -24,7 +23,7 @@ final class SeoSettingsSeeder
                     'SELECT setting_value FROM cp_settings WHERE setting_key = :key LIMIT 1',
                     ['key' => $key],
                 );
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 continue;
             }
 
@@ -35,7 +34,7 @@ final class SeoSettingsSeeder
                         ['key' => $key, 'value' => $value, 'module' => 'seo', 'now' => $now],
                     );
                     ++$written;
-                } catch (Throwable) {
+                } catch (\Throwable) {
                     // Unique race or missing table: skip.
                 }
                 continue;
@@ -51,7 +50,7 @@ final class SeoSettingsSeeder
                     ['key' => $key, 'value' => $value, 'now' => $now],
                 );
                 ++$written;
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Stale row stays until the next seed.
             }
         }
@@ -127,7 +126,7 @@ final class SeoSettingsSeeder
 
         try {
             $decoded = json_decode($trimmed, true, 8, \JSON_THROW_ON_ERROR);
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return false;
         }
 

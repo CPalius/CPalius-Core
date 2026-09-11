@@ -7,7 +7,7 @@ namespace Modules\Blog\Taxonomy;
 use App\Core\Taxonomy\DefaultVocabularies;
 
 /**
- * @deprecated Use DefaultVocabularies — kept as Blog-facing alias.
+ * @deprecated use DefaultVocabularies — kept as Blog-facing alias
  */
 final class BlogTaxonomy
 {

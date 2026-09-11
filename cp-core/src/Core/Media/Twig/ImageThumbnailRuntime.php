@@ -21,9 +21,6 @@ final class ImageThumbnailRuntime implements RuntimeExtensionInterface
     ) {
     }
 
-    /**
-     * @param Asset|string|int|null $source
-     */
     public function thumb(Asset|string|int|null $source, int $width, int $height, string $mode = 'crop'): string
     {
         $key = $this->resolveKey($source);

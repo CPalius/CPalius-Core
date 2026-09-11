@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Modules\Menu\Entity;
 
 use App\Core\Localization\Contract\TranslatableInterface;
 use App\Core\Localization\Contract\TranslatableTrait;
-use Modules\Menu\Repository\MenuItemRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Modules\Menu\Repository\MenuItemRepository;
 
 /**
  * Menu item target is either an external URL or a nodeId — never both.

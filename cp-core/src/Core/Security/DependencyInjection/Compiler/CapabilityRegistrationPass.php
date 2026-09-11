@@ -1,14 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core\Security\DependencyInjection\Compiler;
 
 use App\Core\Resource\DependencyInjection\Compiler\ResourceRegistrationPass;
 use Symfony\Component\Config\Resource\FileResource;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Yaml\Yaml;
-use Throwable;
 
 /**
  * Compile-time fill of CapabilityRegistry: core YAML, per-module YAML, then #[CpResource] expansions.
@@ -39,7 +39,7 @@ final class CapabilityRegistrationPass implements CompilerPassInterface
 
             try {
                 $this->registerFromFile($definition, $moduleFile, $bundleClass, $container);
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Module isolation: a broken capabilities.yaml drops only that module.
             }
         }

@@ -92,7 +92,7 @@ final class ThemeFileEditor
     }
 
     /**
-     * @return list<string> Lint problems after a successful write (empty when clean).
+     * @return list<string> lint problems after a successful write (empty when clean)
      */
     public function write(ThemeDefinition $theme, string $relative, string $content, bool $force): array
     {

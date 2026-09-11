@@ -6,7 +6,6 @@ namespace App\Core\Localization;
 
 use App\Core\Localization\Contract\TranslatableInterface;
 use Doctrine\ORM\EntityManagerInterface;
-use Throwable;
 
 /**
  * Siblings and missing locales for any TranslatableInterface via DQL on the concrete class.
@@ -44,7 +43,7 @@ final class TranslationGroupResolver
                 ->setParameter('groupId', $groupId, 'uuid')
                 ->getQuery()
                 ->getResult();
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return [];
         }
 

@@ -8,10 +8,10 @@ use Modules\Forum\Event\ForumPostCreatedEvent;
 use Modules\Forum\Event\ForumPostDislikedEvent;
 use Modules\Forum\Event\ForumPostLikedEvent;
 use Modules\Forum\Event\ForumReputationGivenEvent;
+use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Service\ForumDomainDispatcher;
 use Modules\Forum\Service\ForumNotificationService;
 use Modules\Forum\Service\ForumQuoteParser;
-use Modules\Forum\Repository\ForumPostRepository;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**

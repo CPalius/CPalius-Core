@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Repository;
 
-use Modules\Forum\Entity\ForumSection;
-use Modules\Forum\Entity\ForumTopic;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use Modules\Forum\Entity\ForumSection;
+use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\ForumDiscussionState;
 
 /**
@@ -274,7 +274,7 @@ final class ForumTopicRepository extends ServiceEntityRepository
         $search = $search !== null ? trim($search) : '';
         if ($search !== '') {
             $qb->andWhere('t.title LIKE :search')
-                ->setParameter('search', '%' . $search . '%');
+                ->setParameter('search', '%'.$search.'%');
         }
 
         return $qb;

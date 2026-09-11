@@ -250,7 +250,7 @@ final class SecurityHeaderPolicyTest extends TestCase
     {
         $headers = $this->headers([
             'security.csp_mode' => 'strict',
-            'security.csp_script_src' => "https://cdn.example; default-src *; object-src *",
+            'security.csp_script_src' => 'https://cdn.example; default-src *; object-src *',
         ]);
         $csp = $headers['Content-Security-Policy'];
 
@@ -322,7 +322,7 @@ final class SecurityHeaderPolicyTest extends TestCase
     // --- subscriber --------------------------------------------------------
 
     /**
-     * @param array<string, mixed> $settings
+     * @param array<string, mixed>  $settings
      * @param array<string, string> $existing
      */
     private function respond(array $settings, string $path = '/tr', array $existing = []): Response

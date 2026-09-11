@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
+use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
-use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Safe section delete: block if children exist; require title confirmation when topics/posts remain.

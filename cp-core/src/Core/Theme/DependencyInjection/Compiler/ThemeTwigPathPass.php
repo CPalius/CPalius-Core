@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace App\Core\Theme\DependencyInjection\Compiler;
 
 use App\Core\Theme\ThemeDefinition;
-use PDO;
-use Symfony\Component\Config\Resource\FileExistenceResource;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Throwable;
 
 /**
  * Registers every installed theme's views directory as a Twig namespace, plus a
@@ -130,7 +127,7 @@ final class ThemeTwigPathPass implements CompilerPassInterface
         try {
             $pdo = $this->connect($databaseUrl, $container);
 
-            if (!$pdo instanceof PDO) {
+            if (!$pdo instanceof \PDO) {
                 return null;
             }
 
@@ -139,13 +136,13 @@ final class ThemeTwigPathPass implements CompilerPassInterface
             $value = $statement->fetchColumn();
 
             return \is_string($value) && $value !== '' ? $value : null;
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // No database during cache:clear or CI: fall back silently.
             return null;
         }
     }
 
-    private function connect(string $databaseUrl, ContainerBuilder $container): ?PDO
+    private function connect(string $databaseUrl, ContainerBuilder $container): ?\PDO
     {
         $parts = parse_url($databaseUrl);
 
@@ -154,7 +151,7 @@ final class ThemeTwigPathPass implements CompilerPassInterface
         }
 
         $scheme = strtolower($parts['scheme']);
-        $options = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => self::CONNECT_TIMEOUT];
+        $options = [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_TIMEOUT => self::CONNECT_TIMEOUT];
 
         if (str_starts_with($scheme, 'sqlite')) {
             $path = preg_replace('#^sqlite3?:///#', '', $databaseUrl);
@@ -165,7 +162,7 @@ final class ThemeTwigPathPass implements CompilerPassInterface
 
             $path = str_replace('%kernel.project_dir%', (string) $container->getParameter('kernel.project_dir'), $path);
 
-            return is_file($path) ? new PDO('sqlite:'.$path, null, null, $options) : null;
+            return is_file($path) ? new \PDO('sqlite:'.$path, null, null, $options) : null;
         }
 
         $driver = match (true) {
@@ -192,7 +189,7 @@ final class ThemeTwigPathPass implements CompilerPassInterface
             $dsn .= ';charset=utf8mb4';
         }
 
-        return new PDO(
+        return new \PDO(
             $dsn,
             isset($parts['user']) ? rawurldecode($parts['user']) : null,
             isset($parts['pass']) ? rawurldecode($parts['pass']) : null,

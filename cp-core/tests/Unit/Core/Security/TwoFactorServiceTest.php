@@ -14,8 +14,8 @@ use App\Core\Security\TwoFactor\TotpGenerator;
 use App\Core\Security\TwoFactor\TwoFactorService;
 use App\Entity\User;
 use App\Tests\Unit\Core\Security\Support\ArraySettings;
-use App\Tests\Unit\Core\Security\Support\SecurityTestDatabase;
 use App\Tests\Unit\Core\Security\Support\SecurityClock;
+use App\Tests\Unit\Core\Security\Support\SecurityTestDatabase;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Group;
@@ -82,7 +82,7 @@ final class TwoFactorServiceTest extends TestCase
     }
 
     /**
-     * @return list<string> The recovery codes.
+     * @return list<string> the recovery codes
      */
     private function enroll(): array
     {

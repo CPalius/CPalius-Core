@@ -7,25 +7,28 @@ namespace Modules\Forum\Controller;
 use App\Core\Localization\LocaleProvider;
 use App\Core\Pagination\Paginator;
 use App\Core\Settings\SettingsRegistry;
+use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\Entity\ForumTopicPrefix;
-use App\Entity\User;
+use Modules\Forum\ForumDictionary;
+use Modules\Forum\ForumSectionType;
 use Modules\Forum\Repository\ForumPostDislikeRepository;
 use Modules\Forum\Repository\ForumPostLikeRepository;
-use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumPostReportRepository;
+use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicPrefixRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
 use Modules\Forum\Repository\ForumUserRankRepository;
-use Doctrine\ORM\EntityManagerInterface;
-use Modules\Forum\ForumDictionary;
-use Modules\Forum\ForumSectionType;
 use Modules\Forum\Service\ForumActivityService;
+use Modules\Forum\Service\ForumAttachmentService;
 use Modules\Forum\Service\ForumBanService;
+use Modules\Forum\Service\ForumDraftService;
 use Modules\Forum\Service\ForumModerationService;
+use Modules\Forum\Service\ForumPollService;
 use Modules\Forum\Service\ForumProfileStatsService;
 use Modules\Forum\Service\ForumRankService;
 use Modules\Forum\Service\ForumReputationService;
@@ -33,9 +36,6 @@ use Modules\Forum\Service\ForumSearchService;
 use Modules\Forum\Service\ForumSectionHierarchyService;
 use Modules\Forum\Service\ForumTopicEngagementService;
 use Modules\Forum\Service\ForumTopicService;
-use Modules\Forum\Service\ForumAttachmentService;
-use Modules\Forum\Service\ForumDraftService;
-use Modules\Forum\Service\ForumPollService;
 use Modules\Forum\Service\ForumUnreadService;
 use Modules\Forum\Service\ForumWatchService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -673,7 +673,7 @@ final class ForumFrontController extends AbstractController
 
         return $this->redirectToRoute('forum_topic', array_merge($this->topicRouteParams($post->getTopic()), [
             'page' => $request->query->getInt('page', 1),
-            '_fragment' => 'post' . $post->getId(),
+            '_fragment' => 'post'.$post->getId(),
         ]));
     }
 
@@ -704,7 +704,7 @@ final class ForumFrontController extends AbstractController
 
         return $this->redirectToRoute('forum_topic', array_merge($this->topicRouteParams($post->getTopic()), [
             'page' => $request->query->getInt('page', 1),
-            '_fragment' => 'post' . $post->getId(),
+            '_fragment' => 'post'.$post->getId(),
         ]));
     }
 

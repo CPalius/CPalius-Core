@@ -9,7 +9,6 @@ use App\Core\Entity\EntityTypeRegistry;
 use Symfony\Component\Config\Resource\DirectoryResource;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Throwable;
 
 /**
  * Collects #[CpEntityType] classes (core + modules) into EntityTypeRegistry.
@@ -49,7 +48,7 @@ final class EntityTypeRegistrationPass implements CompilerPassInterface
                 foreach ($this->scan(rtrim((string) $meta['path'], '/'), $meta['namespace'].'\\', $container) as $id => $payload) {
                     $found[$id] ??= $payload;
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Module isolation: a broken module drops only its own entity types.
             }
         }
@@ -108,7 +107,7 @@ final class EntityTypeRegistrationPass implements CompilerPassInterface
                     'revisionable' => $attribute->revisionable,
                     'translatable' => $attribute->translatable,
                 ];
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 continue;
             }
         }

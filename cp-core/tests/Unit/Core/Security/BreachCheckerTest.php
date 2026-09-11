@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Core\Security;
 
 use App\Core\Security\Password\BreachChecker;
+use App\Tests\Unit\Core\Security\Support\ExplodingCachePool;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
-use App\Tests\Unit\Core\Security\Support\ExplodingCachePool;
 
 #[CoversClass(BreachChecker::class)]
 final class BreachCheckerTest extends TestCase

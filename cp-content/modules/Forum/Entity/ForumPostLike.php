@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Modules\Forum\Entity;
 
 use App\Entity\User;
-use Modules\Forum\Repository\ForumPostLikeRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Modules\Forum\Repository\ForumPostLikeRepository;
 
 /**
  * Post like; one row per user/post (uniq_forum_post_like).

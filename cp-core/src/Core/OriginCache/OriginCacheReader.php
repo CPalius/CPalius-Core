@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Core\OriginCache;
 
-use App\Repository\PerformanceBackendStatusRepository;
 use App\Core\Localization\LocaleProvider;
 use App\Core\Settings\SettingsRegistry;
+use App\Repository\PerformanceBackendStatusRepository;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\RequestEvent;

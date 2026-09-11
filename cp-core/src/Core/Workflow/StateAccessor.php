@@ -36,12 +36,7 @@ final class StateAccessor
     public function write(object $subject, WorkflowDefinition $definition, string $place): void
     {
         if (!$this->accessor->isWritable($subject, $definition->subjectProperty)) {
-            throw new \LogicException(sprintf(
-                'Workflow "%s" subject %s has no writable "%s" property.',
-                $definition->name,
-                $subject::class,
-                $definition->subjectProperty,
-            ));
+            throw new \LogicException(sprintf('Workflow "%s" subject %s has no writable "%s" property.', $definition->name, $subject::class, $definition->subjectProperty));
         }
 
         $this->accessor->setValue($subject, $definition->subjectProperty, $place);

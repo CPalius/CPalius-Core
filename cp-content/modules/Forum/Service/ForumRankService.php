@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
-use Modules\Forum\Entity\ForumUserRank;
 use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
+use Modules\Forum\Entity\ForumUserRank;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumUserRankRepository;
-use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Resolves a member's forum rank: manual User::$data['forum_rank_id'] first, else highest auto rank by post count.

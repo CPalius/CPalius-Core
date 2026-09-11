@@ -44,7 +44,7 @@ final class UserRoleGuardService
     }
 
     /**
-     * @param list<string> $newRoles Output of sanitizeRoles().
+     * @param list<string> $newRoles output of sanitizeRoles()
      */
     public function validateAssignment(User $target, array $newRoles, ?User $actor): ?string
     {

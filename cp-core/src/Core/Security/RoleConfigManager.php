@@ -7,7 +7,6 @@ namespace App\Core\Security;
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
-use Throwable;
 
 /**
  * Roles live in cp-content/config/sync/user.role.*.yaml (versioned config), not in the DB.
@@ -108,7 +107,7 @@ final class RoleConfigManager
             });
 
             return $this->roles = $roles;
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return $this->roles = $this->parseRoleFiles();
         }
     }
@@ -142,7 +141,7 @@ final class RoleConfigManager
     {
         try {
             $data = Yaml::parseFile($file);
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return null;
         }
 

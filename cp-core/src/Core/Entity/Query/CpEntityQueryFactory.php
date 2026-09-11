@@ -48,10 +48,7 @@ final class CpEntityQueryFactory
     {
         $definition = $this->entityTypes->tryGet($entityTypeId);
         if ($definition === null || $definition->className !== Node::class) {
-            throw new \InvalidArgumentException(sprintf(
-                'CpEntityQuery v1 supports only the "node" entity type, not "%s".',
-                $entityTypeId,
-            ));
+            throw new \InvalidArgumentException(sprintf('CpEntityQuery v1 supports only the "node" entity type, not "%s".', $entityTypeId));
         }
 
         return $this->make(null);

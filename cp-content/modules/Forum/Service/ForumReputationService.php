@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace Modules\Forum\Service;
 
 use App\Core\Settings\SettingsRegistry;
+use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\Entity\ForumUserReputation;
-use App\Entity\User;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
 use Modules\Forum\Repository\ForumUserReputationRepository;
-use Doctrine\ORM\EntityManagerInterface;
-use InvalidArgumentException;
 
 /**
  * Reputation votes and counter sync (User::$data reputation_positive/negative cache).
@@ -39,7 +38,7 @@ final class ForumReputationService
     }
 
     /**
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     public function give(
         User $from,
@@ -51,19 +50,19 @@ final class ForumReputationService
         ?string $comment = null,
     ): ForumUserReputation {
         if (!$this->isEnabled()) {
-            throw new InvalidArgumentException('reputation_disabled');
+            throw new \InvalidArgumentException('reputation_disabled');
         }
 
         if ($from->getId() === $to->getId()) {
-            throw new InvalidArgumentException('reputation_self');
+            throw new \InvalidArgumentException('reputation_self');
         }
 
         if (!\in_array($reason, ForumUserReputation::REASONS, true)) {
-            throw new InvalidArgumentException('reputation_reason');
+            throw new \InvalidArgumentException('reputation_reason');
         }
 
         if ($reason === ForumUserReputation::REASON_OTHER && ($comment === null || trim($comment) === '')) {
-            throw new InvalidArgumentException('reputation_comment_required');
+            throw new \InvalidArgumentException('reputation_comment_required');
         }
 
         $value = $value === ForumUserReputation::VALUE_NEGATIVE
@@ -72,18 +71,18 @@ final class ForumReputationService
 
         if ($post !== null) {
             if ($post->getAuthor()?->getId() !== $to->getId()) {
-                throw new InvalidArgumentException('reputation_post_mismatch');
+                throw new \InvalidArgumentException('reputation_post_mismatch');
             }
             $topic ??= $post->getTopic();
         }
 
         if ($topic === null) {
-            throw new InvalidArgumentException('reputation_topic_required');
+            throw new \InvalidArgumentException('reputation_topic_required');
         }
 
         // Topic must belong to the target user (author or poster).
         if (!$this->topicBelongsToUser($topic, $to)) {
-            throw new InvalidArgumentException('reputation_topic_mismatch');
+            throw new \InvalidArgumentException('reputation_topic_mismatch');
         }
 
         $reputation = new ForumUserReputation($from, $to, $value, $reason, $topic, $post, $comment);

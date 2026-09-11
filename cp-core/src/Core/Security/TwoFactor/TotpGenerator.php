@@ -26,8 +26,8 @@ final class TotpGenerator
     }
 
     /**
-     * @param int $drift How many periods either side of now are accepted, to
-     *   tolerate clock skew between the server and the user's phone.
+     * @param int $drift how many periods either side of now are accepted, to
+     *                   tolerate clock skew between the server and the user's phone
      */
     public function verify(string $base32Secret, string $code, int $drift = 1, ?int $timestamp = null): bool
     {
@@ -36,8 +36,8 @@ final class TotpGenerator
 
     /**
      * @return int|null The time counter the code belongs to, or null when it does
-     *   not match. Callers persist the counter to refuse a replay of the same code
-     *   inside its 30-second window.
+     *                  not match. Callers persist the counter to refuse a replay of the same code
+     *                  inside its 30-second window.
      */
     public function matchedCounter(string $base32Secret, string $code, int $drift = 1, ?int $timestamp = null): ?int
     {

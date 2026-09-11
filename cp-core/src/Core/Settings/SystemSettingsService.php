@@ -160,7 +160,7 @@ final class SystemSettingsService
 
     /**
      * @param array<string, string|array<string, string|null>|null> $submitted
-     *   Translatable settings arrive nested: settings[core.site_name][tr].
+     *                                                                         Translatable settings arrive nested: settings[core.site_name][tr].
      */
     public function updateTab(
         string $tab,

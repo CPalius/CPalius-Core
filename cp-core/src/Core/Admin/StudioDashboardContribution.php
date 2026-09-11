@@ -10,7 +10,7 @@ namespace App\Core\Admin;
 final class StudioDashboardContribution
 {
     /**
-     * @param list<array{key: string, labelKey: string, count: int}> $mixItems
+     * @param list<array{key: string, labelKey: string, count: int}>        $mixItems
      * @param list<array{key: string, labelKey: string, value: int|string}> $extraKpis
      * @param list<array{
      *     title: string,

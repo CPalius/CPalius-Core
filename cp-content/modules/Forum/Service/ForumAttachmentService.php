@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
+use App\Core\Media\AssetManager;
 use App\Core\Media\Exception\InvalidUploadException;
 use App\Core\Media\Exception\UnsupportedAssetTypeException;
-use App\Core\Media\AssetManager;
 use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;

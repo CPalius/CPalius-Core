@@ -17,12 +17,12 @@ namespace App\Core\Entity\Attribute;
 final class CpEntityType
 {
     /**
-     * @param string $id         Short unique id ("node", "user", "taxonomy_term").
-     * @param string $label      Human label — a translation key.
-     * @param bool   $fieldable   Field API can attach definitions to it (implements FieldableInterface).
-     * @param bool   $bundleable  true = many bundles (Node::type); false = one bundle equal to $id.
+     * @param string $id           short unique id ("node", "user", "taxonomy_term")
+     * @param string $label        human label — a translation key
+     * @param bool   $fieldable    field API can attach definitions to it (implements FieldableInterface)
+     * @param bool   $bundleable   true = many bundles (Node::type); false = one bundle equal to $id
      * @param bool   $revisionable Reserved for the revision engine generalization (T1.1 tail).
-     * @param bool   $translatable Reserved for the translation layer generalization.
+     * @param bool   $translatable reserved for the translation layer generalization
      */
     public function __construct(
         public readonly string $id,

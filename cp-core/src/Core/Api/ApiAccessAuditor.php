@@ -7,7 +7,6 @@ namespace App\Core\Api;
 use App\Core\Audit\Entity\AuditLog;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use Throwable;
 
 /**
  * Append-only machine access log via cp_audit_logs. Never stores the plaintext key.
@@ -50,7 +49,7 @@ final class ApiAccessAuditor
         try {
             $this->entityManager->persist($log);
             $this->entityManager->flush();
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $this->logger->warning('API access audit write failed.', ['exception' => $e->getMessage()]);
         }
     }

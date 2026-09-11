@@ -6,17 +6,15 @@ namespace App\Tests\Unit\Core\Security;
 
 use App\Core\Security\Flood\FloodService;
 use App\Tests\Unit\Core\Security\Support\ArraySettings;
+use App\Tests\Unit\Core\Security\Support\ExplodingCachePool;
+use App\Tests\Unit\Core\Security\Support\ExplodingSettings;
+use App\Tests\Unit\Core\Security\Support\PoisonedCachePool;
 use App\Tests\Unit\Core\Security\Support\SecurityClock;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
-use Psr\Cache\CacheItemInterface;
-use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
-use App\Tests\Unit\Core\Security\Support\ExplodingCachePool;
-use App\Tests\Unit\Core\Security\Support\ExplodingSettings;
-use App\Tests\Unit\Core\Security\Support\PoisonedCachePool;
 
 /**
  * The "time-sensitive" group makes the Symfony PHPUnit bridge install its clock

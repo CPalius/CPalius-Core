@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
+use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
+use Modules\Forum\ForumDiscussionState;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
-use Doctrine\ORM\EntityManagerInterface;
-use Modules\Forum\ForumDiscussionState;
 
 /**
  * Sync section stats (topic/post counts, last post) — denormalized node counters.

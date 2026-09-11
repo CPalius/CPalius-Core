@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Core\Module;
 
-use Throwable;
-
 /**
  * Parsed, immutable module.json contract.
  * Every field is optional: a legacy manifest without the new keys stays valid.
@@ -13,9 +11,9 @@ use Throwable;
 final class ModuleManifest
 {
     /**
-     * @param array<string, string> $requires Module dir name => version constraint.
-     * @param array<string, string> $conflicts Module dir name => version constraint.
-     * @param list<string> $provides Free-form capability tags other modules may require.
+     * @param array<string, string> $requires  module dir name => version constraint
+     * @param array<string, string> $conflicts module dir name => version constraint
+     * @param list<string>          $provides  free-form capability tags other modules may require
      */
     public function __construct(
         public readonly string $dirName,
@@ -46,7 +44,7 @@ final class ModuleManifest
         try {
             $contents = file_get_contents($manifestFile);
             $data = $contents === false ? null : json_decode($contents, true, 32, \JSON_THROW_ON_ERROR);
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return null;
         }
 

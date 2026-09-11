@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
-use Modules\Forum\Entity\ForumBan;
 use App\Entity\User;
-use Modules\Forum\Repository\ForumBanRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Modules\Forum\Entity\ForumBan;
+use Modules\Forum\Repository\ForumBanRepository;
 
 /**
  * Forum-only BAN (cannot see the board) and MUTE (read-only). Does not change site-wide account or roles.

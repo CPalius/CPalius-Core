@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Repository;
 
-use Modules\Forum\Entity\ForumBan;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Modules\Forum\Entity\ForumBan;
 
 /**
  * @extends ServiceEntityRepository<ForumBan>

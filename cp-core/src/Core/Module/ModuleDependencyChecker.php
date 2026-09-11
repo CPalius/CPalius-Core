@@ -82,7 +82,7 @@ final class ModuleDependencyChecker
 
     /**
      * @param array<string, ModuleManifest> $manifests
-     * @param list<string> $activeDirNames
+     * @param list<string>                  $activeDirNames
      *
      * @return list<string>
      */
@@ -119,7 +119,7 @@ final class ModuleDependencyChecker
 
     /**
      * @param array<string, ModuleManifest> $manifests
-     * @param list<string> $activeDirNames
+     * @param list<string>                  $activeDirNames
      *
      * @return list<string>
      */

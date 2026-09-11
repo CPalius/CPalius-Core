@@ -8,7 +8,6 @@ declare(strict_types=1);
  */
 
 use App\Kernel;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Dotenv\Dotenv;
 
 $projectDir = \dirname(__DIR__, 2);

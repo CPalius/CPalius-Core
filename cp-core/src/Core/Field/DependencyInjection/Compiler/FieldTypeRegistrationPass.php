@@ -12,7 +12,6 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\Compiler\ServiceLocatorTagPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
-use Throwable;
 
 /**
  * Collects #[CpFieldType] classes (core + modules) into FieldTypeRegistry.
@@ -48,7 +47,7 @@ final class FieldTypeRegistrationPass implements CompilerPassInterface
                 foreach ($this->scan(rtrim((string) $meta['path'], '/'), $meta['namespace'].'\\', $container) as $id => $className) {
                     $serviceByType[$id] ??= $className;
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Module isolation: a broken module drops only its own field types.
             }
         }
@@ -100,7 +99,7 @@ final class FieldTypeRegistrationPass implements CompilerPassInterface
                 if (\is_string($id) && $id !== '') {
                     $found[$id] = $className;
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 continue;
             }
         }

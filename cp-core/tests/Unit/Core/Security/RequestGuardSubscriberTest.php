@@ -155,7 +155,7 @@ final class RequestGuardSubscriberTest extends TestCase
     {
         // Profiler URLs carry serialised request data that trips the traversal and
         // XSS signatures; scanning them is pure false positives.
-        $event = $this->handle('/_profiler/abc', '198.51.100.4', ['panel' => "../../etc/passwd<script>"]);
+        $event = $this->handle('/_profiler/abc', '198.51.100.4', ['panel' => '../../etc/passwd<script>']);
 
         self::assertNull($event->getResponse());
         self::assertNull($event->getRequest()->attributes->get(RequestGuardSubscriber::ATTR_THREAT));
@@ -212,7 +212,7 @@ final class RequestGuardSubscriberTest extends TestCase
      */
     public static function attackPayloads(): iterable
     {
-        yield 'union select' => ["1 UNION SELECT password FROM users"];
+        yield 'union select' => ['1 UNION SELECT password FROM users'];
         yield 'information_schema' => ['1 AND information_schema.tables'];
         yield 'sleep' => ['1; SLEEP(10)'];
     }

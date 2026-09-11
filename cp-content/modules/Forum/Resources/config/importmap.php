@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'forum-editor-init' => [
         'path' => 'Resources/assets/forum-editor-init.js',

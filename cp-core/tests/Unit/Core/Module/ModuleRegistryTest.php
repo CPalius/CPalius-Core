@@ -120,8 +120,8 @@ final class ModuleRegistryTest extends TestCase
     public static function invalidEntryProvider(): iterable
     {
         yield 'bos dize' => [''];
-        yield 'null'     => [null];
-        yield 'sayi'     => [42];
+        yield 'null' => [null];
+        yield 'sayi' => [42];
     }
 
     public function testInvalidEntriesAreQuarantinedNotFatal(): void

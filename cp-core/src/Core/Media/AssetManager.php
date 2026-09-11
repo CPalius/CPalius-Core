@@ -27,18 +27,14 @@ final class AssetManager
     }
 
     /**
-     * @throws InvalidUploadException Upload failed or MIME could not be detected from content.
-     * @throws UnsupportedAssetTypeException Detected MIME is not on the core allowlist.
+     * @throws InvalidUploadException        upload failed or MIME could not be detected from content
+     * @throws UnsupportedAssetTypeException detected MIME is not on the core allowlist
      */
     public function upload(UploadedFile $uploadedFile): Asset
     {
         // Step 1: reject broken PHP uploads (size limit, partial transfer, missing temp dir).
         if (!$uploadedFile->isValid()) {
-            throw new InvalidUploadException(sprintf(
-                'Upload failed before validation (PHP error code %d): %s',
-                $uploadedFile->getError(),
-                $uploadedFile->getErrorMessage(),
-            ));
+            throw new InvalidUploadException(sprintf('Upload failed before validation (PHP error code %d): %s', $uploadedFile->getError(), $uploadedFile->getErrorMessage()));
         }
 
         $pathname = $uploadedFile->getPathname();
@@ -61,10 +57,7 @@ final class AssetManager
         $hash = hash_file('sha256', $pathname);
 
         if ($hash === false) {
-            throw new InvalidUploadException(sprintf(
-                'Could not compute content hash for uploaded file "%s".',
-                $uploadedFile->getClientOriginalName(),
-            ));
+            throw new InvalidUploadException(sprintf('Could not compute content hash for uploaded file "%s".', $uploadedFile->getClientOriginalName()));
         }
 
         $existing = $this->assetRepository->findOneByHash($hash);
@@ -113,9 +106,7 @@ final class AssetManager
     private function detectMimeType(string $pathname): string
     {
         if (!class_exists(\finfo::class)) {
-            throw new InvalidUploadException(
-                'The "fileinfo" PHP extension is required to validate uploads and is not available.',
-            );
+            throw new InvalidUploadException('The "fileinfo" PHP extension is required to validate uploads and is not available.');
         }
 
         $finfo = new \finfo(\FILEINFO_MIME_TYPE);

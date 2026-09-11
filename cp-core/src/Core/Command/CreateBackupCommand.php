@@ -13,7 +13,6 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Throwable;
 
 #[AsCommand(
     name: 'cp:backup:create',
@@ -49,7 +48,7 @@ final class CreateBackupCommand extends Command
 
         try {
             $archive = $this->backupService->create($type);
-        } catch (BackupException|Throwable $e) {
+        } catch (BackupException|\Throwable $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;

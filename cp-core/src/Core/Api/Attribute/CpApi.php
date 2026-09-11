@@ -13,10 +13,10 @@ namespace App\Core\Api\Attribute;
 final class CpApi
 {
     /**
-     * @param string        $path        Path after /api (e.g. "/blog/posts/{id}").
-     * @param list<string>  $methods     Allowed HTTP methods.
-     * @param bool          $public      Skip X-CP-API-KEY when true (default false).
-     * @param string|null   $capability  Required grant. Path tokens like {name} are interpolated. Null on a private endpoint is fail-closed (403).
+     * @param string       $path       Path after /api (e.g. "/blog/posts/{id}").
+     * @param list<string> $methods    allowed HTTP methods
+     * @param bool         $public     skip X-CP-API-KEY when true (default false)
+     * @param string|null  $capability Required grant. Path tokens like {name} are interpolated. Null on a private endpoint is fail-closed (403).
      */
     public function __construct(
         public readonly string $path,

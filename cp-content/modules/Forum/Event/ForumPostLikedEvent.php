@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Event;
 
-use Modules\Forum\Entity\ForumPost;
 use App\Entity\User;
+use Modules\Forum\Entity\ForumPost;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /** Dispatched when a post is liked (not on unlike). */

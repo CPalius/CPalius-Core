@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Modules\Menu\Repository;
 
-use Modules\Menu\Entity\Menu;
-use Modules\Menu\Entity\MenuItem;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Modules\Menu\Entity\Menu;
+use Modules\Menu\Entity\MenuItem;
 
 /**
  * @extends ServiceEntityRepository<MenuItem>

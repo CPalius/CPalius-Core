@@ -13,7 +13,7 @@ final class TextFilterContext
     public const PHASE_OUTPUT = 'output';
 
     /**
-     * @param array<string, mixed> $settings filter-specific settings from the format
+     * @param array<string, mixed> $settings     filter-specific settings from the format
      * @param array<string, mixed> $tokenContext TokenReplacer subjects
      */
     public function __construct(

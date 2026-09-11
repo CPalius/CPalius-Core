@@ -11,7 +11,6 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\Compiler\ServiceLocatorTagPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
-use Throwable;
 
 /**
  * Compile-time collector for #[CpCronJob] and Hooks/cron.{job_name}.php (isolated per module).
@@ -52,7 +51,7 @@ final class CronRegistrationPass implements CompilerPassInterface
                     $collected[] = $item;
                     $serviceIds[$item['serviceId']] = true;
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Module isolation: a scan error drops only that module's attribute cron jobs.
             }
 
@@ -60,7 +59,7 @@ final class CronRegistrationPass implements CompilerPassInterface
                 foreach ($this->scanFlatFileDirectory($moduleDir.'/Hooks', $container) as $item) {
                     $collected[] = $item;
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Module isolation: same as the attribute-scan catch above.
             }
         }
@@ -142,7 +141,7 @@ final class CronRegistrationPass implements CompilerPassInterface
                         'file' => null,
                     ];
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 continue;
             }
         }
@@ -184,7 +183,7 @@ final class CronRegistrationPass implements CompilerPassInterface
 
             try {
                 $definition = include $file->getPathname();
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 continue;
             }
 

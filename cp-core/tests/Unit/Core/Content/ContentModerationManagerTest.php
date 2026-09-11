@@ -35,9 +35,6 @@ final class ContentModerationManagerTest extends TestCase
         );
     }
 
-    /**
-     * @param array{apply?: array<string, mixed>} $workflowManagerStubs
-     */
     private function manager(string $enabledTypes, array $applyResult = []): ContentModerationManager
     {
         $settings = $this->createMock(SettingsRegistry::class);

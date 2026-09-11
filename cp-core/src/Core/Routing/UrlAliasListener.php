@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Core\Routing;
 
+use App\Core\Module\ModuleContributionCatalog;
 use App\Entity\Node;
 use App\Entity\UrlAlias;
 use App\Repository\CategoryRepository;
 use App\Repository\NodeRepository;
 use App\Repository\UrlAliasRepository;
-use App\Core\Module\ModuleContributionCatalog;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;

@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Modules\Menu\Entity;
 
-use Modules\Menu\Repository\MenuRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Modules\Menu\Repository\MenuRepository;
 
 /**
  * Named menus (header/footer) for {{ cp_menu() }}. Admin CRUD lives in the optional Menu module.

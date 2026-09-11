@@ -6,7 +6,6 @@ namespace App\Core\Theme;
 
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
-use ZipArchive;
 
 /**
  * WordPress-style theme ZIP install. Never writes into cp-core.
@@ -90,11 +89,11 @@ final class ThemePackageService
      */
     private function extractZip(string $zipPath, string $extractDir): array
     {
-        if (!class_exists(ZipArchive::class)) {
+        if (!class_exists(\ZipArchive::class)) {
             return ['success' => false, 'message' => 'PHP zip extension is required to install themes from a ZIP file.'];
         }
 
-        $zip = new ZipArchive();
+        $zip = new \ZipArchive();
         if ($zip->open($zipPath) !== true) {
             return ['success' => false, 'message' => 'The ZIP archive could not be opened.'];
         }
@@ -135,7 +134,7 @@ final class ThemePackageService
     /**
      * @return list<string>
      */
-    private function scanZipEntries(ZipArchive $zip): array
+    private function scanZipEntries(\ZipArchive $zip): array
     {
         $problems = [];
         $count = $zip->numFiles;

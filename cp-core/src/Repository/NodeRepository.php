@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repository;
 
 use App\Entity\Node;
@@ -458,8 +460,8 @@ class NodeRepository extends ServiceEntityRepository
      * ProcessWire-style selector string query (fixed columns, modifiers, flat index fields).
      * Invalid segments are skipped fail-safe.
      *
-     * @deprecated Use App\Core\Entity\Query\CpEntityQueryFactory::fromSelector()
-     *             which adds OR groups, access checks and shared column resolution.
+     * @deprecated use App\Core\Entity\Query\CpEntityQueryFactory::fromSelector()
+     *             which adds OR groups, access checks and shared column resolution
      *
      * @return list<Node>
      */
@@ -512,7 +514,7 @@ class NodeRepository extends ServiceEntityRepository
 
                     $fieldParam = sprintf('fname%d', $conditionIndex);
                     $valueParam = sprintf('fval%d', $conditionIndex);
-                    $conditionIndex++;
+                    ++$conditionIndex;
 
                     $valueColumn = $this->guessValueColumn($rawValue);
 

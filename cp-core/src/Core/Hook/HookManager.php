@@ -7,7 +7,6 @@ namespace App\Core\Hook;
 use App\Core\Module\ModuleRegistry;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
-use Throwable;
 
 /**
  * Isolated hook runner: flat-file Closures plus lazy #[CpHook] services in one trigger().
@@ -16,8 +15,8 @@ use Throwable;
 final class HookManager implements HookDispatcherInterface
 {
     /**
-     * @param iterable<int, array{hookPoint: string, priority: int, serviceId: string, method: string}> $attributeHooks Compile-time #[CpHook] defs.
-     * @param ContainerInterface $serviceLocator Lazy locator for #[CpHook] services.
+     * @param iterable<int, array{hookPoint: string, priority: int, serviceId: string, method: string}> $attributeHooks compile-time #[CpHook] defs
+     * @param ContainerInterface                                                                        $serviceLocator lazy locator for #[CpHook] services
      */
     public function __construct(
         private readonly ModuleRegistry $moduleRegistry,
@@ -74,7 +73,7 @@ final class HookManager implements HookDispatcherInterface
 
             try {
                 $context = $this->includeIsolated($hookFile, $context);
-            } catch (Throwable $e) {
+            } catch (\Throwable $e) {
                 $this->quarantineHookFailure($moduleClass, $hookPoint, $hookFile, $e);
             }
         }
@@ -104,7 +103,7 @@ final class HookManager implements HookDispatcherInterface
                 if ($result instanceof HookContext) {
                     $context = $result;
                 }
-            } catch (Throwable $e) {
+            } catch (\Throwable $e) {
                 $this->quarantineHookFailure($hook['serviceId'], $hookPoint, $hook['serviceId'].'::'.$hook['method'].'()', $e);
             }
         }
@@ -131,7 +130,7 @@ final class HookManager implements HookDispatcherInterface
         try {
             $reflection = new \ReflectionClass($moduleClass);
             $moduleDir = \dirname((string) $reflection->getFileName());
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return null;
         }
 
@@ -156,7 +155,7 @@ final class HookManager implements HookDispatcherInterface
             try {
                 $reflection = new \ReflectionClass($moduleClass);
                 $hooksDir = \dirname((string) $reflection->getFileName()).'/Hooks';
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 continue;
             }
 
@@ -210,7 +209,7 @@ final class HookManager implements HookDispatcherInterface
         return false;
     }
 
-    private function quarantineHookFailure(string $source, string $hookPoint, string $detail, Throwable $e): void
+    private function quarantineHookFailure(string $source, string $hookPoint, string $detail, \Throwable $e): void
     {
         $this->logger->warning('Hook failed during execution and was silently skipped.', [
             'source' => $source,

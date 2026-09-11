@@ -17,7 +17,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Throwable;
 
 /**
  * Single /api/* gateway for #[CpApi] methods.
@@ -27,7 +26,7 @@ use Throwable;
 final class ApiGatewayController
 {
     /**
-     * @param ContainerInterface $serviceLocator Lazy locator for #[CpApi] services.
+     * @param ContainerInterface                                                                                                      $serviceLocator lazy locator for #[CpApi] services
      * @param list<array{path: string, methods: list<string>, public: bool, capability?: ?string, serviceId: string, method: string}> $apiEndpoints
      */
     public function __construct(
@@ -115,7 +114,7 @@ final class ApiGatewayController
             $this->audit($apiKey, $requestPath, $response->getStatusCode(), $started, $clientIp);
 
             return $response;
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $this->quarantineApiFailure($serviceId, $methodName, $e);
             $this->audit($apiKey, $requestPath, Response::HTTP_INTERNAL_SERVER_ERROR, $started, $clientIp);
 
@@ -146,7 +145,7 @@ final class ApiGatewayController
     /**
      * Match "/blog/posts/{id}" to a request path. Quote literals only (API-01/02); first match wins.
      *
-     * @return list<string>|null Captured {param} values in order, or null.
+     * @return list<string>|null captured {param} values in order, or null
      */
     private function matchPath(string $pattern, string $requestPath): ?array
     {
@@ -223,7 +222,7 @@ final class ApiGatewayController
         $this->auditor->record('call', $apiKey, $path, $status, $durationMs, $clientIp, $meta);
     }
 
-    private function quarantineApiFailure(string $serviceId, string $method, Throwable $e): void
+    private function quarantineApiFailure(string $serviceId, string $method, \Throwable $e): void
     {
         $this->logger->error('Error while executing API endpoint.', [
             'service' => $serviceId,

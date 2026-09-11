@@ -96,7 +96,7 @@ final class IpBanService
     }
 
     /**
-     * @param int|null $minutes Null or 0 means a permanent ban.
+     * @param int|null $minutes null or 0 means a permanent ban
      */
     public function ban(
         string $pattern,

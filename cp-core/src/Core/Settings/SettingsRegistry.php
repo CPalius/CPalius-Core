@@ -13,7 +13,6 @@ use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
-use Throwable;
 
 /**
  * Source of truth for #[CpSetting] definitions (compile-time) and values (lazy DB, one query).
@@ -76,7 +75,7 @@ class SettingsRegistry
     /**
      * Value in the active locale. Missing keys return $default (no exception); DB rows are type-cast.
      *
-     * @param mixed $default Returned when the key has no definition.
+     * @param mixed $default returned when the key has no definition
      */
     public function get(string $key, mixed $default = null): mixed
     {
@@ -130,7 +129,7 @@ class SettingsRegistry
             if ($this->cache instanceof CacheItemPoolInterface) {
                 $this->cache->deleteItem(self::CACHE_KEY);
             }
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // Stale cache lasts at most TTL; a settings write must not 500.
         }
 
@@ -152,7 +151,7 @@ class SettingsRegistry
                 array_values(array_unique($keys)),
             );
             $this->originCachePurger->purgeTags(...$tags);
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // Origin purge must never fail a settings write.
         }
     }
@@ -259,7 +258,7 @@ class SettingsRegistry
 
         try {
             $decoded = json_decode($raw, true, 8, \JSON_THROW_ON_ERROR);
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return $this->spreadToAllLocales($raw);
         }
 
@@ -353,7 +352,7 @@ class SettingsRegistry
             });
 
             return $this->values = $map;
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return $this->values = $this->repository->findAllAsMap();
         }
     }

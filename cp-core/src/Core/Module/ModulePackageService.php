@@ -6,7 +6,6 @@ namespace App\Core\Module;
 
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
-use ZipArchive;
 
 /**
  * WordPress-style package lifecycle: ZIP in, folder out, optional overwrite.
@@ -168,11 +167,11 @@ final class ModulePackageService
      */
     private function extractZip(string $zipPath, string $extractDir): array
     {
-        if (!class_exists(ZipArchive::class)) {
+        if (!class_exists(\ZipArchive::class)) {
             return ['success' => false, 'message' => 'PHP zip extension is required to install modules from a ZIP file.'];
         }
 
-        $zip = new ZipArchive();
+        $zip = new \ZipArchive();
         if ($zip->open($zipPath) !== true) {
             return ['success' => false, 'message' => 'The ZIP archive could not be opened.'];
         }
@@ -218,7 +217,7 @@ final class ModulePackageService
     /**
      * @return list<string>
      */
-    private function scanZipEntries(ZipArchive $zip): array
+    private function scanZipEntries(\ZipArchive $zip): array
     {
         $problems = [];
         $count = $zip->numFiles;

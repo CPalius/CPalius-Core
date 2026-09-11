@@ -9,7 +9,6 @@ use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
-use Throwable;
 
 /**
  * Studio editor for portal showcase copy. Reads/writes nested portal.{locale}.yaml per active locale.
@@ -363,6 +362,7 @@ final class PortalCopyService
             $isLast = $i === \count($parts) - 1;
             if ($isLast) {
                 $ref[$part] = $value;
+
                 return;
             }
 
@@ -390,7 +390,7 @@ final class PortalCopyService
             $tmp = $path.'.tmp-'.bin2hex(random_bytes(4));
             $this->filesystem->dumpFile($tmp, $yaml);
             $this->filesystem->rename($tmp, $path, true);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             throw new \RuntimeException(sprintf('Failed to write portal copy file "%s": %s', basename($path), $e->getMessage()), 0, $e);
         }
     }

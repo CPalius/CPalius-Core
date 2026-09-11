@@ -11,8 +11,8 @@ final class SeoDocument
 {
     /**
      * @param list<array{name: string, url: string}> $breadcrumbs
-     * @param list<string> $images
-     * @param array<string, mixed> $schemaExtra extra JSON-LD node merged into @graph
+     * @param list<string>                           $images
+     * @param array<string, mixed>                   $schemaExtra extra JSON-LD node merged into @graph
      */
     public function __construct(
         public string $headline = '',

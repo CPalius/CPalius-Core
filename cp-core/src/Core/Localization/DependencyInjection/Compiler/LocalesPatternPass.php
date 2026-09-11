@@ -7,7 +7,6 @@ namespace App\Core\Localization\DependencyInjection\Compiler;
 use PDO;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Throwable;
 
 /**
  * Compile-time locale pattern for route requirements (%cpalius.locales_pattern%). Uses raw PDO, not Doctrine.
@@ -83,7 +82,7 @@ final class LocalesPatternPass implements CompilerPassInterface
         try {
             $pdo = $this->connect($dsnUrl, $container);
 
-            if (!$pdo instanceof PDO) {
+            if (!$pdo instanceof \PDO) {
                 return null;
             }
 
@@ -97,7 +96,7 @@ final class LocalesPatternPass implements CompilerPassInterface
             $default = '';
 
             /** @var array<string, mixed> $row */
-            foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            foreach ($statement->fetchAll(\PDO::FETCH_ASSOC) as $row) {
                 $code = strtolower(trim((string) ($row['code'] ?? '')));
 
                 if (preg_match('/^[a-z]{2,5}$/', $code) !== 1 || \in_array($code, $codes, true)) {
@@ -116,7 +115,7 @@ final class LocalesPatternPass implements CompilerPassInterface
             }
 
             return [$codes, $default !== '' ? $default : $codes[0]];
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // No DB / table / driver: fall back to .env.
             return null;
         }
@@ -125,7 +124,7 @@ final class LocalesPatternPass implements CompilerPassInterface
     /**
      * Turn DATABASE_URL (mysql/postgres/sqlite) into a raw PDO connection.
      */
-    private function connect(string $databaseUrl, ContainerBuilder $container): ?PDO
+    private function connect(string $databaseUrl, ContainerBuilder $container): ?\PDO
     {
         $parts = parse_url($databaseUrl);
 
@@ -135,14 +134,14 @@ final class LocalesPatternPass implements CompilerPassInterface
 
         $scheme = strtolower($parts['scheme']);
         $options = [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_TIMEOUT => self::CONNECT_TIMEOUT,
+            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            \PDO::ATTR_TIMEOUT => self::CONNECT_TIMEOUT,
         ];
 
         if (str_starts_with($scheme, 'sqlite')) {
             $path = $this->resolveSqlitePath($databaseUrl, $container);
 
-            return $path !== null && is_file($path) ? new PDO('sqlite:'.$path, null, null, $options) : null;
+            return $path !== null && is_file($path) ? new \PDO('sqlite:'.$path, null, null, $options) : null;
         }
 
         $driver = match (true) {
@@ -173,7 +172,7 @@ final class LocalesPatternPass implements CompilerPassInterface
             $dsn .= ';charset=utf8mb4';
         }
 
-        return new PDO(
+        return new \PDO(
             $dsn,
             isset($parts['user']) ? rawurldecode($parts['user']) : null,
             isset($parts['pass']) ? rawurldecode($parts['pass']) : null,

@@ -6,11 +6,11 @@ namespace Modules\Forum\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Localization\LocaleProvider;
+use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopicPrefix;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicPrefixRepository;
-use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Service\ForumSectionHierarchyService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;

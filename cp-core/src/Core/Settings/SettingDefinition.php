@@ -20,7 +20,7 @@ final class SettingDefinition
 
     /**
      * @param array<string, string> $variants
-     * @param string|null $scope Null means "auto-detect", resolved by SettingScopeResolver.
+     * @param string|null           $scope    null means "auto-detect", resolved by SettingScopeResolver
      */
     public function __construct(
         public readonly string $key,

@@ -7,20 +7,20 @@ namespace Modules\Forum\Service;
 use App\Core\Content\RichTextSanitizer;
 use App\Core\OriginCache\OriginCachePurger;
 use App\Core\Settings\SettingsRegistry;
+use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Entity\ForumPostDislike;
 use Modules\Forum\Entity\ForumPostLike;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\Entity\ForumTopicPrefix;
-use App\Entity\User;
+use Modules\Forum\ForumDictionary;
+use Modules\Forum\ForumDiscussionState;
 use Modules\Forum\Repository\ForumPostDislikeRepository;
 use Modules\Forum\Repository\ForumPostLikeRepository;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumSectionRepository;
-use Doctrine\ORM\EntityManagerInterface;
-use Modules\Forum\ForumDictionary;
-use Modules\Forum\ForumDiscussionState;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
@@ -469,7 +469,7 @@ final class ForumTopicService
             ->getOneOrNullResult();
 
         if ($duplicate instanceof ForumTopic && $topic->getId() !== null) {
-            $topic->setSlug($slug . '-' . $topic->getId());
+            $topic->setSlug($slug.'-'.$topic->getId());
         }
     }
 

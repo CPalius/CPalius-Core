@@ -8,7 +8,7 @@ final class SitemapUrl
 {
     /**
      * @param array<string, string> $alternates locale => absolute URL
-     * @param list<string> $images absolute image URLs
+     * @param list<string>          $images     absolute image URLs
      */
     public function __construct(
         public readonly string $loc,

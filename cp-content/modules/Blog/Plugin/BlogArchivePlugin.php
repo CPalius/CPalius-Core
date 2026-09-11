@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Blog\Plugin;
 
-use App\Core\Plugin\PluginInterface;
 use App\Core\Localization\LocaleProvider;
+use App\Core\Plugin\PluginInterface;
 use App\Repository\NodeRepository;
 use Twig\Environment;
 

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Core\Backup;
 
 use Doctrine\DBAL\Connection;
-use ZipArchive;
 
 /**
  * Creates, lists, and deletes operator backups under cp-core/var/backups/.
@@ -152,7 +151,7 @@ final class BackupService
         }
     }
 
-    private function addProjectFiles(ZipArchive $zip): void
+    private function addProjectFiles(\ZipArchive $zip): void
     {
         $added = 0;
         foreach ($this->collector->collect() as $entry) {
@@ -167,14 +166,14 @@ final class BackupService
         }
     }
 
-    private function openZip(string $target): ZipArchive
+    private function openZip(string $target): \ZipArchive
     {
-        if (!class_exists(ZipArchive::class)) {
+        if (!class_exists(\ZipArchive::class)) {
             throw new BackupException('The PHP zip extension is required to create file backups.');
         }
 
-        $zip = new ZipArchive();
-        if ($zip->open($target, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        $zip = new \ZipArchive();
+        if ($zip->open($target, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             throw new BackupException('The ZIP archive could not be created.');
         }
 

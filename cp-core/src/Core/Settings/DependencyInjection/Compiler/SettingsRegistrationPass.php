@@ -10,7 +10,6 @@ use Symfony\Component\Config\Resource\DirectoryResource;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
-use Throwable;
 
 /**
  * Fills SettingsRegistry at compile time by scanning core and module setting carriers.
@@ -51,7 +50,7 @@ final class SettingsRegistrationPass implements CompilerPassInterface
                 foreach ($this->scanDirectory($moduleSettingsDir, $moduleSettingsNamespace, $container) as $setting) {
                     $collected[] = $setting;
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Module isolation: one broken Settings directory must not abort the scan.
             }
         }
@@ -123,7 +122,7 @@ final class SettingsRegistrationPass implements CompilerPassInterface
                         'scope' => $setting->scope,
                     ];
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // A single unreadable file is skipped; the whole scan is not aborted.
                 continue;
             }

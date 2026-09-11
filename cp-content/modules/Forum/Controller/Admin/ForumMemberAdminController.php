@@ -5,22 +5,22 @@ declare(strict_types=1);
 namespace Modules\Forum\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
-use Modules\Forum\Entity\ForumBan;
 use App\Entity\User;
+use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Modules\Forum\Entity\ForumBan;
 use Modules\Forum\Repository\ForumBanRepository;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
 use Modules\Forum\Repository\ForumUserRankRepository;
-use App\Repository\UserRepository;
 use Modules\Forum\Service\ForumBanService;
 use Modules\Forum\Service\ForumRankService;
-use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -53,7 +53,7 @@ final class ForumMemberAdminController extends AbstractController
     public function index(Request $request): Response
     {
         $page = max(1, $request->query->getInt('page', 1));
-        $offset = (($page - 1)) * self::PER_PAGE;
+        $offset = ($page - 1) * self::PER_PAGE;
 
         $postCounts = $this->postRepository->findMemberPostCounts(self::PER_PAGE, $offset);
         $userIds = array_keys($postCounts);

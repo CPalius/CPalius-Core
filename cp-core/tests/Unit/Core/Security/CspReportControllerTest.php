@@ -10,6 +10,7 @@ use App\Core\Security\Flood\FloodService;
 use App\Core\Security\Repository\TelemetryLogRepository;
 use App\Core\Security\Service\SecurityEventRecorder;
 use App\Tests\Unit\Core\Security\Support\ArraySettings;
+use App\Tests\Unit\Core\Security\Support\ExplodingCachePool;
 use App\Tests\Unit\Core\Security\Support\SecurityClock;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -19,7 +20,6 @@ use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
-use App\Tests\Unit\Core\Security\Support\ExplodingCachePool;
 
 #[CoversClass(CspReportController::class)]
 final class CspReportControllerTest extends TestCase

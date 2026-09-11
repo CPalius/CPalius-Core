@@ -6,7 +6,6 @@ namespace App\Core\Resource\Admin;
 
 use App\Core\Resource\Attribute\CpField;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Mapping\ClassMetadata;
 
 /**
  * Turns a resource entity's Doctrine mapping (+ optional #[CpField] overrides)

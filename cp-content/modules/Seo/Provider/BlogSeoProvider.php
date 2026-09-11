@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\Seo\Provider;
 
+use App\Core\Settings\SettingsRegistry;
+use App\Core\Token\TokenContext;
+use App\Core\Token\TokenReplacer;
 use App\Entity\Asset;
 use App\Entity\Node;
 use App\Repository\AssetRepository;
 use App\Repository\CategoryRepository;
 use App\Repository\NodeRepository;
 use App\Repository\TagRepository;
-use App\Core\Settings\SettingsRegistry;
-use App\Core\Token\TokenContext;
-use App\Core\Token\TokenReplacer;
 use Modules\Seo\Contract\SeoPageProviderInterface;
 use Modules\Seo\Document\SeoDocument;
 use Modules\Seo\Engine\SeoUrlBuilder;

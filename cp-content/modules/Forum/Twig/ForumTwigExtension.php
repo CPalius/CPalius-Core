@@ -219,10 +219,10 @@ final class ForumTwigExtension extends AbstractExtension
     public function formatNumber(int|float $value): string
     {
         if ($value >= 1000000) {
-            return round($value / 1000000, 1) . 'M';
+            return round($value / 1000000, 1).'M';
         }
         if ($value >= 1000) {
-            return round($value / 1000, 1) . 'K';
+            return round($value / 1000, 1).'K';
         }
 
         return number_format((int) $value, 0, ',', '.');

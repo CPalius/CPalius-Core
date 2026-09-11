@@ -21,7 +21,7 @@ final class FieldValueNormalizer
     }
 
     /**
-     * @param array<string, mixed> $rawValues  fieldName => raw submitted value(s)
+     * @param array<string, mixed> $rawValues fieldName => raw submitted value(s)
      *
      * @return array<string, mixed> fieldName => clean stored value(s); absent when empty
      */

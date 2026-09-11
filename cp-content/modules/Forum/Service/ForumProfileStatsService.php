@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Modules\Forum\Service;
 
 use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
 use Modules\Forum\Repository\ForumUserReputationRepository;
-use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Profile/postbit stats. Popularity: likes + topics*3 + posts + net_rep*5. Avg rep: mean of received votes.

@@ -150,9 +150,9 @@ final class ThemeController extends AbstractController
     /**
      * @param array<string, mixed> $block
      *
-     * @return array<string, mixed>|null|false false = no provider; null = hide; array = data
+     * @return array<string, mixed>|false|null false = no provider; null = hide; array = data
      */
-    private function provideFromModules(string $blockId, array $block, string $locale): array|null|false
+    private function provideFromModules(string $blockId, array $block, string $locale): array|false|null
     {
         foreach ($this->portalBlockProviders as $provider) {
             if (!$provider->supports($blockId)) {

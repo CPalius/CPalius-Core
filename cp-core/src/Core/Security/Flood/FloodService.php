@@ -44,8 +44,8 @@ final class FloodService
 
     /**
      * @param bool $failOpen Allow the action when the cache is unreachable. Used for
-     *   login so a Redis outage cannot lock every operator out of their own site;
-     *   anonymous abuse endpoints leave it false and fail closed instead.
+     *                       login so a Redis outage cannot lock every operator out of their own site;
+     *                       anonymous abuse endpoints leave it false and fail closed instead.
      */
     public function isAllowed(string $event, string $identifier, int $limit, int $window, bool $failOpen = false): bool
     {
@@ -155,7 +155,7 @@ final class FloodService
     }
 
     /**
-     * @return int|null Unix timestamp the lock expires at, or null when not locked.
+     * @return int|null unix timestamp the lock expires at, or null when not locked
      */
     public function lockedUntil(string $event, string $identifier): ?int
     {

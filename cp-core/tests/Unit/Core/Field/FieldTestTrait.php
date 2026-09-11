@@ -5,18 +5,32 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Core\Field;
 
 use App\Core\Content\RichTextSanitizer;
-use App\Core\Field\Entity\FieldDefinition;
-use App\Core\Field\FieldContext;
-use App\Core\Field\FieldDefinitionRegistry;
-use App\Core\Field\FieldTypeRegistry;
-use App\Core\Field\ReferenceTargetResolver;
 use App\Core\Display\EntityDisplayRegistry;
 use App\Core\Display\Repository\EntityDisplayRepository;
 use App\Core\Display\ViewModeRegistry;
 use App\Core\Field\Display\FieldFormatterResolver;
 use App\Core\Field\Display\ReferenceBatchLoader;
+use App\Core\Field\Entity\FieldDefinition;
+use App\Core\Field\FieldContext;
+use App\Core\Field\FieldDefinitionRegistry;
+use App\Core\Field\FieldTypeRegistry;
 use App\Core\Field\Form\FieldWidgetResolver;
+use App\Core\Field\ReferenceTargetResolver;
 use App\Core\Field\Repository\FieldDefinitionRepository;
+use App\Core\Field\Type\BooleanFieldType;
+use App\Core\Field\Type\DateFieldType;
+use App\Core\Field\Type\DateTimeFieldType;
+use App\Core\Field\Type\DecimalFieldType;
+use App\Core\Field\Type\EmailFieldType;
+use App\Core\Field\Type\EntityReferenceFieldType;
+use App\Core\Field\Type\FileFieldType;
+use App\Core\Field\Type\ImageFieldType;
+use App\Core\Field\Type\IntegerFieldType;
+use App\Core\Field\Type\RichTextFieldType;
+use App\Core\Field\Type\SelectFieldType;
+use App\Core\Field\Type\TextareaFieldType;
+use App\Core\Field\Type\TextFieldType;
+use App\Core\Field\Type\UrlFieldType;
 use App\Core\Media\ImageProcessor;
 use App\Core\Media\Twig\ImageThumbnailRuntime;
 use App\Core\Resource\ResourceRegistry;
@@ -33,29 +47,15 @@ use App\Core\TextFormat\TextFormatProcessor;
 use App\Core\TextFormat\TextFormatRegistry;
 use App\Core\Token\TokenReplacer;
 use App\Core\Token\TokenTypeRegistry;
+use App\Repository\AssetRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
-use Symfony\Component\Translation\IdentityTranslator;
-use Symfony\Component\Yaml\Yaml;
-use App\Core\Field\Type\BooleanFieldType;
-use App\Core\Field\Type\DateFieldType;
-use App\Core\Field\Type\DateTimeFieldType;
-use App\Core\Field\Type\DecimalFieldType;
-use App\Core\Field\Type\EmailFieldType;
-use App\Core\Field\Type\EntityReferenceFieldType;
-use App\Core\Field\Type\FileFieldType;
-use App\Core\Field\Type\ImageFieldType;
-use App\Core\Field\Type\IntegerFieldType;
-use App\Core\Field\Type\RichTextFieldType;
-use App\Core\Field\Type\SelectFieldType;
-use App\Core\Field\Type\TextareaFieldType;
-use App\Core\Field\Type\TextFieldType;
-use App\Core\Field\Type\UrlFieldType;
-use App\Repository\AssetRepository;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizer;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
+use Symfony\Component\Translation\IdentityTranslator;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Builds a real FieldTypeRegistry (all 14 core types) plus in-memory field
@@ -154,7 +154,7 @@ trait FieldTestTrait
             static fn (string $bundle): array => $byBundle[$bundle] ?? [],
         );
 
-        return new FieldDefinitionRegistry($repository, new \Symfony\Component\Cache\Adapter\ArrayAdapter());
+        return new FieldDefinitionRegistry($repository, new ArrayAdapter());
     }
 
     protected function definition(

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Modules\Forum\Repository;
 
 use App\Entity\User;
-use Modules\Forum\Entity\ForumPresence;
-use Modules\Forum\Entity\ForumTopic;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Modules\Forum\Entity\ForumPresence;
+use Modules\Forum\Entity\ForumTopic;
 
 /**
  * @extends ServiceEntityRepository<ForumPresence>

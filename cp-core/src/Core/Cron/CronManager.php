@@ -9,7 +9,6 @@ use App\Entity\CronJob;
 use App\Repository\CronJobRepository;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
-use Throwable;
 
 /**
  * Hybrid task provider: DB (cp_cron_jobs), #[CpCronJob], and Hooks/cron.{job_name}.php.
@@ -18,7 +17,7 @@ use Throwable;
 final class CronManager
 {
     /**
-     * @param ContainerInterface $serviceLocator Lazy locator for #[CpCronJob] services.
+     * @param ContainerInterface                                                                                                                                           $serviceLocator  lazy locator for #[CpCronJob] services
      * @param list<array{jobName: string, schedule: string, description: string, sourceType: 'attribute'|'flat-file', serviceId: ?string, method: ?string, file: ?string}> $cronDefinitions
      */
     public function __construct(
@@ -77,7 +76,7 @@ final class CronManager
     /**
      * Run one virtual job in the current process (isolation is the outer cp:cron:run-virtual subprocess).
      *
-     * @throws \RuntimeException When the job name is unknown or the task throws.
+     * @throws \RuntimeException when the job name is unknown or the task throws
      */
     public function runVirtualTask(string $jobName): string
     {
@@ -91,7 +90,7 @@ final class CronManager
             return $definition['sourceType'] === 'attribute'
                 ? $this->runAttributeTask($definition)
                 : $this->runFlatFileTask($definition);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $this->quarantineTaskFailure($jobName, $e);
 
             throw new \RuntimeException(sprintf('Error while running job "%s": %s', $jobName, $e->getMessage()), previous: $e);
@@ -144,7 +143,7 @@ final class CronManager
         return is_string($result) ? $result : '';
     }
 
-    private function quarantineTaskFailure(string $jobName, Throwable $e): void
+    private function quarantineTaskFailure(string $jobName, \Throwable $e): void
     {
         $this->logger->error('Error while running code-based cron job.', [
             'job_name' => $jobName,

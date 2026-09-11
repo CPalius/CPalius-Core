@@ -12,8 +12,7 @@ namespace App\Core\TextFormat;
 final class ResolvedTextFormat
 {
     /**
-     * @param array<string, mixed>  $spec
-     * @param list<FilterSpec>      $filters
+     * @param list<FilterSpec> $filters
      */
     public function __construct(
         public readonly string $id,

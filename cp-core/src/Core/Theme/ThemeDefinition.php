@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Core\Theme;
 
-use Throwable;
-
 /**
  * Parsed, immutable theme.json contract.
  * Every field except the directory name is optional so a minimal theme still loads.
@@ -13,9 +11,9 @@ use Throwable;
 final class ThemeDefinition
 {
     /**
-     * @param list<string> $css Theme-relative stylesheet paths.
-     * @param list<string> $js Theme-relative script paths.
-     * @param list<string> $supports Module ids the theme ships templates for.
+     * @param list<string> $css      theme-relative stylesheet paths
+     * @param list<string> $js       theme-relative script paths
+     * @param list<string> $supports module ids the theme ships templates for
      */
     public function __construct(
         public readonly string $dirName,
@@ -45,7 +43,7 @@ final class ThemeDefinition
         try {
             $contents = file_get_contents($manifestFile);
             $data = $contents === false ? null : json_decode($contents, true, 32, \JSON_THROW_ON_ERROR);
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return null;
         }
 

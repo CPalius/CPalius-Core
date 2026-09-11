@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Repository;
 
-use Modules\Forum\Entity\ForumPost;
-use Modules\Forum\Entity\ForumPostReport;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Modules\Forum\Entity\ForumPost;
+use Modules\Forum\Entity\ForumPostReport;
 
 /**
  * @extends ServiceEntityRepository<ForumPostReport>

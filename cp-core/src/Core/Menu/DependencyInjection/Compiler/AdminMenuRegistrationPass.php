@@ -11,7 +11,6 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\Routing\Attribute\Route;
-use Throwable;
 
 /**
  * Populates AdminMenuRegistry at compile time (same skeleton as ResourceRegistrationPass; scans controllers for #[CpAdminMenu]).
@@ -48,7 +47,7 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
                 foreach ($this->scanDirectory($moduleControllerDir, $moduleControllerNamespace, $bundleClass, $container) as $item) {
                     $collected[] = $item;
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Module isolation: scan failure skips that module's menu items only.
             }
         }
@@ -158,7 +157,7 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
                         'parent' => $menu->parent,
                     ];
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Reflection failure on one file skips that file; scan continues.
                 continue;
             }

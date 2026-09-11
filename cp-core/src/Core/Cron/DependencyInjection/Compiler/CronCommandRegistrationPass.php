@@ -9,7 +9,6 @@ use Symfony\Component\Config\Resource\DirectoryResource;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Throwable;
 
 /**
  * Compile-time fill of CronCommandWhitelist: scan Core/Command + module Command dirs for #[AsCommand].
@@ -52,7 +51,7 @@ final class CronCommandRegistrationPass implements CompilerPassInterface
                 foreach ($this->scanDirectory($moduleCommandDir, $moduleCommandNamespace, $container) as $name) {
                     $collected[] = $name;
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Module isolation: a scan error drops only that module's commands.
             }
         }
@@ -110,7 +109,7 @@ final class CronCommandRegistrationPass implements CompilerPassInterface
                 ) {
                     $collected[] = $commandName;
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Skip one file on reflection failure; do not abort the whole scan.
                 continue;
             }

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Modules\Forum\Entity;
 
 use App\Entity\User;
-use Modules\Forum\Repository\ForumTopicViewRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Modules\Forum\Repository\ForumTopicViewRepository;
 
 /**
  * Logged-in member who opened a thread (unique per topic + user).

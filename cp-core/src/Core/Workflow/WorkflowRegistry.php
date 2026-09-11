@@ -6,7 +6,6 @@ namespace App\Core\Workflow;
 
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
-use Throwable;
 
 /**
  * Passive store of workflow definitions, parsed once and cached. Editorial YAML
@@ -64,7 +63,7 @@ class WorkflowRegistry
             });
 
             return $this->definitions = array_map(self::unserialize(...), $serialized);
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return $this->definitions = $this->loader->loadAll();
         }
     }

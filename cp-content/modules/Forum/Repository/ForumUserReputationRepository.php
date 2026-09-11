@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Repository;
 
-use Modules\Forum\Entity\ForumUserReputation;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use Modules\Forum\Entity\ForumUserReputation;
 
 /**
  * @extends ServiceEntityRepository<ForumUserReputation>

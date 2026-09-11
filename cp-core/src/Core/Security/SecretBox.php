@@ -22,7 +22,7 @@ namespace App\Core\Security;
 final class SecretBox
 {
     /** Marks the authenticated format; absence of a marker means legacy CBC. */
-    private const VERSION_GCM = "v2:";
+    private const VERSION_GCM = 'v2:';
 
     private const IV_BYTES = 12;
     private const TAG_BYTES = 16;

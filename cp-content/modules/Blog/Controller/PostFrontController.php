@@ -275,7 +275,7 @@ final class PostFrontController extends AbstractController
      * @return array{
      *     blogHero: array<string, mixed>,
      *     featuredPosts: list<Node>,
-     *     blogCategories: array{roots: list<\App\Core\Taxonomy\Entity\Term>, postCounts: array<int, int>},
+     *     blogCategories: array{roots: list<Term>, postCounts: array<int, int>},
      *     blogStats: array{posts: int, categories: int, tags: int},
      *     listLayout: string
      * }

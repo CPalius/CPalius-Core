@@ -92,12 +92,12 @@ final class ApiGatewayControllerTest extends TestCase
     public static function regexMetacharacterProvider(): iterable
     {
         // Each row: [pattern, path that must NOT match]
-        yield 'nokta joker olmamali'      => ['/v1.0/ping', '/v1X0/ping'];
-        yield 'nokta joker olmamali (2)'  => ['/api.json', '/apiXjson'];
-        yield 'arti tekrar olmamali'      => ['/a+b/x', '/aaab/x'];
-        yield 'yildiz tekrar olmamali'    => ['/a*b/x', '/aaab/x'];
+        yield 'nokta joker olmamali' => ['/v1.0/ping', '/v1X0/ping'];
+        yield 'nokta joker olmamali (2)' => ['/api.json', '/apiXjson'];
+        yield 'arti tekrar olmamali' => ['/a+b/x', '/aaab/x'];
+        yield 'yildiz tekrar olmamali' => ['/a*b/x', '/aaab/x'];
         yield 'soru isareti opsiyonel degil' => ['/ab?c/x', '/ac/x'];
-        yield 'parantez grup olmamali'    => ['/(a|b)/x', '/a/x'];
+        yield 'parantez grup olmamali' => ['/(a|b)/x', '/a/x'];
         yield 'koseli parantez sinif degil' => ['/[abc]/x', '/a/x'];
         yield 'suslu parantez nicelik degil' => ['/a{2}/x', '/aa/x'];
     }
@@ -126,13 +126,13 @@ final class ApiGatewayControllerTest extends TestCase
      */
     public static function nonMatchingPathProvider(): iterable
     {
-        yield 'parametre / iceremez'   => ['/blog/posts/{id}', '/blog/posts/1/2'];
-        yield 'bos parametre'          => ['/blog/posts/{id}', '/blog/posts/'];
-        yield 'fazladan segment'       => ['/blog/posts', '/blog/posts/extra'];
-        yield 'eksik segment'          => ['/blog/posts/{id}', '/blog/posts'];
-        yield 'onek yeterli degil'     => ['/blog/posts', '/blog/postsX'];
-        yield 'farkli yol'             => ['/blog/posts', '/forum/topics'];
-        yield 'bastan eslesme sarti'   => ['/posts', '/blog/posts'];
+        yield 'parametre / iceremez' => ['/blog/posts/{id}', '/blog/posts/1/2'];
+        yield 'bos parametre' => ['/blog/posts/{id}', '/blog/posts/'];
+        yield 'fazladan segment' => ['/blog/posts', '/blog/posts/extra'];
+        yield 'eksik segment' => ['/blog/posts/{id}', '/blog/posts'];
+        yield 'onek yeterli degil' => ['/blog/posts', '/blog/postsX'];
+        yield 'farkli yol' => ['/blog/posts', '/forum/topics'];
+        yield 'bastan eslesme sarti' => ['/posts', '/blog/posts'];
     }
 
     #[DataProvider('nonMatchingPathProvider')]

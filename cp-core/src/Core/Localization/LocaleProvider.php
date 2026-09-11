@@ -9,7 +9,6 @@ use App\Repository\LocaleRepository;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
-use Throwable;
 
 /**
  * Single source of active locales. Chain: request memo → cache.app → DB; on failure, .env (never 500).
@@ -72,7 +71,7 @@ final class LocaleProvider
             });
 
             $locales = array_values(array_map(LocaleDefinition::fromArray(...), $rows));
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // DB/cache unreachable: .env fallback. Do not write to cache on this path.
             $locales = $this->buildFallbackDefinitions();
         }
@@ -165,7 +164,7 @@ final class LocaleProvider
             if ($this->cache instanceof CacheItemPoolInterface) {
                 $this->cache->deleteItem(self::CACHE_KEY);
             }
-        } catch (Throwable) {
+        } catch (\Throwable) {
             // Cache delete failed: stale list lasts at most TTL — not worth an error page.
         }
     }

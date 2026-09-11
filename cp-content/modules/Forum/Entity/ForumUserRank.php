@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Entity;
 
-use Modules\Forum\Repository\ForumUserRankRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Modules\Forum\Repository\ForumUserRankRepository;
 
 /**
  * Forum rank shown under the username in postbit.

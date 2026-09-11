@@ -18,8 +18,8 @@ interface TokenValueProviderInterface
 
     /**
      * @return string|null null means "$name is not a token this provider recognizes" —
-     *                      the caller leaves the original `[type:name]` bracket literal
-     *                      in place (visible, debuggable — never a silent empty string).
+     *                     the caller leaves the original `[type:name]` bracket literal
+     *                     in place (visible, debuggable — never a silent empty string)
      */
     public function resolve(string $name, mixed $subject, ?string $arg): ?string;
 }

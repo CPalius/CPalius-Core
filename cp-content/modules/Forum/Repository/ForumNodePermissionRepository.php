@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Repository;
 
-use Modules\Forum\Entity\ForumNodePermission;
-use Modules\Forum\Entity\ForumSection;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Modules\Forum\Entity\ForumNodePermission;
+use Modules\Forum\Entity\ForumSection;
 
 /**
  * @extends ServiceEntityRepository<ForumNodePermission>

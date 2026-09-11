@@ -22,8 +22,8 @@ use App\Core\Plugin\PluginRegistry;
 use App\Core\Plugin\PluginToggleRepository;
 use App\Core\Queue\QueueStatusService;
 use App\Core\Security\Repository\TelemetryLogRepository;
-use App\Core\Settings\SettingsRegistry;
 use App\Core\Settings\SettingSecretCodec;
+use App\Core\Settings\SettingsRegistry;
 use App\Core\Settings\SystemSettingsService;
 use App\Entity\CronJob;
 use App\Entity\Setting;
@@ -619,6 +619,7 @@ final class AACPController
      * Module version/status chart data; reuses $modules from discoverAllModules().
      *
      * @param list<array{dirName: string, name: string, version: string, class: ?string, status: string, reason: ?string}> $modules
+     *
      * @return array{
      *     versions: list<array{version: string, count: int}>,
      *     statusBreakdown: list<array{status: string, count: int}>,

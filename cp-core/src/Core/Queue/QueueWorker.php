@@ -9,7 +9,6 @@ use App\Core\Queue\Entity\AsyncJob;
 use App\Core\Queue\Repository\AsyncJobRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use Throwable;
 
 /**
  * Claims due jobs and runs matching handlers in isolation. A throwing handler retries with backoff;
@@ -55,7 +54,7 @@ final class QueueWorker
         if ($handler === null) {
             $job->markRetry('No handler for job type.', $this->backoff($job->getAttempts() + 1));
             $this->entityManager->flush();
-            $stats['failed']++;
+            ++$stats['failed'];
 
             return;
         }
@@ -65,20 +64,20 @@ final class QueueWorker
         try {
             $handler->handle($job);
             $job->markDone();
-            $stats['processed']++;
-        } catch (Throwable $e) {
+            ++$stats['processed'];
+        } catch (\Throwable $e) {
             $this->quarantine($job, $e);
             $job->markRetry($e->getMessage(), $this->backoff($job->getAttempts() + 1));
             if ($job->isTerminal()) {
-                $stats['failed']++;
+                ++$stats['failed'];
             } else {
-                $stats['retried']++;
+                ++$stats['retried'];
             }
         }
 
         try {
             $this->entityManager->flush();
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('Queue worker could not persist job state.', ['exception' => $e->getMessage()]);
         }
     }
@@ -101,7 +100,7 @@ final class QueueWorker
         return (new \DateTimeImmutable())->modify('+'.$seconds.' seconds');
     }
 
-    private function quarantine(AsyncJob $job, Throwable $e): void
+    private function quarantine(AsyncJob $job, \Throwable $e): void
     {
         $this->logger->error('Async job handler failed.', [
             'type' => $job->getType(),

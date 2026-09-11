@@ -12,9 +12,9 @@ use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
-use Modules\Forum\Notification\ForumNotificationType;
 use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Notification\ForumInboxItem;
+use Modules\Forum\Notification\ForumNotificationType;
 use Modules\Forum\Repository\ForumPostRepository;
 
 /**

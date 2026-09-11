@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Entity;
 
-use Modules\Forum\Repository\ForumTopicPrefixRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Modules\Forum\Repository\ForumTopicPrefixRepository;
 
 /**
  * Topic prefix badge (cp_forum_prefix): title, css_class, display_order.

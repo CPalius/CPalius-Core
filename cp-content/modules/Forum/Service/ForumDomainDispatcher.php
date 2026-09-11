@@ -6,10 +6,10 @@ namespace Modules\Forum\Service;
 
 use App\Core\Hook\HookContext;
 use App\Core\Hook\HookManager;
+use App\Entity\User;
 use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\Entity\ForumUserReputation;
-use App\Entity\User;
 use Modules\Forum\Event\ForumPostCreatedEvent;
 use Modules\Forum\Event\ForumPostDislikedEvent;
 use Modules\Forum\Event\ForumPostLikedEvent;

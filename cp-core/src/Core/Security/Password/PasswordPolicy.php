@@ -62,9 +62,9 @@ final class PasswordPolicy
 
     /**
      * @param list<string> $identity E-mail, username and display names of the account
-     *   the password belongs to, so it cannot simply repeat them.
+     *                               the password belongs to, so it cannot simply repeat them
      *
-     * @return list<string> Translated violation messages; empty means acceptable.
+     * @return list<string> translated violation messages; empty means acceptable
      */
     public function validate(string $password, array $identity = [], ?User $user = null): array
     {

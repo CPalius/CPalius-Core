@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Modules\Forum\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
-use Modules\Forum\Entity\ForumBan;
-use Modules\Forum\Entity\ForumUserRank;
 use App\Entity\User;
-use Modules\Forum\Repository\ForumBanRepository;
-use Modules\Forum\Repository\ForumUserRankRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Modules\Forum\Entity\ForumBan;
+use Modules\Forum\Entity\ForumUserRank;
+use Modules\Forum\Repository\ForumBanRepository;
+use Modules\Forum\Repository\ForumUserRankRepository;
 use Modules\Forum\Service\ForumBanService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;

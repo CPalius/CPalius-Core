@@ -158,8 +158,8 @@ final class PathPatternAdminController extends AbstractController
 
     /**
      * @return array<string, string> bundle => label, only types with a real front-facing
-     *                                show route (a pattern for a route-less bundle would
-     *                                just generate dead aliases)
+     *                               show route (a pattern for a route-less bundle would
+     *                               just generate dead aliases)
      */
     private function patternableBundles(): array
     {

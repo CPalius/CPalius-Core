@@ -138,8 +138,6 @@ final class TextFormatRegistry
     }
 
     /**
-     * @param mixed $raw
-     *
      * @return list<array{id: string, enabled: bool, weight: int, settings: array<string, mixed>}>
      */
     public function normalizeFilters(mixed $raw): array

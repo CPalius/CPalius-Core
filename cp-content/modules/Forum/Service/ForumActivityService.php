@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Modules\Forum\Service;
 
 use App\Core\Settings\SettingsRegistry;
-use Modules\Forum\Entity\ForumTopic;
 use App\Entity\User;
+use App\Repository\UserRepository;
+use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
-use App\Repository\UserRepository;
 
 /**
  * Homepage "Recent activity" board — tabbed data plus AJAX load-more.

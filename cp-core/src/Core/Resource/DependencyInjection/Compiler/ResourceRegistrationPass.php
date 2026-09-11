@@ -12,7 +12,6 @@ use App\Core\Resource\ResourceDefinition;
 use Symfony\Component\Config\Resource\DirectoryResource;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Throwable;
 
 /**
  * Populates ResourceRegistry at compile time via filesystem scan + reflection (not Doctrine metadata).
@@ -50,7 +49,7 @@ final class ResourceRegistrationPass implements CompilerPassInterface
                 foreach ($this->scanDirectory($moduleEntityDir, $moduleEntityNamespace, $container) as $resource) {
                     $collected[] = $resource;
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Module isolation: scan failure skips that module's resources only.
             }
         }
@@ -141,7 +140,7 @@ final class ResourceRegistrationPass implements CompilerPassInterface
                         'softDeletable' => $softDeletable,
                     ];
                 }
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Reflection failure on one file skips that file; scan continues.
                 continue;
             }

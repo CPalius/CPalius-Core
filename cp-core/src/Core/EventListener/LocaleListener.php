@@ -23,7 +23,7 @@ final class LocaleListener implements EventSubscriberInterface
     public const AACP_PATH_PREFIX = '/aacp';
 
     /**
-     * @deprecated Cookie-based now; read only on an already-open session for backward compatibility.
+     * @deprecated cookie-based now; read only on an already-open session for backward compatibility
      */
     public const SESSION_KEY = '_aacp_locale';
 

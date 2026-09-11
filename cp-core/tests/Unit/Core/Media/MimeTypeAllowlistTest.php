@@ -28,20 +28,20 @@ final class MimeTypeAllowlistTest extends TestCase
      */
     public static function allowedTypeProvider(): iterable
     {
-        yield 'JPEG'            => ['image/jpeg', 'jpg'];
-        yield 'JPEG (pjpeg)'    => ['image/pjpeg', 'jpg'];
-        yield 'PNG'             => ['image/png', 'png'];
-        yield 'GIF'             => ['image/gif', 'gif'];
-        yield 'WebP'            => ['image/webp', 'webp'];
-        yield 'AVIF'            => ['image/avif', 'avif'];
-        yield 'BMP'             => ['image/bmp', 'bmp'];
-        yield 'BMP (x-ms)'      => ['image/x-ms-bmp', 'bmp'];
-        yield 'TIFF'            => ['image/tiff', 'tiff'];
-        yield 'ICO'             => ['image/x-icon', 'ico'];
-        yield 'PDF'             => ['application/pdf', 'pdf'];
-        yield 'MP4'             => ['video/mp4', 'mp4'];
-        yield 'WebM'            => ['video/webm', 'webm'];
-        yield 'QuickTime'       => ['video/quicktime', 'mov'];
+        yield 'JPEG' => ['image/jpeg', 'jpg'];
+        yield 'JPEG (pjpeg)' => ['image/pjpeg', 'jpg'];
+        yield 'PNG' => ['image/png', 'png'];
+        yield 'GIF' => ['image/gif', 'gif'];
+        yield 'WebP' => ['image/webp', 'webp'];
+        yield 'AVIF' => ['image/avif', 'avif'];
+        yield 'BMP' => ['image/bmp', 'bmp'];
+        yield 'BMP (x-ms)' => ['image/x-ms-bmp', 'bmp'];
+        yield 'TIFF' => ['image/tiff', 'tiff'];
+        yield 'ICO' => ['image/x-icon', 'ico'];
+        yield 'PDF' => ['application/pdf', 'pdf'];
+        yield 'MP4' => ['video/mp4', 'mp4'];
+        yield 'WebM' => ['video/webm', 'webm'];
+        yield 'QuickTime' => ['video/quicktime', 'mov'];
     }
 
     #[DataProvider('allowedTypeProvider')]
@@ -59,29 +59,29 @@ final class MimeTypeAllowlistTest extends TestCase
     public static function rejectedTypeProvider(): iterable
     {
         // XML-based documents that can run scripts in browsers.
-        yield 'SVG (script tasiyabilir)'  => ['image/svg+xml'];
-        yield 'HTML'                      => ['text/html'];
-        yield 'XHTML'                     => ['application/xhtml+xml'];
-        yield 'XML'                       => ['text/xml'];
+        yield 'SVG (script tasiyabilir)' => ['image/svg+xml'];
+        yield 'HTML' => ['text/html'];
+        yield 'XHTML' => ['application/xhtml+xml'];
+        yield 'XML' => ['text/xml'];
 
         // Directly executable source code.
-        yield 'PHP kaynak'                => ['text/x-php'];
-        yield 'PHP (httpd)'               => ['application/x-httpd-php'];
-        yield 'Shell script'              => ['text/x-shellscript'];
-        yield 'JavaScript'                => ['application/javascript'];
+        yield 'PHP kaynak' => ['text/x-php'];
+        yield 'PHP (httpd)' => ['application/x-httpd-php'];
+        yield 'Shell script' => ['text/x-shellscript'];
+        yield 'JavaScript' => ['application/javascript'];
 
         // Containers whose contents cannot be deemed safe without scanning.
-        yield 'ZIP'                       => ['application/zip'];
-        yield 'RAR'                       => ['application/x-rar-compressed'];
-        yield 'Windows calistirilabilir'  => ['application/x-dosexec'];
+        yield 'ZIP' => ['application/zip'];
+        yield 'RAR' => ['application/x-rar-compressed'];
+        yield 'Windows calistirilabilir' => ['application/x-dosexec'];
 
         // finfo "unknown" answer — must fail-closed.
         yield 'octet-stream (bilinmeyen)' => ['application/octet-stream'];
 
         // Out-of-scope family (deliberate decision — see MimeTypeAllowlist).
-        yield 'Ses (kapsam disi)'         => ['audio/mpeg'];
+        yield 'Ses (kapsam disi)' => ['audio/mpeg'];
 
-        yield 'Bos dize'                  => [''];
+        yield 'Bos dize' => [''];
     }
 
     #[DataProvider('rejectedTypeProvider')]

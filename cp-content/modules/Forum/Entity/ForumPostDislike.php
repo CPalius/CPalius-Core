@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Modules\Forum\Entity;
 
 use App\Entity\User;
-use Modules\Forum\Repository\ForumPostDislikeRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Modules\Forum\Repository\ForumPostDislikeRepository;
 
 /**
  * Post dislike; one row per user/post (uniq_forum_post_dislike). Mutually exclusive with like.

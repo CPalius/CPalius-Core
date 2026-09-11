@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
+use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Entity\ForumPostReport;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
-use App\Entity\User;
-use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Post reports and bulk topic moderation.

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Event;
 
+use App\Entity\User;
 use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Entity\ForumTopic;
-use App\Entity\User;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /**

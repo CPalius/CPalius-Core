@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Entity;
 
-use Modules\Forum\Repository\ForumNodePermissionRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Modules\Forum\Repository\ForumNodePermissionRepository;
 
 /**
  * Node × role permission matrix row (cp_forum_node_permissions).

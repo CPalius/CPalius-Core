@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Core\Resource\Api;
 
-use App\Core\Api\Attribute\CpApi;
 use App\Core\Api\ApiKeyService;
+use App\Core\Api\Attribute\CpApi;
 use App\Core\Resource\ResourceDefinition;
 use App\Core\Resource\ResourceRegistry;
 use App\Core\Webhook\WebhookEventEmitter;
@@ -34,7 +34,7 @@ final class ResourceApiEndpoints
         private readonly EntityManagerInterface $entityManager,
         private readonly ApiKeyService $apiKeyService,
         private readonly WebhookEventEmitter $webhookEventEmitter,
-        private readonly \App\Core\Workflow\WorkflowManager $workflowManager,
+        private readonly WorkflowManager $workflowManager,
     ) {
     }
 
@@ -244,7 +244,7 @@ final class ResourceApiEndpoints
 
         try {
             $result = $this->workflowManager->apply($entity, $definition->workflow, $transitionName, $comment);
-        } catch (\App\Core\Workflow\Exception\WorkflowException $e) {
+        } catch (WorkflowException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 

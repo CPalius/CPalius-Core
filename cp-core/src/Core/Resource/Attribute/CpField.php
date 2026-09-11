@@ -13,14 +13,14 @@ namespace App\Core\Resource\Attribute;
 final class CpField
 {
     /**
-     * @param string|null $label     Translation key or literal; null = humanised property name.
-     * @param bool        $list       Show as a column in the list screen.
-     * @param bool        $form       Show as an input in the create/edit form.
-     * @param bool        $readonly   Render in the form but never bind (display only).
-     * @param bool        $sortable   Allow ordering the list by this column.
-     * @param bool        $searchable Include in the list search (string columns only).
-     * @param int         $priority   Lower = earlier (both list columns and form order).
-     * @param string|null $widget     Force a form widget: text|textarea|email|url|number|checkbox|date|datetime|choice|reference.
+     * @param string|null $label      translation key or literal; null = humanised property name
+     * @param bool        $list       show as a column in the list screen
+     * @param bool        $form       show as an input in the create/edit form
+     * @param bool        $readonly   render in the form but never bind (display only)
+     * @param bool        $sortable   allow ordering the list by this column
+     * @param bool        $searchable include in the list search (string columns only)
+     * @param int         $priority   lower = earlier (both list columns and form order)
+     * @param string|null $widget     force a form widget: text|textarea|email|url|number|checkbox|date|datetime|choice|reference
      */
     public function __construct(
         public readonly ?string $label = null,

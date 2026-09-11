@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Blog\Plugin;
 
+use App\Core\Localization\LocaleProvider;
 use App\Core\Plugin\PluginInterface;
 use App\Core\Settings\SettingsRegistry;
-use App\Core\Localization\LocaleProvider;
 use App\Repository\NodeRepository;
 use App\Repository\TagRepository;
 use Twig\Environment;

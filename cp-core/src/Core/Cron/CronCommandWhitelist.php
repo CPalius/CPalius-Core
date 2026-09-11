@@ -19,7 +19,7 @@ final class CronCommandWhitelist
     }
 
     /**
-     * @return list<string> Alphabetically sorted "cp:" command names.
+     * @return list<string> alphabetically sorted "cp:" command names
      */
     public function allowedCommandNames(): array
     {

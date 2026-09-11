@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Modules\Forum\Entity;
 
 use App\Entity\User;
-use Modules\Forum\Repository\ForumPresenceRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Modules\Forum\Repository\ForumPresenceRepository;
 
 /**
  * Who-is-online presence for forum visitors (members and guests).

@@ -102,9 +102,6 @@ final class OriginCachePolicy
         return $request->cookies->has('PHPSESSID');
     }
 
-    /**
-     * @param list<string> $excludes
-     */
     public function parseExcludes(string $raw): array
     {
         return $this->varnishPolicy->parseExcludes($raw);

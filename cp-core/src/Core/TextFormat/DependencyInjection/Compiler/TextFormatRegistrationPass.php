@@ -10,7 +10,6 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\Yaml\Yaml;
-use Throwable;
 
 /**
  * Compile-time fill of TextFormatRegistry: core text_formats.yaml, then
@@ -42,7 +41,7 @@ final class TextFormatRegistrationPass implements CompilerPassInterface
 
             try {
                 $this->registerFromFile($definition, $moduleFile, $container);
-            } catch (Throwable) {
+            } catch (\Throwable) {
                 // Module isolation: a broken text_formats.yaml drops only that module's formats.
             }
         }

@@ -8,27 +8,27 @@ use App\Core\Annotation\CpAdminMenu;
 use App\Core\Localization\LocaleProvider;
 use App\Core\Localization\TranslationGroupResolver;
 use App\Core\OriginCache\OriginCachePurger;
+use App\Core\Pagination\Paginator;
+use App\Entity\User;
+use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumPostReport;
 use Modules\Forum\Entity\ForumSection;
-use App\Entity\User;
-use App\Core\Pagination\Paginator;
 use Modules\Forum\Entity\ForumTopic;
+use Modules\Forum\ForumNodeType;
+use Modules\Forum\ForumSectionType;
 use Modules\Forum\Repository\ForumPostReportRepository;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicPrefixRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
-use App\Repository\UserRepository;
-use Doctrine\ORM\EntityManagerInterface;
-use Modules\Forum\ForumNodeType;
-use Modules\Forum\ForumSectionType;
+use Modules\Forum\Service\ForumModerationLogService;
 use Modules\Forum\Service\ForumModerationService;
 use Modules\Forum\Service\ForumPermissionService;
 use Modules\Forum\Service\ForumSectionDeletionService;
 use Modules\Forum\Service\ForumSectionHierarchyService;
 use Modules\Forum\Service\ForumStatsService;
 use Modules\Forum\Service\ForumTopicService;
-use Modules\Forum\Service\ForumModerationLogService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -549,10 +549,7 @@ final class ForumAdminController extends AbstractController
         }
 
         if ($this->sectionRepository->findOneByCodeAndLocale($code, $locale) instanceof ForumSection) {
-            throw new BadRequestHttpException($this->translator->trans('studio.forum.sections.error.code_taken', [
-                'code' => $code,
-                'locale' => $locale,
-            ]));
+            throw new BadRequestHttpException($this->translator->trans('studio.forum.sections.error.code_taken', ['code' => $code, 'locale' => $locale]));
         }
 
         if ($slug === '') {
@@ -625,10 +622,7 @@ final class ForumAdminController extends AbstractController
 
         $taken = $this->sectionRepository->findOneBySlugAndLocale($slug, $section->getLocale());
         if ($taken instanceof ForumSection && $taken->getId() !== $section->getId()) {
-            throw new BadRequestHttpException($this->translator->trans('studio.forum.sections.error.slug_taken', [
-                'slug' => $slug,
-                'locale' => $section->getLocale(),
-            ]));
+            throw new BadRequestHttpException($this->translator->trans('studio.forum.sections.error.slug_taken', ['slug' => $slug, 'locale' => $section->getLocale()]));
         }
 
         return $slug;

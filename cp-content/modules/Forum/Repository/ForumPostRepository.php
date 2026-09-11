@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Repository;
 
-use Modules\Forum\Entity\ForumPost;
-use Modules\Forum\Entity\ForumSection;
-use Modules\Forum\Entity\ForumTopic;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use Modules\Forum\Entity\ForumPost;
+use Modules\Forum\Entity\ForumSection;
+use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\ForumDiscussionState;
 
 /**

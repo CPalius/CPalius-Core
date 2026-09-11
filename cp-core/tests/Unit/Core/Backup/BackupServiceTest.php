@@ -13,7 +13,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
-use ZipArchive;
 
 #[CoversClass(BackupFilename::class)]
 #[CoversClass(BackupFileCollector::class)]
@@ -173,7 +172,7 @@ final class BackupServiceTest extends TestCase
 
     public function testFilesArchiveIncludesVendorAndPublicOmitsEnv(): void
     {
-        if (!class_exists(ZipArchive::class)) {
+        if (!class_exists(\ZipArchive::class)) {
             self::markTestSkipped('zip extension is required for the files archive test.');
         }
         if (!\extension_loaded('pdo_sqlite')) {
@@ -188,7 +187,7 @@ final class BackupServiceTest extends TestCase
         $service = new BackupService($connection, $this->projectDir);
         $archive = $service->create(BackupFilename::TYPE_FILES);
 
-        $zip = new ZipArchive();
+        $zip = new \ZipArchive();
         self::assertTrue($zip->open($service->absolutePath($archive->filename)));
         $names = [];
         for ($i = 0; $i < $zip->numFiles; ++$i) {

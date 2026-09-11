@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Core\OriginCache;
 
+use App\Core\Localization\LocaleProvider;
 use App\Core\Settings\SettingsRegistry;
 use App\Repository\PerformanceBackendStatusRepository;
-use App\Core\Localization\LocaleProvider;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;

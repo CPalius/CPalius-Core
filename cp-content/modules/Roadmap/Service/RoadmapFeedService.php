@@ -10,9 +10,9 @@ use App\Entity\User;
 use App\Repository\AssetRepository;
 use App\Repository\NodeRepository;
 use Modules\Roadmap\Contract\RoadmapForumFeedProviderInterface;
+use Modules\Roadmap\Dto\RoadmapFeedItem;
 use Modules\Roadmap\Entity\RoadmapEntry;
 use Modules\Roadmap\Repository\RoadmapEntryRepository;
-use Modules\Roadmap\Dto\RoadmapFeedItem;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
