@@ -1027,18 +1027,6 @@ parameters:
 			path: cp-core/src/Core/Localization/LocaleProvider.php
 
 		-
-			message: '#^Property App\\Core\\Logging\\Entity\\LogEntry\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
-			identifier: property.unusedType
-			count: 1
-			path: cp-core/src/Core/Logging/Entity/LogEntry.php
-
-		-
-			message: '#^Property App\\Core\\Mail\\Entity\\MailLog\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
-			identifier: property.unusedType
-			count: 1
-			path: cp-core/src/Core/Mail/Entity/MailLog.php
-
-		-
 			message: '#^Offset ''mime'' on array\{0\: int\<0, max\>, 1\: int\<0, max\>, 2\: int, 3\: string, mime\: string, channels\?\: int, bits\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 1
@@ -1139,18 +1127,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: cp-core/src/Core/Module/ModuleRegistry.php
-
-		-
-			message: '#^Property App\\Core\\Notification\\Entity\\Notification\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
-			identifier: property.unusedType
-			count: 1
-			path: cp-core/src/Core/Notification/Entity/Notification.php
-
-		-
-			message: '#^Property App\\Core\\Notification\\Entity\\NotificationDigestItem\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
-			identifier: property.unusedType
-			count: 1
-			path: cp-core/src/Core/Notification/Entity/NotificationDigestItem.php
 
 		-
 			message: '#^Method App\\Core\\Notification\\Repository\\NotificationDigestItemRepository\:\:findPendingForClosedBuckets\(\) has parameter \$closedBuckets with no value type specified in iterable type array\.$#'

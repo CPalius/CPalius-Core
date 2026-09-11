@@ -14,7 +14,7 @@ use Doctrine\ORM\EntityManagerInterface;
  * Stored in cp_settings rather than a table of its own, following the
  * convention module versions already use (module_lifecycle.*.installed_version).
  * That keeps cp:update working on an installation with no extra migration
- * applied — which matters, because the first thing cp:update does is apply
+ * applied — which matters, because the fi rst thing cp:update does is apply
  * migrations, and a ledger that needed its own table could not record the run
  * that created it.
  *

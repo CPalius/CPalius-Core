@@ -92,6 +92,31 @@ doctrine:
                 dir: '%kernel.project_dir%/cp-core/src/Core/TextFormat/Entity'
                 prefix: 'App\Core\TextFormat\Entity'
                 alias: CpTextFormat
+            # T3.1 / T3.5 slices. These three were shipped with migrations and
+            # working code but no mapping entry, so Doctrine could not find an
+            # entity manager for them at runtime: notifications failed while
+            # rendering the theme header, and /aacp/logs and the mail log were
+            # unreachable for the same reason. Nothing in the test suite touched
+            # them, and doctrine:schema:validate cannot see an entity it was
+            # never told about — cp:doctor now checks for exactly this gap.
+            CpNotification:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Notification/Entity'
+                prefix: 'App\Core\Notification\Entity'
+                alias: CpNotification
+            CpLogging:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Logging/Entity'
+                prefix: 'App\Core\Logging\Entity'
+                alias: CpLogging
+            CpMail:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Mail/Entity'
+                prefix: 'App\Core\Mail\Entity'
+                alias: CpMail
             # Module entity mappings are added by Kernel::registerActiveModuleDoctrineMappings()
             # only for healthy modules listed in active_modules.php.
         # Manifesto Law 5.1: auto-injects tenant_id on #[CpResource(multiTenant: true)] queries.

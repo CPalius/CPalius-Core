@@ -58,6 +58,39 @@ if [ -n "$emptied" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# 1b. Anything before the PHP open tag.
+#
+# A single space before "<?php" makes the file fatal ("strict_types declaration
+# must be the very first statement") while looking perfectly normal in an
+# editor. It has happened three times in this repository, each time costing a
+# confusing debugging session, and each time introduced by a tool rather than a
+# person. One byte is all it takes.
+# ---------------------------------------------------------------------------
+dirty=""
+for file in $staged; do
+    case "$file" in
+        *.php) ;;
+        *) continue ;;
+    esac
+
+    [ -f "$file" ] || continue
+
+    first=$(head -c 1 "$file" | od -An -tx1 | tr -d ' \n')
+
+    # 3c is "<". Anything else means a byte-order mark or stray whitespace.
+    if [ "$first" != "3c" ]; then
+        dirty="$dirty  $file (first byte 0x$first)\n"
+    fi
+done
+
+if [ -n "$dirty" ]; then
+    printf '\n\033[41;37m COMMIT BLOCKED \033[0m These PHP files have something before the open tag:\n\n' >&2
+    printf "$dirty" >&2
+    printf '\nPHP will refuse to parse them. Strip the leading bytes.\n\n' >&2
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
 # 2. Secrets.
 #
 # .env is gitignored, but an ignore rule only protects the paths someone
