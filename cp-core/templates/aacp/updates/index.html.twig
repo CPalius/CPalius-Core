@@ -1,0 +1,108 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.updates.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <p class="text-fs-sm !text-slate-500">{{ 'aacp.updates.intro'|trans }}</p>
+
+        {% if applied is not null %}
+            {# The result of an actual run, shown above the dry run so the most
+               recent thing that happened is the first thing read. #}
+            <twig:cp:card>
+                <h2 class="text-fs-md mb-sp-sm">{{ 'aacp.updates.applied.heading'|trans }}</h2>
+
+                {% if hasFailure %}
+                    <div class="toast toast-danger mb-sp-sm">{{ 'aacp.updates.applied.partial'|trans }}</div>
+                {% else %}
+                    <div class="toast toast-success mb-sp-sm">{{ 'aacp.updates.applied.ok'|trans }}</div>
+                {% endif %}
+
+                <twig:cp:table headers="{{ [
+                    'aacp.updates.column.step'|trans,
+                    'aacp.updates.column.status'|trans,
+                    'aacp.updates.column.detail'|trans,
+                ] }}">
+                    <twig:block name="rows">
+                        {% for result in applied %}
+                            <tr>
+                                <td class="whitespace-nowrap font-mono text-fs-xs">{{ ('aacp.updates.step.' ~ result.step)|trans }}</td>
+                                <td class="whitespace-nowrap">
+                                    <span class="badge {{ result.status == 'failed' ? 'badge-danger' : (result.status == 'applied' ? 'badge-success' : 'badge-muted') }}">
+                                        {{ ('aacp.updates.status.' ~ result.status)|trans }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {{ result.summary }}
+                                    {% if result.details is not empty %}
+                                        <ul class="mt-1 list-disc pl-4 text-fs-xs !text-slate-500">
+                                            {% for detail in result.details %}<li>{{ detail }}</li>{% endfor %}
+                                        </ul>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+            </twig:cp:card>
+        {% endif %}
+
+        <twig:cp:card>
+            <div class="mb-sp-sm flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-fs-md">{{ 'aacp.updates.pending.heading'|trans }}</h2>
+
+                {% if pending > 0 %}
+                    <span class="badge badge-warning">{{ 'aacp.updates.pending.count'|trans({ count: pending }) }}</span>
+                {% else %}
+                    <span class="badge badge-success">{{ 'aacp.updates.pending.none'|trans }}</span>
+                {% endif %}
+            </div>
+
+            <twig:cp:table headers="{{ [
+                'aacp.updates.column.step'|trans,
+                'aacp.updates.column.status'|trans,
+                'aacp.updates.column.detail'|trans,
+            ] }}">
+                <twig:block name="rows">
+                    {% for result in results %}
+                        <tr>
+                            <td class="whitespace-nowrap font-mono text-fs-xs">{{ ('aacp.updates.step.' ~ result.step)|trans }}</td>
+                            <td class="whitespace-nowrap">
+                                <span class="badge {{ result.status == 'failed' ? 'badge-danger' : (result.status == 'applied' ? 'badge-warning' : 'badge-muted') }}">
+                                    {{ result.status == 'applied'
+                                        ? 'aacp.updates.status.would_change'|trans
+                                        : ('aacp.updates.status.' ~ result.status)|trans }}
+                                </span>
+                            </td>
+                            <td>
+                                {{ result.summary }}
+                                {% if result.details is not empty %}
+                                    <ul class="mt-1 list-disc pl-4 text-fs-xs !text-slate-500">
+                                        {% for detail in result.details %}<li>{{ detail }}</li>{% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+
+            <form method="post" action="{{ path('aacp_updates_apply') }}" class="mt-sp-md flex flex-wrap items-center gap-3">
+                <input type="hidden" name="_token" value="{{ token }}">
+                <button type="submit" class="btn btn-primary"
+                        onclick="return confirm('{{ 'aacp.updates.apply.confirm'|trans|e('js') }}')">
+                    {{ 'aacp.updates.apply.button'|trans }}
+                </button>
+                <p class="text-fs-xs !text-slate-500">{{ 'aacp.updates.apply.note'|trans }}</p>
+            </form>
+        </twig:cp:card>
+
+        <twig:cp:card>
+            <h2 class="text-fs-md mb-sp-sm">{{ 'aacp.updates.cli.heading'|trans }}</h2>
+            <p class="text-fs-sm !text-slate-500 mb-sp-sm">{{ 'aacp.updates.cli.intro'|trans }}</p>
+            <pre class="rounded bg-dark-1 p-3 text-fs-xs !text-slate-300"><code>php cp-core/bin/console cp:update --dry-run
+php cp-core/bin/console cp:update
+php cp-core/bin/console cp:doctor --fail-on=high</code></pre>
+        </twig:cp:card>
+    </div>
+{% endblock %}

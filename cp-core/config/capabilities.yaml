@@ -8,6 +8,7 @@
 capabilities:
     - system.developer
     - system.module.manage
+    - system.update.manage
     - system.aacp.access
     - system.settings.manage
     - system.security.manage

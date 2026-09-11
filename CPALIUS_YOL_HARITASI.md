@@ -25,14 +25,14 @@
 ## 0. NEREDE KALDIK? (her oturum başında güncelle)
 
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
-  **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (motor + komut) bitti.
+  **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı) bitti.
   **T3.2 (multisite/org) İPTAL** (öncelik dışı).
 - **Son oturum:** 2026-09-12 — **GC3: kalite kapıları + kanıt borcu kapatıldı.**
   CI/PHPStan/cs-fixer/README/LICENSE/SECURITY.md yoktu, kuruldu; güvenlik katmanı
   ilk kez test edildi (537 test, 17 bulgu düzeltildi); `cp:doctor` ve `cp:update`
   yazıldı; entegrasyon paketinin kararsızlığı çözüldü. **Her şey git'te** (12 commit).
-- **Sıradaki iş:** AACP "Güncellemeler" ekranı (T3.6'nın kalan üçüncü maddesi) —
-  ya da T5.2b (`cp:debug:*`) / T3.4 Migrate API.
+- **Sıradaki iş:** T5.2b (`cp:debug:*`) · T3.4 Migrate API · T5.1 maker · ya da
+  birikmiş teknik borç (strict_types + stil sweep, aşağıda).
 - **Bekleyen migration:** yok. Artık `cp:doctor` bunu kendisi söylüyor.
 - **Doğrulama durumu (2026-09-12):** PHPStan level 6 temiz (baseline 374) ·
   php-cs-fixer temiz · **966 unit + 55 entegrasyon testi yeşil** ·
@@ -614,7 +614,7 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 - **Kanıt:** `logger->error()` → DB satırı → `/aacp/logs`; test/async mail → MailLog; resend kuyruğa alır.
 - **Alan notu:** AuditLog (entity-diff) ve SystemTelemetryLog (güvenlik) ayrı kaldı — tek tabloya sıkıştırılmadı.
 
-#### T3.6 — Çekirdek update runner  `[~]`  (2026-09-12 — motor + komut bitti, AACP ekranı kaldı)
+#### T3.6 — Çekirdek update runner  `[x]`  (2026-09-12 — motor + komut + AACP ekranı)
 - [x] `cp:update` — sıralı: pending migration → çekirdek update-hook → modül `upgrade()` → config import → cache rebuild (`Core/Update/UpdateRunner`)
 - [x] Update-hook registry: `UpdateHookInterface` (`#[AutoconfigureTag]`) + `UpdateHookLedger`. Değişmeyen id ile tanımlı, sürümle etiketli, **birden fazla sürüm atlansa bile yayın sırasıyla** uygulanır
 - [x] `--dry-run` (hiçbir şeye dokunmadan rapor) + `--json` (CI)
@@ -623,9 +623,10 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 - [x] Ledger `cp_settings`'te (modül sürümlerinin zaten kullandığı konvansiyon) — kendi tablosu olsaydı, o tabloyu yaratan koşumu kaydedemezdi
 - [x] `cp:doctor`'a `updates` kontrolü bağlandı: doctor geride kalmışlığı fark eder, update ileri taşır
 - [x] Testler: `UpdateRunnerTest` (6, gerçek `final` işbirlikçiler + fixture hook) — sıralama, dry-run'ın hiçbir şey değiştirmemesi, bir-kez-çalışma, atlanan sürümler arası sıra, hata izolasyonu, bozuk-ledger fail-safe'i. `UpdateStepResultTest` (4)
-- [ ] **KALAN:** AACP "Güncellemeler" ekranı — motor ve komut hazır, ekran ikisinin tüketicisi
+- [x] AACP `/aacp/updates` ekranı — **kuru çalıştırmayla açılır, eylemle değil**: dağıtımdan sonra buraya gelen operatör önce neyin beklediğini görmek ister; ziyaret edilmekle değişiklik uygulayan bir sayfa canlıda açılamaz. Uygulama CSRF'li POST (bir güncelleme link takip ederek ulaşılabilir olmamalı). `system.update.manage` capability'si
+- [x] Testler: `AacpUpdateControllerTest` (5) — **sayfayı gerçekten render ederek**: GET hiçbir satır yazmıyor (`cp_settings` sayımı sabit), sahte token reddediliyor, apply beş adımı da raporluyor, capability yetkisizi kesiyor. (Bir sayfanın login'e 302'lenmesini test etmek firewall'ı kanıtlar, ekranı değil.)
 - **Kanıt:** `cp:update --dry-run` gerçek kurulumda beş adımı da sırayla raporluyor ve hiçbir şeye dokunmuyor; `--fail-on` yok çünkü çıkış kodu zaten başarısızlığı taşıyor. İkinci koşumda tamamlanan iş atlanıyor.
-- **Alan notu:** Drupal `update.php` + `drush updb`, WordPress `wp core update-db` aynı işi görür ama ikisi de **veri düzeltmelerini** ayrı bir mekanizmaya bırakır (Drupal `hook_update_N`, WP sürüm karşılaştırmalı elle kod). CPalius'ta hook'lar tipli bir arayüz, ledger'ı var, sürüm sırası garantili ve `--dry-run` ile önce prod'da sorulabiliyor. **B → A** (A+ değil: tek-tık paket güncellemesi ve AACP ekranı yok).
+- **Alan notu:** Drupal `update.php` + `drush updb`, WordPress `wp core update-db` aynı işi görür ama ikisi de **veri düzeltmelerini** ayrı bir mekanizmaya bırakır (Drupal `hook_update_N`, WP sürüm karşılaştırmalı elle kod). CPalius'ta hook'lar tipli bir arayüz, ledger'ı var, sürüm sırası garantili, `--dry-run` ile önce prod'da sorulabiliyor ve aynı motor hem kabuktan hem AACP'den çalışıyor. **B → A** (A+ değil: modül paket deposu / tek-tık kurulum yok — bkz. skor satırı 35).
 
 ---
 

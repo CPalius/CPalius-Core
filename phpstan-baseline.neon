@@ -1573,6 +1573,30 @@ parameters:
 			path: cp-core/tests/Integration/AacpTaxonomyControllerTest.php
 
 		-
+			message: '#^Service "Symfony\\Bundle\\SecurityBundle\\Security" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 2
+			path: cp-core/tests/Integration/AacpUpdateControllerTest.php
+
+		-
+			message: '#^Service "Symfony\\Contracts\\Translation\\TranslatorInterface" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/AacpUpdateControllerTest.php
+
+		-
+			message: '#^Service "doctrine\.migrations\.dependency_factory" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/AacpUpdateControllerTest.php
+
+		-
+			message: '#^Service "security\.csrf\.token_manager" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/AacpUpdateControllerTest.php
+
+		-
 			message: '#^Service "test\.service_container" is not registered in the container\.$#'
 			identifier: symfonyContainer.serviceNotFound
 			count: 1
