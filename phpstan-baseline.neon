@@ -1771,6 +1771,48 @@ parameters:
 			path: cp-core/tests/Integration/TaxonomyTest.php
 
 		-
+			message: '#^Service "App\\Core\\Cache\\CacheRebuildManager" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/UpdateRunnerTest.php
+
+		-
+			message: '#^Service "App\\Core\\Config\\ConfigManager" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/UpdateRunnerTest.php
+
+		-
+			message: '#^Service "App\\Core\\Module\\ModuleLifecycleManager" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/UpdateRunnerTest.php
+
+		-
+			message: '#^Service "App\\Core\\Module\\ModuleRegistry" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/UpdateRunnerTest.php
+
+		-
+			message: '#^Service "App\\Core\\Update\\UpdateHookLedger" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/UpdateRunnerTest.php
+
+		-
+			message: '#^Service "App\\Repository\\SettingRepository" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/UpdateRunnerTest.php
+
+		-
+			message: '#^Service "doctrine\.migrations\.dependency_factory" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 2
+			path: cp-core/tests/Integration/UpdateRunnerTest.php
+
+		-
 			message: '#^Service "App\\Core\\Field\\FieldDefinitionRegistry" is private\.$#'
 			identifier: symfonyContainer.privateService
 			count: 1

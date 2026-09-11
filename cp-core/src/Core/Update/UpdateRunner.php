@@ -1,0 +1,355 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Core\Update;
+
+use App\Core\Cache\CacheRebuildManager;
+use App\Core\Config\ConfigManager;
+use App\Core\Module\ModuleLifecycleManager;
+use App\Core\Module\ModuleManifest;
+use App\Core\Module\ModuleRegistry;
+use Doctrine\Migrations\DependencyFactory;
+use Doctrine\Migrations\MigratorConfiguration;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
+
+/**
+ * Brings an installation up to date after the code changed.
+ *
+ * The gap this closes: pulling a new version updates files and nothing else.
+ * Migrations sit unapplied, a module whose manifest version advanced never gets
+ * its upgrade() called — that only happens on re-activation, so an operator had
+ * to toggle every module by hand and had no way to know which ones needed it —
+ * and exported configuration stays on disk.
+ *
+ * ORDER IS THE WHOLE POINT
+ *   1. migrations      — schema first; everything after may depend on a column
+ *   2. update hooks    — data fixes the schema change implies
+ *   3. module upgrades — each module's own upgrade(), now that core is current
+ *   4. config import   — declarative state, after the code that understands it
+ *   5. cache rebuild   — last, so nothing is serving stale metadata
+ *
+ * RESUMABILITY
+ * Every stage records its own progress (the migration table, the hook ledger,
+ * the module version setting), so a run interrupted half way can simply be run
+ * again: completed work is skipped rather than repeated. That is why the runner
+ * collects failures and keeps going where it safely can, instead of aborting
+ * the process and leaving the installation in a state nobody has a name for.
+ * The one exception is migrations — a failure there stops everything, because
+ * every later stage assumes the schema it produced.
+ */
+final class UpdateRunner
+{
+    public const STEP_MIGRATIONS = 'migrations';
+    public const STEP_HOOKS = 'update-hooks';
+    public const STEP_MODULES = 'modules';
+    public const STEP_CONFIG = 'config';
+    public const STEP_CACHE = 'cache';
+
+    /**
+     * @param iterable<UpdateHookInterface> $hooks
+     */
+    public function __construct(
+        #[Autowire(service: 'doctrine.migrations.dependency_factory')]
+        private readonly DependencyFactory $migrations,
+        #[TaggedIterator('cpalius.update.hook')]
+        private readonly iterable $hooks,
+        private readonly UpdateHookLedger $ledger,
+        private readonly ModuleRegistry $modules,
+        private readonly ModuleLifecycleManager $lifecycle,
+        private readonly ConfigManager $config,
+        private readonly CacheRebuildManager $cache,
+        // Same binding ModuleRegistry uses; the registry reports modules but
+        // does not hand back their manifests, and onActivated() needs one.
+        #[Autowire('%kernel.project_dir%/cp-content/modules')]
+        private readonly string $modulesDir,
+        private readonly ?LoggerInterface $logger = null,
+    ) {
+    }
+
+    /**
+     * @return list<UpdateStepResult>
+     */
+    public function run(bool $dryRun = false): array
+    {
+        $results = [];
+
+        $migrations = $this->runMigrations($dryRun);
+        $results[] = $migrations;
+
+        // Schema failure is the one stop condition: a hook or a module upgrade
+        // written against the new columns would fail in a far more confusing way.
+        if ($migrations->isFailure()) {
+            return $results;
+        }
+
+        $results[] = $this->runHooks($dryRun);
+        $results[] = $this->runModuleUpgrades($dryRun);
+        $results[] = $this->importConfig($dryRun);
+        $results[] = $this->rebuildCache($dryRun);
+
+        return $results;
+    }
+
+    /**
+     * Hooks that have not run yet, in release order.
+     *
+     * @return list<UpdateHookInterface>
+     */
+    public function pendingHooks(): array
+    {
+        $pending = [];
+
+        foreach ($this->hooks as $hook) {
+            try {
+                if (!$this->ledger->hasRun($hook->id())) {
+                    $pending[] = $hook;
+                }
+            } catch (\Throwable $e) {
+                $this->logger?->error('Update hook could not be inspected.', ['hook' => $hook::class, 'exception' => $e]);
+            }
+        }
+
+        // Release order first, then id, so a run that spans several skipped
+        // versions still applies them in the sequence they were written.
+        usort(
+            $pending,
+            static fn (UpdateHookInterface $a, UpdateHookInterface $b): int => version_compare($a->version(), $b->version())
+                ?: strcmp($a->id(), $b->id()),
+        );
+
+        return $pending;
+    }
+
+    private function runMigrations(bool $dryRun): UpdateStepResult
+    {
+        try {
+            $planner = $this->migrations->getMigrationPlanCalculator();
+            $executed = $this->migrations->getMetadataStorage()->getExecutedMigrations();
+            $available = $this->migrations->getMigrationRepository()->getMigrations();
+
+            $pending = [];
+            foreach ($available->getItems() as $migration) {
+                if (!$executed->hasMigration($migration->getVersion())) {
+                    $pending[] = $migration->getVersion();
+                }
+            }
+
+            if ($pending === []) {
+                return UpdateStepResult::skipped(self::STEP_MIGRATIONS, 'Schema is up to date.');
+            }
+
+            $labels = array_map(static fn (object $v): string => self::shortVersion((string) $v), $pending);
+
+            if ($dryRun) {
+                return UpdateStepResult::applied(
+                    self::STEP_MIGRATIONS,
+                    sprintf('%d migration(s) would be applied.', \count($pending)),
+                    $labels,
+                );
+            }
+
+            $plan = $planner->getPlanUntilVersion(end($pending));
+            $configuration = (new MigratorConfiguration())->setAllOrNothing(false);
+
+            $this->migrations->getMigrator()->migrate($plan, $configuration);
+
+            return UpdateStepResult::applied(
+                self::STEP_MIGRATIONS,
+                sprintf('%d migration(s) applied.', \count($pending)),
+                $labels,
+            );
+        } catch (\Throwable $e) {
+            $this->logger?->error('cp:update could not apply migrations.', ['exception' => $e]);
+
+            return UpdateStepResult::failed(self::STEP_MIGRATIONS, $e->getMessage());
+        }
+    }
+
+    private function runHooks(bool $dryRun): UpdateStepResult
+    {
+        $pending = $this->pendingHooks();
+
+        if ($pending === []) {
+            return UpdateStepResult::skipped(self::STEP_HOOKS, 'No update hooks are pending.');
+        }
+
+        if ($dryRun) {
+            return UpdateStepResult::applied(
+                self::STEP_HOOKS,
+                sprintf('%d hook(s) would run.', \count($pending)),
+                array_map(
+                    static fn (UpdateHookInterface $h): string => sprintf('%s (%s) — %s', $h->id(), $h->version(), $h->description()),
+                    $pending,
+                ),
+            );
+        }
+
+        $details = [];
+        $failures = [];
+
+        foreach ($pending as $hook) {
+            try {
+                $report = $hook->run();
+
+                // The ledger is written only after the hook returns, so an
+                // interrupted hook runs again rather than being recorded as done.
+                $this->ledger->markRun($hook->id());
+
+                $details[] = sprintf('%s — %s', $hook->id(), $report ?? 'nothing to do');
+            } catch (\Throwable $e) {
+                $this->logger?->error('Update hook failed.', ['hook' => $hook->id(), 'exception' => $e]);
+                $failures[] = sprintf('%s — %s', $hook->id(), $e->getMessage());
+            }
+        }
+
+        if ($failures !== []) {
+            return UpdateStepResult::failed(
+                self::STEP_HOOKS,
+                sprintf('%d hook(s) failed, %d succeeded.', \count($failures), \count($details)),
+                [...$failures, ...$details],
+            );
+        }
+
+        return UpdateStepResult::applied(self::STEP_HOOKS, sprintf('%d hook(s) ran.', \count($details)), $details);
+    }
+
+    private function runModuleUpgrades(bool $dryRun): UpdateStepResult
+    {
+        $details = [];
+        $failures = [];
+
+        foreach ($this->modules->discoverAllModules() as $module) {
+            // Only active modules: an inactive one gets its install()/upgrade()
+            // when it is switched on, and a quarantined one must not be touched
+            // at all.
+            if ($module['status'] !== 'active') {
+                continue;
+            }
+
+            $dirName = $module['dirName'];
+            $installed = $this->lifecycle->installedVersion($dirName);
+            $target = $module['version'];
+
+            // Never installed, or already current. The first case belongs to
+            // activation, the second needs nothing.
+            if ($installed === null || $target === '' || $target === 'unknown' || version_compare($installed, $target, '>=')) {
+                continue;
+            }
+
+            $label = sprintf('%s %s → %s', $module['name'], $installed, $target);
+
+            if ($dryRun) {
+                $details[] = $label;
+
+                continue;
+            }
+
+            $manifest = ModuleManifest::fromDirectory($this->modulesDir.'/'.$dirName);
+
+            if (!$manifest instanceof ModuleManifest) {
+                $failures[] = sprintf('%s — module.json could not be read', $label);
+
+                continue;
+            }
+
+            $outcome = $this->lifecycle->onActivated($manifest);
+
+            if (($outcome['message'] ?? null) !== null) {
+                $failures[] = sprintf('%s — %s', $label, (string) $outcome['message']);
+
+                continue;
+            }
+
+            $details[] = $label;
+        }
+
+        if ($failures !== []) {
+            return UpdateStepResult::failed(
+                self::STEP_MODULES,
+                sprintf('%d module upgrade(s) failed.', \count($failures)),
+                [...$failures, ...$details],
+            );
+        }
+
+        if ($details === []) {
+            return UpdateStepResult::skipped(self::STEP_MODULES, 'Every active module is at its manifest version.');
+        }
+
+        return UpdateStepResult::applied(
+            self::STEP_MODULES,
+            sprintf('%d module(s) %s.', \count($details), $dryRun ? 'would be upgraded' : 'upgraded'),
+            $details,
+        );
+    }
+
+    private function importConfig(bool $dryRun): UpdateStepResult
+    {
+        try {
+            if ($dryRun) {
+                $status = $this->config->status();
+                $changed = array_values(array_filter(
+                    array_keys($status),
+                    static fn (string $name): bool => ($status[$name]['changes'] ?? []) !== [],
+                ));
+
+                return $changed === []
+                    ? UpdateStepResult::skipped(self::STEP_CONFIG, 'Configuration matches the database.')
+                    : UpdateStepResult::applied(self::STEP_CONFIG, sprintf('%d document(s) would be imported.', \count($changed)), $changed);
+            }
+
+            $applied = $this->config->import();
+
+            if ($applied === []) {
+                return UpdateStepResult::skipped(self::STEP_CONFIG, 'Configuration matches the database.');
+            }
+
+            // import() answers document name => list of changes applied; the
+            // report wants one readable line per document.
+            $details = [];
+            foreach ($applied as $document => $changes) {
+                $details[] = $changes !== []
+                    ? sprintf('%s — %s', $document, implode(', ', array_map('strval', $changes)))
+                    : (string) $document;
+            }
+
+            return UpdateStepResult::applied(
+                self::STEP_CONFIG,
+                sprintf('%d document(s) imported.', \count($applied)),
+                $details,
+            );
+        } catch (\Throwable $e) {
+            $this->logger?->error('cp:update could not import configuration.', ['exception' => $e]);
+
+            return UpdateStepResult::failed(self::STEP_CONFIG, $e->getMessage());
+        }
+    }
+
+    private function rebuildCache(bool $dryRun): UpdateStepResult
+    {
+        if ($dryRun) {
+            return UpdateStepResult::applied(self::STEP_CACHE, 'The cache would be cleared.');
+        }
+
+        try {
+            $this->cache->clearSymfonyCache();
+
+            return UpdateStepResult::applied(self::STEP_CACHE, 'Cache cleared.');
+        } catch (\Throwable $e) {
+            $this->logger?->error('cp:update could not clear the cache.', ['exception' => $e]);
+
+            // Reported, not fatal: a stale cache is a nuisance an operator can
+            // clear by hand, and the schema and data work already succeeded.
+            return UpdateStepResult::failed(self::STEP_CACHE, $e->getMessage());
+        }
+    }
+
+    private static function shortVersion(string $version): string
+    {
+        $position = strrpos($version, '\\');
+
+        return $position === false ? $version : substr($version, $position + 1);
+    }
+}
