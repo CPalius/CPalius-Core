@@ -58,7 +58,7 @@ final class WordpressCommentMigration implements ConfigurableMigrationInterface
     public function options(): array
     {
         return [
-            MigrationOption::required('file', 'Path to the WordPress WXR export file'),
+            MigrationOption::file('file', 'Path to the WordPress WXR export file'),
             MigrationOption::optional('postType', 'WordPress post type whose comments to read', 'post'),
         ];
     }

@@ -27,6 +27,10 @@
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
   **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı), **GC3** bitti.
   **T3.2 (multisite/org) İPTAL** (öncelik dışı).
+- **Son oturum (6):** 2026-09-12 — **Dosya yükleme.** Export artık panelden yükleniyor;
+  `.zip` açılıyor (WordPress uploads klasörü böyle geliyor). Seçenekler türlü hâle geldi
+  (dosya/klasör/parola). Zip-slip, zip-bomb, geçersiz XML ve yol kaçışı testli olarak
+  reddediliyor. Ayrıntı §4 (26).
 - **Son oturum (5):** 2026-09-12 — **T3.4 Faz C: Studio içe aktarma ekranı** (`/admin/import`).
   Modül artık panelden kullanılabiliyor: kaynak listesi, seçenek formu, kuru çalıştırma
   raporu, ayrı "gerçekten aktar". CSV de kayıtlı bir migration oldu. Ayrıntı §4 (25).
@@ -780,6 +784,44 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 ## 4. İLERLEME GÜNLÜĞÜ
 
 > En yeni en üstte. Her oturum sonunda: değişen dosyalar, doğrulama, kalan risk.
+
+### 2026-09-12 (26) — Dosya yükleme: export'u panelden yükle, oradan aktar
+
+**Neden:** Ekran vardı ama dosyanın sunucuda olmasını şart koşuyordu — yani panelden
+kullanılabilir değildi. Ayrıca WordPress medyası bir *klasör* istiyor, kimse klasör yükleyemez.
+
+**Ne yapıldı:** `ImportFileStore` — yüklenen export'ları saklar, `.zip` olanları açar.
+Seçenek alanları artık **türlü** (`MigrationOption::file()/directory()/secret()`), böylece
+ekran dosya için dosya seçici, klasör için açılmış arşiv seçici, parola için değerini geri
+basmayan bir alan gösteriyor. Tür adla değil **beyanla** eşleşiyor: seçeneği farklı adlandıran
+bir modül de doğru seçiciyi alıyor.
+
+**Güvenlik kararları (hepsi testli):**
+- **Nerede duruyor:** `cp-core/var/imports/<ortam>/` — public web kökünün dışında. Bir export
+  eski sitenin bütün adreslerini, özel içeriğini ve çoğu zaman parola hash'lerini taşır; medya
+  deposu tasarım gereği web'den servis edildiği için oraya koymak kullanıcı tablosunu
+  yayımlamak olurdu.
+- **Dosya adı saldırgan girdisidir** — `../` oradan gelir. Disk yolu rastgele baytlardan
+  kuruluyor; operatörün adı yalnızca gösterilecek etiket olarak saklanıyor.
+- **Zip slip:** `../` içeren ya da mutlak yol taşıyan arşiv girdisi reddediliyor; üstelik her
+  dosya yazıldıktan *sonra* gerçekten kökün içinde kaldığı `realpath` ile ayrıca doğrulanıyor.
+- **Zip bomb:** girdi sayısı ve açılmış toplam boyut **tek bayt yazılmadan önce** denetleniyor.
+- Geçersiz XML **yükleme anında** reddediliyor — üç ekran sonra, operatör onu seçip koşuyu
+  başlattıktan sonra değil.
+- Başarısız yükleme hiçbir kalıntı bırakmıyor: yarım bir dosya listede seçilebilir görünür,
+  sonra kullanıldığında patlardı.
+- **Silme düğmesi** var: aktarım bitince o dosyayı tutmak kolaylık değil, yükümlülük.
+- Depo **ortama göre ayrı**: test koşumu geliştiricinin dev'de yüklediklerini silmiyor
+  (çoğu zaman birinin tek kopyası olur).
+
+**Referans araçlardan öğrenilen (kod değil, mimari):** MyBB merge sisteminin 16 forum
+yazılımını tek desenle çözdüğü yapı bizimkiyle **birebir örtüşüyor** — `converter` = kaynak
+sistem, `module` = migration, `dependencies` = `dependsOn()`, `convert_data()` = `transform()`.
+Bizde fazladan olan map tablosu (onlar hedef satıra `import_uid` yazıyor). Eksik olan iki
+parça belirlendi: **sayfalı DB okuma** ve **BBCode dönüşümü** — Faz B3'ün işi.
+
+**Doğrulama:** PHPStan L6 temiz · php-cs-fixer temiz · **1011 unit + 87 entegrasyon + 90 modül
+testi yeşil** · yüklenen kopyadan gerçek import çalışıyor (testle kanıtlı).
 
 ### 2026-09-12 (25) — T3.4 Faz C: Studio'daki içe aktarma ekranı
 

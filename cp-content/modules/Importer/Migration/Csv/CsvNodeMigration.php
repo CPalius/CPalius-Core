@@ -63,7 +63,7 @@ final class CsvNodeMigration implements ConfigurableMigrationInterface
     public function options(): array
     {
         return [
-            MigrationOption::required('file', 'Path to the CSV file'),
+            MigrationOption::file('file', 'Path to the CSV file'),
             MigrationOption::optional('idColumn', 'Column holding a stable key for each row', 'id'),
             MigrationOption::optional('type', 'CPalius node type to create', 'post'),
             MigrationOption::optional('locale', 'Locale the imported content belongs to', 'en'),

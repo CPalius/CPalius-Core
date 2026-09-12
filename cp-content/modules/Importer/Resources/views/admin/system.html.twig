@@ -1,5 +1,9 @@
 {% extends 'admin/layout.html.twig' %}
 
+{% block javascripts %}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'importer-admin']) }}
+{% endblock %}
+
 {% block header %}{{ 'importer.system.header'|trans({'system': system.label}) }}{% endblock %}
 
 {% block header_actions %}
@@ -15,22 +19,86 @@
 
     <div class="grid gap-sp-sm lg:grid-cols-[minmax(0,1fr)_320px]">
         <div class="space-y-sp-sm">
+            <twig:studio:card title="{{ 'importer.upload.title'|trans }}" padded="{{ true }}">
+                <p class="text-fs-sm text-neutral-600">{{ 'importer.upload.help'|trans }}</p>
+
+                <form method="post"
+                      action="{{ path('admin_import_upload', {system: system.id}) }}"
+                      enctype="multipart/form-data"
+                      class="mt-sp-xs flex flex-wrap items-center gap-2">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <input type="file" name="export" required
+                           accept=".xml,.csv,.zip,.json,.txt"
+                           class="input max-w-md flex-1">
+                    <button type="submit" class="btn btn-sm btn-neutral">{{ 'importer.upload.submit'|trans }}</button>
+                </form>
+
+                <p class="mt-2 text-fs-xs text-neutral-500">{{ 'importer.upload.privacy'|trans }}</p>
+
+                {% if uploads is not empty %}
+                    <ul class="mt-sp-sm divide-y divide-neutral-200 border-t border-neutral-200">
+                        {% for upload in uploads %}
+                            <li class="flex flex-wrap items-center justify-between gap-2 py-2">
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate text-fs-sm text-neutral-800">{{ upload.originalName }}</span>
+                                    <span class="block text-fs-xs text-neutral-500">
+                                        {{ upload.isDirectory ? 'importer.upload.kind_directory'|trans : 'importer.upload.kind_file'|trans }}
+                                        · {{ (upload.size / 1024)|round }} KB
+                                        · {{ upload.uploadedAt|date('Y-m-d H:i') }}
+                                    </span>
+                                </span>
+                                <form method="post"
+                                      action="{{ path('admin_import_upload_delete', {system: system.id, id: upload.id}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                    <button type="submit" class="btn btn-sm btn-neutral">{{ 'importer.upload.delete'|trans }}</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </twig:studio:card>
+
             <twig:studio:card title="{{ 'importer.system.settings'|trans }}" padded="{{ true }}">
                 <form method="post" action="{{ path('admin_import_run', {system: system.id}) }}" class="space-y-sp-sm">
                     <input type="hidden" name="_token" value="{{ csrf_token }}">
 
                     {% for option in options %}
+                        {% set current = values[option.name]|default(option.default ?? '') %}
+                        {# Uploads that can satisfy this field: a file option
+                           offers files, a directory option offers unpacked
+                           archives. Matching on the declared kind rather than
+                           on the option's name means a module that names one
+                           differently still gets the right picker. #}
+                        {% set choices = option.kind == 'directory'
+                            ? uploads|filter(u => u.isDirectory)
+                            : (option.kind == 'file' ? uploads|filter(u => not u.isDirectory) : []) %}
+
                         <div>
                             <label for="opt-{{ option.name }}" class="block text-fs-sm font-medium text-neutral-800">
                                 {{ option.name }}
                                 {% if option.required %}<span class="text-danger-600">*</span>{% endif %}
                             </label>
-                            <input type="text"
+
+                            {% if choices is not empty %}
+                                <select data-import-picker="opt-{{ option.name }}" class="input mt-1 w-full">
+                                    <option value="">{{ 'importer.upload.pick'|trans }}</option>
+                                    {% for upload in choices %}
+                                        <option value="{{ upload.path }}" {{ current == upload.path ? 'selected' : '' }}>
+                                            {{ upload.originalName }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
+
+                            <input type="{{ option.isSecret ? 'password' : 'text' }}"
                                    id="opt-{{ option.name }}"
                                    name="options[{{ option.name }}]"
-                                   value="{{ values[option.name]|default(option.default ?? '') }}"
+                                   {# A secret is never rendered back into the page; it is
+                                      retyped rather than shown in a screenshot. #}
+                                   value="{{ option.isSecret ? '' : current }}"
                                    {% if option.required %}required{% endif %}
                                    placeholder="{{ option.default ?? '' }}"
+                                   autocomplete="off"
                                    class="input mt-1 w-full">
                             <p class="mt-1 text-fs-xs text-neutral-500">{{ option.description }}</p>
                         </div>

@@ -9,7 +9,9 @@ use App\Entity\User;
 use App\Tests\Support\IntegrationTestCase;
 use Modules\Importer\Controller\Admin\ImportController;
 use Modules\Importer\SourceSystemCatalog;
+use Modules\Importer\Storage\ImportFileStore;
 use PHPUnit\Framework\Attributes\CoversClass;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -32,6 +34,53 @@ final class ImportScreenTest extends IntegrationTestCase
     private const UPLOADS = __DIR__.'/../Fixtures/uploads';
 
     private ?ImportController $controller = null;
+
+    /** @var list<string> */
+    private array $scratch = [];
+
+    protected function setUp(): void
+    {
+        // Each test starts with an empty upload area: one test's upload showing
+        // up in another's listing would make both of them lie.
+        $this->clearUploads();
+
+        parent::setUp();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->clearUploads();
+
+        foreach ($this->scratch as $path) {
+            if (is_file($path)) {
+                @unlink($path);
+            }
+        }
+
+        $this->scratch = [];
+        $this->controller = null;
+
+        parent::tearDown();
+    }
+
+    private function clearUploads(): void
+    {
+        $dir = $this->storeDirectory();
+
+        if (!is_dir($dir)) {
+            return;
+        }
+
+        $items = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST,
+        );
+
+        foreach ($items as $item) {
+            \assert($item instanceof \SplFileInfo);
+            $item->isDir() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
+        }
+    }
 
     /**
      * Memoised for the length of one test: authenticateAs() persists a user,
@@ -81,6 +130,39 @@ final class ImportScreenTest extends IntegrationTestCase
             'mode' => $mode,
             'limit' => (string) $limit,
             'options' => $options,
+        ]);
+        $request->setMethod('POST');
+
+        return $request;
+    }
+
+    private function store(): ImportFileStore
+    {
+        $this->container();
+
+        return new ImportFileStore($this->storeDirectory());
+    }
+
+    private function storeDirectory(): string
+    {
+        // Tests/Integration -> Tests -> Importer -> modules -> cp-content -> root.
+        // Matches the service definition, which splits by environment so a
+        // test run never touches what a developer uploaded in dev.
+        return \dirname(__DIR__, 5).'/cp-core/var/imports/test';
+    }
+
+    /**
+     * A POST carrying a file, in UploadedFile's test mode — the supported way
+     * to drive an upload without a web server in front of it.
+     */
+    private function uploadRequest(string $name, string $contents): Request
+    {
+        $path = sys_get_temp_dir().'/cpalius-screen-up-'.bin2hex(random_bytes(6));
+        file_put_contents($path, $contents);
+        $this->scratch[] = $path;
+
+        $request = new Request([], ['_token' => $this->token()], [], [], [
+            'export' => new UploadedFile($path, $name, null, null, true),
         ]);
         $request->setMethod('POST');
 
@@ -206,6 +288,65 @@ final class ImportScreenTest extends IntegrationTestCase
         $this->em()->clear();
         // One post per step, not the whole export.
         self::assertSame(1, $this->rowsOf(Node::class));
+    }
+
+    public function testAnUploadedExportAppearsOnThePageAndCanBeSelected(): void
+    {
+        $controller = $this->boot();
+
+        $response = $controller->upload($this->uploadRequest('export.xml', (string) file_get_contents(self::FIXTURE)), 'wordpress');
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $html = (string) $controller->system('wordpress')->getContent();
+        self::assertStringContainsString('export.xml', $html, 'the upload is listed');
+        // And offered in the picker for the option that wants a file.
+        self::assertStringContainsString('data-import-picker="opt-file"', $html);
+    }
+
+    /**
+     * The uploaded export is what actually gets imported — the picker is not
+     * decoration, the stored path is a real, usable source.
+     */
+    public function testAnImportCanRunFromTheUploadedCopy(): void
+    {
+        $controller = $this->boot();
+        $controller->upload($this->uploadRequest('export.xml', (string) file_get_contents(self::FIXTURE)), 'wordpress');
+
+        $stored = $this->store()->all();
+        self::assertCount(1, $stored);
+
+        $controller->run($this->post('apply', [
+            'file' => $stored[0]->path,
+            'uploads' => self::UPLOADS,
+            'locale' => 'tr',
+        ]), 'wordpress');
+
+        $this->em()->clear();
+        self::assertSame(2, $this->rowsOf(Node::class));
+    }
+
+    public function testUploadingSomethingThatIsNotAnExportStoresNothing(): void
+    {
+        $controller = $this->boot();
+
+        $controller->upload($this->uploadRequest('shell.php', '<?php echo 1;'), 'wordpress');
+
+        self::assertSame([], $this->store()->all(), 'a .php upload must not be kept');
+    }
+
+    public function testAnUploadCanBeDeletedBecauseItHoldsPersonalData(): void
+    {
+        $controller = $this->boot();
+        $controller->upload($this->uploadRequest('export.xml', (string) file_get_contents(self::FIXTURE)), 'wordpress');
+
+        $stored = $this->store()->all();
+        self::assertCount(1, $stored);
+
+        $controller->deleteUpload($this->post('dry', []), 'wordpress', $stored[0]->id);
+
+        self::assertSame([], $this->store()->all());
+        self::assertFileDoesNotExist($stored[0]->path);
     }
 
     /**

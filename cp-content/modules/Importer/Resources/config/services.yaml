@@ -16,6 +16,16 @@ services:
     # The catalogue the import screen renders from.
     Modules\Importer\SourceSystemCatalog: ~
 
+    # Uploaded exports live under var/, which no web server maps. They hold the
+    # old site's addresses, private posts and often password hashes, so putting
+    # them anywhere servable would publish somebody's user table.
+    #
+    # Split by environment so a test run cannot delete the exports a developer
+    # uploaded while working — they are somebody's only copy often enough.
+    Modules\Importer\Storage\ImportFileStore:
+        arguments:
+            $directory: '%kernel.project_dir%/cp-core/var/imports/%kernel.environment%'
+
     # Source/ classes are constructed by the migrations rather than injected —
     # a WXR reader needs a file path nobody knows at container-build time — so
     # they are deliberately NOT registered as services.

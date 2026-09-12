@@ -64,8 +64,8 @@ final class WordpressAttachmentMigration implements ConfigurableMigrationInterfa
     public function options(): array
     {
         return [
-            MigrationOption::required('file', 'Path to the WordPress WXR export file'),
-            MigrationOption::required('uploads', 'Path to your copy of the old site\'s wp-content/uploads directory'),
+            MigrationOption::file('file', 'Path to the WordPress WXR export file'),
+            MigrationOption::directory('uploads', 'The old site\'s wp-content/uploads folder — upload it as a .zip, or point at a path on the server'),
         ];
     }
 

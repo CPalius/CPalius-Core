@@ -11,7 +11,9 @@ use App\Core\Migrate\MigrationOption;
 use App\Core\Migrate\MigrationRunner;
 use Modules\Importer\SourceSystem;
 use Modules\Importer\SourceSystemCatalog;
+use Modules\Importer\Storage\ImportFileStore;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -19,6 +21,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * The import screen.
@@ -54,7 +57,50 @@ final class ImportController extends AbstractController
         private readonly SourceSystemCatalog $catalog,
         private readonly MigrationRunner $runner,
         private readonly CsrfTokenManagerInterface $csrfTokenManager,
+        private readonly ImportFileStore $files,
+        private readonly TranslatorInterface $translator,
     ) {
+    }
+
+    #[Route('/{system}/upload', name: 'upload', methods: ['POST'], requirements: ['system' => '[a-z0-9_]+'])]
+    public function upload(Request $request, string $system): Response
+    {
+        $source = $this->requireSystem($system);
+        $this->assertCsrf($request);
+
+        $file = $request->files->get('export');
+
+        if (!$file instanceof UploadedFile) {
+            $this->addFlash('error', $this->translator->trans('importer.upload.none'));
+
+            return $this->redirectToRoute('admin_import_system', ['system' => $source->id]);
+        }
+
+        try {
+            $stored = $this->files->store($file);
+            $this->addFlash('success', $this->translator->trans($stored->isDirectory() ? 'importer.upload.unpacked' : 'importer.upload.stored', ['name' => $stored->originalName]));
+        } catch (\Throwable $e) {
+            // Wrong type, too large, a zip that climbs out of itself: all
+            // things the operator can fix, so they are told rather than logged.
+            $this->addFlash('error', $e->getMessage());
+        }
+
+        return $this->redirectToRoute('admin_import_system', ['system' => $source->id]);
+    }
+
+    #[Route('/{system}/upload/{id}/delete', name: 'upload_delete', methods: ['POST'], requirements: ['system' => '[a-z0-9_]+', 'id' => '[0-9a-f]{32}'])]
+    public function deleteUpload(Request $request, string $system, string $id): Response
+    {
+        $source = $this->requireSystem($system);
+        $this->assertCsrf($request);
+
+        // Deleting is offered because an export is the most sensitive file the
+        // installation will hold; keeping it after the import is finished is a
+        // liability, not a convenience.
+        $this->files->delete($id);
+        $this->addFlash('success', $this->translator->trans('importer.upload.deleted'));
+
+        return $this->redirectToRoute('admin_import_system', ['system' => $source->id]);
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -91,6 +137,7 @@ final class ImportController extends AbstractController
             'applied' => false,
             'defaultLimit' => self::DEFAULT_LIMIT,
             'limit' => self::DEFAULT_LIMIT,
+            'uploads' => $this->files->all(),
             'csrf_token' => $this->csrfTokenManager->getToken(self::CSRF_TOKEN_ID)->getValue(),
         ]);
     }
@@ -136,6 +183,7 @@ final class ImportController extends AbstractController
             'defaultLimit' => self::DEFAULT_LIMIT,
             'limit' => $limit,
             'command' => $this->commandLine($source, $values),
+            'uploads' => $this->files->all(),
             'csrf_token' => $this->csrfTokenManager->getToken(self::CSRF_TOKEN_ID)->getValue(),
         ]);
     }

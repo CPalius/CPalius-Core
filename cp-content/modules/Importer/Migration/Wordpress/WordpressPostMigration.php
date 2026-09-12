@@ -75,7 +75,7 @@ final class WordpressPostMigration implements ConfigurableMigrationInterface
     public function options(): array
     {
         return [
-            MigrationOption::required('file', 'Path to the WordPress WXR export file'),
+            MigrationOption::file('file', 'Path to the WordPress WXR export file'),
             MigrationOption::optional('locale', 'Locale the imported content belongs to', 'en'),
             MigrationOption::optional('type', 'CPalius node type to create', 'post'),
             MigrationOption::optional('postType', 'WordPress post type to read (post, page, ...)', 'post'),

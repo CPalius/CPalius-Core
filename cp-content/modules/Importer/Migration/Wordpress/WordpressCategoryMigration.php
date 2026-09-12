@@ -56,7 +56,7 @@ final class WordpressCategoryMigration implements ConfigurableMigrationInterface
     public function options(): array
     {
         return [
-            MigrationOption::required('file', 'Path to the WordPress WXR export file'),
+            MigrationOption::file('file', 'Path to the WordPress WXR export file'),
             MigrationOption::optional('locale', 'Locale the imported terms belong to', 'en'),
         ];
     }
