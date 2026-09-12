@@ -117,6 +117,12 @@ doctrine:
                 dir: '%kernel.project_dir%/cp-core/src/Core/Mail/Entity'
                 prefix: 'App\Core\Mail\Entity'
                 alias: CpMail
+            CpMigrate:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Migrate/Entity'
+                prefix: 'App\Core\Migrate\Entity'
+                alias: CpMigrate
             # Module entity mappings are added by Kernel::registerActiveModuleDoctrineMappings()
             # only for healthy modules listed in active_modules.php.
         # Manifesto Law 5.1: auto-injects tenant_id on #[CpResource(multiTenant: true)] queries.

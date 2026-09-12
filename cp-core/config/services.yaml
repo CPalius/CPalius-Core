@@ -96,6 +96,12 @@ services:
     App\Core\Logging\Monolog\DoctrineLogHandler:
         public: true
 
+    # Two classes implement MigrationMapInterface. ArrayMigrationMap is a real
+    # implementation (the runner layers one over the persistent map to dry-run
+    # without writing), so autowiring has a genuine choice to make and has to be
+    # told which one is "the map".
+    App\Core\Migrate\Map\MigrationMapInterface: '@App\Core\Migrate\Map\DoctrineMigrationMap'
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
     App\Core\Module\ModuleRegistry:

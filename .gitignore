@@ -90,6 +90,14 @@ Thumbs.db
 # Local holding area for files removed from the tree (never deploy)
 /_archive/
 
+# Third-party importers kept locally as FORMAT REFERENCE only (WordPress
+# Importer is GPLv2+, the MyBB Merge System and the XenForo importer are under
+# their own licences). CPalius is proprietary, so none of that code may be
+# copied in; the Importer module reads these to learn file formats and table
+# layouts — which are facts, not expression — and is written from scratch.
+# Committing them would put foreign-licensed code inside this repository.
+/İmporter-araclari/
+
 # One-off public user importer (delete after use — do not deploy)
 /public/import-users.php
 

@@ -27,15 +27,20 @@
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
   **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı), **GC3** bitti.
   **T3.2 (multisite/org) İPTAL** (öncelik dışı).
-- **Son oturum:** 2026-09-12 — **AACP konsolidasyonu + CSP nonce kapanışı** (2 commit).
+- **Son oturum (2):** 2026-09-12 — **T3.4 Migrate API Faz A**: tipli boru hattı, idempotent
+  map tablosu, dry-run varsayılan koşucu, `cp:migrate`, akışlı CSV kaynağı + Node hedefi.
+  32 unit + 8 entegrasyon testi. Ayrıntı §4 (22). Satır 26 **D → B**.
+- **Son oturum (1):** 2026-09-12 — **AACP konsolidasyonu + CSP nonce kapanışı** (2 commit).
   Hardening ayarları Güvenlik Merkezi'nden System Settings → Security'ye taşındı, merkez
   canlı ops ekranına indi; `importmap()` nonce'lu hâle getirildi; `QueryCounter` şema
   kataloğu sorgularını saymıyor. Ardından: `csp_nonce_attr()` yazılmıştı ama **hiçbir
   şablon çağırmıyordu** — 19 script etiketi nonce'suzdu, yani strict CSP modu paneli ve
   temayı sessizce öldürüyordu. Hepsi nonce'landı + `TemplateScriptNonceTest` ile kalıcı
   koruma altına alındı. **Commit'li, push yok.**
-- **Sıradaki iş:** T5.1 maker (`cp:make:*`) · T3.4 Migrate API · T5.5 el kitabı.
-- **Bekleyen migration:** yok. Artık `cp:doctor` bunu kendisi söylüyor.
+- **Sıradaki iş:** **T3.4 Faz B** (WordPress WXR + Drupal DB kaynak sürücüleri — satır 26'yı
+  B'den A'ya taşıyan tek şey) · T5.1 maker (`cp:make:*`) · T5.5 el kitabı.
+- **Bekleyen migration:** **1 tane** — `Version20260912170000` (`cp_migration_map`).
+  Dev veritabanına henüz uygulanmadı; `cp:update` ile uygulanacak.
 - **Doğrulama durumu (2026-09-12):** PHPStan level 6 temiz (baseline **372**) ·
   php-cs-fixer temiz · **969 unit + 71 entegrasyon testi yeşil** ·
   `lint:twig` 241 dosya temiz · lint:container dev OK.
@@ -145,7 +150,7 @@ Sütunlar: **CP**=CPalius · **DR**=Drupal 10/11 · **T3**=TYPO3 v13 · **WP**=W
 | 23 | Hook / eklenti ergonomisi | B | A | B | A+ | A | T1.5 |
 | 24 | Cron / zamanlanmış görevler | A | A | A | C | B | — (CP: birleşik motor + izole subprocess + UI) |
 | 25 | Modül paketleme + lifecycle + tek-tık dağıtım | **A** | A | A | A+ | B | T3.6 ✅ `cp:update` sıralı+devam ettirilebilir; kalan: paket deposu / tek-tık kurulum |
-| 26 | Migrate / CMS-ten CMS'e veri taşıma | D | A+ | B | B | C | T3.4 |
+| 26 | Migrate / CMS-ten CMS'e veri taşıma | **B** | A+ | B | B | C | T3.4 Faz A ✅ (motor + CSV + `cp:migrate`) — Drupal'ın dört zaafına karşı tasarlandı: dry-run varsayılan, transform tipli PHP (YAML eklenti id'si yok), koşucu çekirdekte, rollback map'e göre kesin. **A/A+ için Faz B** (WXR + Drupal DB sürücüleri) şart: satır "CMS-ten CMS'e" diyor |
 | 27 | Admin UI + kurtarma konsolu | **A+** | A | A | A | A | T3.5 ✅ — `/aacp/logs` watchdog + mail resend; `/aacp/recovery` DB'siz (ayırt edici) |
 | 28 | Güvenlik telemetri + IP ban (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
 | 29 | Yedekleme (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
@@ -604,13 +609,40 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
   bütün operatörleri kendi sitelerinden kilitlemek, kaba kuvvete birkaç dakika açık
   kalmaktan daha kötü bir arıza. Anonim suistimal uçlarında **false**.
 
-#### T3.4 — Migrate API (WP / Drupal / CSV import)  `[ ]`
-- [ ] `MigrationSource` → `process` → `MigrationDestination` pipeline
-- [ ] Kaynak sürücüleri: WordPress (WXR + DB), Drupal 7/9/10 DB, CSV/JSON
-- [ ] Hedef: Node bundle + Field API + Media + User + Taxonomy
-- [ ] `cp:migrate run|status|rollback` + AACP sihirbaz
-- [ ] Idempotent + map tablosu (kaynak id → CPalius id)
-- **Kanıt:** Örnek WordPress export'u → 1 komutla post + kategori + medya + yazar taşınır.
+#### T3.4 — Migrate API (WP / Drupal / CSV import)  `[~]`  **Faz A bitti (2026-09-12)**
+- [x] `MigrationSource` → `transform` → `MigrationDestination` boru hattı, hepsi **tipli PHP
+      arayüzü** (`#[AutoconfigureTag('cpalius.migration')]`) — YAML eklenti id'si yok
+- [x] Idempotent + map tablosu `cp_migration_map` (migration_id + source_id **unique**):
+      değişmemiş satır atlanır, değişmiş satır **yerinde güncellenir**, yeni satır yaratılır
+- [x] `MigrationRunner` — dört garanti: dry-run varsayılan · satır başına izolasyon ·
+      map **yazımdan sonra** yazılır · yeniden koşulabilir
+- [x] `MigrationRegistry` — `dependsOn()` topolojik sırası; döngü ve tanınmayan bağımlılık
+      **reddedilir** (sessizce atlanmaz)
+- [x] `cp:migrate list|status|run|rollback` — `--apply` olmadan hiçbir şey yazmaz, `--limit`,
+      `--json`, kabuk tamamlama
+- [x] İlk sürücüler: akışlı `CsvSource` (BOM, özel ayraç, sütun sayısı denetimi) + `NodeDestination`
+- [x] Testler: 32 unit + 8 entegrasyon (gerçek DB'de CSV → node, ikinci koşum, rollback)
+- [ ] **Faz B:** WordPress (WXR akışlı + DB) ve Drupal 7/9/10 DB kaynak sürücüleri
+- [ ] **Faz B:** Hedefler: Field API + Media + User + Taxonomy
+- [ ] **Faz C:** AACP sihirbazı (`/aacp/migrate`), `cp:update` gibi kuru çalıştırmayla açılan
+- **Kanıt (Faz A):** `MigrateEndToEndTest` gerçek MySQL'de: CSV → 2 node · ikinci koşum
+  **0 yaratma, 2 değişmemiş** · kaynak satırı düzenlenince **aynı node güncellenir** ·
+  başlıksız satır tek başına düşer, komşuları geçer · çakışan başlıklar ayrı slug alır ·
+  rollback tam olarak import edileni siler, elle yazılmış node'a dokunmaz.
+- **Alan notu (lider zaafına karşı tasarım):** *En iyi: Drupal Migrate API.* Zaafları:
+  (1) **dry-run yok** — ne yapacağını ancak yaptırarak öğrenirsin; (2) migration bir **YAML
+  eklenti çorbası**, eklenti id'leri tipsiz string, yazım hatası koşunun ortasında patlar;
+  (3) çekirdek tek başına **koşamaz** (`migrate_tools` contrib gerekir, çekirdek UI yalnız
+  Drupal→Drupal); (4) rollback id map'in tuttuğu kadar iyi. CPalius: transform **düz PHP**
+  (IDE tamamlar, PHPStan denetler), dry-run **varsayılan** ve aynı sayacı üretir, koşucu
+  **çekirdekte**, rollback map'e göre **kesin** çünkü map'i koşucunun kendisi, hedefe
+  yazdıktan *sonra* yazar. **D → B.** A değil: bu satır "CMS-ten CMS'e" diyor ve WXR/Drupal sürücüleri Faz B'de;
+  motor A+ biçiminde, satırın kendisi sürücüler gelene kadar B.
+- **Yan bulgu:** `Node`'u gerçekten (soft-delete değil) silen ilk kod bu oldu ve Doctrine'da
+  patladı — revision listener'ın ürettiği `NodeRevision`'lar UoW'da kalıp silinen node'u
+  işaret ediyordu. Üründe kimse node'u hard-delete etmediği için görülmemişti. `NodeDestination`
+  revision'ları önce kaldırıyor; DB'deki `ON DELETE CASCADE` zaten vardı, eksik olan bellek
+  içi grafiğin tutarlılığıydı.
 
 #### T3.5 — DB log + admin log ekranı + mail log  `[x]` ✅ (2026-09-12 — A++)
 - [x] `LogEntry` (`cp_log_entries`) + `symfony/monolog-bundle` + `DoctrineLogHandler` (buffered, terminate flush, never-throw) + `logging.purge` retention cron
@@ -714,6 +746,59 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 ## 4. İLERLEME GÜNLÜĞÜ
 
 > En yeni en üstte. Her oturum sonunda: değişen dosyalar, doğrulama, kalan risk.
+
+### 2026-09-12 (22) — T3.4 Migrate API, Faz A: motor
+
+**Neden bu adım:** Skor kartında kalan tek `D` satır 26'ydı ve orası Drupal'ın en güçlü
+olduğu yer. Kural gereği önce liderin zaafları isimlendirildi, tasarım onlara karşı yapıldı:
+Drupal'da **dry-run yok**, migration bir **YAML eklenti çorbası** (eklenti id'leri tipsiz
+string, yazım hatası koşunun ortasında patlar), **çekirdek tek başına koşamaz**
+(`migrate_tools` contrib gerekir; çekirdek UI yalnız Drupal→Drupal), ve rollback id map'in
+tuttuğu kadar iyi.
+
+**Ne yazıldı (`cp-core/src/Core/Migrate/`):**
+- `MigrationInterface` / `MigrationSourceInterface` / `MigrationDestinationInterface` +
+  `MigrationRow` — hepsi tipli PHP. Transform düz PHP metodu: IDE tamamlıyor, PHPStan
+  denetliyor. YAML yok.
+- `MigrationRunner` — **dört garanti**: (1) dry-run varsayılan ve gerçek koşumun aynı
+  sayaçlarını üretir, hiçbir şeye dokunmadan; (2) satır başına izolasyon — patlayan satır
+  kaynak id'siyle raporlanır, koşu devam eder (Law 2.2 veriye uygulanmış); (3) map
+  **hedefe yazdıktan sonra** yazılır, `UpdateHookLedger` ile aynı disiplin — arada çöken
+  satır tekrar denenir, "yapıldı" sanılmaz; (4) tasarım gereği tekrar koşulabilir —
+  değişmemiş satır atlanır, değişmiş satır **yerinde güncellenir**.
+- `cp_migration_map` + `(migration_id, source_id)` **unique** — garantinin kendisi veritabanında.
+  Checksum sıraya duyarsız, yani sütun sırası değişen bir export her satırı "değişmiş"
+  göstermiyor.
+- `MigrationRegistry` — `dependsOn()` topolojik sırası. Döngü **ve tanınmayan bağımlılık**
+  reddediliyor: bağımlılık id'sindeki yazım hatası sessizce atlanırsa, listenin önlemek için
+  var olduğu yetim referans hatası aynen oluşur.
+- `cp:migrate list|status|run|rollback` — `--apply` olmadan **hiçbir şey yazmaz**
+  (çoğu importer'ın tersi; yanlışlıkla dry-run'ın bedeli rapor okumak, yanlışlıkla 40 000
+  satır import etmenin bedeli yedekten dönmek). `--limit`, `--json`, kabuk tamamlama.
+- `CsvSource` (fgetcsv ile **akışlı** — bellek maliyeti dosya boyutundan bağımsız; Excel'in
+  BOM'u ilk sütun adını bozmasın diye temizleniyor) + `NodeDestination` (node kolonu olmayan
+  her alan hibrit modelin JSON'una gider — import için şema değişikliği gerekmemesinin sebebi).
+
+**Yan bulgu — `Node`'u gerçekten silmek kırıkmış:** Rollback, üründe `em->remove()` ile bir
+Node'u silen **ilk kod** oldu ve Doctrine "NodeRevision#node üzerinden yeni bir entity
+bulundu" diye patladı. Sebep: revision listener'ın ürettiği `NodeRevision`'lar UoW'da yönetili
+kalıp silinen node'u işaret ediyor. Kimse fark etmemişti çünkü ürünün bütün silme yüzeyleri
+node'u **çöpe atıyor** (`#[SoftDeletable]`). DB'deki `ON DELETE CASCADE` zaten vardı; eksik
+olan bellek içi grafiğin tutarlılığıydı. `NodeDestination` revision'ları önce kaldırıyor.
+
+**Testler:** 32 unit (`MigrationRunnerTest` 16 — dört garantinin her biri ayrı ayrı;
+`CsvSourceTest` 12; `MigrationRegistryTest` 7; `MigrationRowTest` 7) + `MigrateEndToEndTest`
+8 entegrasyon, **gerçek MySQL'de**: ikinci koşum 0 yaratma, düzenlenen satır aynı node'u
+güncelliyor, dry-run veritabanına dokunmuyor, başlıksız satır tek başına düşüyor, çakışan
+başlıklar ayrı slug alıyor, rollback elle yazılmış node'a dokunmuyor, süreç dışından silinmiş
+node rollback'i bozmuyor.
+
+**Doğrulama:** PHPStan L6 temiz · php-cs-fixer temiz · **1011 unit + 79 entegrasyon yeşil** ·
+`lint:container` dev OK · `lint:yaml --parse-tags` OK · `cp:migrate list` gerçek konteynerde
+çalışıyor.
+
+**Kalan:** Faz B (WXR + Drupal DB sürücüleri; satır 26'yı A'ya taşıyacak tek şey) · Faz C
+(AACP sihirbazı) · **`Version20260912170000` dev veritabanına uygulanmadı.**
 
 ### 2026-09-12 (21) — AACP konsolidasyonu + CSP nonce'unun gerçekten bağlanması
 
