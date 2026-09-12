@@ -27,6 +27,10 @@
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
   **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı), **GC3** bitti.
   **T3.2 (multisite/org) İPTAL** (öncelik dışı).
+- **Son oturum (7):** 2026-09-12 — **Faz B3 başladı: XenForo.** Çekirdeğe keyset sayfalı DB
+  kaynağı, modüle BBCode→HTML dönüştürücü, Forum modülüne üç import hedefi. XenForo dört
+  migration ile uçtan uca çalışıyor (SQLite fixture'a karşı testli; gerçek kurulum uyumu
+  kanıtlanmış değil). Ayrıntı §4 (27).
 - **Son oturum (6):** 2026-09-12 — **Dosya yükleme.** Export artık panelden yükleniyor;
   `.zip` açılıyor (WordPress uploads klasörü böyle geliyor). Seçenekler türlü hâle geldi
   (dosya/klasör/parola). Zip-slip, zip-bomb, geçersiz XML ve yol kaçışı testli olarak
@@ -784,6 +788,72 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 ## 4. İLERLEME GÜNLÜĞÜ
 
 > En yeni en üstte. Her oturum sonunda: değişen dosyalar, doğrulama, kalan risk.
+
+### 2026-09-12 (27) — Faz B3 başladı: DB kaynağı, BBCode ve **XenForo**
+
+**Referans araçtan alınan ders (kod değil):** MyBB merge sistemi 16 forum yazılımını tek
+desenle çözüyor ve o desen zaten bizde var. Eksik olan iki parça vardı, ikisi de eklendi.
+
+**1) Sayfalı DB okuma — `DatabaseSource` + `ForeignDatabase` (çekirdek).**
+`LIMIT/OFFSET` yerine **keyset imleci** (`WHERE key > son ORDER BY key`), iki sebeple:
+- OFFSET, atlanan her satırı saydırır; 4000. sayfa dört bin sayfalık iş eder. Import
+  koştukça yavaşlar — tam tersi olmalı.
+- OFFSET yürüyüşü ancak altındaki veri değişmezse doğrudur. **Hâlâ canlı bir forumda**
+  silinen bir satır sonrasını kaydırır ve yürüyüş bir kaydı sessizce atlar. İmleç sayı
+  değil **konum** hatırladığı için atlayamaz. Testi var: yürüyüşün ortasında satır siliniyor.
+- Aynı anahtar map'in tuttuğu anahtar olduğu için yarıda kesilen import **bedelsiz** devam
+  ediyor.
+- **SQL güvenliği:** tablo adı, sorgunun bağlanamayan tek parçası. Forum paketleri prefix'i
+  kuruluma bıraktığı için o değer formdan geliyor ve SQL metnine yapıştırılmak zorunda —
+  bu yüzden **bir kez, burada**, identifier desenine karşı doğrulanıyor ve *kaçırılmıyor,
+  reddediliyor* (desen hiçbir meşru prefix'i dışarıda bırakmıyor). Tablo/kolon adları sürücü
+  kodundan gelir; yalnızca değerler bind edilir.
+- Eksik tablo, operatörün yazdığı prefix'le birlikte raporlanıyor: "yanlış prefix" ile "boş
+  forum" ayırt edilebiliyor. Bağlantı tembel bırakılmıyor, yanlış parola düğmeye basınca
+  belli oluyor.
+- Değerler string'e çevriliyor: sürücüler INTEGER kolonu int mi string mi döndüreceğinde
+  anlaşamıyor, sızsaydı aynı satır iki sunucuda farklı checksum verir ve her koşumda
+  "değişmiş" diye yeniden yazılırdı.
+
+**2) BBCode → HTML (`BbCodeConverter`, modül).** Olmazsa içe aktarılmış bir forum
+`[b]böyle[/b]` bir duvar olarak okunur — bütün kelimeler yerinde, hiçbiri okunaklı değil.
+- **Önce kaçış, sonra biçimlendirme:** kaynakta ham HTML olan ne varsa (forumlar eski XSS
+  denemeleriyle doludur) **görünür metne** dönüşüyor, sonra yalnızca tanınan BBCode tekrar
+  elemente çevriliyor. 4 XSS vektörü testli: `javascript:`, `data:`, `vbscript:` ve
+  **entity ile gizlenmiş** `java&#115;cript:`.
+- Tanınmayan etiket **yutulmuyor, olduğu gibi bırakılıyor**: BBCode'un standardı yok, her
+  paket kendince genişletiyor; sessizce yutmak içerik silmek olurdu. Görünür kalması,
+  birinin elle düzeltebileceği tek başarısızlık biçimi.
+
+**3) XenForo sürücüsü** — dört migration: üyeler → forumlar → konular → gönderiler.
+- Hedefler **Forum modülünde** (`Modules\Forum\Migrate\`), Blog'daki kuralla aynı: entity'nin
+  sahibi onu yazmayı bilir. Sonraki forum importer'ı bunları yeniden yazmayacak.
+- **`ForumTopic`/`ForumPost`'a `restoreCreatedAt()` eklendi.** Setter yoktu, tarih
+  constructor'da "şimdi" oluyordu. Bütün gönderileri taşıma gününe tarihlenmiş bir forum,
+  bir forum arşivinin *tek* değerli şeyini — konuşmanın sırasını ve yaşını — kaybetmiş olur.
+  Adı bilerek `setCreatedAt` değil: her yerde bu, satırın oluşturulma anıdır.
+- XenForo `discussion_open` tutar, CPalius `locked`; kopyalama değil **tersleme** yapılıyor.
+- Moderasyondaki gönderi görünmez kalıyor: eski panonun sakladığı şeyin yeni panoda belirmesi
+  bir ifşa olurdu ve karar zaten verilmişti.
+- Misafir gönderisi adını koruyor, hesap uydurulmuyor — forumlar, hesabı yıllar önce silinmiş
+  insanların gönderileriyle doludur.
+- Forum olmayan node tipleri (Page vb.) atlanıyor; altındaki konular **hata değil, atlama**.
+
+**Kanıtın sınırı — açıkça:** Kaynak, XenForo'nun belgelenmiş tablo şekline göre kurulmuş bir
+**SQLite fixture**'ı. Bu, eşlemeyi kanıtlar (hangi kolon hangi alan olur, ağaç nasıl kurulur,
+tarihe/işaretlemeye/yetim satıra ne olur). **Her gerçek kurulumla uyumu kanıtlamaz** —
+sürümler farklı, eklentiler kolon ekler, panolar fixture'ın öngörmediği tuhaflıklar biriktirir.
+Gerçek bir export'a karşı ilk koşum hâlâ gerçek bir testtir; importer'ın varsayılan olarak
+kuru çalışması ve hataları kaynak id'siyle raporlaması tam da bunun içindir.
+
+**Yan düzeltme:** `Core/Migrate/Source/` konteynerden dışlandı. Oradakiler değer nesnesi
+(CSV okuyucu yol ister, yabancı DB kimlik bilgisi); autowire onları skaler constructor'larından
+kurmaya çalışıp **bütün konteyneri** düşürüyordu.
+
+**Doğrulama:** PHPStan L6 temiz · php-cs-fixer temiz · **1025 unit + 122 modül testi yeşil** ·
+`cp:migrate list` 11 migration'ı doğru bağımlılık sırasında gösteriyor.
+
+**Kalan:** MyBB ve Joomla sürücüleri (aynı sözleşme üstünde).
 
 ### 2026-09-12 (26) — Dosya yükleme: export'u panelden yükle, oradan aktar
 

@@ -212,6 +212,23 @@ class ForumPost
         return $this->createdAt;
     }
 
+    /**
+     * Puts back the original posting time when a post is imported from another
+     * forum or restored from a backup.
+     *
+     * Deliberately not called setCreatedAt: everywhere else this is the moment
+     * the row was made, and a general setter would invite moving it. But an
+     * imported forum whose posts are all dated the day of the migration has
+     * lost the one thing a forum archive is for — the order and age of the
+     * conversation — so the import needs this door, clearly labelled.
+     */
+    public function restoreCreatedAt(\DateTimeImmutable $createdAt): static
+    {
+        $this->createdAt = $createdAt;
+
+        return $this;
+    }
+
     public function getUpdatedAt(): ?\DateTimeImmutable
     {
         return $this->updatedAt;

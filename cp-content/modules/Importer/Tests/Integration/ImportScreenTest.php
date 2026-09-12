@@ -183,11 +183,17 @@ final class ImportScreenTest extends IntegrationTestCase
 
         self::assertStringContainsString('WordPress', $html);
         self::assertStringContainsString('CSV', $html);
-        // Planned systems are listed so nobody wonders whether support exists
-        // somewhere they have not found — but they are not offered as buttons.
-        self::assertStringContainsString('XenForo', $html);
         self::assertStringContainsString('/admin/import/wordpress', $html);
-        self::assertStringNotContainsString('/admin/import/xenforo', $html);
+        // A system becomes clickable by having migrations registered, not by
+        // anyone editing this screen — XenForo moved from planned to ready by
+        // its drivers landing, and nothing here changed.
+        self::assertStringContainsString('/admin/import/xenforo', $html);
+
+        // Planned systems are still listed so nobody wonders whether support
+        // exists somewhere they have not found — but they are not offered as
+        // buttons.
+        self::assertStringContainsString('Joomla', $html);
+        self::assertStringNotContainsString('/admin/import/joomla', $html);
     }
 
     public function testTheFormIsBuiltFromWhatTheMigrationsDeclare(): void

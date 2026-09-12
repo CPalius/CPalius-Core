@@ -13,6 +13,11 @@ services:
     Modules\Forum\Repository\:
         resource: '../../Repository/'
 
+    # Migrate/ destinations for the core Migrate API. Forum owns its entities,
+    # so Forum owns what it means to write one; an importer supplies the source.
+    Modules\Forum\Migrate\:
+        resource: '../../Migrate/'
+
     Modules\Forum\Settings\:
         resource: '../../Settings/'
 

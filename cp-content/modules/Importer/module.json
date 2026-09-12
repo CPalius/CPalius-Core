@@ -6,7 +6,8 @@
     "bundle": "Modules\\Importer\\ImporterModule",
     "core_version": "^1.0",
     "requires": {
-        "Blog": "^1.0"
+        "Blog": "^1.0",
+        "Forum": "^1.0"
     },
     "conflicts": {},
     "provides": [

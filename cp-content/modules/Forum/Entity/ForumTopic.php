@@ -441,6 +441,17 @@ class ForumTopic
         return $this->createdAt;
     }
 
+    /**
+     * Puts back the original start time when a topic is imported or restored.
+     * See ForumPost::restoreCreatedAt() for why this is not a plain setter.
+     */
+    public function restoreCreatedAt(\DateTimeImmutable $createdAt): static
+    {
+        $this->createdAt = $createdAt;
+
+        return $this;
+    }
+
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;

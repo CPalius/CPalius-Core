@@ -82,6 +82,13 @@ services:
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: '../src/'
+        # Migrate sources are value objects, not services: a CSV reader needs a
+        # path and a foreign database needs credentials, neither of which exists
+        # at container-build time. They are constructed by the migration that
+        # uses them. Left in, autowiring tries to build them from their scalar
+        # constructors and fails the whole container.
+        exclude:
+            - '../src/Core/Migrate/Source/'
 
     # Override stock importmap() so inline importmap/module tags carry the CSP nonce.
     # Must sit after App\ so this definition wins over the autoconfigured one.
