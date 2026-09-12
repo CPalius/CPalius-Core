@@ -132,8 +132,8 @@
     </div>
 </section>
 {% if ctx.captchaRequired|default(false) and captcha.mode == 'provider' and captcha.provider == 'recaptcha' and captcha.recaptcha_version == 'v3' %}
-    <script src="https://www.google.com/recaptcha/api.js?render={{ captcha.site_key }}"></script>
-    <script>
+    <script{{ csp_nonce_attr() }} src="https://www.google.com/recaptcha/api.js?render={{ captcha.site_key }}"></script>
+    <script{{ csp_nonce_attr() }}>
         (function () {
             const form = document.getElementById('blog-comment-form');
             if (!form) return;
@@ -162,7 +162,7 @@
         captchaConfig: captcha,
     } %}
 {% endif %}
-<script>
+<script{{ csp_nonce_attr() }}>
 document.querySelectorAll('[data-comment-reply]').forEach(function (el) {
     el.addEventListener('click', function () {
         var input = document.querySelector('[data-comment-parent]');

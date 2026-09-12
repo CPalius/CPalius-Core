@@ -133,7 +133,7 @@
     </twig:studio:card>
     </div>
 
-    <script>
+    <script{{ csp_nonce_attr() }}>
         (function () {
             const parentOptionsByType = {{ parentOptionsByType|json_encode|raw }};
             const hints = {

@@ -26,7 +26,7 @@
 {% block javascripts %}
     {{ parent() }}
     {% if customJs|default('') is not empty %}
-        <script>{{ customJs|raw }}</script>
+        <script{{ csp_nonce_attr() }}>{{ customJs|raw }}</script>
     {% endif %}
 {% endblock %}
 

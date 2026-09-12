@@ -97,7 +97,7 @@
         </twig:cp:card>
     </div>
 
-    <script>
+    <script{{ csp_nonce_attr() }}>
         (function () {
             const csrfToken = {{ csrf_token|json_encode|raw }};
             const consoleEl = document.getElementById('cp-cron-console');

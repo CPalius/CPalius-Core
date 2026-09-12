@@ -88,7 +88,7 @@
 
 {% block javascripts %}
     {{ parent() }}
-    <script>
+    <script{{ csp_nonce_attr() }}>
     (function () {
         var input = document.querySelector('[data-account-avatar-input]');
         var form = input && input.closest('form');

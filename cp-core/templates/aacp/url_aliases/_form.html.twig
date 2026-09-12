@@ -91,7 +91,7 @@
     </div>
 </form>
 
-<script>
+<script{{ csp_nonce_attr() }}>
     document.querySelectorAll('[data-target-type-radio]').forEach(function (radio) {
         radio.addEventListener('change', function () {
             document.querySelectorAll('[data-target-panel]').forEach(function (panel) {

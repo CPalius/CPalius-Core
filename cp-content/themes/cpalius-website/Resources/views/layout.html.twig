@@ -45,7 +45,7 @@
         uploadFailed: 'media.picker.upload_failed'|trans,
         listFailed: 'media.picker.list_failed'|trans,
     }|json_encode|raw }}</script>
-    <script src="/themes/cpalius-website/dist/main.js"></script>
+    <script{{ csp_nonce_attr() }} src="/themes/cpalius-website/dist/main.js"></script>
     {% block javascripts %}{% endblock %}
 </body>
 </html>

@@ -278,7 +278,7 @@
         </div>
     </form>
 
-    <script>
+    <script{{ csp_nonce_attr() }}>
     (() => {
         const list = document.querySelector('[data-portal-block-list]');
         const form = document.getElementById('portal-homepage-form');

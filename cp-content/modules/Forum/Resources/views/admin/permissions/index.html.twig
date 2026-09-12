@@ -100,7 +100,7 @@
         </twig:studio:card>
     </form>
 
-    <script>
+    <script{{ csp_nonce_attr() }}>
     (function () {
         var tabs = document.querySelectorAll('[data-perm-tab]');
         var panels = document.querySelectorAll('[data-perm-panel]');
