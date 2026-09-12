@@ -1,0 +1,14 @@
+# Media storage for the test environment.
+#
+# Without this, every test that stores an asset writes into public/uploads —
+# the live web root of the developer's own installation. Files would accumulate
+# there under content hashes nobody recognises, and a test fixture would be
+# served by the web server alongside real media.
+#
+# var/ is already ignored and already where test artefacts belong.
+flysystem:
+    storages:
+        cpalius_storage:
+            adapter: 'local'
+            options:
+                directory: '%kernel.project_dir%/cp-core/var/test-uploads'

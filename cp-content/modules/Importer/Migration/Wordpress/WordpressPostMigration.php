@@ -15,6 +15,7 @@ use App\Core\Migrate\MigrationRow;
 use App\Core\Migrate\MigrationSourceInterface;
 use App\Entity\Node;
 use Doctrine\ORM\EntityManagerInterface;
+use Modules\Importer\Source\Wordpress\WordpressMediaIndex;
 use Modules\Importer\Source\Wordpress\WxrPostSource;
 use Modules\Importer\Source\Wordpress\WxrReader;
 
@@ -32,6 +33,8 @@ use Modules\Importer\Source\Wordpress\WxrReader;
 final class WordpressPostMigration implements ConfigurableMigrationInterface
 {
     public const ID = 'wordpress.posts';
+
+    private ?WordpressMediaIndex $media = null;
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
@@ -63,6 +66,9 @@ final class WordpressPostMigration implements ConfigurableMigrationInterface
             WordpressAuthorMigration::ID,
             WordpressCategoryMigration::ID,
             WordpressTagMigration::ID,
+            // Attachments too, so the body can be rewritten to point at assets
+            // that exist rather than at a domain about to be switched off.
+            WordpressAttachmentMigration::ID,
         ];
     }
 
@@ -112,6 +118,7 @@ final class WordpressPostMigration implements ConfigurableMigrationInterface
         }
 
         $authorLogin = trim($row->getString('creator'));
+        $media = $this->media();
 
         return $row->withData([
             'title' => $title,
@@ -119,8 +126,9 @@ final class WordpressPostMigration implements ConfigurableMigrationInterface
             'status' => $this->status($row),
             'locale' => $this->locale,
             'publishedAt' => trim($row->getString('publishedAt')),
-            'body' => $row->getString('content'),
-            'excerpt' => $row->getString('excerpt'),
+            'body' => $media->rewrite($row->getString('content')),
+            'excerpt' => $media->rewrite($row->getString('excerpt')),
+            'featuredAssetId' => $this->featuredAssetId($row, $media),
             'categoryIds' => $this->lookup->findAll(WordpressCategoryMigration::ID, $this->slugs($row->get('categorySlugs'))),
             'tagIds' => $this->lookup->findAll(WordpressTagMigration::ID, $this->slugs($row->get('tagSlugs'))),
             'importedFrom' => 'wordpress',
@@ -131,6 +139,36 @@ final class WordpressPostMigration implements ConfigurableMigrationInterface
             'wordpressAuthorUserId' => $authorLogin === '' ? '' : ($this->lookup->find(WordpressAuthorMigration::ID, $authorLogin) ?? ''),
             'wordpressSticky' => trim($row->getString('isSticky')) === '1',
         ]);
+    }
+
+    /**
+     * The asset behind WordPress's featured image, which it stores as the
+     * attachment's post id in _thumbnail_id meta rather than as a URL.
+     */
+    private function featuredAssetId(MigrationRow $row, WordpressMediaIndex $media): string
+    {
+        $meta = $row->get('meta');
+        $thumbnailId = \is_array($meta) ? (string) ($meta['_thumbnail_id'] ?? '') : '';
+
+        if (trim($thumbnailId) === '') {
+            return '';
+        }
+
+        return (string) ($media->assetIdForAttachment($thumbnailId) ?? '');
+    }
+
+    /**
+     * Built once per migration instance: the index costs a streaming pass over
+     * the export's attachments, and every row would otherwise pay for it.
+     */
+    private function media(): WordpressMediaIndex
+    {
+        return $this->media ??= new WordpressMediaIndex(
+            $this->reader(),
+            $this->lookup,
+            $this->entityManager,
+            WordpressAttachmentMigration::ID,
+        );
     }
 
     /**

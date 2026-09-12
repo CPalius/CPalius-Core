@@ -50,3 +50,8 @@ services:
 
     Modules\Blog\Portal\:
         resource: '../../Portal/'
+
+    # Migrate/ destinations for the core Migrate API. Blog owns BlogComment, so
+    # Blog owns what it means to write one; an importer supplies the source.
+    Modules\Blog\Migrate\:
+        resource: '../../Migrate/'

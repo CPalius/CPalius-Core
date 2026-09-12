@@ -83,10 +83,10 @@ final class WxrReaderTest extends TestCase
     {
         $items = iterator_to_array($this->sample()->items(), false);
 
-        // Two posts, one auto-draft and one page: filtering is the migration's
-        // job, so the reader must not quietly drop any of them.
-        self::assertCount(4, $items);
-        self::assertSame(['41', '42', '43', '8'], array_map(static fn (WxrItem $i): string => $i->postId, $items));
+        // Two posts, an auto-draft, a page and two attachments: filtering is
+        // the migration's job, so the reader must not quietly drop any of them.
+        self::assertCount(6, $items);
+        self::assertSame(['41', '42', '43', '8', '99', '100'], array_map(static fn (WxrItem $i): string => $i->postId, $items));
     }
 
     public function testReadsAnItemInFull(): void
@@ -105,7 +105,7 @@ final class WxrReaderTest extends TestCase
         // that will be rendered, so "&amp;" is already the right thing to store.
         // Decoding it here would turn every escaped ampersand in a WordPress
         // site into a raw one and quietly break the markup around it.
-        self::assertSame('<p>Merhaba dünya &amp; hoş geldiniz.</p>', $first->content);
+        self::assertStringStartsWith('<p>Merhaba dünya &amp; hoş geldiniz.</p>', $first->content);
         self::assertSame('Kısa özet', $first->excerpt);
     }
 

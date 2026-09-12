@@ -5,7 +5,9 @@
     "author": "CPalius",
     "bundle": "Modules\\Importer\\ImporterModule",
     "core_version": "^1.0",
-    "requires": {},
+    "requires": {
+        "Blog": "^1.0"
+    },
     "conflicts": {},
     "provides": [
         "importer"

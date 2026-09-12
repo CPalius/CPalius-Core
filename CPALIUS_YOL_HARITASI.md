@@ -27,6 +27,9 @@
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
   **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı), **GC3** bitti.
   **T3.2 (multisite/org) İPTAL** (öncelik dışı).
+- **Son oturum (4):** 2026-09-12 — **T3.4 Faz B2: medya + yorumlar.** Görseller asset'e
+  giriyor, gövdedeki eski URL'ler (boyut türevleri dahil) yeniden yazılıyor, öne çıkan
+  görsel ve yorumlar geliyor. **Satır 26: B → A.** Ayrıntı §4 (24).
 - **Son oturum (3):** 2026-09-12 — **T3.4 Faz B1: Importer modülü + WordPress.**
   Kaynak sürücüleri çekirdeğe değil **modüle** konuldu (kullanıcı kararı): çekirdek CPalius
   yazar, modül yabancı sistemleri okur. Akışlı WXR okuyucu + 4 migration zinciri
@@ -43,9 +46,9 @@
   şablon çağırmıyordu** — 19 script etiketi nonce'suzdu, yani strict CSP modu paneli ve
   temayı sessizce öldürüyordu. Hepsi nonce'landı + `TemplateScriptNonceTest` ile kalıcı
   koruma altına alındı. **Commit'li, push yok.**
-- **Sıradaki iş:** **T3.4 Faz B2** — WordPress medya/ek dosyaları + yorumlar (bunlar olmadan
-  gerçek bir site taşımasında görseller kırılır), sonra XenForo/MyBB forum sürücüleri.
-  Sonra T5.1 maker (`cp:make:*`) · T5.5 el kitabı.
+- **Sıradaki iş:** **T3.4 Faz B3** — XenForo / MyBB DB kaynak sürücüleri (satır 26'yı A+'a
+  taşıyan tek şey; MyBB merge sistemi 16 forum yazılımının şemasını içeriyor, şema referansı
+  olarak okunacak). Sonra Faz C (AACP sihirbazı) · T5.1 maker · T5.5 el kitabı.
 - **Bekleyen migration:** yok. `Version20260912170000` (`cp_migration_map`) uygulandı.
 - **Aktif modül sayısı: 9** — `Importer` eklendi ve etkinleştirildi.
 - **Doğrulama durumu (2026-09-12):** PHPStan level 6 temiz (baseline **372**) ·
@@ -157,7 +160,7 @@ Sütunlar: **CP**=CPalius · **DR**=Drupal 10/11 · **T3**=TYPO3 v13 · **WP**=W
 | 23 | Hook / eklenti ergonomisi | B | A | B | A+ | A | T1.5 |
 | 24 | Cron / zamanlanmış görevler | A | A | A | C | B | — (CP: birleşik motor + izole subprocess + UI) |
 | 25 | Modül paketleme + lifecycle + tek-tık dağıtım | **A** | A | A | A+ | B | T3.6 ✅ `cp:update` sıralı+devam ettirilebilir; kalan: paket deposu / tek-tık kurulum |
-| 26 | Migrate / CMS-ten CMS'e veri taşıma | **B** | A+ | B | B | C | T3.4 Faz A ✅ (motor + CSV + `cp:migrate`) · Faz B1 ✅ (**Importer modülü** + WordPress WXR: yazar/kategori/etiket/yazı uçtan uca). Drupal'ın dört zaafına karşı tasarlandı: dry-run varsayılan, transform tipli PHP (YAML eklenti id'si yok), koşucu çekirdekte, rollback map'e göre kesin; ayrıca WXR **akışlı** okunuyor (WP'nin kendi importer'ı tüm dosyayı belleğe alır). **B'de bırakıldı, bilinçli:** WordPress *metin* içeriği çalışıyor ama **medya/ek dosyalar ve yorumlar yok** — gerçek bir site taşımasında görseller kırılır. A için Faz B2 (medya + yorum) ve en az bir forum sürücüsü (XenForo/MyBB) şart |
+| 26 | Migrate / CMS-ten CMS'e veri taşıma | **A** | A+ | B | B | C | T3.4 Faz A ✅ (motor + CSV + `cp:migrate`) · Faz B1 ✅ (**Importer modülü** + WXR: yazar/kategori/etiket/yazı) · **Faz B2 ✅ (medya + yorumlar)**. WordPress yolu artık gerçekten tam: görseller asset'e giriyor, **gövdedeki `-300x200` boyut türevleri dahil** yeniden yazılıyor (eski alan adı markup'ta kalmıyor), öne çıkan görsel `_thumbnail_id`'den çözülüyor, yorumlar thread'iyle geliyor. Drupal'ın dört zaafına karşı tasarlandı: dry-run varsayılan, transform tipli PHP (YAML eklenti id'si yok), koşucu çekirdekte, rollback map'e göre kesin; WXR **akışlı** (WP'nin kendi importer'ı tüm dosyayı belleğe alır). **A+ için:** ikinci bir kaynak ailesi (XenForo/MyBB forum) + AACP sihirbazı |
 | 27 | Admin UI + kurtarma konsolu | **A+** | A | A | A | A | T3.5 ✅ — `/aacp/logs` watchdog + mail resend; `/aacp/recovery` DB'siz (ayırt edici) |
 | 28 | Güvenlik telemetri + IP ban (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
 | 29 | Yedekleme (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
@@ -635,8 +638,16 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
       `WxrPostSource`, dört migration zinciri. Çekirdeğe: `ConfigurableMigrationInterface`
       (+`MigrationOption`/`Resolver`, `cp:migrate -o`), `MigrationLookup`, `UserDestination`,
       `TermDestination`, `NodeDestination`'a terim bağlama
-- [ ] **Faz B2:** WordPress medya/ek dosyaları + yorumlar (**satır 26'yı A'ya taşıyacak olan**)
+- [x] **Faz B2 (2026-09-12):** medya + yorumlar. `AssetDestination` (çekirdek, `AssetManager`
+      üzerinden — tek yazma kapısı bypass edilmiyor), `UploadsResolver` (yerel
+      `wp-content/uploads`'tan çözer; path traversal reddedilir), `WordpressMediaIndex`
+      (gövdedeki eski URL'leri yeniden yazar, **`-300x200` ve `-scaled` türevlerini** aynı
+      asset'e indirger), `_thumbnail_id` → öne çıkan görsel. Yorumlar: `BlogCommentDestination`
+      **Blog modülünde** (entity'nin sahibi yazmayı bilir), `WxrCommentSource` +
+      `WordpressCommentMigration` Importer'da; thread, durum eşlemesi, e-posta ile hesap
+      eşleştirme. **Satır 26: B → A**
 - [ ] **Faz B3:** XenForo / MyBB / Joomla / Drupal 7-10 DB kaynak sürücüleri
+      (**satır 26'yı A+'a taşıyacak olan**)
 - [ ] **Faz C:** AACP sihirbazı (`/aacp/migrate`), `cp:update` gibi kuru çalıştırmayla açılan
 - **Kanıt (Faz A):** `MigrateEndToEndTest` gerçek MySQL'de: CSV → 2 node · ikinci koşum
   **0 yaratma, 2 değişmemiş** · kaynak satırı düzenlenince **aynı node güncellenir** ·
@@ -759,6 +770,62 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 ## 4. İLERLEME GÜNLÜĞÜ
 
 > En yeni en üstte. Her oturum sonunda: değişen dosyalar, doğrulama, kalan risk.
+
+### 2026-09-12 (24) — T3.4 Faz B2: medya ve yorumlar — satır 26 **B → A**
+
+**Neden bu adım:** Faz B1'den sonra satır 26 bilinçli olarak B'de bırakılmıştı, gerekçesi
+şuydu: "medya yok, gerçek bir taşımada görseller kırılır". Bu adım tam olarak onu kapattı.
+
+**Medyanın zor kısmı dosyayı kopyalamak değil, markup'ı düzeltmek.** İçerik gelir, içindeki
+`<img>` etiketleri eski alan adını göstermeye devam eder; eski site kapanana kadar her şey
+çalışıyor görünür, kapandığı gün bütün görseller aynı anda kaybolur — kimsenin bakmadığı bir
+zamanda. İki WordPress ayrıntısı bunu basit bir ara-değiştirden çıkarıyor:
+1. **Gövde neredeyse hiçbir zaman orijinali göstermez.** WP türev üretir ve markup'a
+   `foto-300x200.png` yazar, export'taki attachment ise `foto.png`'dir. İkisi de aynı asset'e
+   düşmeli, yoksa her satır içi görsel kırık kalır. Boyut soneki (`-WxH`) ve çok büyük
+   yüklemelere eklenen `-scaled` aramadan önce soyuluyor.
+2. **Aynı dosya bir sitenin ömrü boyunca birçok mutlak önekle geçer** (http/https, www'lı ve
+   www'suz, CDN). Eşleştirme tam URL üzerinden değil, **uploads'a göreli kuyruk** üzerinden
+   yapılıyor; hepsini tek kural karşılıyor.
+
+**Güvenlik tarafı:** `AssetDestination` satırı doğrudan yazmıyor, `AssetManager`'dan geçiyor —
+o tek yazma kapısı (SEC-01/SEC-02): MIME'ı içerikten `finfo` ile tespit eder, allowlist dışını
+reddeder, diskteki adı **doğrulanmış tipten** üretir, içerik hash'iyle tekilleştirir. Yabancı
+bir uploads klasörünü içeri almak tam da ".jpg diye adlandırılmış .php" senaryosunu davet
+ediyor; bypass edilseydi bu bir dosya yükleme açığı olurdu. Yan etki: **SVG reddediliyor**
+(script taşıyan format) ve bu bir *hata* olarak raporlanıyor — dosya gerçekten gelmedi.
+`UploadsResolver` ayrıca `realpath` ile kapsama denetimi yapıyor: export'un ismindeki `..`
+ile uploads klasörünün dışına çıkan bir yol reddediliyor (testle kanıtlandı).
+
+**Yorumlar — mimari gerilim ve çözümü:** `BlogComment` Blog modülünün entity'si, WordPress
+bilgisi ise Importer'ın işi. İkiye ayrıldı: **hedef Blog'da** (`Modules\Blog\Migrate\`,
+kendi entity'sinin kurallarını bilen taraf), **kaynak + migration Importer'da**. Başka bir
+forum importer'ı aynı hedefi yeniden yazmak yerine kullanacak. Importer artık
+`requires: {Blog}` beyan ediyor — açık ve aktivasyonda denetleniyor.
+- Bilinmeyen durum **"pending"** olur, "approved" değil: gerçek bir yorumun moderatör
+  beklemesinin bedeli gecikme, eski sitenin gizlediği bir şeyi yayımlamanın bedeli onu
+  yayımlamaktır.
+- Post'u aktarılmamış yorum **atlanır, hata sayılmaz** — posts migration'ı sayfaları ve
+  auto-draft'ları bilerek dışarıda bırakıyor, onların yorumlarının gidecek yeri yok; her
+  birine hata yazmak gerçek sorunları gürültüye gömerdi.
+- **IP adresleri taşınmıyor.** Kişisel veri, artık var olmayan bir sitede yıllar önce
+  birinin nerede olduğunu anlatıyor ve burada hiçbir şey onlara göre davranmıyor; taşımak
+  hiçbir işe yaramayan veri için saklama yükümlülüğü üstlenmek olurdu.
+
+**Kuru çalıştırmanın dürüst sınırı:** Dry-run map'e yazmadığı için, başka bir migration'a
+bağlı olan satırlar bağlanacakları kaydı bulamaz ve *atlandı* sayılır. Uydurmak yerine komut
+bunu söylüyor: birden fazla migration koşan her kuru çalıştırma bir not basıyor.
+
+**Bir düzeltme daha:** Test ortamı için `flysystem.yaml` geçersiz kılması eklendi. Yoksa
+asset yazan her test geliştiricinin **gerçek `public/uploads`** klasörüne dosya bırakırdı.
+
+**Doğrulama:** PHPStan L6 temiz · php-cs-fixer temiz · **1011 unit + 64 modül testi yeşil** ·
+`cp:migrate list` altı migration'ı doğru bağımlılık sırasında gösteriyor
+(attachments/authors/categories/tags → posts → comments) · gerçek fixture ile kuru çalıştırma
+hiçbir şey yazmadan doğru sayıları veriyor.
+
+**Kalan:** Faz B3 (XenForo/MyBB/Joomla/Drupal DB sürücüleri — satır 26'yı A+'a taşıyacak) ·
+Faz C (AACP sihirbazı).
 
 ### 2026-09-12 (23) — T3.4 Faz B1: Importer **modülü** + WordPress WXR
 
