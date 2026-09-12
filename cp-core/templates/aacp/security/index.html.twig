@@ -2,6 +2,10 @@
 
 {% block header %}{{ 'aacp.security.header'|trans }}{% endblock %}
 
+{% block javascripts %}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'aacp-security']) }}
+{% endblock %}
+
 {% block body %}
     {% set severityStyle = {
         'critical': '!border-danger-500/30 !bg-danger-500/10 !text-danger-300',
@@ -10,19 +14,14 @@
         'low': '!border-white/10 !bg-white/5 !text-slate-300',
         'pass': '!border-success-500/30 !bg-success-500/10 !text-success-300',
     } %}
-    {% set scoreTone = score >= 90 ? '!text-success-300' : (score >= 70 ? '!text-warning-300' : '!text-danger-300') %}
+    {% set scoreTone = score >= 90 ? 'is-good' : (score >= 70 ? 'is-warn' : 'is-bad') %}
+    {% set circumference = 283 %}
+    {% set dashOffset = circumference - (circumference * score / 100) %}
+    {% set issueTotal = (summary.critical|default(0)) + (summary.high|default(0)) + (summary.medium|default(0)) + (summary.low|default(0)) %}
+    {% set maxSeverity = [summary.critical|default(0), summary.high|default(0), summary.medium|default(0), summary.low|default(0), summary.pass|default(0)]|sort|last %}
+    {% if maxSeverity < 1 %}{% set maxSeverity = 1 %}{% endif %}
 
-    <div class="space-y-sp-md">
-        {% if app.request.query.get('saved') %}
-            <div class="rounded-lg border border-success-500/30 bg-success-500/10 px-sp-sm py-3 text-fs-sm !text-success-300">
-                {{ 'aacp.system_settings.saved'|trans }}
-            </div>
-        {% endif %}
-        {% if app.request.query.get('invalid_setting') %}
-            <div class="rounded-lg border border-danger-500/30 bg-danger-500/10 px-sp-sm py-3 text-fs-sm !text-danger-300">
-                {{ 'aacp.settings.invalid_value'|trans({key: app.request.query.get('invalid_setting')}) }}
-            </div>
-        {% endif %}
+    <div class="space-y-sp-md" data-aacp-security data-aacp-security-score="{{ score }}">
         {% if app.request.query.get('ban_error') %}
             <div class="rounded-lg border border-danger-500/30 bg-danger-500/10 px-sp-sm py-3 text-fs-sm !text-danger-300">
                 {{ 'aacp.security.ban_rejected'|trans }}
@@ -30,24 +29,53 @@
         {% endif %}
 
         <twig:cp:card padded="{{ true }}">
-            <div class="flex flex-wrap items-center justify-between gap-sp-sm">
-                <div>
-                    <p class="text-fs-sm font-semibold !text-slate-200">{{ 'aacp.security.posture_title'|trans }}</p>
-                    <p class="mt-1 text-fs-sm !text-slate-400">{{ 'aacp.security.posture_desc'|trans }}</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-fs-xs font-medium uppercase tracking-wider !text-slate-500">{{ 'aacp.security.posture_score'|trans }}</p>
-                    <p class="text-fs-2xl font-bold {{ scoreTone }}">{{ score }}<span class="text-fs-sm !text-slate-500">/100</span></p>
-                </div>
-            </div>
-
-            <div class="mt-sp-sm grid grid-cols-2 gap-sp-xs sm:grid-cols-5">
-                {% for severity, count in summary %}
-                    <div class="rounded-lg border px-sp-sm py-2 {{ severityStyle[severity]|default('!border-white/10 !bg-white/5 !text-slate-300') }}">
-                        <p class="text-fs-xs font-medium uppercase tracking-wider opacity-80">{{ ('aacp.security.severity.' ~ severity)|trans }}</p>
-                        <p class="mt-0.5 text-fs-lg font-semibold">{{ count }}</p>
+            <div class="aacp-security-posture">
+                <div class="aacp-security-gauge {{ scoreTone }}" aria-label="{{ 'aacp.security.posture_score'|trans }}: {{ score }}/100">
+                    <svg viewBox="0 0 120 120" class="aacp-security-gauge-svg" aria-hidden="true">
+                        <circle class="aacp-security-gauge-track" cx="60" cy="60" r="45" />
+                        <circle class="aacp-security-gauge-progress"
+                                cx="60" cy="60" r="45"
+                                stroke-dasharray="{{ circumference }}"
+                                stroke-dashoffset="{{ dashOffset }}"
+                                data-aacp-security-ring />
+                    </svg>
+                    <div class="aacp-security-gauge-value">
+                        <span class="aacp-security-gauge-number" data-aacp-security-score-text>{{ score }}</span>
+                        <span class="aacp-security-gauge-denom">/100</span>
                     </div>
-                {% endfor %}
+                </div>
+
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-start justify-between gap-sp-sm">
+                        <div>
+                            <p class="text-fs-sm font-semibold !text-slate-200">{{ 'aacp.security.posture_title'|trans }}</p>
+                            <p class="mt-1 text-fs-sm !text-slate-400">{{ 'aacp.security.posture_desc'|trans }}</p>
+                        </div>
+                        <a href="{{ path('aacp_advanced_management', {tab: 'security'}) }}" class="btn btn-secondary btn-sm">
+                            <twig:ux:icon name="heroicons:cog-6-tooth" class="h-4 w-4" />
+                            {{ 'aacp.security.settings_cta'|trans }}
+                        </a>
+                    </div>
+
+                    <div class="mt-sp-sm grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                        {% for severity, count in summary %}
+                            {% set barPct = ((count / maxSeverity) * 100)|round %}
+                            <div class="aacp-security-sev {{ severity }}">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="text-fs-xs font-medium uppercase tracking-wider opacity-80">{{ ('aacp.security.severity.' ~ severity)|trans }}</p>
+                                    <p class="text-fs-lg font-semibold leading-none">{{ count }}</p>
+                                </div>
+                                <div class="aacp-security-sev-track" aria-hidden="true">
+                                    <span class="aacp-security-sev-fill" style="width: {{ barPct }}%"></span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <p class="mt-sp-sm font-mono text-fs-xs !text-slate-500">
+                        {{ 'aacp.security.posture_summary'|trans({'score': score, 'issues': issueTotal, 'passes': summary.pass|default(0)}) }}
+                    </p>
+                </div>
             </div>
         </twig:cp:card>
 
@@ -75,35 +103,6 @@
                 </twig:block>
             </twig:cp:table>
         </twig:cp:card>
-
-        <form method="post" action="{{ path('aacp_security_center_update') }}" class="space-y-sp-sm">
-            <input type="hidden" name="_token" value="{{ csrf_token }}">
-
-            {% for group in sectionOrder %}
-                {% if sections[group] is defined %}
-                    <twig:cp:card title="{{ ('aacp.security.section.' ~ group)|trans }}">
-                        <p class="mb-sp-sm text-fs-sm !text-slate-400">{{ ('aacp.security.section_desc.' ~ group)|trans }}</p>
-                        <div class="space-y-sp-sm">
-                            {% for setting in sections[group] %}
-                                {% include 'aacp/partials/_system_setting_field.html.twig' with {
-                                    setting: setting,
-                                    value: values[setting.key]|default(null),
-                                    compact: false,
-                                } only %}
-                            {% endfor %}
-                        </div>
-                    </twig:cp:card>
-                {% endif %}
-            {% endfor %}
-
-            <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 !bg-dark-1/60 px-sp-sm py-3">
-                <p class="text-fs-xs !text-slate-500">{{ 'aacp.security.save_hint'|trans }}</p>
-                <button type="submit" class="btn btn-primary">
-                    <twig:ux:icon name="heroicons:check" class="h-4 w-4" />
-                    {{ 'aacp.settings.save'|trans }}
-                </button>
-            </div>
-        </form>
 
         <twig:cp:card title="{{ 'aacp.security.twofactor_self_title'|trans }}">
             <p class="text-fs-sm !text-slate-400">

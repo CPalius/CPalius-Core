@@ -23,7 +23,9 @@
                         <tr>
                             <td class="!text-slate-200">
                                 <a href="{{ path('aacp_taxonomy_terms', {machineName: vocabulary.machineName}) }}" class="hover:text-primary-400">
-                                    {{ vocabulary.label }}
+                                    {% set vocabKey = 'taxonomy.vocabulary.' ~ vocabulary.machineName %}
+                                    {% set vocabLabel = vocabKey|trans %}
+                                    {{ vocabLabel != vocabKey ? vocabLabel : vocabulary.label|trans }}
                                     <span class="ml-1 font-mono text-fs-xs !text-slate-500">{{ vocabulary.machineName }}</span>
                                 </a>
                             </td>

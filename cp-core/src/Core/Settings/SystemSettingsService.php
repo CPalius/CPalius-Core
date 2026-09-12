@@ -18,7 +18,7 @@ final class SystemSettingsService
 {
     public const CSRF_TOKEN_ID = 'aacp_system_settings';
 
-    /** Virtual tab backing the AACP Security Center; see filtersForTab(). */
+    /** Virtual tab kept for BC redirects from the old Security Center settings POST. */
     public const TAB_SECURITY_CENTER = 'security_center';
 
     public function __construct(
@@ -29,7 +29,7 @@ final class SystemSettingsService
     }
 
     /**
-     * @return array<string, array{label: string, icon: string, description: string, isLocales?: bool, grouped?: bool}>
+     * @return array<string, array{label: string, icon: string, description: string, isLocales?: bool, grouped?: bool, securitySections?: bool}>
      */
     public function tabs(): array
     {
@@ -48,6 +48,9 @@ final class SystemSettingsService
                 'label' => 'aacp.system_settings.tab.security',
                 'icon' => 'heroicons:shield-check',
                 'description' => 'aacp.system_settings.tab.security_desc',
+                // Captcha + hardening groups render as section cards (not a flat table).
+                'grouped' => true,
+                'securitySections' => true,
             ],
             'telemetry' => [
                 'label' => 'aacp.system_settings.tab.telemetry',
@@ -292,9 +295,18 @@ final class SystemSettingsService
         return match ($tab) {
             'general' => [['module' => 'core', 'group' => 'genel']],
             'email' => [['module' => 'core', 'group' => 'mail']],
-            'security' => [['module' => 'core', 'group' => 'security']],
-            // Not one of tabs(): the Security Center renders these itself at
-            // /aacp/security, but reuses updateTab() so validation stays shared.
+            // Captcha (security) plus the hardening groups formerly only on
+            // /aacp/security. Security Center keeps posture / bans / sessions.
+            'security' => [
+                ['module' => 'core', 'group' => 'security'],
+                ['module' => 'core', 'group' => 'security.headers'],
+                ['module' => 'core', 'group' => 'security.waf'],
+                ['module' => 'core', 'group' => 'security.flood'],
+                ['module' => 'core', 'group' => 'security.password'],
+                ['module' => 'core', 'group' => 'security.twofactor'],
+                ['module' => 'core', 'group' => 'security.session'],
+            ],
+            // Kept for BC redirects from the old Security Center POST route.
             self::TAB_SECURITY_CENTER => [
                 ['module' => 'core', 'group' => 'security.headers'],
                 ['module' => 'core', 'group' => 'security.waf'],

@@ -30,7 +30,7 @@
                         <tr>
                             <td class="!text-slate-200">
                                 <a href="{{ path('aacp_fields_bundle', {bundle: id}) }}" class="hover:text-primary-400">
-                                    {{ bundle.label }} <span class="ml-1 font-mono text-fs-xs !text-slate-500">{{ id }}</span>
+                                    {{ bundle.label|trans }} <span class="ml-1 font-mono text-fs-xs !text-slate-500">{{ id }}</span>
                                 </a>
                             </td>
                             <td class="text-fs-sm !text-slate-400">{{ bundle.count }}</td>

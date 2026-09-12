@@ -7,8 +7,9 @@ namespace App\Core\Settings\Definitions;
 use App\Core\Annotation\CpSetting;
 
 /**
- * Control surface for the hardening layer. Rendered by the AACP Security Center
- * (/aacp/security), grouped by the security.* group names below.
+ * Control surface for the hardening layer. Rendered under System Settings →
+ * Security (grouped by the security.* group names below). The Security Center
+ * keeps the live posture audit, bans and sessions.
  */
 #[CpSetting(
     key: 'security.headers_enabled',

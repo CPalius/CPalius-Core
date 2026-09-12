@@ -3,7 +3,7 @@
 {% block header %}{{ 'aacp.dashboard.header'|trans }}{% endblock %}
 
 {% block javascripts %}
-    {{ importmap(['app', 'aacp-dashboard']) }}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'aacp-dashboard']) }}
 {% endblock %}
 
 {% block body %}
@@ -89,18 +89,33 @@
                     <h3 class="aacp-cmd-panel-title !mb-0">{{ telemetrySecurityEnabled ? 'aacp.telemetry.feed.title'|trans : 'aacp.telemetry.visitors.title'|trans }}</h3>
                     <a href="{{ path('aacp_telemetry_settings') }}" class="font-mono text-[0.65rem] uppercase tracking-wide text-emerald-400 hover:text-emerald-300">{{ 'aacp.telemetry.settings_link'|trans }} →</a>
                 </div>
-                {% if not telemetrySecurityEnabled %}
-                    <div class="aacp-visitor-kpis">
-                        <div>
-                            <span>{{ 'aacp.telemetry.visitors.page_views'|trans }}</span>
-                            <strong data-visitor-page-views>{{ visitorStats.pageViews }}</strong>
-                        </div>
-                        <div>
-                            <span>{{ 'aacp.telemetry.visitors.unique_ips'|trans }}</span>
-                            <strong data-visitor-unique-ips>{{ visitorStats.uniqueIps }}</strong>
-                        </div>
+                <div class="aacp-visitor-kpis mb-2">
+                    <div>
+                        <span>{{ 'aacp.telemetry.visitors.page_views'|trans }}</span>
+                        <strong data-visitor-page-views>{{ visitorStats.pageViews }}</strong>
                     </div>
-                {% endif %}
+                    <div>
+                        <span>{{ 'aacp.telemetry.visitors.unique_ips'|trans }}</span>
+                        <strong data-visitor-unique-ips>{{ visitorStats.uniqueIps }}</strong>
+                    </div>
+                    <div>
+                        <span>{{ 'aacp.dashboard.security_summary.threats'|trans }}</span>
+                        <strong class="{{ securitySummary.threats > 0 ? 'text-danger-300' : '' }}">{{ securitySummary.threats }}</strong>
+                    </div>
+                    <div>
+                        <span>{{ 'aacp.dashboard.security_summary.bans'|trans }}</span>
+                        <strong>{{ banStats.total }}</strong>
+                    </div>
+                </div>
+                <p class="mb-2 font-mono text-[0.65rem] !text-slate-500">
+                    {{ 'aacp.dashboard.security_summary.line'|trans({
+                        events: securitySummary.events,
+                        warnings: securitySummary.warnings,
+                        critical: securitySummary.critical,
+                    }) }}
+                    ·
+                    <a href="{{ path('aacp_security_center') }}" class="text-emerald-400 hover:text-emerald-300">{{ 'aacp.dashboard.security_summary.open'|trans }}</a>
+                </p>
                 <div class="overflow-x-auto">
                     <table class="aacp-cmd-feed" data-telemetry-table>
                         <thead>

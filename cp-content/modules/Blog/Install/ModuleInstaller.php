@@ -50,13 +50,13 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
         $this->vocabularySeeder->ensure([
             [
                 'machine_name' => DefaultVocabularies::BLOG_CATEGORY,
-                'label' => 'Blog categories',
+                'label' => 'taxonomy.vocabulary.blog_category',
                 'hierarchical' => true,
                 'weight' => 10,
             ],
             [
                 'machine_name' => DefaultVocabularies::BLOG_TAG,
-                'label' => 'Blog tags',
+                'label' => 'taxonomy.vocabulary.blog_tag',
                 'hierarchical' => false,
                 'weight' => 20,
             ],

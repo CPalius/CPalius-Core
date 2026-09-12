@@ -83,6 +83,16 @@ services:
     App\:
         resource: '../src/'
 
+    # Override stock importmap() so inline importmap/module tags carry the CSP nonce.
+    # Must sit after App\ so this definition wins over the autoconfigured one.
+    # Lower Twig priority loads later and overwrites the stock importmap() function.
+    App\Core\Security\Twig\CpImportMapExtension:
+        autoconfigure: false
+        arguments:
+            $importMapRuntime: '@twig.runtime.importmap'
+        tags:
+            - { name: twig.extension, priority: -100 }
+
     App\Core\Logging\Monolog\DoctrineLogHandler:
         public: true
 

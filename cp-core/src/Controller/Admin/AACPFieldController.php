@@ -241,7 +241,12 @@ final class AACPFieldController
         }
 
         foreach ($this->vocabularies->all() as $machineName => $row) {
-            $labels[$machineName] ??= (string) ($row['label'] ?? $machineName);
+            $stored = (string) ($row['label'] ?? $machineName);
+            $labels[$machineName] ??= match ($machineName) {
+                'blog_category' => 'taxonomy.vocabulary.blog_category',
+                'blog_tag' => 'taxonomy.vocabulary.blog_tag',
+                default => $stored,
+            };
         }
 
         return $labels;

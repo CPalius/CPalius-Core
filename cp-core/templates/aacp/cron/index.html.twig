@@ -25,7 +25,10 @@
                         <tr data-cron-row="{{ task.codeBased ? 'code:' ~ task.jobName : 'db:' ~ task.id }}">
                             <td class="!text-slate-200">
                                 {% if task.codeBased %}
-                                    {{ task.name }}
+                                    {% set cronLabelKey = 'aacp.cron.job.' ~ task.jobName %}
+                                    {% set cronLabel = cronLabelKey|trans %}
+                                    <span class="block">{{ cronLabel != cronLabelKey ? cronLabel : task.description|default(task.name) }}</span>
+                                    <span class="mt-0.5 block font-mono text-fs-xs !text-slate-500">{{ task.jobName }}</span>
                                 {% else %}
                                     <a href="{{ path('aacp_cron_edit', {id: task.id}) }}" class="hover:text-primary-400">{{ task.name }}</a>
                                 {% endif %}

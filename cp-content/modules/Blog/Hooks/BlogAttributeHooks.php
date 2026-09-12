@@ -8,6 +8,7 @@ use App\Core\Hook\Attribute\CpHook;
 use App\Core\Hook\HookContext;
 use App\Core\Localization\LocaleProvider;
 use App\Repository\TagRepository;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Phase 7B #[CpHook] listener for blog.render.sidebar (DI); runs beside the flat-file hook.
@@ -17,6 +18,7 @@ final class BlogAttributeHooks
     public function __construct(
         private readonly TagRepository $tagRepository,
         private readonly LocaleProvider $localeProvider,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -40,7 +42,8 @@ final class BlogAttributeHooks
         );
 
         return $context->appendHtml(sprintf(
-            '<div class="cp-hook-blog-tags"><p>Popüler Etiketler: %s</p></div>',
+            '<div class="cp-hook-blog-tags"><p>%s: %s</p></div>',
+            htmlspecialchars($this->translator->trans('blog.widget.popular_tags_title'), ENT_QUOTES, 'UTF-8'),
             implode(', ', $labels),
         ));
     }

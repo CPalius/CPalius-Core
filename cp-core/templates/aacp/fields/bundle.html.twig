@@ -1,6 +1,6 @@
 {% extends 'aacp/layout.html.twig' %}
 
-{% block header %}{{ 'aacp.fields.bundle_header'|trans({'bundle': bundleLabel}) }}{% endblock %}
+{% block header %}{{ 'aacp.fields.bundle_header'|trans({'bundle': bundleLabel|trans}) }}{% endblock %}
 
 {% block body %}
     <div class="space-y-sp-md">

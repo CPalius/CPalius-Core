@@ -662,7 +662,7 @@
         @apply sm:col-span-2;
     }
     .aacp-visitor-kpis {
-        @apply mb-3 grid grid-cols-2 gap-2;
+        @apply mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4;
     }
     .aacp-visitor-kpis > div {
         @apply rounded-md border border-white/10 bg-dark-1 px-2.5 py-2;
@@ -807,5 +807,81 @@
     }
     .aacp-action-btn-success:hover {
         @apply text-success-300;
+    }
+
+    /* Security Center — graphical posture */
+    .aacp-security-posture {
+        @apply flex flex-col gap-sp-sm lg:flex-row lg:items-center;
+    }
+    .aacp-security-gauge {
+        @apply relative mx-auto h-36 w-36 shrink-0 lg:mx-0;
+    }
+    .aacp-security-gauge-svg {
+        @apply h-full w-full -rotate-90;
+    }
+    .aacp-security-gauge-track {
+        fill: none;
+        stroke: rgb(255 255 255 / 0.08);
+        stroke-width: 8;
+    }
+    .aacp-security-gauge-progress {
+        fill: none;
+        stroke-width: 8;
+        stroke-linecap: round;
+        transition: stroke-dashoffset 0.7s ease;
+    }
+    .aacp-security-gauge.is-good .aacp-security-gauge-progress {
+        stroke: rgb(52 211 153);
+        filter: drop-shadow(0 0 8px rgb(52 211 153 / 0.55));
+    }
+    .aacp-security-gauge.is-warn .aacp-security-gauge-progress {
+        stroke: rgb(251 191 36);
+        filter: drop-shadow(0 0 8px rgb(251 191 36 / 0.45));
+    }
+    .aacp-security-gauge.is-bad .aacp-security-gauge-progress {
+        stroke: rgb(248 113 113);
+        filter: drop-shadow(0 0 8px rgb(248 113 113 / 0.45));
+    }
+    .aacp-security-gauge-value {
+        @apply absolute inset-0 flex flex-col items-center justify-center;
+    }
+    .aacp-security-gauge-number {
+        @apply font-mono text-3xl font-bold leading-none text-slate-100;
+    }
+    .aacp-security-gauge.is-good .aacp-security-gauge-number {
+        @apply text-emerald-300;
+    }
+    .aacp-security-gauge.is-warn .aacp-security-gauge-number {
+        @apply text-warning-300;
+    }
+    .aacp-security-gauge.is-bad .aacp-security-gauge-number {
+        @apply text-danger-300;
+    }
+    .aacp-security-gauge-denom {
+        @apply mt-1 font-mono text-fs-xs text-slate-500;
+    }
+    .aacp-security-sev {
+        @apply rounded-lg border px-sp-sm py-2;
+    }
+    .aacp-security-sev.critical {
+        @apply border-danger-500/30 bg-danger-500/10 text-danger-300;
+    }
+    .aacp-security-sev.high {
+        @apply border-danger-500/20 bg-danger-500/5 text-danger-200;
+    }
+    .aacp-security-sev.medium {
+        @apply border-warning-500/30 bg-warning-500/10 text-warning-300;
+    }
+    .aacp-security-sev.low {
+        @apply border-white/10 bg-white/5 text-slate-300;
+    }
+    .aacp-security-sev.pass {
+        @apply border-success-500/30 bg-success-500/10 text-success-300;
+    }
+    .aacp-security-sev-track {
+        @apply mt-2 h-1.5 overflow-hidden rounded-full bg-black/20;
+    }
+    .aacp-security-sev-fill {
+        @apply block h-full rounded-full bg-current opacity-80 transition-[width] duration-700 ease-out;
     }
 }

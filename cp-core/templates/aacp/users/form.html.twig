@@ -3,7 +3,7 @@
 {% block header %}{{ user ? 'aacp.users.form.header_edit'|trans : 'aacp.users.form.header_create'|trans }}{% endblock %}
 
 {% block javascripts %}
-    {{ importmap(['app', 'aacp-user-roles']) }}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'aacp-user-roles']) }}
 {% endblock %}
 
 {% block body %}

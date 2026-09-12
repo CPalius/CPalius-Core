@@ -53,7 +53,7 @@
                         <p class="text-fs-sm font-semibold !text-slate-200">{{ 'aacp.security.center_cta_title'|trans }}</p>
                         <p class="mt-1 text-fs-sm !text-slate-400">{{ 'aacp.security.center_cta_desc'|trans }}</p>
                     </div>
-                    <a href="{{ path('aacp_security_center') }}" class="btn btn-primary btn-sm">
+                    <a href="{{ path('aacp_security_center') }}" class="btn btn-secondary btn-sm">
                         <twig:ux:icon name="heroicons:shield-check" class="h-4 w-4" />
                         {{ 'aacp.security.center_cta_link'|trans }}
                     </a>
@@ -154,29 +154,82 @@
         {% elseif tabs[activeTab].grouped|default(false) %}
             {% set groups = tabGroups[activeTab]|default({}) %}
             {% set values = tabValues[activeTab]|default({}) %}
+            {% set isSecuritySections = tabs[activeTab].securitySections|default(false) %}
+            {% set securitySectionOrder = ['security', 'security.headers', 'security.waf', 'security.flood', 'security.password', 'security.twofactor', 'security.session'] %}
 
             {% if groups is empty %}
                 <twig:cp:card>
                     <p class="text-fs-sm !text-slate-500">{{ 'aacp.settings.no_settings'|trans }}</p>
                 </twig:cp:card>
             {% else %}
-                <form method="post" action="{{ path('aacp_advanced_management_update') }}" class="space-y-sp-sm">
+                <form method="post" action="{{ path('aacp_advanced_management_update') }}" class="space-y-sp-sm" {% if isSecuritySections %}data-system-settings-security{% endif %}>
                     <input type="hidden" name="_token" value="{{ csrf_token }}">
                     <input type="hidden" name="_tab" value="{{ activeTab }}">
 
-                    {% for groupName, settingDefs in groups %}
-                        <twig:cp:card title="{{ groupName|capitalize }}">
-                            <div class="space-y-sp-sm">
-                                {% for setting in settingDefs %}
-                                    {% include 'aacp/partials/_system_setting_field.html.twig' with {
-                                        setting: setting,
-                                        value: values[setting.key]|default(null),
-                                        compact: false,
-                                    } only %}
-                                {% endfor %}
-                            </div>
-                        </twig:cp:card>
-                    {% endfor %}
+                    {% if isSecuritySections %}
+                        {% for groupName in securitySectionOrder %}
+                            {% if groups[groupName] is defined %}
+                                {% set sectionTitle = groupName == 'security'
+                                    ? 'aacp.security.section.security.captcha'|trans
+                                    : ('aacp.security.section.' ~ groupName)|trans %}
+                                {% set sectionDesc = groupName == 'security'
+                                    ? 'aacp.security.section_desc.security.captcha'|trans
+                                    : ('aacp.security.section_desc.' ~ groupName)|trans %}
+                                <twig:cp:card title="{{ sectionTitle }}">
+                                    <p class="mb-sp-sm text-fs-sm !text-slate-400">{{ sectionDesc }}</p>
+                                    <div class="space-y-sp-sm">
+                                        {% for setting in groups[groupName] %}
+                                            {% set captchaHidden = false %}
+                                            {% if setting.key in providerKeys and values['security.captcha_provider'] != 'recaptcha' %}
+                                                {% set captchaHidden = true %}
+                                            {% elseif setting.key in turnstileKeys and values['security.captcha_provider'] != 'turnstile' %}
+                                                {% set captchaHidden = true %}
+                                            {% elseif setting.key in hcaptchaKeys and values['security.captcha_provider'] != 'hcaptcha' %}
+                                                {% set captchaHidden = true %}
+                                            {% endif %}
+                                            <div class="{{ captchaHidden ? 'hidden' : '' }}"
+                                                 {% if setting.key in providerKeys %}data-captcha-recaptcha-row{% elseif setting.key in turnstileKeys %}data-captcha-turnstile-row{% elseif setting.key in hcaptchaKeys %}data-captcha-hcaptcha-row{% endif %}>
+                                                {% include 'aacp/partials/_system_setting_field.html.twig' with {
+                                                    setting: setting,
+                                                    value: values[setting.key]|default(null),
+                                                    compact: false,
+                                                } only %}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </twig:cp:card>
+                            {% endif %}
+                        {% endfor %}
+                        {% for groupName, settingDefs in groups %}
+                            {% if groupName not in securitySectionOrder %}
+                                <twig:cp:card title="{{ groupName|capitalize }}">
+                                    <div class="space-y-sp-sm">
+                                        {% for setting in settingDefs %}
+                                            {% include 'aacp/partials/_system_setting_field.html.twig' with {
+                                                setting: setting,
+                                                value: values[setting.key]|default(null),
+                                                compact: false,
+                                            } only %}
+                                        {% endfor %}
+                                    </div>
+                                </twig:cp:card>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        {% for groupName, settingDefs in groups %}
+                            <twig:cp:card title="{{ groupName|capitalize }}">
+                                <div class="space-y-sp-sm">
+                                    {% for setting in settingDefs %}
+                                        {% include 'aacp/partials/_system_setting_field.html.twig' with {
+                                            setting: setting,
+                                            value: values[setting.key]|default(null),
+                                            compact: false,
+                                        } only %}
+                                    {% endfor %}
+                                </div>
+                            </twig:cp:card>
+                        {% endfor %}
+                    {% endif %}
 
                     <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 !bg-dark-1/60 px-sp-sm py-3">
                         <p class="text-fs-xs !text-slate-500">{{ 'aacp.system_settings.save_hint'|trans }}</p>

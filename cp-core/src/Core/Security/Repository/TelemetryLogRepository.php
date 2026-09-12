@@ -179,6 +179,43 @@ class TelemetryLogRepository extends ServiceEntityRepository
     }
 
     /**
+     * Compact 24h security strip for the AACP dashboard (visitor mode companion).
+     *
+     * @return array{threats: int, warnings: int, critical: int, events: int}
+     */
+    public function securitySummary(int $hours = 24): array
+    {
+        $empty = ['threats' => 0, 'warnings' => 0, 'critical' => 0, 'events' => 0];
+
+        try {
+            $since = (new \DateTimeImmutable())->modify(sprintf('-%d hours', $hours))->format('Y-m-d H:i:s');
+            $row = $this->connection->fetchAssociative(
+                "SELECT
+                    SUM(CASE WHEN severity = 'threat' THEN 1 ELSE 0 END) AS threats,
+                    SUM(CASE WHEN severity = 'warning' THEN 1 ELSE 0 END) AS warnings,
+                    SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END) AS criticals,
+                    SUM(CASE WHEN event_type <> 'page_view' THEN 1 ELSE 0 END) AS events
+                 FROM cp_system_telemetry_logs
+                 WHERE created_at >= :since",
+                ['since' => $since],
+            );
+        } catch (DBALException) {
+            return $empty;
+        }
+
+        if ($row === false) {
+            return $empty;
+        }
+
+        return [
+            'threats' => (int) ($row['threats'] ?? 0),
+            'warnings' => (int) ($row['warnings'] ?? 0),
+            'critical' => (int) ($row['criticals'] ?? 0),
+            'events' => (int) ($row['events'] ?? 0),
+        ];
+    }
+
+    /**
      * @return array{labels: list<string>, keys: list<string>}
      */
     private function emptyHourly(int $hours): array

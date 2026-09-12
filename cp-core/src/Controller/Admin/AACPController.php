@@ -22,6 +22,7 @@ use App\Core\Plugin\PluginRegistry;
 use App\Core\Plugin\PluginToggleRepository;
 use App\Core\Queue\QueueStatusService;
 use App\Core\Security\Repository\TelemetryLogRepository;
+use App\Core\Security\Service\IpBanService;
 use App\Core\Settings\SettingSecretCodec;
 use App\Core\Settings\SettingsRegistry;
 use App\Core\Settings\SystemSettingsService;
@@ -97,6 +98,7 @@ final class AACPController
         private readonly TranslatorInterface $translator,
         private readonly AuditLogRepository $auditLogRepository,
         private readonly TelemetryLogRepository $telemetryLogRepository,
+        private readonly IpBanService $ipBanService,
         private readonly PerformanceInventory $performanceInventory,
         #[Autowire(service: 'cache.app')]
         private readonly CacheInterface $appCache,
@@ -167,15 +169,9 @@ final class AACPController
         $health = $this->buildHealthReport();
         $system = $this->buildSystemReport();
         $securityOn = (bool) $this->settingsRegistry->get('telemetry.security_enabled', false);
-        $visitorStats = $securityOn
-            ? [
-                'uniqueIps' => 0,
-                'pageViews' => 0,
-                'hourly' => ['labels' => [], 'hits' => []],
-                'topPages' => [],
-                'topIps' => [],
-            ]
-            : $this->telemetryLogRepository->visitorStats(24);
+        $visitorStats = $this->telemetryLogRepository->visitorStats(24);
+        $securitySummary = $this->telemetryLogRepository->securitySummary(24);
+        $banStats = $this->ipBanService->stats();
 
         $html = $this->twig->render('aacp/dashboard.html.twig', [
             'health' => $health,
@@ -189,6 +185,8 @@ final class AACPController
             'telemetryVectors' => $securityOn ? $this->telemetryLogRepository->vectorBreakdown(24) : [],
             'topThreatIps' => $securityOn ? $this->telemetryLogRepository->topThreatIps(5) : [],
             'visitorStats' => $visitorStats,
+            'securitySummary' => $securitySummary,
+            'banStats' => $banStats,
             'quarantineLog' => array_slice($this->readQuarantineLog(), 0, 8),
         ]);
 

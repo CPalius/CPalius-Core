@@ -22,14 +22,20 @@
         <twig:cp:card title="{{ 'aacp.hooks.registered_points'|trans }}" padded="{{ false }}">
             <twig:cp:table headers="{{ [
                 'aacp.hooks.column.hook_point'|trans,
+                'aacp.hooks.column.label'|trans,
                 'aacp.hooks.column.lane'|trans,
                 'aacp.hooks.column.source'|trans,
                 'aacp.hooks.column.detail'|trans,
             ] }}" empty="{{ hooks is empty }}" emptyText="{{ 'aacp.hooks.empty'|trans }}">
                 <twig:block name="rows">
                     {% for hook in hooks %}
+                        {% set pointKey = 'aacp.hooks.point.' ~ hook.hookPoint %}
+                        {% set pointLabel = pointKey|trans %}
                         <tr>
                             <td class="font-mono text-fs-xs !text-primary-400">{{ hook.hookPoint }}</td>
+                            <td class="!text-slate-200">
+                                {{ pointLabel != pointKey ? pointLabel : 'aacp.hooks.point_unknown'|trans }}
+                            </td>
                             <td>
                                 <twig:cp:badge status="{{ hook.type == 'attribute' ? 'active' : 'inactive' }}" label="{{ hook.type == 'attribute' ? 'aacp.hooks.type_attribute'|trans : 'aacp.hooks.type_flat_file'|trans }}" />
                             </td>
