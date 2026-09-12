@@ -27,15 +27,18 @@
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
   **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı), **GC3** bitti.
   **T3.2 (multisite/org) İPTAL** (öncelik dışı).
-- **Son oturum:** 2026-09-12 — **teknik borç: strict_types + stil sweep.**
-  `php-cs-fixer` 531/900 dosyayı tek geçişte düzeltti (`declare_strict_types` dahil;
-  `Kernel`/`Node`/`User`/`CPaliusVoter` artık strict). Eşleşmeyen 4 PHPStan baseline
-  kaydı düşürüldü (374 → 372). **Commit hazır, push yok.**
+- **Son oturum:** 2026-09-12 — **AACP konsolidasyonu + CSP nonce kapanışı** (2 commit).
+  Hardening ayarları Güvenlik Merkezi'nden System Settings → Security'ye taşındı, merkez
+  canlı ops ekranına indi; `importmap()` nonce'lu hâle getirildi; `QueryCounter` şema
+  kataloğu sorgularını saymıyor. Ardından: `csp_nonce_attr()` yazılmıştı ama **hiçbir
+  şablon çağırmıyordu** — 19 script etiketi nonce'suzdu, yani strict CSP modu paneli ve
+  temayı sessizce öldürüyordu. Hepsi nonce'landı + `TemplateScriptNonceTest` ile kalıcı
+  koruma altına alındı. **Commit'li, push yok.**
 - **Sıradaki iş:** T5.1 maker (`cp:make:*`) · T3.4 Migrate API · T5.5 el kitabı.
 - **Bekleyen migration:** yok. Artık `cp:doctor` bunu kendisi söylüyor.
 - **Doğrulama durumu (2026-09-12):** PHPStan level 6 temiz (baseline **372**) ·
-  php-cs-fixer temiz (0/900) · **966 unit + 71 entegrasyon testi yeşil** ·
-  `cp:doctor --fail-on=high` gerçek DB'de 0 · lint:container dev OK.
+  php-cs-fixer temiz · **969 unit + 71 entegrasyon testi yeşil** ·
+  `lint:twig` 241 dosya temiz · lint:container dev OK.
 - **Bilinen ön koşullar:** DB için `C:\laragon\bin\php\php-8.4.14-nts-Win32-vs17-x64\php.exe`
   (bkz. memory `php-cli-environment`). Test DB `cpalius-cmf_test` (MySQL; `dbname_suffix`
   ile). `phpunit.xml.dist` kök dizinde.
@@ -46,6 +49,12 @@
 - **Kalan teknik borç:** migration'lar MySQL'e çivili (bkz. skor satırı 40 —
   **karar bekliyor:** "MySQL-only, bilinçli" mi, DBAL-taşınabilir mi).
   `SECURITY.md` / `LICENSE` iletişim adresi (`sys@rootali.net`) onay bekliyor.
+- **Yeni karar konusu (2026-09-12):** strict modda `script-src` içinde `'strict-dynamic'`
+  var, bu da ana kaynak ifadelerini geçersiz kılıyor → `security.csp_script_src` ayarına
+  eklenen host'lar **strict modda hiçbir işe yaramıyor**, operatör "ekledim ama olmadı"
+  durumunda kalıyor. Seçenekler: (a) ekstra host varsa `'strict-dynamic'`'i düşür,
+  (b) ayarı strict modda arayüzde devre dışı bırakıp gerekçesini yaz. Sessiz bırakılmadı,
+  bilinçli olarak sıraya alındı.
 
 ---
 
@@ -112,7 +121,7 @@ Sütunlar: **CP**=CPalius · **DR**=Drupal 10/11 · **T3**=TYPO3 v13 · **WP**=W
 | # | Yetenek alanı | CP | DR | T3 | WP | PW | Yol haritası |
 |---|---|:--:|:--:|:--:|:--:|:--:|---|
 | 1 | Çökmeyen çekirdek / modül izolasyonu | A+ | B | B | C | B | — (olgun) |
-| 2 | Güvenlik-varsayılan (CBAC, tenant, N+1 guard, XSS) | **A++** | A | A | C | A | TS ✅ — bkz. alan notu: çevre + kimlik + denetim üç katmanı da çekirdekte, dördünde de contrib |
+| 2 | Güvenlik-varsayılan (CBAC, tenant, N+1 guard, XSS) | **A++** | A | A | C | A | TS ✅ — bkz. alan notu: çevre + kimlik + denetim üç katmanı da çekirdekte, dördünde de contrib. **2026-09-12:** strict CSP artık gerçekten kullanılabilir — 19 script etiketi nonce'landı, `TemplateScriptNonceTest` regresyonu statik olarak engelliyor. Rakip zaafı: dördünde de nonce'lu CSP ya contrib eklenti işi (WP/Drupal) ya da tema yazarının elle disiplinine bırakılmış; hiçbiri "nonce'suz script etiketi" durumunu makineyle denetlemiyor |
 | 3 | Hibrit veri modeli + flat index | A | B | B | C | A | — |
 | 4 | **Entity API** (tek fieldable/revision/i18n/access sözleşmesi) | B | A+ | B | C | A | T1.1 ✅ (Node+User fieldable) · revision/i18n genelleme kaldı |
 | 5 | Field API (tip + widget + formatter + ayar) | B | A+ | A | C | A | T6 (Money/Link/Address/nested + validation UI) |
@@ -705,6 +714,65 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 ## 4. İLERLEME GÜNLÜĞÜ
 
 > En yeni en üstte. Her oturum sonunda: değişen dosyalar, doğrulama, kalan risk.
+
+### 2026-09-12 (21) — AACP konsolidasyonu + CSP nonce'unun gerçekten bağlanması
+
+**Bağlam:** Oturum, çalışma ağacında yarım kalmış bir AACP işiyle açıldı (commit
+edilmemiş 33 dosya). Önce o iş bitirildi ve commit'lendi, sonra onun açtığı kapıdan
+çok daha büyük bir bulgu çıktı.
+
+**Commit 1 — AACP konsolidasyonu:**
+- Düzenlenebilir hardening ayarları (headers, WAF, flood, parola, 2FA, oturum)
+  Güvenlik Merkezi'nin özel ekranından **System Settings → Security** sekmesine taşındı;
+  captcha ile birlikte bölüm kartları olarak çiziliyor. Merkez'de yalnızca gerçekten
+  canlı olan üç şey kaldı: duruş denetimi, IP ban'ları, aktif oturumlar. Eski POST
+  rotası BC yönlendirmesi olarak duruyor (yer imi 404 vermesin).
+- `CpImportMapExtension` — Symfony'nin `importmap()` fonksiyonu nonce geçirmeye izin
+  vermiyor; override edildi, üretilen her `<script>` artık nonce taşıyor.
+- Dashboard'a 24 saatlik güvenlik şeridi (telemetri özeti + ban istatistiği). Ziyaretçi
+  istatistikleri güvenlik telemetrisi açıkken artık sıfırlanmıyor — ikisi birbirinin
+  alternatifi değil, tamamlayıcısı.
+- `QueryCounter` artık `information_schema` / `pg_catalog` / `performance_schema` /
+  `sys` / `mysql` saymıyor. Doctrine şema introspection'ı tek istekte bunlara meşru
+  olarak onlarca kez vuruyor (AACP güncelleme dry-run'ı tam olarak bunu yapıyordu) ve
+  N+1 olmayan bir ekranda dev N+1 guard'ını tetikliyordu. Unit testi yazıldı.
+- Cron işleri, hook noktaları ve taxonomy vocabulary'leri çevrilmiş etiket gösteriyor,
+  ham anahtar basmak yerine makine adına düşüyor. Queue ekranı standart kart/grid
+  tasarım sistemine taşındı (kendi `<h1>`'ini taşıyan son sayfaydı).
+
+**Yarım işte bulunan iki kırık:** `aacp-security.js` hem `importmap.php`'de entrypoint
+hem de `app.js`'te tek seferlik dinamik `import()` ile yükleniyordu — on bir kardeş
+script'in hepsi şablonundan `importmap()` ile yükleniyor, bu tek istisnaydı; konvansiyona
+çekildi. Ayrıca bir dosya CRLF'e kaymıştı, resmî fixer ile normalize edildi (içerik
+farkı olmadığı satır-sonu-duyarsız diff ile doğrulandı).
+
+**Commit 2 — asıl bulgu:** `CspNonceProvider` ve `csp_nonce_attr()` yardımcısı aylardır
+vardı, **ama hiçbir şablon çağırmıyordu.** Sevk edilen 19 script etiketinin hiçbirinde
+nonce yoktu. Bu "biraz zayıf" değil: strict modda `script-src` şu:
+
+    'self' 'nonce-X' 'strict-dynamic' https:
+
+ve `'strict-dynamic'` tarayıcıya `'self'` ile `https:`'i **yok saydırır** — yalnızca
+nonce'lu script (ve onun yüklediği) çalışır. Yani en sıkı CSP modunu açmak cron
+konsolunu, URL alias formunu, anasayfa builder'ını, profil sayfasını, iki Forum admin
+ekranını, her giriş ve yorum formundaki captcha'yı ve referans temanın bundle'larını
+öldürüyordu. Sertleştirme katmanı, saldırgan yerine siteyi indiriyordu — ve **sessizce**,
+çünkü varsayılan balanced mod `'unsafe-inline'` veriyor ve tüm bu sınıfı gizliyor.
+
+19'unun hepsi nonce'landı. Veri blokları (`application/json`, `ld+json`) bilinçli olarak
+dışarıda: hiç çalıştırılmazlar, CSP onları denetlemez.
+
+**Kanıt:** `TemplateScriptNonceTest` her koşumda `cp-core/templates`, `cp-content/modules`
+ve `cp-content/themes`'i tarıyor, nonce'suz her etikette dosya:satır vererek kırılıyor.
+Negatif kontrol yapıldı: cron şablonundan attribute çıkarılınca test kırmızı, geri
+konunca yeşil. GC3'ün dersi burada da geçerliydi — mimari doğruydu, **bağlanmamıştı**.
+
+**Doğrulama:** PHPStan L6 temiz · php-cs-fixer temiz · **969 unit + 71 entegrasyon
+yeşil** · `lint:twig` 241 dosya · `lint:container` dev OK · `lint:yaml` OK.
+
+**Kalan risk / karar:** `'strict-dynamic'` host ifadelerini yok saydığı için
+`security.csp_script_src` ayarı strict modda **etkisiz** — operatör host ekler, hiçbir
+şey olmaz. §0'da karar konusu olarak kaydedildi.
 
 ### 2026-09-12 (20) — Teknik borç: strict_types + stil sweep
 **Amaç:** GC3 sonrası bilinçli olmayan borç — 49 dosyada `declare(strict_types=1)`
