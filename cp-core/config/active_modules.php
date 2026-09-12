@@ -11,4 +11,5 @@ return [
   Modules\Widget\WidgetModule::class,
   Modules\Seo\SeoModule::class,
   Modules\Pages\PagesModule::class,
+  Modules\Importer\ImporterModule::class,
 ];

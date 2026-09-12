@@ -1,0 +1,14 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # Migration/ holds the MigrationInterface implementations; autoconfigure
+    # applies #[AutoconfigureTag('cpalius.migration')] from the interface, so
+    # MigrationRegistry picks them up without the core knowing this module.
+    Modules\Importer\Migration\:
+        resource: '../../Migration/'
+
+    # Source/ classes are constructed by the migrations rather than injected —
+    # a WXR reader needs a file path nobody knows at container-build time — so
+    # they are deliberately NOT registered as services.

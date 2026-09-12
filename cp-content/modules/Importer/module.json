@@ -1,0 +1,13 @@
+{
+    "name": "Importer",
+    "version": "1.0.0",
+    "description": "Import content from WordPress, XenForo, MyBB, Joomla and Drupal into CPalius through the core Migrate API.",
+    "author": "CPalius",
+    "bundle": "Modules\\Importer\\ImporterModule",
+    "core_version": "^1.0",
+    "requires": {},
+    "conflicts": {},
+    "provides": [
+        "importer"
+    ]
+}

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Core\Command;
 
+use App\Core\Migrate\ConfigurableMigrationInterface;
 use App\Core\Migrate\MigrationInterface;
+use App\Core\Migrate\MigrationOption;
 use App\Core\Migrate\MigrationRegistry;
 use App\Core\Migrate\MigrationReport;
 use App\Core\Migrate\MigrationRunner;
@@ -53,6 +55,7 @@ final class MigrateCommand extends Command
             ->addArgument('migration', InputArgument::OPTIONAL, 'Migration id (omit with "run" to run every migration in dependency order)')
             ->addOption('apply', null, InputOption::VALUE_NONE, 'Actually write. Without it, run and rollback only report what they would do')
             ->addOption('limit', null, InputOption::VALUE_REQUIRED, 'Stop after this many source rows')
+            ->addOption('option', 'o', InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Migration option as name=value; repeat for several. "cp:migrate status <id>" lists what a migration accepts')
             ->addOption('json', null, InputOption::VALUE_NONE, 'Emit machine-readable output');
     }
 
@@ -116,11 +119,16 @@ final class MigrateCommand extends Command
         $rows = [];
 
         foreach ($this->registry->ordered() as $migration) {
+            // A configurable migration has no source until it is told where to
+            // look, so listing must not ask. "needs options" is the honest
+            // answer and points at the command that explains which.
+            $needsOptions = $migration instanceof ConfigurableMigrationInterface && $migration->options() !== [];
+
             $rows[] = [
                 'id' => $migration->id(),
                 'label' => $migration->label(),
-                'source' => $migration->source()->describe(),
-                'destination' => $migration->destination()->describe(),
+                'source' => $needsOptions ? 'needs options' : $migration->source()->describe(),
+                'destination' => $needsOptions ? 'needs options' : $migration->destination()->describe(),
                 'dependsOn' => $migration->dependsOn(),
                 'imported' => $this->runner->importedCount($migration),
             ];
@@ -150,15 +158,26 @@ final class MigrateCommand extends Command
 
     private function status(SymfonyStyle $io, InputInterface $input, bool $json): int
     {
-        $migration = $this->requireMigration($input);
+        // Deliberately NOT configured: status is how an operator finds out
+        // which options a migration wants, so it cannot be the one command that
+        // refuses to run until they are supplied.
+        $migration = $this->registry->get($this->migrationId($input));
+        $options = $migration instanceof ConfigurableMigrationInterface ? $migration->options() : [];
+        $describable = $options === [];
 
         $payload = [
             'migration' => $migration->id(),
             'label' => $migration->label(),
-            'source' => $migration->source()->describe(),
-            'destination' => $migration->destination()->describe(),
-            'sourceRows' => $migration->source()->count(),
+            'source' => $describable ? $migration->source()->describe() : 'needs options (see below)',
+            'destination' => $describable ? $migration->destination()->describe() : 'needs options (see below)',
+            'sourceRows' => $describable ? $migration->source()->count() : null,
             'imported' => $this->runner->importedCount($migration),
+            'options' => array_map(static fn (MigrationOption $o): array => [
+                'name' => $o->name,
+                'description' => $o->description,
+                'required' => $o->required,
+                'default' => $o->default,
+            ], $options),
         ];
 
         if ($json) {
@@ -175,7 +194,32 @@ final class MigrateCommand extends Command
             ['Imported so far' => (string) $payload['imported']],
         );
 
+        if ($options !== []) {
+            $io->section('Options');
+            $io->table(
+                ['Name', 'Required', 'Default', 'Description'],
+                array_map(static fn (MigrationOption $o): array => [
+                    $o->name,
+                    $o->required ? 'yes' : 'no',
+                    $o->default ?? '—',
+                    $o->description,
+                ], $options),
+            );
+            $io->comment(sprintf('Pass them as: cp:migrate run %s -o name=value', $migration->id()));
+        }
+
         return Command::SUCCESS;
+    }
+
+    private function migrationId(InputInterface $input): string
+    {
+        $id = $input->getArgument('migration');
+
+        if (!\is_string($id) || $id === '') {
+            throw new \InvalidArgumentException('This action needs a migration id. Run "cp:migrate list" to see them.');
+        }
+
+        return $id;
     }
 
     private function runImport(SymfonyStyle $io, InputInterface $input, bool $json): int
@@ -193,6 +237,8 @@ final class MigrateCommand extends Command
 
             return Command::SUCCESS;
         }
+
+        $migrations = $this->configureAll($migrations, $this->optionValues($input));
 
         $reports = [];
 
@@ -278,13 +324,82 @@ final class MigrateCommand extends Command
 
     private function requireMigration(InputInterface $input): MigrationInterface
     {
-        $id = $input->getArgument('migration');
+        $migration = $this->registry->get($this->migrationId($input));
+        $values = $this->optionValues($input);
 
-        if (!\is_string($id) || $id === '') {
-            throw new \InvalidArgumentException('This action needs a migration id. Run "cp:migrate list" to see them.');
+        if (!$migration instanceof ConfigurableMigrationInterface) {
+            if ($values !== []) {
+                throw new \InvalidArgumentException(sprintf('Migration "%s" takes no options, but %s was passed.', $migration->id(), implode(', ', array_keys($values))));
+            }
+
+            return $migration;
         }
 
-        return $this->registry->get($id);
+        return $migration->withOptions($values);
+    }
+
+    /**
+     * Spreads one set of -o values across a whole run.
+     *
+     * Each migration is handed only the options it declares, which is what
+     * makes the useful case work: the three WordPress migrations all read the
+     * same export file, so `cp:migrate run -o file=export.xml` should configure
+     * all three rather than force the operator to run them one at a time.
+     *
+     * An option no migration in the run declares is still refused — otherwise
+     * spreading would have quietly turned a typo into "ignored everywhere".
+     *
+     * @param list<MigrationInterface> $migrations
+     * @param array<string, string>    $values
+     *
+     * @return list<MigrationInterface>
+     */
+    private function configureAll(array $migrations, array $values): array
+    {
+        $accepted = [];
+        $configured = [];
+
+        foreach ($migrations as $migration) {
+            if (!$migration instanceof ConfigurableMigrationInterface) {
+                $configured[] = $migration;
+
+                continue;
+            }
+
+            $declared = array_map(static fn (MigrationOption $o): string => $o->name, $migration->options());
+            $accepted = [...$accepted, ...$declared];
+
+            $configured[] = $migration->withOptions(array_intersect_key($values, array_flip($declared)));
+        }
+
+        $unknown = array_diff(array_keys($values), $accepted);
+
+        if ($unknown !== []) {
+            throw new \InvalidArgumentException(sprintf('No migration in this run accepts option(s): %s. Accepted here: %s.', implode(', ', $unknown), $accepted === [] ? '(none)' : implode(', ', array_unique($accepted))));
+        }
+
+        return $configured;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function optionValues(InputInterface $input): array
+    {
+        /** @var list<string> $raw */
+        $raw = $input->getOption('option');
+        $values = [];
+
+        foreach ($raw as $pair) {
+            if (!str_contains($pair, '=')) {
+                throw new \InvalidArgumentException(sprintf('Option "%s" must be written name=value.', $pair));
+            }
+
+            [$name, $value] = explode('=', $pair, 2);
+            $values[trim($name)] = $value;
+        }
+
+        return $values;
     }
 
     private function limit(InputInterface $input): ?int

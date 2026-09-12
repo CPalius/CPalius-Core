@@ -1,0 +1,18 @@
+importer:
+    module:
+        name: 'İçe Aktarıcı'
+        description: 'WordPress, XenForo, MyBB, Joomla ve Drupal''dan içerik aktarır.'
+    migration:
+        wordpress_authors: 'WordPress yazarları'
+        wordpress_categories: 'WordPress kategorileri'
+        wordpress_tags: 'WordPress etiketleri'
+        wordpress_posts: 'WordPress yazıları'
+    option:
+        file: 'Dışa aktarım dosyasının yolu'
+        locale: 'İçe aktarılan içeriğin dili'
+        type: 'Oluşturulacak CPalius içerik tipi'
+        post_type: 'Okunacak kaynak içerik tipi'
+        role: 'İçe aktarılan hesaplara verilecek rol'
+    notice:
+        passwords_not_imported: 'Parolalar asla taşınmaz. İçe aktarılan hesaplar parola sıfırlama ile girer.'
+        drafts_by_default: 'Kaynakta herkese açık yayımlanmamış olan her şey taslak olarak aktarılır.'

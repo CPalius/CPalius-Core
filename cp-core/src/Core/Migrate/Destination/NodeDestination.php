@@ -8,6 +8,7 @@ use App\Core\Content\SlugGenerator;
 use App\Core\Migrate\MigrationDestinationInterface;
 use App\Core\Migrate\MigrationRow;
 use App\Core\Revision\Entity\NodeRevision;
+use App\Core\Taxonomy\Entity\Term;
 use App\Entity\Node;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -27,7 +28,7 @@ use Doctrine\ORM\EntityManagerInterface;
 final class NodeDestination implements MigrationDestinationInterface
 {
     /** Keys consumed as node columns; everything else becomes JSON data. */
-    private const RESERVED = ['title', 'slug', 'status', 'locale', 'publishedAt'];
+    private const RESERVED = ['title', 'slug', 'status', 'locale', 'publishedAt', 'categoryIds', 'tagIds'];
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
@@ -71,6 +72,7 @@ final class NodeDestination implements MigrationDestinationInterface
         }
 
         $node->setData($this->dataFrom($row));
+        $this->applyTerms($node, $row);
 
         $status = $row->getString('status', Node::STATUS_DRAFT);
 
@@ -131,6 +133,69 @@ final class NodeDestination implements MigrationDestinationInterface
         foreach ($revisions as $revision) {
             $this->entityManager->remove($revision);
         }
+    }
+
+    /**
+     * Attaches categories and tags, given as CPalius term ids the migration
+     * already resolved through MigrationLookup.
+     *
+     * The lists are treated as the whole truth: terms removed at the source
+     * are detached here on the next run, because an import that only ever adds
+     * leaves content tagged with things the source says it is not, and no
+     * amount of re-running fixes it.
+     *
+     * A term id that no longer resolves is skipped rather than fatal — losing
+     * one tag is not worth losing the post.
+     */
+    private function applyTerms(Node $node, MigrationRow $row): void
+    {
+        foreach ([['categoryIds', 'Category'], ['tagIds', 'Tag']] as [$key, $suffix]) {
+            if (!$row->has($key)) {
+                continue;
+            }
+
+            $wanted = [];
+
+            foreach ($this->termIds($row->get($key)) as $id) {
+                $term = $this->entityManager->find(Term::class, $id);
+
+                if ($term !== null) {
+                    $wanted[$id] = $term;
+                }
+            }
+
+            $current = $suffix === 'Category' ? $node->getCategories() : $node->getTags();
+
+            foreach ($current->toArray() as $term) {
+                if (!isset($wanted[$term->getId()])) {
+                    $node->{'remove'.$suffix}($term);
+                }
+            }
+
+            foreach ($wanted as $term) {
+                $node->{'add'.$suffix}($term);
+            }
+        }
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function termIds(mixed $raw): array
+    {
+        if (!\is_array($raw)) {
+            return [];
+        }
+
+        $ids = [];
+
+        foreach ($raw as $value) {
+            if (is_numeric($value)) {
+                $ids[] = (int) $value;
+            }
+        }
+
+        return $ids;
     }
 
     private function slugFor(MigrationRow $row, string $title, string $locale, ?int $excludeId): string

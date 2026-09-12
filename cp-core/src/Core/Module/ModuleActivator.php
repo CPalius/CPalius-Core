@@ -205,7 +205,11 @@ final class ModuleActivator
                 return $clearResult;
             }
 
-            $yamlResult = $this->runIsolated([$phpBinary, $consolePath, 'lint:yaml', 'cp-core/config', 'cp-content/modules']);
+            // --parse-tags is not optional here: core's own services.yaml uses
+            // !tagged_iterator, so without it this lint reports the core as
+            // broken and quarantines every module anyone tries to activate —
+            // the failure is in the checker, and it names the module.
+            $yamlResult = $this->runIsolated([$phpBinary, $consolePath, 'lint:yaml', '--parse-tags', 'cp-core/config', 'cp-content/modules']);
 
             if (!$yamlResult['success']) {
                 return $yamlResult;

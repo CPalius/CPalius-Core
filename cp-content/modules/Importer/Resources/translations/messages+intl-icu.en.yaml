@@ -1,0 +1,18 @@
+importer:
+    module:
+        name: 'Importer'
+        description: 'Import content from WordPress, XenForo, MyBB, Joomla and Drupal.'
+    migration:
+        wordpress_authors: 'WordPress authors'
+        wordpress_categories: 'WordPress categories'
+        wordpress_tags: 'WordPress tags'
+        wordpress_posts: 'WordPress posts'
+    option:
+        file: 'Path to the export file'
+        locale: 'Locale the imported content belongs to'
+        type: 'CPalius node type to create'
+        post_type: 'Source post type to read'
+        role: 'Role given to imported accounts'
+    notice:
+        passwords_not_imported: 'Passwords are never carried over. Imported accounts arrive through password reset.'
+        drafts_by_default: 'Anything that was not publicly published at the source is imported as a draft.'

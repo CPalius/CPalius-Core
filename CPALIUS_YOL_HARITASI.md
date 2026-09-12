@@ -27,6 +27,12 @@
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
   **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı), **GC3** bitti.
   **T3.2 (multisite/org) İPTAL** (öncelik dışı).
+- **Son oturum (3):** 2026-09-12 — **T3.4 Faz B1: Importer modülü + WordPress.**
+  Kaynak sürücüleri çekirdeğe değil **modüle** konuldu (kullanıcı kararı): çekirdek CPalius
+  yazar, modül yabancı sistemleri okur. Akışlı WXR okuyucu + 4 migration zinciri
+  (yazar→kategori→etiket→yazı) çalışıyor. Çekirdeğe üç eksik eklendi: parametreli
+  migration (`-o`), `MigrationLookup`, `User`/`Term` hedefleri. **Yeni `modules`
+  test paketi** (phpunit + CI). Ayrıntı §4 (23).
 - **Son oturum (2):** 2026-09-12 — **T3.4 Migrate API Faz A**: tipli boru hattı, idempotent
   map tablosu, dry-run varsayılan koşucu, `cp:migrate`, akışlı CSV kaynağı + Node hedefi.
   32 unit + 8 entegrasyon testi. Ayrıntı §4 (22). Satır 26 **D → B**.
@@ -37,10 +43,11 @@
   şablon çağırmıyordu** — 19 script etiketi nonce'suzdu, yani strict CSP modu paneli ve
   temayı sessizce öldürüyordu. Hepsi nonce'landı + `TemplateScriptNonceTest` ile kalıcı
   koruma altına alındı. **Commit'li, push yok.**
-- **Sıradaki iş:** **T3.4 Faz B** (WordPress WXR + Drupal DB kaynak sürücüleri — satır 26'yı
-  B'den A'ya taşıyan tek şey) · T5.1 maker (`cp:make:*`) · T5.5 el kitabı.
-- **Bekleyen migration:** **1 tane** — `Version20260912170000` (`cp_migration_map`).
-  Dev veritabanına henüz uygulanmadı; `cp:update` ile uygulanacak.
+- **Sıradaki iş:** **T3.4 Faz B2** — WordPress medya/ek dosyaları + yorumlar (bunlar olmadan
+  gerçek bir site taşımasında görseller kırılır), sonra XenForo/MyBB forum sürücüleri.
+  Sonra T5.1 maker (`cp:make:*`) · T5.5 el kitabı.
+- **Bekleyen migration:** yok. `Version20260912170000` (`cp_migration_map`) uygulandı.
+- **Aktif modül sayısı: 9** — `Importer` eklendi ve etkinleştirildi.
 - **Doğrulama durumu (2026-09-12):** PHPStan level 6 temiz (baseline **372**) ·
   php-cs-fixer temiz · **969 unit + 71 entegrasyon testi yeşil** ·
   `lint:twig` 241 dosya temiz · lint:container dev OK.
@@ -150,7 +157,7 @@ Sütunlar: **CP**=CPalius · **DR**=Drupal 10/11 · **T3**=TYPO3 v13 · **WP**=W
 | 23 | Hook / eklenti ergonomisi | B | A | B | A+ | A | T1.5 |
 | 24 | Cron / zamanlanmış görevler | A | A | A | C | B | — (CP: birleşik motor + izole subprocess + UI) |
 | 25 | Modül paketleme + lifecycle + tek-tık dağıtım | **A** | A | A | A+ | B | T3.6 ✅ `cp:update` sıralı+devam ettirilebilir; kalan: paket deposu / tek-tık kurulum |
-| 26 | Migrate / CMS-ten CMS'e veri taşıma | **B** | A+ | B | B | C | T3.4 Faz A ✅ (motor + CSV + `cp:migrate`) — Drupal'ın dört zaafına karşı tasarlandı: dry-run varsayılan, transform tipli PHP (YAML eklenti id'si yok), koşucu çekirdekte, rollback map'e göre kesin. **A/A+ için Faz B** (WXR + Drupal DB sürücüleri) şart: satır "CMS-ten CMS'e" diyor |
+| 26 | Migrate / CMS-ten CMS'e veri taşıma | **B** | A+ | B | B | C | T3.4 Faz A ✅ (motor + CSV + `cp:migrate`) · Faz B1 ✅ (**Importer modülü** + WordPress WXR: yazar/kategori/etiket/yazı uçtan uca). Drupal'ın dört zaafına karşı tasarlandı: dry-run varsayılan, transform tipli PHP (YAML eklenti id'si yok), koşucu çekirdekte, rollback map'e göre kesin; ayrıca WXR **akışlı** okunuyor (WP'nin kendi importer'ı tüm dosyayı belleğe alır). **B'de bırakıldı, bilinçli:** WordPress *metin* içeriği çalışıyor ama **medya/ek dosyalar ve yorumlar yok** — gerçek bir site taşımasında görseller kırılır. A için Faz B2 (medya + yorum) ve en az bir forum sürücüsü (XenForo/MyBB) şart |
 | 27 | Admin UI + kurtarma konsolu | **A+** | A | A | A | A | T3.5 ✅ — `/aacp/logs` watchdog + mail resend; `/aacp/recovery` DB'siz (ayırt edici) |
 | 28 | Güvenlik telemetri + IP ban (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
 | 29 | Yedekleme (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
@@ -622,8 +629,14 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
       `--json`, kabuk tamamlama
 - [x] İlk sürücüler: akışlı `CsvSource` (BOM, özel ayraç, sütun sayısı denetimi) + `NodeDestination`
 - [x] Testler: 32 unit + 8 entegrasyon (gerçek DB'de CSV → node, ikinci koşum, rollback)
-- [ ] **Faz B:** WordPress (WXR akışlı + DB) ve Drupal 7/9/10 DB kaynak sürücüleri
-- [ ] **Faz B:** Hedefler: Field API + Media + User + Taxonomy
+- [x] **Faz B1 (2026-09-12):** **`Importer` modülü** — kaynak sürücüleri çekirdekte değil
+      modülde (çekirdek CPalius yazar, modül yabancı sistemi okur). Akışlı `WxrReader`
+      (`XMLReader`, namespace URI ile eşleşir), `WxrAuthorSource`/`WxrTermSource`/
+      `WxrPostSource`, dört migration zinciri. Çekirdeğe: `ConfigurableMigrationInterface`
+      (+`MigrationOption`/`Resolver`, `cp:migrate -o`), `MigrationLookup`, `UserDestination`,
+      `TermDestination`, `NodeDestination`'a terim bağlama
+- [ ] **Faz B2:** WordPress medya/ek dosyaları + yorumlar (**satır 26'yı A'ya taşıyacak olan**)
+- [ ] **Faz B3:** XenForo / MyBB / Joomla / Drupal 7-10 DB kaynak sürücüleri
 - [ ] **Faz C:** AACP sihirbazı (`/aacp/migrate`), `cp:update` gibi kuru çalıştırmayla açılan
 - **Kanıt (Faz A):** `MigrateEndToEndTest` gerçek MySQL'de: CSV → 2 node · ikinci koşum
   **0 yaratma, 2 değişmemiş** · kaynak satırı düzenlenince **aynı node güncellenir** ·
@@ -746,6 +759,78 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 ## 4. İLERLEME GÜNLÜĞÜ
 
 > En yeni en üstte. Her oturum sonunda: değişen dosyalar, doğrulama, kalan risk.
+
+### 2026-09-12 (23) — T3.4 Faz B1: Importer **modülü** + WordPress WXR
+
+**Kapsam kararı (kullanıcı):** Kaynak sürücüleri çekirdeğe yük bindirmesin, **modül**
+olsun. Doğru ayrım şu çıktı ve kapsam süzgeciyle birebir örtüşüyor:
+- **Çekirdek** kendi entity'lerine *yazmayı* bilir: motor, map, koşucu, `cp:migrate`,
+  jenerik kaynaklar (CSV) ve `Node`/`User`/`Term` hedefleri.
+- **Modül** yabancı sistemleri *okur*: WXR, ileride XenForo/MyBB/Joomla/Drupal DB.
+  Çekirdek WordPress'in ne olduğunu hiç öğrenmiyor. Taşıma bitince modül kapatılır,
+  bilgi de onunla gider.
+
+**Lisans notu — kopyalama yok.** Kullanıcı referans olarak WordPress Importer (GPLv2+),
+MyBB Merge System ve XenForo importer'ını depoya koydu. CPalius **proprietary**, dolayısıyla
+bu kodlardan alıntı yapılamaz. Ama dosya formatları ve tablo şemaları telif konusu değil:
+araçlar **format dokümantasyonu** olarak okundu, kod sıfırdan yazıldı. Klasör
+`.gitignore`'a alındı — yabancı lisanslı kod bu depoya girmemeli.
+
+**Çekirdeğe eklenen üç eksik** (Faz B bunları ortaya çıkardı):
+- `ConfigurableMigrationInterface` + `MigrationOption` + `MigrationOptionResolver` —
+  "şu dosyadan içe aktar". `withOptions()` **yapılandırılmış kopya** döndürür, konteynerdeki
+  servis el değmemiş prototip kalır; aynı süreçte iki farklı dosyanın importu birbirine
+  bulaşamaz. Seçenekler `id()`'yi **değiştirmez** (id map'i anahtarlıyor), sonucu açıkça
+  yazıldı: bir migration id'si = bir kaynak sistem.
+- `MigrationLookup` — "authors migration'ı WordPress kullanıcı 3'ü neye çevirdi?". Çok
+  entity'li importu mümkün kılan şey bu; olmazsa her importer ya isimle eşleştirir (aynı
+  adı taşıyan iki farklı yazarı sessizce birleştirir) ya da yazarsız içerik aktarır.
+- `UserDestination` + `TermDestination`. Parolalar **taşınmıyor**: yabancı hash'i yeniden
+  hash'lemek zayıf primitifi güçlü görünen bir sargının altında yaşatır, parola uydurmak da
+  herkese kimsenin seçmediği bir kimlik verir. Hesaplar kullanılamaz parolayla gelir,
+  parola sıfırlamadan girilir — bu aynı zamanda adresin hâlâ onlarda olduğunu kanıtlar.
+
+**WordPress sürücüsü:** `WxrReader` **akışlı** (`XMLReader`) — WP'nin kendi importer'ı bütün
+export'u `DOMDocument`'a yükler, 300 MB'lık bir export'un `memory_limit`'te ölmesinin sebebi
+tam olarak budur. Namespace **URI ile** eşleştiriliyor, `wp:` önekiyle değil: önek yerel bir
+takma addır, başka bir araçla yazılmış geçerli bir dosya aksi hâlde boş okunurdu.
+Zincir: `wordpress.authors → wordpress.categories → wordpress.tags → wordpress.posts`,
+`dependsOn()` ile sıralanıyor.
+
+**İki tasarım kararı, ikisi de veri kaybına karşı:**
+- **Yayımlanmamış her şey taslak olur.** WP'de publish/draft/pending/private/future/inherit
+  var, CPalius'ta üç durum. Private bir yazının yeni *herkese açık* sitede belirmesi bir
+  ifşa, sessizce atılması ise veri kaybı. Taslak, ikisi de olmayan tek seçenek.
+- **E-postasız yazar atlanır**, uydurulmaz: parola gelmediği için adresi olmayan hesap
+  asla kurtarılamaz, üstelik ileride düzgün kayıt olabilecek birinin adını işgal eder.
+
+**Yol boyunca bulunan üç gerçek hata:**
+1. **Hiçbir modül etkinleştirilemiyormuş.** `ModuleActivator`'ın ön-uçuş kontrolü
+   `lint:yaml`'ı `--parse-tags` olmadan koşuyor, çekirdeğin kendi `services.yaml`'ı ise
+   `!tagged_iterator` kullanıyor → her aktivasyon "modül sözleşmeyi ihlal etti" diye
+   **modülü karantinaya alıyordu**. Hata denetleyicideydi, suçlanan modüldü.
+2. **`UserDestination` profil verisini siliyordu.** `User` birinci sınıf profil alanlarını
+   (`first_name`, `bio`, `signature`, avatar…) JSON kolonunun *içinde* tutuyor;
+   `setData()` ile tüm diziyi değiştirmek, export'un bilmediği her şeyi yok ediyordu —
+   üstelik sessizce, profilini burada doldurmuş bir kullanıcının ikinci importunda.
+   Artık birleştiriliyor ve tipli setter'lar sonra çalışıyor. Regresyon testi yazıldı.
+3. **Kanal seviyesi satırların hepsi kayboluyordu.** `SimpleXMLElement::children()`
+   argümansız çağrılınca yalnızca *varsayılan* namespace'teki çocukları döndürüyor, yani
+   `<wp:author>` parçası "çocuğu yok" diye okunuyordu. `<item>` namespace'siz olduğu için
+   yazılar çalışıyor, yazar/kategori/etiket sessizce 0 satır dönüyordu — hata yok, çünkü
+   hiç satır üretmeyen bir kaynak, boş bir export'tan ayırt edilemez.
+
+**Yeni `modules` test paketi:** `phpunit.xml.dist` + CI'da ayrı adım. Modüller çekirdeğin
+dışında yaşıyor, kanıtları da öyle yaşamalı — yoksa bir modülün testleri çekirdeğin test
+klasörüne sızar ve modül silindiğinde orada kalır.
+
+**Doğrulama:** PHPStan L6 temiz · php-cs-fixer temiz · **1011 unit + 87 entegrasyon +
+36 modül testi yeşil** · `cp:migrate list` dört migration'ı bağımlılık sırasında gösteriyor ·
+gerçek WXR dosyasıyla kuru çalıştırma: yazarlar 2 işlendi/1 atlandı, kategoriler 2,
+etiket 1, yazılar 2 (auto-draft ve page doğru şekilde dışarıda), **hiçbir şey yazılmadı**.
+
+**Kalan (Faz B2):** medya/ek dosyalar ve yorumlar — bunlar olmadan gerçek bir site
+taşımasında görseller kırılır, satır 26 bu yüzden **B'de bırakıldı**. Sonra XenForo/MyBB.
 
 ### 2026-09-12 (22) — T3.4 Migrate API, Faz A: motor
 

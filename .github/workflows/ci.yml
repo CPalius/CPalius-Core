@@ -151,3 +151,8 @@ jobs:
 
       - name: Testler — entegrasyon
         run: php cp-includes/vendor/bin/phpunit --testsuite integration
+
+      # Modüllerin kendi testleri. Ayrı adım, çünkü bir modülün kırılması
+      # çekirdeğin kırılmasıyla aynı şey değil ve raporda öyle görünmeli.
+      - name: Testler — modüller
+        run: php cp-includes/vendor/bin/phpunit --testsuite modules
