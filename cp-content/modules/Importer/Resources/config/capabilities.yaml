@@ -1,0 +1,6 @@
+# One capability, not several. Importing is a single, whole-installation
+# privilege: anyone who can run it can create users, publish content and write
+# files, so splitting it into "view" and "run" would only produce a role that
+# can read the screen and a false sense that it is the safer half.
+capabilities:
+    - importer.run

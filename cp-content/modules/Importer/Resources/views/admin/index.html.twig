@@ -1,0 +1,57 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'importer.index.header'|trans }}{% endblock %}
+
+{% block body %}
+    <twig:studio:card padded="{{ true }}">
+        <p class="text-fs-sm text-neutral-600">{{ 'importer.index.intro'|trans }}</p>
+        <p class="mt-2 text-fs-sm text-neutral-500">{{ 'importer.index.safety'|trans }}</p>
+    </twig:studio:card>
+
+    <div class="mt-sp-sm grid gap-sp-xs sm:grid-cols-2 xl:grid-cols-3">
+        {% for system in systems %}
+            <twig:studio:card padded="{{ true }}">
+                <div class="flex items-start gap-3">
+                    <span class="mt-0.5 shrink-0 rounded-lg bg-neutral-100 p-2 text-neutral-700">
+                        <twig:ux:icon name="{{ system.icon }}" class="h-5 w-5" />
+                    </span>
+
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-fs-sm font-semibold text-neutral-900">{{ system.label }}</span>
+
+                            {% if system.available %}
+                                <twig:studio:badge status="published" label="{{ 'importer.state.ready'|trans }}" />
+                            {% else %}
+                                <twig:studio:badge status="draft" label="{{ 'importer.state.planned'|trans }}" />
+                            {% endif %}
+                        </div>
+
+                        {% if system.brings is not empty %}
+                            <p class="mt-1 text-fs-xs text-neutral-500">
+                                {% for key in system.brings %}{{ key|trans }}{% if not loop.last %} · {% endif %}{% endfor %}
+                            </p>
+                        {% endif %}
+
+                        {% if system.available %}
+                            {% if imported[system.id] > 0 %}
+                                <p class="mt-2 text-fs-xs text-neutral-500">
+                                    {{ 'importer.index.already'|trans({'count': imported[system.id]}) }}
+                                </p>
+                            {% endif %}
+
+                            <a href="{{ path('admin_import_system', {system: system.id}) }}"
+                               class="btn btn-sm btn-primary mt-sp-xs">
+                                {{ 'importer.index.start'|trans }}
+                            </a>
+                        {% else %}
+                            {# Deliberately not a link: a button that does nothing
+                               is worse than an honest "not yet". #}
+                            <p class="mt-2 text-fs-xs text-neutral-500">{{ 'importer.index.not_yet'|trans }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </twig:studio:card>
+        {% endfor %}
+    </div>
+{% endblock %}

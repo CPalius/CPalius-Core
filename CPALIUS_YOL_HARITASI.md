@@ -27,6 +27,9 @@
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
   **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı), **GC3** bitti.
   **T3.2 (multisite/org) İPTAL** (öncelik dışı).
+- **Son oturum (5):** 2026-09-12 — **T3.4 Faz C: Studio içe aktarma ekranı** (`/admin/import`).
+  Modül artık panelden kullanılabiliyor: kaynak listesi, seçenek formu, kuru çalıştırma
+  raporu, ayrı "gerçekten aktar". CSV de kayıtlı bir migration oldu. Ayrıntı §4 (25).
 - **Son oturum (4):** 2026-09-12 — **T3.4 Faz B2: medya + yorumlar.** Görseller asset'e
   giriyor, gövdedeki eski URL'ler (boyut türevleri dahil) yeniden yazılıyor, öne çıkan
   görsel ve yorumlar geliyor. **Satır 26: B → A.** Ayrıntı §4 (24).
@@ -160,7 +163,7 @@ Sütunlar: **CP**=CPalius · **DR**=Drupal 10/11 · **T3**=TYPO3 v13 · **WP**=W
 | 23 | Hook / eklenti ergonomisi | B | A | B | A+ | A | T1.5 |
 | 24 | Cron / zamanlanmış görevler | A | A | A | C | B | — (CP: birleşik motor + izole subprocess + UI) |
 | 25 | Modül paketleme + lifecycle + tek-tık dağıtım | **A** | A | A | A+ | B | T3.6 ✅ `cp:update` sıralı+devam ettirilebilir; kalan: paket deposu / tek-tık kurulum |
-| 26 | Migrate / CMS-ten CMS'e veri taşıma | **A** | A+ | B | B | C | T3.4 Faz A ✅ (motor + CSV + `cp:migrate`) · Faz B1 ✅ (**Importer modülü** + WXR: yazar/kategori/etiket/yazı) · **Faz B2 ✅ (medya + yorumlar)**. WordPress yolu artık gerçekten tam: görseller asset'e giriyor, **gövdedeki `-300x200` boyut türevleri dahil** yeniden yazılıyor (eski alan adı markup'ta kalmıyor), öne çıkan görsel `_thumbnail_id`'den çözülüyor, yorumlar thread'iyle geliyor. Drupal'ın dört zaafına karşı tasarlandı: dry-run varsayılan, transform tipli PHP (YAML eklenti id'si yok), koşucu çekirdekte, rollback map'e göre kesin; WXR **akışlı** (WP'nin kendi importer'ı tüm dosyayı belleğe alır). **A+ için:** ikinci bir kaynak ailesi (XenForo/MyBB forum) + AACP sihirbazı |
+| 26 | Migrate / CMS-ten CMS'e veri taşıma | **A** | A+ | B | B | C | T3.4 Faz A ✅ (motor + CSV + `cp:migrate`) · Faz B1 ✅ (**Importer modülü** + WXR: yazar/kategori/etiket/yazı) · **Faz B2 ✅ (medya + yorumlar)**. WordPress yolu artık gerçekten tam: görseller asset'e giriyor, **gövdedeki `-300x200` boyut türevleri dahil** yeniden yazılıyor (eski alan adı markup'ta kalmıyor), öne çıkan görsel `_thumbnail_id`'den çözülüyor, yorumlar thread'iyle geliyor. Drupal'ın dört zaafına karşı tasarlandı: dry-run varsayılan, transform tipli PHP (YAML eklenti id'si yok), koşucu çekirdekte, rollback map'e göre kesin; WXR **akışlı** (WP'nin kendi importer'ı tüm dosyayı belleğe alır). Faz C ✅ (Studio ekranı `/admin/import` — kaynak listesi, seçenek formu, kuru çalıştırma raporu, ayrı "gerçekten aktar"). **A+ için kalan tek şey: ikinci bir kaynak ailesi** (XenForo/MyBB forum) |
 | 27 | Admin UI + kurtarma konsolu | **A+** | A | A | A | A | T3.5 ✅ — `/aacp/logs` watchdog + mail resend; `/aacp/recovery` DB'siz (ayırt edici) |
 | 28 | Güvenlik telemetri + IP ban (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
 | 29 | Yedekleme (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
@@ -648,7 +651,14 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
       eşleştirme. **Satır 26: B → A**
 - [ ] **Faz B3:** XenForo / MyBB / Joomla / Drupal 7-10 DB kaynak sürücüleri
       (**satır 26'yı A+'a taşıyacak olan**)
-- [ ] **Faz C:** AACP sihirbazı (`/aacp/migrate`), `cp:update` gibi kuru çalıştırmayla açılan
+- [x] **Faz C (2026-09-12): Studio ekranı** `/admin/import` — kaynak sistem listesi (çalışanlar
+      "Hazır", henüz olmayanlar **"Planlandı" damgasıyla, tıklanamaz**), sistem başına form,
+      kuru çalıştırma raporu ve ayrı bir "Gerçekten aktar" düğmesi. Form alanları
+      `options()`'tan türetiliyor (ekran ile komut satırı ayrışamıyor). Satır sınırı +
+      kopyalanabilir `cp:migrate` komutu: tarayıcı isteği 300 MB'lık bir export'un yeri değil,
+      ekran bunu saklamak yerine söylüyor. `importer.run` yetkisi, CSRF'li POST.
+      `CsvNodeMigration` eklendi — CSV motoru Faz A'dan beri vardı ama kayıtlı bir migration'ı
+      yoktu, yani kimse koşamıyordu; artık ekranda gerçek bir seçenek
 - **Kanıt (Faz A):** `MigrateEndToEndTest` gerçek MySQL'de: CSV → 2 node · ikinci koşum
   **0 yaratma, 2 değişmemiş** · kaynak satırı düzenlenince **aynı node güncellenir** ·
   başlıksız satır tek başına düşer, komşuları geçer · çakışan başlıklar ayrı slug alır ·
@@ -770,6 +780,53 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 ## 4. İLERLEME GÜNLÜĞÜ
 
 > En yeni en üstte. Her oturum sonunda: değişen dosyalar, doğrulama, kalan risk.
+
+### 2026-09-12 (25) — T3.4 Faz C: Studio'daki içe aktarma ekranı
+
+**Neden bu adım (kullanıcı geri bildirimi):** Modül CLI-first yazılmıştı; panelde yalnızca
+"modül ayrıntıları" görünüyor, Studio'da modülü kullanacak bir yer yoktu. Aktifken
+kullanılamayan bir modül yarım demektir — arayüz "Faz C" diye ileriye atılmıştı, öne alındı.
+
+**Ekran:** `/admin/import`
+- **Kaynak listesi.** Çalışan sistemler "Hazır" rozetiyle ve bir düğmeyle; henüz olmayanlar
+  (XenForo, MyBB, Drupal, Joomla) **"Planlandı" damgasıyla ve tıklanamaz** olarak. Gizlemek
+  operatörü "acaba bir yerde var mı" diye arattırırdı; çalışmayan düğme koymak ise daha
+  kötüsü olurdu. Damgalı hâli tek dürüst sürüm.
+- **Uygunluk beyan edilmiyor, türetiliyor:** bir sistem, o önekte kayıtlı migration varsa
+  "hazır" sayılıyor. Elle tutulan bir bayrak koddan kopardı.
+- **Form `options()`'tan üretiliyor.** Ekranla komut satırı aynı kaynaktan besleniyor,
+  dolayısıyla ayrışamıyorlar. Bir modül yeni bir seçenek eklerse form kendiliğinden büyür.
+- **Ziyaret yazmaz.** AACP güncelleme ekranıyla aynı kural: URL'e gelmek veriyi değiştirmez.
+  Form gönderimi **kuru çalıştırma** yapar; yazmak ayrı ve adı konmuş bir düğme + CSRF'li
+  POST ister. `mode=apply` her gönderimde yeniden seçilmek zorunda, böylece açık kalmış bir
+  sayfa tazelenerek yazmaya dönüşemiyor.
+- **Satır sınırı ve kopyalanabilir komut.** Bir tarayıcı isteği 300 MB'lık bir export'un yeri
+  değil: PHP süre sınırı ortasında keser. Map yarıda kalanı güvenli kılıyor ama yine de kötü
+  bir deneyim. Ekran ne olduğu konusunda dürüst — denemek ve küçük/orta siteler için — ve
+  gerisi için **operatörün girdiği değerlerle doldurulmuş** `cp:migrate` satırını gösteriyor.
+
+**Yan kazanımlar:**
+- **`CsvNodeMigration`.** CSV motoru Faz A'dan beri vardı ama kayıtlı bir migration'ı yoktu:
+  yani başka kodun üstüne inşa edebileceği, kimsenin koşamadığı bir yetenekti. Kaydedildi ve
+  ekranda gerçek bir seçenek oldu.
+- **Adım adları artık çevriliyor.** Çeviri anahtarları Faz B1'de yazılmış ama kullanılmamıştı;
+  panel Türkçeyken adımlar İngilizce görünüyordu. Cron ve hook ekranlarındaki desen kullanıldı:
+  anahtar varsa çeviri, yoksa migration'ın kendi etiketi — böylece yeni bir kaynak ekleyen
+  modül asla ham anahtar olarak render edilmiyor.
+- **`importer.run` yetkisi** (tek yetki, bilinçli: içe aktarabilen zaten kullanıcı yaratabilir,
+  içerik yayımlayabilir ve dosya yazabilir; "görüntüle"/"koş" diye bölmek yalnızca ekranı
+  okuyabilen bir rol ve yarısının güvenli olduğu yanılgısı üretirdi).
+
+**Testler (`ImportScreenTest`, 10 test):** sayfa gerçekten render ediliyor. Ziyaretin hiçbir
+şey yazmadığı, token'sız POST'un reddedildiği, kuru çalıştırmanın yazmadığı, "gerçekten aktar"ın
+**gerçekten 2 node yarattığı**, satır sınırının tuttuğu ve hatalı dosya yolunun sayfada mesaj
+olarak döndüğü doğrulanıyor. CSRF token'ı **render edilmiş formdan okunuyor** — hem tarayıcının
+yaptığının aynısı hem de daha güçlü bir iddia: sayfanın gerçekten gönderilebilir bir token
+bastığını kanıtlıyor.
+
+**Not:** Bu testler `container()->get()` ile private servis çekmiyor. Çekirdeğin eşdeğer testi
+bunu yapıyor ve 50 kayıtla baseline'da duruyor; `phpstan.neon.dist` "baseline donmuş borç, yeni
+kod tam seviyede" dediği için yeni dosya o yola sokulmadı.
 
 ### 2026-09-12 (24) — T3.4 Faz B2: medya ve yorumlar — satır 26 **B → A**
 

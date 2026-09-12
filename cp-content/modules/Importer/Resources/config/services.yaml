@@ -9,6 +9,13 @@ services:
     Modules\Importer\Migration\:
         resource: '../../Migration/'
 
+    Modules\Importer\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    # The catalogue the import screen renders from.
+    Modules\Importer\SourceSystemCatalog: ~
+
     # Source/ classes are constructed by the migrations rather than injected —
     # a WXR reader needs a file path nobody knows at container-build time — so
     # they are deliberately NOT registered as services.
