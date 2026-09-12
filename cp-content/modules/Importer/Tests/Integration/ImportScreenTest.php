@@ -192,8 +192,8 @@ final class ImportScreenTest extends IntegrationTestCase
         // Planned systems are still listed so nobody wonders whether support
         // exists somewhere they have not found — but they are not offered as
         // buttons.
-        self::assertStringContainsString('Joomla', $html);
-        self::assertStringNotContainsString('/admin/import/joomla', $html);
+        self::assertStringContainsString('Drupal', $html);
+        self::assertStringNotContainsString('/admin/import/drupal', $html);
     }
 
     public function testTheFormIsBuiltFromWhatTheMigrationsDeclare(): void

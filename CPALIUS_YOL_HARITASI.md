@@ -27,6 +27,9 @@
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
   **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı), **GC3** bitti.
   **T3.2 (multisite/org) İPTAL** (öncelik dışı).
+- **Son oturum (8):** 2026-09-12 — **Faz B3 bitti: MyBB + Joomla.** Beş kaynak sistem
+  (WordPress, XenForo, MyBB, Joomla, CSV) tek motor üstünde, 18 migration. **Satır 26:
+  A → A+.** Ayrıntı §4 (28).
 - **Son oturum (7):** 2026-09-12 — **Faz B3 başladı: XenForo.** Çekirdeğe keyset sayfalı DB
   kaynağı, modüle BBCode→HTML dönüştürücü, Forum modülüne üç import hedefi. XenForo dört
   migration ile uçtan uca çalışıyor (SQLite fixture'a karşı testli; gerçek kurulum uyumu
@@ -171,7 +174,7 @@ Sütunlar: **CP**=CPalius · **DR**=Drupal 10/11 · **T3**=TYPO3 v13 · **WP**=W
 | 23 | Hook / eklenti ergonomisi | B | A | B | A+ | A | T1.5 |
 | 24 | Cron / zamanlanmış görevler | A | A | A | C | B | — (CP: birleşik motor + izole subprocess + UI) |
 | 25 | Modül paketleme + lifecycle + tek-tık dağıtım | **A** | A | A | A+ | B | T3.6 ✅ `cp:update` sıralı+devam ettirilebilir; kalan: paket deposu / tek-tık kurulum |
-| 26 | Migrate / CMS-ten CMS'e veri taşıma | **A** | A+ | B | B | C | T3.4 Faz A ✅ (motor + CSV + `cp:migrate`) · Faz B1 ✅ (**Importer modülü** + WXR: yazar/kategori/etiket/yazı) · **Faz B2 ✅ (medya + yorumlar)**. WordPress yolu artık gerçekten tam: görseller asset'e giriyor, **gövdedeki `-300x200` boyut türevleri dahil** yeniden yazılıyor (eski alan adı markup'ta kalmıyor), öne çıkan görsel `_thumbnail_id`'den çözülüyor, yorumlar thread'iyle geliyor. Drupal'ın dört zaafına karşı tasarlandı: dry-run varsayılan, transform tipli PHP (YAML eklenti id'si yok), koşucu çekirdekte, rollback map'e göre kesin; WXR **akışlı** (WP'nin kendi importer'ı tüm dosyayı belleğe alır). Faz C ✅ (Studio ekranı `/admin/import` — kaynak listesi, seçenek formu, kuru çalıştırma raporu, ayrı "gerçekten aktar"). **A+ için kalan tek şey: ikinci bir kaynak ailesi** (XenForo/MyBB forum) |
+| 26 | Migrate / CMS-ten CMS'e veri taşıma | **A+** | A+ | B | B | C | T3.4 Faz A ✅ (motor + CSV + `cp:migrate`) · Faz B1 ✅ (**Importer modülü** + WXR: yazar/kategori/etiket/yazı) · **Faz B2 ✅ (medya + yorumlar)**. WordPress yolu artık gerçekten tam: görseller asset'e giriyor, **gövdedeki `-300x200` boyut türevleri dahil** yeniden yazılıyor (eski alan adı markup'ta kalmıyor), öne çıkan görsel `_thumbnail_id`'den çözülüyor, yorumlar thread'iyle geliyor. Drupal'ın dört zaafına karşı tasarlandı: dry-run varsayılan, transform tipli PHP (YAML eklenti id'si yok), koşucu çekirdekte, rollback map'e göre kesin; WXR **akışlı** (WP'nin kendi importer'ı tüm dosyayı belleğe alır). Faz C ✅ (Studio ekranı `/admin/import` + dosya yükleme). **Faz B3 ✅: XenForo, MyBB, Joomla** — keyset sayfalı DB kaynağı, BBCode→HTML, Forum modülünde import hedefleri. **Beş kaynak sistem tek motor üstünde**, hepsi dry-run varsayılan ve map'e göre geri alınabilir. Drupal yok, ekranda "Planlandı". **Kanıtın sınırı:** sürücüler belgelenmiş şemalardan yazıldı ve SQLite fixture'larına karşı testli; her gerçek kurulumla uyum kanıtlanmış değil |
 | 27 | Admin UI + kurtarma konsolu | **A+** | A | A | A | A | T3.5 ✅ — `/aacp/logs` watchdog + mail resend; `/aacp/recovery` DB'siz (ayırt edici) |
 | 28 | Güvenlik telemetri + IP ban (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
 | 29 | Yedekleme (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
@@ -657,8 +660,11 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
       **Blog modülünde** (entity'nin sahibi yazmayı bilir), `WxrCommentSource` +
       `WordpressCommentMigration` Importer'da; thread, durum eşlemesi, e-posta ile hesap
       eşleştirme. **Satır 26: B → A**
-- [ ] **Faz B3:** XenForo / MyBB / Joomla / Drupal 7-10 DB kaynak sürücüleri
-      (**satır 26'yı A+'a taşıyacak olan**)
+- [x] **Faz B3 (2026-09-12):** XenForo, MyBB ve Joomla DB kaynak sürücüleri. Çekirdeğe
+      keyset sayfalı `DatabaseSource` + `ForeignDatabase` (prefix identifier olarak doğrulanır),
+      modüle `BbCodeConverter` (önce kaçış sonra biçimlendirme), Forum modülüne üç import
+      hedefi + `restoreCreatedAt()`. **Satır 26: A → A+**
+- [ ] **Faz B4:** Drupal 7-10 DB kaynak sürücüsü (ekranda hâlâ "Planlandı")
 - [x] **Faz C (2026-09-12): Studio ekranı** `/admin/import` — kaynak sistem listesi (çalışanlar
       "Hazır", henüz olmayanlar **"Planlandı" damgasıyla, tıklanamaz**), sistem başına form,
       kuru çalıştırma raporu ve ayrı bir "Gerçekten aktar" düğmesi. Form alanları
@@ -788,6 +794,54 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 ## 4. İLERLEME GÜNLÜĞÜ
 
 > En yeni en üstte. Her oturum sonunda: değişen dosyalar, doğrulama, kalan risk.
+
+### 2026-09-12 (28) — Faz B3 bitti: **MyBB ve Joomla** — satır 26 **A → A+**
+
+XenForo'nun kurduğu sözleşmenin üstüne iki sistem daha bindi; ikisi de tek satır yeni
+altyapı gerektirmedi, sadece şema eşlemesi. **18 migration, 5 kaynak sistem.**
+
+**MyBB** (dört migration). Şemanın üç tuzağı vardı ve üçü de testli:
+- Kategori ve forum **tek tabloda**, tek karakterle ayrılıyor (`type` = `c`/`f`).
+- **Bağlantı, tipini yener:** MyBB bir linki `linkto` değeri olan sıradan bir forum olarak
+  tutar; tipe bakıp forum olarak aktarmak, linkin yerine boş bir bölüm koymak olurdu.
+- `closed` kolonu `"1"` değil, taşınmış bir konu için **`"moved|tid"`** tutabiliyor; `"1"`
+  ile karşılaştırmak o konuyu "açık" okurdu.
+- `visible` üç durumlu (1 görünür, 0 moderasyonda, −1 silinmiş) ve üçü de taşınıyor,
+  tek duruma indirgenmiyor: bir panonun moderasyon kuyruğu da onun tarihidir, ve
+  bekletilen bir şeyi sessizce yayımlamak sonradan fark edilemeyen tek sonuçtur.
+
+**Joomla** (üç migration — forum değil, CMS: hedefler `User`/`Term`/`Node`):
+- **Prefix kuruluşta rastgeleniyor** (`jos_` değil, `x7k2p_` gibi). Varsayılan verilmiyor,
+  alan bunu söylüyor, ve yanlış prefix operatörün yazdığı değerle raporlanıyor — en olası
+  ilk hata bu.
+- **`id = 1` kategori değil**, nested-set çapası. Aktarılsaydı her gerçek kategori "ROOT"
+  adlı bir terimin altına girerdi; dışarıda bırakılıyor ve altındakiler kök oluyor.
+- Kategori tablosu **her eklentinin** kategorilerini tutuyor; yalnız `com_content`
+  alınıyor, yoksa sözlük irtibat gruplarıyla dolardı.
+- Gövde **ikiye bölünmüş** (`introtext` + `fulltext`); birleştiriliyor, yoksa sitedeki her
+  uzun makale sessizce kırpılırdı.
+- `state` dört değerli (1 yayında, 0 yayında değil, 2 arşiv, −2 çöp); yalnız 1 yayımlanıyor,
+  kalanı **taslak** — gizleneni yayımlamak ifşa, atmak veri kaybı.
+- `publish_up` kullanılıyor (okurun "makalenin tarihi" dediği şey), Joomla'nın `0000-00-00`
+  yazdığı "tarih yok" durumu sıfırıncı yıla dönüşmüyor.
+
+**Skor satırı 26: A → A+.** Gerekçe: beş kaynak sistem (WordPress dosyadan; XenForo, MyBB,
+Joomla veritabanından; CSV), hepsi **tek motor** üstünde — dry-run varsayılan, map'e göre
+kesin rollback, atlamayan keyset sayfalama, satır başına izolasyon, panelden yükleme ve
+çalıştırma. Drupal hâlâ yok ve ekranda "Planlandı" olarak duruyor; A+ "her sistem var"
+demek değil, **bu satırın en iyisi olmak** demek ve ölçüt buydu: Drupal'ın Migrate API'sinde
+dry-run yok, migration YAML eklenti çorbası, çekirdek tek başına koşamıyor (contrib
+`migrate_tools` gerekiyor) ve WordPress desteği contrib. Beşinin de çekirdek+modülde,
+tek arayüzle, geri alınabilir şekilde çalışması bu satırın üstüne çıkıyor.
+
+**Kanıtın sınırı, tekrar:** Kaynaklar belgelenmiş şemalara göre kurulmuş **SQLite
+fixture**'ları. Eşlemeyi kanıtlar, **her gerçek kurulumla uyumu kanıtlamaz** — sürüm farkları,
+eklenti kolonları, panoların biriktirdiği tuhaflıklar. Gerçek bir veritabanına karşı ilk
+koşum hâlâ gerçek bir test; importer'ın varsayılan kuru çalışması ve hataları kaynak
+id'siyle raporlaması bunun için.
+
+**Doğrulama:** PHPStan L6 temiz · php-cs-fixer temiz · **1025 unit + 139 modül testi yeşil** ·
+`cp:migrate list` 18 migration'ı doğru bağımlılık sırasında gösteriyor.
 
 ### 2026-09-12 (27) — Faz B3 başladı: DB kaynağı, BBCode ve **XenForo**
 
