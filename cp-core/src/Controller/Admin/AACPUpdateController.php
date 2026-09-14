@@ -16,6 +16,7 @@ use App\Core\Version\PatchInstaller;
 use App\Core\Version\ReleaseChecker;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
@@ -60,6 +61,7 @@ final class AACPUpdateController extends AbstractController
         private readonly CoreUpdater $updater,
         private readonly PatchChecker $patches,
         private readonly PatchInstaller $patchInstaller,
+        private readonly RequestStack $requestStack,
     ) {
     }
 
@@ -261,7 +263,13 @@ final class AACPUpdateController extends AbstractController
      */
     private function renderNotes(string $version): ?string
     {
-        $markdown = $this->releases->fetchNotes($version);
+        // The panel renders in the operator's locale, so the notes should too.
+        // ReleaseChecker asks for "<version>-<locale>.md" and falls back to the
+        // English default when a release was never translated.
+        $markdown = $this->releases->fetchNotes(
+            $version,
+            $this->requestStack->getCurrentRequest()?->getLocale(),
+        );
 
         if ($markdown === null) {
             return null;

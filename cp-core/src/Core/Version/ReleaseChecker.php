@@ -163,17 +163,84 @@ final class ReleaseChecker
      * nothing else needs. Failure is silent — a missing note must not stop the
      * page that reports the version from rendering.
      */
-    public function fetchNotes(string $version): ?string
+    public function fetchNotes(string $version, ?string $locale = null): ?string
     {
         if (preg_match('/^\d+(\.\d+){1,3}$/', $version) !== 1) {
             return null;
         }
 
-        $url = \sprintf(
-            'https://raw.githubusercontent.com/CPalius/version/main/releases/%s.md',
-            $version,
-        );
+        foreach ($this->noteUrls($version, $locale) as $url) {
+            $body = $this->fetchNoteBody($url);
 
+            if ($body !== null) {
+                return $body;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Candidate note URLs, most specific first.
+     *
+     * The repository convention is that `<version>.md` is English and the
+     * default, with translations alongside it as `<version>-<locale>.md`. So a
+     * Turkish panel asks for `1.1.1-tr.md` and falls back to `1.1.1.md` when
+     * that release was never translated — which is the common case for an old
+     * release, and must show English prose rather than nothing.
+     *
+     * A regional locale contributes two candidates ("tr_TR" → tr_TR, then tr),
+     * because a translation is far more likely to be filed under the language
+     * than under the region.
+     *
+     * @return list<string>
+     */
+    private function noteUrls(string $version, ?string $locale): array
+    {
+        $base = 'https://raw.githubusercontent.com/CPalius/version/main/releases/';
+        $urls = [];
+
+        foreach ($this->localeCandidates($locale) as $candidate) {
+            $urls[] = $base.$version.'-'.$candidate.'.md';
+        }
+
+        // The default file is always the last resort and always English.
+        $urls[] = $base.$version.'.md';
+
+        return $urls;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function localeCandidates(?string $locale): array
+    {
+        $locale = trim((string) $locale);
+
+        // This value ends up in a URL. Anything that is not plainly a locale is
+        // dropped rather than escaped: a locale is a short, well-shaped token,
+        // and there is no legitimate input this rejects.
+        if (preg_match('/^[a-z]{2,3}(_[A-Za-z0-9]{2,4})?$/', $locale) !== 1) {
+            return [];
+        }
+
+        // English is the default file; asking for "1.1.1-en.md" first would mean
+        // a pointless 404 on every English panel.
+        if (str_starts_with($locale, 'en')) {
+            return [];
+        }
+
+        $candidates = [$locale];
+
+        if (str_contains($locale, '_')) {
+            $candidates[] = substr($locale, 0, (int) strpos($locale, '_'));
+        }
+
+        return $candidates;
+    }
+
+    private function fetchNoteBody(string $url): ?string
+    {
         try {
             $response = $this->client()->request('GET', $url);
 

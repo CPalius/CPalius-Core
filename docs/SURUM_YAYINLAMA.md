@@ -245,6 +245,21 @@ git pull
 Şablon: [`releases/1.0.0.md`](https://github.com/CPalius/version/blob/main/releases/1.0.0.md)
 Başlıklar: *Yenilikler · Düzeltmeler · Kırılmalar · Yükseltme notları · Bilinen kısıtlar*
 
+> **Dil kuralı:** `<sürüm>.md` **daima İngilizcedir** ve varsayılandır.
+> Çeviriler yanına `<sürüm>-<dil>.md` olarak konur — örneğin `1.1.0-tr.md`.
+>
+> `ReleaseChecker::fetchNotes()` önce panelin aktif diline göre
+> `<sürüm>-<dil>.md` ister, bulamazsa `<sürüm>.md`'ye düşer. `tr_TR` gibi
+> bölgesel bir dil önce tam hâliyle, sonra yalnızca dil koduyla denenir.
+> Çevirisi olmayan eski bir sürüm bu sayede hiçbir şey yerine İngilizce
+> gösterir.
+>
+> `versions.json` ve `latest.json` **her zaman varsayılan (İngilizce) dosyayı**
+> işaret eder; çeviriler oralarda listelenmez, kendiliğinden bulunur.
+>
+> İki dosya birbirine bağlansın: İngilizcede `Turkish: [1.1.0-tr.md](...)`,
+> Türkçede `English: [1.1.0.md](...)`.
+
 > **Markdown tablosu kullanmayın.** Bu notlar AACP panelinde, ham HTML'i
 > kaçıran küçük bir CommonMark alt kümesiyle render ediliyor. Başlık, liste,
 > vurgu, kod ve bağlantı destekleniyor; **tablo desteklenmiyor** ve operatöre
@@ -514,7 +529,8 @@ zaten kendisi geri yükler ve kurulum eski sürümde kalır.
 - [ ] Denetim komutları boş çıktı verdi
 - [ ] Arşiv oluşturuldu, SHA-256 alındı
 - [ ] Arşiv izin verilen bir adrese yüklendi
-- [ ] `releases/<sürüm>.md` yazıldı (tablosuz)
+- [ ] `releases/<sürüm>.md` yazıldı — İngilizce, tablosuz
+- [ ] Çeviri gerekiyorsa `releases/<sürüm>-tr.md` yazıldı ve iki dosya birbirine bağlandı
 - [ ] `versions.json` başına eklendi
 - [ ] `latest.json` **en son** güncellendi (zip + sha256 dolu)
 - [ ] `cp:cron:run-virtual core.release_check` doğru sonucu verdi
