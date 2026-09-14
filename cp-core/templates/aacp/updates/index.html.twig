@@ -5,6 +5,57 @@
 {% block body %}
     <div class="space-y-sp-md">
 
+        {# ---- Interrupted update ------------------------------------------
+           First on the page and impossible to miss. When this card is showing,
+           the installation is a mix of two versions and nothing else on this
+           screen matters until it is resolved. #}
+        {% if interrupted is not null %}
+            <twig:cp:card variant="danger">
+                <h2 class="text-fs-md">{{ 'aacp.version.recovery.heading'|trans }}</h2>
+
+                <p class="mt-1 text-fs-sm !text-slate-400">
+                    {{ 'aacp.version.recovery.intro'|trans({ version: interrupted.version }) }}
+                    {% if interrupted.started_at %}
+                        <span class="ml-1 font-mono text-fs-xs !text-slate-500">{{ interrupted.started_at|date('Y-m-d H:i') }}</span>
+                    {% endif %}
+                </p>
+
+                <p class="mt-sp-xs text-fs-xs !text-slate-500">
+                    {{ 'aacp.version.recovery.files'|trans({ count: interrupted.files }) }}
+                </p>
+
+                <div class="mt-sp-sm flex flex-wrap items-center gap-sp-xs">
+                    {% if interrupted.resumable %}
+                        <form method="post" action="{{ path('aacp_updates_recover') }}"
+                              onsubmit="return confirm('{{ 'aacp.version.recovery.resume_confirm'|trans|e('js') }}');">
+                            <input type="hidden" name="_token" value="{{ recoverToken }}">
+                            <input type="hidden" name="action" value="resume">
+                            <button type="submit" class="btn btn-primary">
+                                {{ 'aacp.version.recovery.resume'|trans({ version: interrupted.version }) }}
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    {% if interrupted.restorable %}
+                        <form method="post" action="{{ path('aacp_updates_recover') }}"
+                              onsubmit="return confirm('{{ 'aacp.version.recovery.rollback_confirm'|trans|e('js') }}');">
+                            <input type="hidden" name="_token" value="{{ recoverToken }}">
+                            <input type="hidden" name="action" value="rollback">
+                            <button type="submit" class="btn btn-danger">
+                                {{ 'aacp.version.recovery.rollback'|trans }}
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+
+                {% if not interrupted.resumable and not interrupted.restorable %}
+                    <div class="toast toast-warning mt-sp-sm">{{ 'aacp.version.recovery.manual'|trans }}</div>
+                {% else %}
+                    <p class="mt-sp-xs text-fs-xs !text-slate-500">{{ 'aacp.version.recovery.hint'|trans }}</p>
+                {% endif %}
+            </twig:cp:card>
+        {% endif %}
+
         {# ---- Version & release ------------------------------------------- #}
         <twig:cp:card>
             <div class="flex flex-wrap items-start justify-between gap-sp-sm">

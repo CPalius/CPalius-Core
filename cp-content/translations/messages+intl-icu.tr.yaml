@@ -3191,3 +3191,16 @@ aacp.patch.queued_after: "— {base} sürümünden yükseltiyor, o uygulanmadan 
 aacp.patch.history: "Uygulanmış yamalar"
 aacp.patch.blocker.no_check: "Henüz yama listesi alınmadı."
 aacp.patch.blocker.none_pending: "Bu sürüm için bekleyen yama yok."
+
+# --- 1.1.1: yarim kalan guncellemeden kurtarma ---
+aacp.version.blocker.interrupted: "Önceki güncelleme yarıda kaldı. Yeni bir güncelleme başlatmadan önce yukarıdaki kurtarma adımını tamamlayın."
+aacp.version.recovery.heading: "Yarım kalan güncelleme"
+aacp.version.recovery.intro: "{version} sürümüne güncelleme başladı ama tamamlandığını bildirmedi. Kurulum şu anda iki sürümün karışımı; bu ekrandaki başka hiçbir şey bu çözülmeden anlam taşımaz. Başlangıç:"
+aacp.version.recovery.files: "Kapsamdaki dosya sayısı: {count}"
+aacp.version.recovery.resume: "Kaldığı yerden devam et ({version})"
+aacp.version.recovery.resume_confirm: "Hazırlanmış dosyalar kurulumun üzerine yeniden yazılsın mı? Bu işlem güvenlidir: kopyalama tekrarlanabilir."
+aacp.version.recovery.rollback: "Önceki sürüme geri dön"
+aacp.version.recovery.rollback_confirm: "Güncelleme öncesindeki dosyalar geri yüklensin mi? Yeni sürüm tamamen geri alınır."
+aacp.version.recovery.hint: "Devam etmek önerilir: dosyalar zaten indirilmiş ve doğrulanmış durumda. Geri dönmek, yedekteki eski dosyaları yerine koyar."
+aacp.version.recovery.manual: "Ne hazırlanmış dosyalar ne de yedek bulunabildi. Sürüm paketini FTP ile elle yükleyin ve ardından cp-core/var/cache/prod/ içini boşaltın."
+aacp.version.recovery.unknown_action: "Geçersiz kurtarma işlemi."

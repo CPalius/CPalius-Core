@@ -43,6 +43,7 @@ final class AACPUpdateController extends AbstractController
     private const CSRF_APPLY = 'aacp_updates_apply';
     private const CSRF_UPGRADE = 'aacp_updates_upgrade';
     private const CSRF_PATCH = 'aacp_updates_patch';
+    private const CSRF_RECOVER = 'aacp_updates_recover';
 
     /**
      * How stale the stored release check may be before opening this screen
@@ -124,6 +125,50 @@ final class AACPUpdateController extends AbstractController
         ]));
     }
 
+    /**
+     * Finishes or undoes an update that never reported back.
+     *
+     * One route with an action field rather than two, because the two are the
+     * same decision seen from opposite ends and an operator choosing between
+     * them is choosing once. The field is validated against a closed list —
+     * anything else is a bad request, not a default.
+     */
+    #[Route('/recover', name: 'recover', methods: ['POST'])]
+    public function recover(Request $request): Response
+    {
+        if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(self::CSRF_RECOVER, (string) $request->request->get('_token')))) {
+            throw new BadRequestHttpException($this->translator->trans('aacp.common.error.invalid_csrf'));
+        }
+
+        $action = (string) $request->request->get('action');
+
+        if (!\in_array($action, ['resume', 'rollback'], true)) {
+            throw new BadRequestHttpException($this->translator->trans('aacp.version.recovery.unknown_action'));
+        }
+
+        $log = null;
+        $error = null;
+
+        try {
+            $log = $action === 'resume' ? $this->updater->resume() : $this->updater->rollback();
+        } catch (\Throwable $e) {
+            $error = $e->getMessage();
+        }
+
+        $results = $this->runner->run(dryRun: true);
+
+        return $this->render('aacp/updates/index.html.twig', $this->viewData([
+            'results' => $results,
+            'pending' => $this->pendingCount($results),
+            'hasFailure' => $this->hasFailure($results),
+            'applied' => null,
+            'upgradeLog' => $log,
+            'upgradeError' => $error,
+            'patchLog' => null,
+            'patchError' => null,
+        ]));
+    }
+
     #[Route('/upgrade', name: 'upgrade', methods: ['POST'])]
     public function upgrade(Request $request): Response
     {
@@ -189,6 +234,8 @@ final class AACPUpdateController extends AbstractController
             'token' => $this->csrfTokenManager->getToken(self::CSRF_APPLY)->getValue(),
             'upgradeToken' => $this->csrfTokenManager->getToken(self::CSRF_UPGRADE)->getValue(),
             'patchToken' => $this->csrfTokenManager->getToken(self::CSRF_PATCH)->getValue(),
+            'recoverToken' => $this->csrfTokenManager->getToken(self::CSRF_RECOVER)->getValue(),
+            'interrupted' => $this->updater->interrupted(),
             'currentVersion' => CpVersion::VERSION,
             'currentReleasedAt' => CpVersion::RELEASED_AT,
             'channel' => CpVersion::CHANNEL,

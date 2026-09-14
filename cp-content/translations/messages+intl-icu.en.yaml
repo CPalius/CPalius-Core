@@ -3191,3 +3191,16 @@ aacp.patch.queued_after: "— upgrades from {base}, so it is not next until that
 aacp.patch.history: "Applied patches"
 aacp.patch.blocker.no_check: "The patch list has not been fetched yet."
 aacp.patch.blocker.none_pending: "No patch is pending for this version."
+
+# --- 1.1.1: recovery from an interrupted update ---
+aacp.version.blocker.interrupted: "The previous update was interrupted. Finish the recovery step above before starting another update."
+aacp.version.recovery.heading: "Interrupted update"
+aacp.version.recovery.intro: "An update to {version} started and never reported back. The installation is currently a mix of two versions, and nothing else on this screen means anything until that is resolved. Started:"
+aacp.version.recovery.files: "Files in scope: {count}"
+aacp.version.recovery.resume: "Resume ({version})"
+aacp.version.recovery.resume_confirm: "Write the staged files over the installation again? This is safe: copying is repeatable."
+aacp.version.recovery.rollback: "Roll back to the previous version"
+aacp.version.recovery.rollback_confirm: "Restore the files from before the update? The new version is undone completely."
+aacp.version.recovery.hint: "Resuming is the recommended choice: the files are already downloaded and verified. Rolling back puts the previous files back from the backup."
+aacp.version.recovery.manual: "Neither the staged files nor a backup could be found. Upload the release package over FTP by hand, then empty cp-core/var/cache/prod/."
+aacp.version.recovery.unknown_action: "Invalid recovery action."

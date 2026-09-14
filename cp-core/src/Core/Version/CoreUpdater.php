@@ -75,6 +75,15 @@ final class CoreUpdater
      */
     public function blockers(): array
     {
+        // Checked before everything else, including "are you already current":
+        // an interrupted update leaves a tree that is neither version, so the
+        // running version cannot be trusted to answer that question. Starting a
+        // second update on top would overwrite the backup that is the only way
+        // back.
+        if ($this->interrupted() !== null) {
+            return ['aacp.version.blocker.interrupted'];
+        }
+
         $status = $this->releases->status();
         $blockers = [];
 
@@ -135,6 +144,22 @@ final class CoreUpdater
 
         $log = [];
 
+        // Writing several thousand files is not a 30-second job, and 30 seconds
+        // is what shared hosting gives by default.
+        //
+        // This is not a nicety, it is the whole reason 1.1.0 could break a site:
+        // without it PHP hit max_execution_time part-way through install(), and
+        // a time-limit fatal is NOT catchable — so the rollback in the catch
+        // block below never ran, the cache clear after it never ran, and the
+        // installation was left with some new files, some old files, and a
+        // compiled container describing neither.
+        //
+        // ignore_user_abort matters just as much: many hosts put a 60-second
+        // gateway timeout in front of PHP. The browser gets a 504, but the
+        // process keeps running and finishes the job.
+        @set_time_limit(0);
+        ignore_user_abort(true);
+
         // A previous attempt's leftovers would be mistaken for this attempt's
         // work — in particular a stale backup would restore the wrong files.
         $this->fs->remove([$archive, $staging, $backup]);
@@ -158,11 +183,41 @@ final class CoreUpdater
         $this->backup($files, $backup);
         $log[] = 'Existing files backed up.';
 
+        // From here until the marker is cleared, this installation is in a state
+        // nobody should have to guess about. The marker records everything a
+        // later request needs to finish the job or undo it: which version, where
+        // staging is, where the backup is, and which files were in scope.
+        //
+        // It is written BEFORE the first file is overwritten, because the whole
+        // point is to survive the case where the process does not come back.
+        $this->writeMarker($version, $root, $backup, $files);
+
+        // Runs even on a fatal — including the time-limit fatal that no catch
+        // block can see. If the marker is still there when this fires, the
+        // install did not finish, and the compiled container now describes a
+        // tree that no longer exists. Clearing it is what keeps the site
+        // bootable enough to show the recovery screen.
+        $selfCache = $this->cache;
+        $markerPath = $this->markerPath();
+        register_shutdown_function(static function () use ($selfCache, $markerPath): void {
+            if (!is_file($markerPath)) {
+                return;
+            }
+
+            try {
+                $selfCache->clearSymfonyCache();
+            } catch (\Throwable) {
+                // Nothing left to try; the recovery screen tells the operator
+                // to empty cp-core/var/cache/<env> by hand.
+            }
+        });
+
         try {
             $written = $this->install($root, $files);
             $log[] = \sprintf('%d files written.', $written);
         } catch (\Throwable $e) {
             $this->restore($backup);
+            $this->clearMarker();
 
             throw new \RuntimeException(
                 'Install failed and the previous files were restored: '.$e->getMessage(),
@@ -171,6 +226,9 @@ final class CoreUpdater
             );
         }
 
+        // Only now is the tree consistent again.
+        $this->clearMarker();
+
         // The compiled container, the Twig cache and the translation catalogues
         // on disk all describe the code that was running a second ago. In prod
         // Symfony never rebuilds them on its own, so leaving this to a second
@@ -178,16 +236,11 @@ final class CoreUpdater
         // OLD container — which is not "slightly stale", it is a 500 on a site
         // whose admin panel is the thing that would have offered the button to
         // fix it. Clearing here closes that window.
-        try {
-            $this->cache->clearSymfonyCache();
-            $log[] = 'Caches cleared; the next request rebuilds against the new code.';
-        } catch (\Throwable $e) {
-            // Not fatal, and deliberately not a rollback: the files are correct
-            // and consistent, and a cache an operator can delete over FTP is a
-            // far better place to be than a restored older version.
-            $log[] = 'WARNING: cache could not be cleared ('.$e->getMessage()
-                .'). Delete cp-core/var/cache/<env> by hand before using the site.';
-        }
+        //
+        // Not fatal on failure, and deliberately not a rollback: the files are
+        // correct and consistent, and a cache an operator can delete over FTP is
+        // a far better place to be than a restored older version.
+        $log[] = $this->clearCacheReporting();
 
         // Staging and the archive are large and now worthless. The backup stays:
         // it is the only copy of the previous version, and an operator who finds
@@ -196,6 +249,179 @@ final class CoreUpdater
         $log[] = 'Temporary files removed; backup kept at cp-core/var/update.';
 
         return $log;
+    }
+
+    /**
+     * Details of an update that started and never reported back, or null when
+     * the installation is in a known-good state.
+     *
+     * This is the question 1.1.0 could not answer. A half-written tree is not
+     * something an operator can diagnose from the outside — the symptom is a
+     * 500 mentioning a constructor signature, which says nothing about updates
+     * at all — so the updater has to leave a note saying what it was doing.
+     *
+     * @return array{version: string, staging: string, backup: string, files: int, started_at: string, resumable: bool, restorable: bool}|null
+     */
+    public function interrupted(): ?array
+    {
+        $path = $this->markerPath();
+
+        if (!is_file($path)) {
+            return null;
+        }
+
+        $data = json_decode((string) file_get_contents($path), true);
+
+        if (!\is_array($data) || !\is_string($data['version'] ?? null)) {
+            // A marker we cannot read still means "something was going on", and
+            // saying so with empty details beats saying nothing.
+            return [
+                'version' => '?',
+                'staging' => '',
+                'backup' => '',
+                'files' => 0,
+                'started_at' => '',
+                'resumable' => false,
+                'restorable' => false,
+            ];
+        }
+
+        $staging = \is_string($data['staging'] ?? null) ? $data['staging'] : '';
+        $backup = \is_string($data['backup'] ?? null) ? $data['backup'] : '';
+
+        return [
+            'version' => $data['version'],
+            'staging' => $staging,
+            'backup' => $backup,
+            'files' => (int) ($data['files'] ?? 0),
+            'started_at' => \is_string($data['started_at'] ?? null) ? $data['started_at'] : '',
+            // Resume needs the extracted tree; it survives because staging is
+            // only deleted on success.
+            'resumable' => $staging !== '' && is_dir($staging),
+            'restorable' => $backup !== '' && is_file($backup.'/.manifest.json'),
+        ];
+    }
+
+    /**
+     * Finishes an interrupted update by copying the staged files again.
+     *
+     * Re-copying every file rather than trying to work out which ones already
+     * landed: copy is idempotent, and a resume that guessed wrong would leave
+     * exactly the inconsistency it was called to fix. The cost is doing some
+     * work twice; the alternative costs correctness.
+     *
+     * @return list<string>
+     */
+    public function resume(): array
+    {
+        $state = $this->interrupted();
+
+        if ($state === null) {
+            throw new \RuntimeException('There is no interrupted update to resume.');
+        }
+
+        if (!$state['resumable']) {
+            throw new \RuntimeException(
+                'The staged files for '.$state['version'].' are gone, so this update cannot be resumed. '
+                .'Roll back, or upload the release over FTP.',
+            );
+        }
+
+        @set_time_limit(0);
+        ignore_user_abort(true);
+
+        $root = $state['staging'];
+        $files = $this->collectFiles($root);
+
+        $log = [\sprintf('Resuming update to %s (%d files).', $state['version'], \count($files))];
+
+        try {
+            $written = $this->install($root, $files);
+            $log[] = \sprintf('%d files written.', $written);
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('Resume failed; the marker is kept so you can try again or roll back: '.$e->getMessage(), 0, $e);
+        }
+
+        $this->clearMarker();
+        $log[] = $this->clearCacheReporting();
+
+        $this->fs->remove([$root, \dirname($root).'/download-'.$state['version'].'.zip']);
+        $log[] = 'Temporary files removed; backup kept at cp-core/var/update.';
+
+        return $log;
+    }
+
+    /**
+     * Puts the previous version's files back.
+     *
+     * @return list<string>
+     */
+    public function rollback(): array
+    {
+        $state = $this->interrupted();
+
+        if ($state === null) {
+            throw new \RuntimeException('There is no interrupted update to roll back.');
+        }
+
+        if (!$state['restorable']) {
+            throw new \RuntimeException(
+                'No usable backup was found for '.$state['version'].'. '
+                .'The previous files cannot be restored automatically; upload a known-good release over FTP.',
+            );
+        }
+
+        @set_time_limit(0);
+        ignore_user_abort(true);
+
+        $this->restore($state['backup']);
+        $this->clearMarker();
+
+        $log = [\sprintf('Restored the files that were in place before %s.', $state['version'])];
+        $log[] = $this->clearCacheReporting();
+
+        return $log;
+    }
+
+    /**
+     * Clearing the cache is best-effort everywhere it is called from, and the
+     * sentence an operator reads differs between success and failure, so the
+     * whole thing lives here rather than being copied three times.
+     */
+    private function clearCacheReporting(): string
+    {
+        try {
+            $this->cache->clearSymfonyCache();
+
+            return 'Caches cleared; the next request rebuilds against the current code.';
+        } catch (\Throwable $e) {
+            return 'WARNING: cache could not be cleared ('.$e->getMessage()
+                .'). Delete cp-core/var/cache/<env> by hand before using the site.';
+        }
+    }
+
+    private function markerPath(): string
+    {
+        return $this->projectDir.'/cp-core/var/update/.in-progress.json';
+    }
+
+    /**
+     * @param list<string> $files
+     */
+    private function writeMarker(string $version, string $staging, string $backup, array $files): void
+    {
+        $this->fs->dumpFile($this->markerPath(), json_encode([
+            'version' => $version,
+            'staging' => $staging,
+            'backup' => $backup,
+            'files' => \count($files),
+            'started_at' => (new \DateTimeImmutable())->format(\DATE_ATOM),
+        ], \JSON_THROW_ON_ERROR));
+    }
+
+    private function clearMarker(): void
+    {
+        $this->fs->remove($this->markerPath());
     }
 
     private function download(string $url, string $target): int
