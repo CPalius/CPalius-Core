@@ -7,11 +7,7 @@ namespace App\Core\Security\TwoFactor;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**
- * The "this session has passed its second factor" marker.
- *
- * Kept in the session rather than a cookie or the token so that the login-time
- * session migration wipes it automatically: a fresh authentication must always
- * face the challenge again.
+ * Marks that this session passed 2FA. Stored in the session so login migration clears it.
  */
 final class TwoFactorSession
 {
@@ -35,11 +31,7 @@ final class TwoFactorSession
         $session->remove(self::KEY_PENDING_SECRET);
     }
 
-    /**
-     * Holds the not-yet-confirmed secret between rendering the QR code and the
-     * user submitting their first code, so a reload does not silently issue a new
-     * secret and invalidate the one they already scanned.
-     */
+    /** Pending secret between QR render and the first submitted code, so a reload does not rotate it. */
     public function setPendingSecret(SessionInterface $session, string $secret): void
     {
         $session->set(self::KEY_PENDING_SECRET, $secret);

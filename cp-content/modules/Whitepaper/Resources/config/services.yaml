@@ -1,0 +1,29 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Modules\Whitepaper\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    Modules\Whitepaper\Repository\:
+        resource: '../../Repository/'
+
+    Modules\Whitepaper\Content\:
+        resource: '../../Content/'
+
+    # The tag is declared here and not inherited. Symfony applies an
+    # _instanceof rule only to services defined in the SAME file, so core's
+    # rule on ConfigProviderInterface does not reach a module's services.yaml —
+    # the provider loaded fine, implemented the interface, and was silently
+    # absent from `cp:config status` until this line existed.
+    _instanceof:
+        App\Core\Config\ConfigProviderInterface:
+            tags: ['cp.config_provider']
+
+    Modules\Whitepaper\Config\:
+        resource: '../../Config/'
+
+    Modules\Whitepaper\Install\:
+        resource: '../../Install/'

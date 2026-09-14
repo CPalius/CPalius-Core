@@ -98,4 +98,28 @@ class LogEntryRepository extends ServiceEntityRepository
             ->getQuery()
             ->execute();
     }
+
+    /**
+     * Deletes every row. Used by the "purge now" action in AACP.
+     *
+     * Separate from purgeOlderThan() rather than passing a future date: an
+     * operator emptying a table deliberately and a cron trimming an age window
+     * are different intents, and only one of them should be reachable by
+     * accident.
+     */
+    public function purgeAll(): int
+    {
+        return (int) $this->createQueryBuilder('l')
+            ->delete()
+            ->getQuery()
+            ->execute();
+    }
+
+    public function countAll(): int
+    {
+        return (int) $this->createQueryBuilder('l')
+            ->select('COUNT(l.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

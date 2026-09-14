@@ -11,7 +11,7 @@
             <a href="{{ path('roadmap_index') }}" class="btn btn-outline">
                 <i class="bi bi-signpost-2"></i> {{ 'nav.roadmap'|trans({}, 'portal') }}
             </a>
-            <a href="{{ path('theme_whitepaper', {_locale: app.request.locale}) }}#roadmap" class="btn btn-primary">
+            <a href="{{ path('whitepaper_show', {_locale: app.request.locale}) }}#roadmap" class="btn btn-primary">
                 <i class="bi bi-book"></i> {{ 'whitepaper.cta'|trans({}, t) }}
             </a>
         </p>

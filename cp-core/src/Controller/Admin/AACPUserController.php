@@ -66,7 +66,7 @@ final class AACPUserController extends AbstractController
     }
 
     #[Route('/aacp/users/pending', name: 'aacp_users_pending', methods: ['GET', 'POST'])]
-    #[CpAdminMenu(label: 'aacp.users.pending_menu', icon: 'heroicons:clock', panel: 'aacp', priority: 58, capability: 'system.users.manage', group: 'aacp.group.user', parent: 'aacp_users')]
+    #[CpAdminMenu(label: 'aacp.users.pending_menu', icon: 'heroicons:clock', panel: 'aacp', priority: 44, capability: 'system.users.manage', parent: 'aacp_users')]
     #[IsGranted('system.users.manage')]
     public function pending(Request $request): Response
     {
@@ -97,7 +97,7 @@ final class AACPUserController extends AbstractController
      * User list (flat AACP table); no own/any scope — users have no author owner.
      */
     #[Route('/aacp/users', name: 'aacp_users', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.users', icon: 'heroicons:users', panel: 'aacp', priority: 60, capability: 'system.users.view', group: 'aacp.group.user')]
+    #[CpAdminMenu(label: 'aacp.menu.users', icon: 'heroicons:users', panel: 'aacp', priority: 40, capability: 'system.users.view')]
     #[IsGranted('system.users.view')]
     public function index(Request $request): Response
     {
@@ -105,7 +105,7 @@ final class AACPUserController extends AbstractController
     }
 
     #[Route('/aacp/users/role/admin', name: 'aacp_users_admin', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.administrators', icon: 'heroicons:shield-check', panel: 'aacp', priority: 61, capability: 'system.users.view', parent: 'aacp_users')]
+    #[CpAdminMenu(label: 'aacp.menu.administrators', icon: 'heroicons:shield-check', panel: 'aacp', priority: 41, capability: 'system.users.view', parent: 'aacp_users')]
     #[IsGranted('system.users.view')]
     public function administrators(Request $request): Response
     {
@@ -113,7 +113,7 @@ final class AACPUserController extends AbstractController
     }
 
     #[Route('/aacp/users/role/member', name: 'aacp_users_member', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.members', icon: 'heroicons:user-group', panel: 'aacp', priority: 62, capability: 'system.users.view', parent: 'aacp_users')]
+    #[CpAdminMenu(label: 'aacp.menu.members', icon: 'heroicons:user-group', panel: 'aacp', priority: 42, capability: 'system.users.view', parent: 'aacp_users')]
     #[IsGranted('system.users.view')]
     public function members(Request $request): Response
     {
@@ -121,7 +121,7 @@ final class AACPUserController extends AbstractController
     }
 
     #[Route('/aacp/users/role/editor', name: 'aacp_users_editor', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.editors', icon: 'heroicons:pencil-square', panel: 'aacp', priority: 63, capability: 'system.users.view', parent: 'aacp_users')]
+    #[CpAdminMenu(label: 'aacp.menu.editors', icon: 'heroicons:pencil-square', panel: 'aacp', priority: 43, capability: 'system.users.view', parent: 'aacp_users')]
     #[IsGranted('system.users.view')]
     public function editors(Request $request): Response
     {

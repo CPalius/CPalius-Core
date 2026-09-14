@@ -47,7 +47,7 @@ final class AACPDisplayController
     }
 
     #[Route('/aacp/display', name: 'aacp_display', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.display', icon: 'heroicons:squares-2x2', panel: 'aacp', priority: 22, capability: 'system.fields.manage', parent: 'aacp_tools')]
+    #[CpAdminMenu(label: 'aacp.menu.display', icon: 'heroicons:eye', panel: 'aacp', priority: 63, capability: 'system.fields.manage', parent: 'aacp_hub_structure')]
     #[IsGranted('system.fields.manage')]
     public function index(): Response
     {

@@ -308,12 +308,15 @@ function initTelemetry(root) {
 
     const body = root.querySelector('[data-telemetry-body]');
     const topList = root.querySelector('[data-telemetry-top-ips]');
-    const topPages = root.querySelector('[data-telemetry-top-pages]');
     const trendCanvas = root.querySelector('[data-telemetry-chart="trend"]');
     const vectorCanvas = root.querySelector('[data-telemetry-chart="vectors"]');
     const uniqueEl = root.querySelector('[data-visitor-unique-ips]');
     const viewsEl = root.querySelector('[data-visitor-page-views]');
     const interval = parseInt(root.dataset.aacpTelemetryInterval || '3000', 10);
+    // Server-rendered row budget, so the client trim and the initial
+    // render cannot drift apart when one of them is changed.
+    const parsedRows = parseInt(root.dataset.aacpTelemetryRows || '', 10);
+    const maxRows = Number.isFinite(parsedRows) && parsedRows > 0 ? parsedRows : 10;
 
     let lastId = 0;
     if (body) {
@@ -416,7 +419,7 @@ function initTelemetry(root) {
                     lastId = row.id;
                     body.prepend(createFeedRow(row, detailsLabel, securityMode));
                 });
-                while (body.querySelectorAll('tr').length > 40) {
+                while (body.querySelectorAll('tr').length > maxRows) {
                     body.lastElementChild.remove();
                 }
             }
@@ -439,15 +442,11 @@ function initTelemetry(root) {
                 vectorChart.data.datasets[0].backgroundColor = next.datasets[0].backgroundColor;
                 vectorChart.update('none');
             }
-            if (Array.isArray(data.topIps) && topList) {
-                if (securityMode) {
-                    renderTopIps(topList, data.topIps, root);
-                } else {
-                    renderVisitorIps(topList, data.topIps);
-                }
-            }
-            if (Array.isArray(data.topPages) && topPages) {
-                renderTopPages(topPages, data.topPages);
+            // Only the threat list survives: the visitor "top pages" and
+            // "top IPs" panels were removed from the command desk, so there
+            // is nothing to refresh outside security mode.
+            if (securityMode && Array.isArray(data.topIps) && topList) {
+                renderTopIps(topList, data.topIps, root);
             }
             if (uniqueEl && data.uniqueIps !== undefined) {
                 uniqueEl.textContent = String(data.uniqueIps);
@@ -495,25 +494,6 @@ function renderTopIps(list, ips, root) {
             ? `<span class="aacp-sev aacp-sev-threat">${escapeHtml(bannedLabel)}</span>`
             : `<button type="button" class="aacp-cyber-btn !py-0.5" data-ban-ip="${escapeHtml(ip.ip)}">${escapeHtml(banLabel)}</button>`;
         return `<li data-ip="${escapeHtml(ip.ip)}"><div><span class="font-mono text-slate-100">${escapeHtml(ip.ip)}</span><span class="ms-2 font-mono text-slate-500">${ip.score} · ${ip.hits}</span></div>${action}</li>`;
-    }).join('');
-}
-
-function renderVisitorIps(list, ips) {
-    if (!ips.length) {
-        list.innerHTML = `<li class="!text-slate-500">—</li>`;
-        return;
-    }
-    list.innerHTML = ips.map((ip) => `<li data-ip="${escapeHtml(ip.ip)}"><span class="font-mono text-slate-100">${escapeHtml(ip.ip)}</span><span class="font-mono text-slate-500">${ip.hits}</span></li>`).join('');
-}
-
-function renderTopPages(list, pages) {
-    if (!pages.length) {
-        list.innerHTML = `<li class="!text-slate-500">—</li>`;
-        return;
-    }
-    list.innerHTML = pages.map((page) => {
-        const path = escapeHtml(page.path || '');
-        return `<li><span class="min-w-0 truncate font-mono text-slate-100" title="${path}">${path}</span><span class="shrink-0 font-mono text-slate-500">${page.hits}</span></li>`;
     }).join('');
 }
 
@@ -656,4 +636,74 @@ function initModal(root) {
     });
 }
 
-document.querySelectorAll('[data-aacp-dashboard]').forEach(initAacpDashboard);
+/**
+ * Lets an operator fold panels away and remembers the choice per user.
+ *
+ * The button is injected here rather than written into each template: every
+ * panel would otherwise carry the same six lines of markup, and a panel added
+ * later would silently be the one without a control.
+ *
+ * The collapsed class is rendered by the server (User::$data), so a folded
+ * panel is already folded at first paint. This function only adds the control
+ * and keeps the server in step — it never decides the initial state, which is
+ * why a failed or slow request cannot make panels flicker open.
+ */
+function initWidgetToggles(root) {
+    const url = root.dataset.aacpWidgetUrl;
+    const csrf = root.dataset.aacpWidgetCsrf;
+    if (!url || !csrf) {
+        return;
+    }
+
+    const collapseLabel = root.dataset.labelWidgetCollapse || 'Collapse';
+    const expandLabel = root.dataset.labelWidgetExpand || 'Expand';
+
+    root.querySelectorAll('[data-aacp-widget]').forEach((panel) => {
+        if (panel.querySelector('[data-aacp-widget-toggle]')) {
+            return;
+        }
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'aacp-widget-toggle';
+        button.setAttribute('data-aacp-widget-toggle', '');
+
+        const paint = () => {
+            const collapsed = panel.classList.contains('is-collapsed');
+            button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            button.setAttribute('aria-label', collapsed ? expandLabel : collapseLabel);
+            button.title = collapsed ? expandLabel : collapseLabel;
+            button.textContent = collapsed ? '+' : '−';
+        };
+
+        paint();
+
+        button.addEventListener('click', async () => {
+            // Fold first, persist after: the panel is the operator's own view
+            // preference, and making them wait on a round trip to hide a box
+            // would be the slowest possible way to tidy a screen.
+            panel.classList.toggle('is-collapsed');
+            paint();
+
+            const body = new FormData();
+            body.append('_token', csrf);
+            body.append('widgetId', panel.dataset.aacpWidget);
+            body.append('hidden', panel.classList.contains('is-collapsed') ? '1' : '0');
+
+            try {
+                await fetch(url, { method: 'POST', body, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            } catch {
+                // The fold already happened locally. A failed save means the
+                // next page load shows the old layout, which is a far smaller
+                // problem than an error banner over a cosmetic action.
+            }
+        });
+
+        panel.appendChild(button);
+    });
+}
+
+document.querySelectorAll('[data-aacp-dashboard]').forEach((root) => {
+    initAacpDashboard(root);
+    initWidgetToggles(root);
+});

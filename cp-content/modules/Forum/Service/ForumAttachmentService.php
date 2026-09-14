@@ -8,11 +8,13 @@ use App\Core\Media\AssetManager;
 use App\Core\Media\Exception\InvalidUploadException;
 use App\Core\Media\Exception\UnsupportedAssetTypeException;
 use App\Core\Settings\SettingsRegistry;
+use App\Entity\Asset;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumNodePermission;
 use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Entity\ForumPostAttachment;
+use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Repository\ForumPostAttachmentRepository;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -34,9 +36,27 @@ final class ForumAttachmentService
 
     public function canUpload(ForumPost $post, ?User $user): bool
     {
+        return $this->canUploadInSection($post->getSection(), $user);
+    }
+
+    public function canUploadInSection(ForumSection $section, ?User $user): bool
+    {
         return $this->isEnabled()
             && $user !== null
-            && $this->permissionService->isAllowed($post->getSection(), $user, ForumNodePermission::PERM_UPLOAD);
+            && $this->permissionService->isAllowed($section, $user, ForumNodePermission::PERM_UPLOAD);
+    }
+
+    /**
+     * Store an image while the composer is still open — the post does not exist yet.
+     *
+     * @throws InvalidUploadException
+     * @throws UnsupportedAssetTypeException
+     */
+    public function storeComposerImage(UploadedFile $file): Asset
+    {
+        $maxBytes = max(1, (int) $this->settingsRegistry->get('forum.attachments_max_kb', 2048)) * 1024;
+
+        return $this->assetManager->upload($file, ['image/'], $maxBytes);
     }
 
     /**

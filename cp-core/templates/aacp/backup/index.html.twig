@@ -15,6 +15,24 @@
             <span class="text-slate-500">{{ storage_dir }}</span>
         </p>
 
+        {# Where a new archive is sent, stated before the operator clicks. A
+           destination selected but not verified is called out in red rather
+           than left to look configured: a backup that silently stops leaving
+           the server is worse than no off-site backup, because it buys a year
+           of not looking. #}
+        <p class="text-fs-xs">
+            {% if remote_selected == 'off' %}
+                <span class="badge badge-muted">{{ 'aacp.backup.remote.local_only'|trans }}</span>
+                <a href="{{ path('aacp_storage') }}" class="ml-2 !text-primary-400">{{ 'aacp.backup.remote.configure'|trans }}</a>
+            {% elseif remote_active %}
+                <span class="badge badge-success">{{ 'aacp.backup.remote.active'|trans }}</span>
+                <span class="ml-2 font-mono !text-slate-500">{{ remote_target }}</span>
+            {% else %}
+                <span class="badge badge-danger">{{ 'aacp.backup.remote.unverified'|trans }}</span>
+                <a href="{{ path('aacp_storage') }}" class="ml-2 !text-primary-400">{{ 'aacp.backup.remote.configure'|trans }}</a>
+            {% endif %}
+        </p>
+
         <div class="grid grid-cols-1 gap-sp-md sm:grid-cols-3">
             <twig:cp:card title="{{ 'aacp.backup.create_db'|trans }}">
                 <p class="mb-sp-xs text-fs-xs text-slate-500">
@@ -62,6 +80,7 @@
                 'aacp.backup.column.type'|trans,
                 'aacp.backup.column.size'|trans,
                 'aacp.backup.column.created'|trans,
+                'aacp.backup.column.offsite'|trans,
                 '',
             ] }}" empty="{{ archives is empty }}" emptyText="{{ 'aacp.backup.empty'|trans }}">
                 <twig:block name="rows">
@@ -73,6 +92,13 @@
                             </td>
                             <td class="text-fs-xs !text-slate-400">{{ archive.sizeLabel }}</td>
                             <td class="text-fs-xs !text-slate-500">{{ archive.createdAt|date('d.m.Y H:i:s') }}</td>
+                            <td class="text-fs-xs">
+                                {% if remote_ledger[archive.filename] is defined %}
+                                    <span class="badge badge-success">{{ ('aacp.storage.target.' ~ remote_ledger[archive.filename].target)|trans }}</span>
+                                {% else %}
+                                    <span class="!text-slate-600">—</span>
+                                {% endif %}
+                            </td>
                             <td class="text-right">
                                 <div class="flex items-center justify-end gap-3">
                                     <a href="{{ path('aacp_backup_download', {stem: archive.stem}) }}"
@@ -87,6 +113,19 @@
                                             {{ 'aacp.backup.delete'|trans }}
                                         </button>
                                     </form>
+                                    {% if remote_ledger[archive.filename] is defined %}
+                                        {# Deleting the off-site copy is its own
+                                           button. "Delete" on a backup should
+                                           never mean "delete both copies". #}
+                                        <form method="post" action="{{ path('aacp_backup_delete_remote') }}"
+                                              onsubmit="return confirm({{ 'aacp.backup.remote.delete_confirm'|trans|json_encode|raw }});">
+                                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                            <input type="hidden" name="filename" value="{{ archive.filename }}">
+                                            <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
+                                                {{ 'aacp.backup.remote.delete'|trans }}
+                                            </button>
+                                        </form>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
@@ -94,5 +133,39 @@
                 </twig:block>
             </twig:cp:table>
         </twig:cp:card>
+
+        {% if remote_only is not empty %}
+            <twig:cp:card title="{{ 'aacp.backup.remote.heading'|trans }}" padded="{{ false }}">
+                <twig:cp:table headers="{{ [
+                    'aacp.backup.column.filename'|trans,
+                    'aacp.backup.column.offsite'|trans,
+                    'aacp.backup.column.size'|trans,
+                    'aacp.backup.column.created'|trans,
+                    '',
+                ] }}">
+                    <twig:block name="rows">
+                        {% for filename, entry in remote_only %}
+                            <tr>
+                                <td class="font-mono text-fs-xs !text-slate-200">{{ filename }}</td>
+                                <td><span class="badge badge-success">{{ ('aacp.storage.target.' ~ entry.target)|trans }}</span></td>
+                                <td class="text-fs-xs !text-slate-400">{{ entry.size is defined ? (entry.size / 1048576)|round(2) ~ ' MiB' : '—' }}</td>
+                                <td class="text-fs-xs !text-slate-500">{{ entry.at is defined ? entry.at|date('d.m.Y H:i:s') : '—' }}</td>
+                                <td class="text-right">
+                                    <form method="post" action="{{ path('aacp_backup_delete_remote') }}"
+                                          onsubmit="return confirm({{ 'aacp.backup.remote.delete_confirm'|trans|json_encode|raw }});">
+                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                        <input type="hidden" name="filename" value="{{ filename }}">
+                                        <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
+                                            {{ 'aacp.backup.remote.delete'|trans }}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+                <p class="px-sp-sm py-sp-xs text-fs-xs !text-slate-500">{{ 'aacp.backup.remote.no_download'|trans }}</p>
+            </twig:cp:card>
+        {% endif %}
     </div>
 {% endblock %}

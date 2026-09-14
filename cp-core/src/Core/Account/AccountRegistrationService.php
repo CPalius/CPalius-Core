@@ -23,6 +23,13 @@ final class AccountRegistrationService
     public const FIELD_OPTIONAL = '1';
     public const FIELD_REQUIRED = '2';
 
+    /**
+     * How long an e-mail verification link stays valid. 48 hours covers a
+     * weekend and a slow mail queue, which is the longest a genuine user
+     * plausibly takes; past that, re-registering is the shorter path anyway.
+     */
+    private const VERIFICATION_TOKEN_TTL = 172800;
+
     /** Allowed name chars (SEC-03): \p{L}/\p{M}, space, apostrophe, hyphen, period. See validateNameField(). */
     private const NAME_PATTERN = "/^[\p{L}\p{M}\x{0020}\x{00A0}'\x{2019}.\-]+$/u";
 
@@ -164,10 +171,18 @@ final class AccountRegistrationService
         return $needsDefer;
     }
 
+    /**
+     * Accepts a verification token only within its TTL. Tokens with no issued_at are refused.
+     */
     public function verifyEmailByToken(string $token): ?User
     {
         $user = $this->userRepository->findOneByEmailVerificationToken($token);
         if ($user === null) {
+            return null;
+        }
+
+        $issuedAt = $user->getEmailVerificationIssuedAt();
+        if ($issuedAt === null || time() - $issuedAt->getTimestamp() > self::VERIFICATION_TOKEN_TTL) {
             return null;
         }
 

@@ -36,7 +36,7 @@ final class AACPApiKeyController
     }
 
     #[Route('/aacp/api-keys', name: 'aacp_api_keys', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.api_keys', icon: 'heroicons:key', panel: 'aacp', priority: 24, capability: 'system.api.manage', parent: 'aacp_tools')]
+    #[CpAdminMenu(label: 'aacp.menu.api_keys', icon: 'heroicons:key', panel: 'aacp', priority: 75, capability: 'system.api.manage', parent: 'aacp_hub_automation')]
     #[IsGranted('system.api.manage')]
     public function index(): Response
     {

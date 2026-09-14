@@ -85,10 +85,18 @@ final class SecurityHeaderPolicyTest extends TestCase
         self::assertArrayHasKey('Content-Security-Policy-Report-Only', $headers);
         self::assertArrayNotHasKey('Content-Security-Policy', $headers);
         self::assertStringContainsString("'nonce-".self::NONCE."'", $headers['Content-Security-Policy-Report-Only']);
-        self::assertStringContainsString("'strict-dynamic'", $headers['Content-Security-Policy-Report-Only']);
     }
 
-    public function testStrictModeEnforcesNonceAndStrictDynamic(): void
+    /**
+     * 'strict-dynamic' must never come back. It makes the browser ignore every
+     * other source expression in script-src, including 'self', and grants
+     * trust only to scripts a nonced script inserts into the DOM at runtime.
+     * CPalius loads its front end as an AssetMapper importmap, where every
+     * module is a STATIC import and inherits nothing — so the directive was
+     * blocking the admin panel's own JavaScript (charts included) whenever an
+     * operator turned strict mode on. See the note in buildCsp().
+     */
+    public function testStrictModeEnforcesANonceWithoutVoidingSameOriginScripts(): void
     {
         $headers = $this->headers(['security.csp_mode' => 'strict']);
 
@@ -96,7 +104,8 @@ final class SecurityHeaderPolicyTest extends TestCase
         self::assertArrayNotHasKey('Content-Security-Policy-Report-Only', $headers);
 
         $csp = $headers['Content-Security-Policy'];
-        self::assertStringContainsString("script-src 'self' 'nonce-".self::NONCE."' 'strict-dynamic' https:", $csp);
+        self::assertStringContainsString("script-src 'self' 'nonce-".self::NONCE."' https:", $csp);
+        self::assertStringNotContainsString("'strict-dynamic'", $csp, 'it would void the "self" beside it');
         self::assertStringContainsString("object-src 'none'", $csp);
         self::assertStringContainsString("base-uri 'self'", $csp);
         self::assertStringContainsString("form-action 'self'", $csp);
@@ -136,9 +145,9 @@ final class SecurityHeaderPolicyTest extends TestCase
     }
 
     /**
-     * Regression: an empty nonce used to render as "'nonce-'", a malformed source
-     * expression. Next to 'strict-dynamic' that rejects every script on the page —
-     * the hardening layer taking the site down instead of the attacker.
+     * Regression: an empty nonce used to render as "'nonce-'", a malformed
+     * source expression that matches nothing — the hardening layer taking the
+     * site down instead of the attacker.
      */
     public function testAnEmptyNonceDegradesToANonceLessPolicyInsteadOfKillingEveryScript(): void
     {

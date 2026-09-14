@@ -1,0 +1,9 @@
+# Whitepaper modülü kataloğu — bkz. messages+intl-icu.en.yaml.
+aacp.whitepaper.field.locale: "Dil"
+aacp.whitepaper.field.slug: "Çapa (slug)"
+aacp.whitepaper.field.title: "Başlık"
+aacp.whitepaper.field.weight: "Sıra"
+aacp.whitepaper.field.body_html: "Gövde (HTML)"
+aacp.whitepaper.field.intro_html: "Giriş (HTML)"
+aacp.whitepaper.field.version: "Sürüm"
+aacp.whitepaper.field.updated_at: "Güncellenme"

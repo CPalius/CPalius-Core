@@ -36,7 +36,7 @@ final class AACPWebhookController
     }
 
     #[Route('/aacp/webhooks', name: 'aacp_webhooks', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.webhooks', icon: 'heroicons:arrow-up-right', panel: 'aacp', priority: 24, capability: 'system.webhooks.manage', parent: 'aacp_tools')]
+    #[CpAdminMenu(label: 'aacp.menu.webhooks', icon: 'heroicons:arrow-up-right', panel: 'aacp', priority: 74, capability: 'system.webhooks.manage', parent: 'aacp_hub_automation')]
     #[IsGranted('system.webhooks.manage')]
     public function index(): Response
     {

@@ -421,4 +421,29 @@ class TelemetryLogRepository extends ServiceEntityRepository
             'details' => $details,
         ];
     }
+
+    /**
+     * Deletes every telemetry row regardless of severity.
+     *
+     * Swallows DBAL failures like the rest of this repository: telemetry is
+     * observability, and a panel that 500s while trying to free disk space is
+     * worse than one that reports nothing removed.
+     */
+    public function purgeAll(): int
+    {
+        try {
+            return (int) $this->connection->executeStatement('DELETE FROM cp_system_telemetry_logs');
+        } catch (DBALException) {
+            return 0;
+        }
+    }
+
+    public function countAll(): int
+    {
+        try {
+            return (int) $this->connection->fetchOne('SELECT COUNT(*) FROM cp_system_telemetry_logs');
+        } catch (DBALException) {
+            return 0;
+        }
+    }
 }

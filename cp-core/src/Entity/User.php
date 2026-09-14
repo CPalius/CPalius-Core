@@ -350,6 +350,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Fieldab
     {
         $this->setDataValue('email_verified_at', (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM));
         $this->setDataValue('email_verification_token', null);
+        $this->setDataValue('email_verification_issued_at', null);
     }
 
     public function getEmailVerificationToken(): ?string
@@ -359,8 +360,33 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Fieldab
         return is_string($token) && $token !== '' ? $token : null;
     }
 
+    /**
+     * Issue time of the current verification token, for the expiry check in
+     * AccountRegistrationService::verifyEmailByToken(). Null for tokens minted
+     * before this was recorded — those are treated as expired rather than as
+     * eternal, which is the safe reading of "we do not know how old this is".
+     */
+    public function getEmailVerificationIssuedAt(): ?\DateTimeImmutable
+    {
+        $issued = $this->getDataValue('email_verification_issued_at');
+        if (!is_string($issued) || $issued === '') {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable($issued);
+        } catch (\Exception) {
+            return null;
+        }
+    }
+
     public function setEmailVerificationToken(?string $token): static
     {
+        $this->setDataValue(
+            'email_verification_issued_at',
+            $token === null ? null : (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
+        );
+
         return $this->setDataValue('email_verification_token', $token);
     }
 

@@ -13,6 +13,13 @@ parameters:
     # Note: %cpalius.locales_pattern% for route constraints is built at
     # compile time by LocalesPatternPass (see Kernel::build()), not here.
     cpalius.fallback_locales: 'tr,en'
+
+    # The running core version. Sourced from the CpVersion constant rather than
+    # CP_APP_VERSION in .env: .env survives an update untouched (it holds the
+    # DB password), so a version read from there freezes at the INSTALLED
+    # version and UpdateRunner re-offers every already-applied hook forever.
+    # See App\Core\Version\CpVersion for the full reasoning.
+    cpalius.version: !php/const App\Core\Version\CpVersion::VERSION
     cpalius.module.contributions:
         node_show_routes: []
         category_show_route: null
@@ -90,6 +97,26 @@ services:
         exclude:
             - '../src/Core/Migrate/Source/'
 
+    # N+1 tripwire: autoconfigure OFF, on purpose.
+    #
+    # DoctrineBundle calls registerForAutoconfiguration(Driver\Middleware) and
+    # tags EVERY service implementing that interface with doctrine.middleware.
+    # QueryCounterMiddleware implements it and is picked up by App\ above, so
+    # with autoconfigure on it was armed in EVERY environment — production
+    # included — no matter that services.yaml only tags it under when@dev.
+    #
+    # In prod that guard throws MaxQueriesExceededException inside a live
+    # request. OriginCacheWriter catches it and logs "Origin cache write
+    # failed", so the visible symptom is a warning on every page while the
+    # real damage is silent: the origin cache never writes, and the site
+    # serves every page uncached.
+    #
+    # The class comment claiming "zero cost in prod" was wrong for as long as
+    # it stood. The tag is now granted explicitly, and only under when@dev /
+    # when@test below.
+    App\Core\Database\Middleware\QueryCounterMiddleware:
+        autoconfigure: false
+
     # Override stock importmap() so inline importmap/module tags carry the CSP nonce.
     # Must sit after App\ so this definition wins over the autoconfigured one.
     # Lower Twig priority loads later and overwrites the stock importmap() function.
@@ -126,7 +153,7 @@ services:
     App\Core\Module\ModuleDependencyChecker:
         arguments:
             $modulesDir: '%kernel.project_dir%/cp-content/modules'
-            $coreVersion: '%env(CP_APP_VERSION)%'
+            $coreVersion: '%cpalius.version%'
 
     App\Core\Module\ModuleLifecycleManager:
         arguments:
@@ -289,6 +316,11 @@ services:
     # Narrow hook-dispatch contract → the concrete isolated HookManager.
     App\Core\Hook\HookDispatcherInterface: '@App\Core\Hook\HookManager'
 
+    # "Which remote target does this purpose use" → the registry that also owns
+    # credentials and probes. Media offload and backup shipping bind to the
+    # narrow contract so neither is one refactor away from rewriting a secret.
+    App\Core\Storage\TargetResolverInterface: '@App\Core\Storage\StorageTargetRegistry'
+
     # SecretBox: symmetric encryption for secrets at rest (webhook secrets, etc.),
     # keyed off the application secret. Never expose the key or plaintext.
     App\Core\Security\SecretBox:
@@ -343,6 +375,7 @@ when@dev:
                 $maxQueriesPerTable: 10
 
         App\Core\Database\Middleware\QueryCounterMiddleware:
+            autoconfigure: false
             tags:
                 - { name: 'doctrine.middleware' }
 
@@ -352,11 +385,24 @@ when@test:
             autowire: true
             autoconfigure: true
 
-        # Law 6.1 in CI: the same N+1 tripwire as dev, so a regression cannot hide in test.
+        # NOTE: this does NOT put the tripwire in front of the test suite, and
+        # the comment that used to claim it did was wrong for as long as it
+        # stood. QueryCounterMiddleware::wrap() returns the driver unwrapped
+        # when PHP_SAPI is "cli", and PHPUnit is CLI — so the middleware below
+        # is registered and then declines to wrap anything. A real N+1 CAN hide
+        # in test, and one did: an import of more than ten rows died in the
+        # browser while every test stayed green (see
+        # MigrationRunnerQueryBudgetTest, which holds that behaviour by driving
+        # the counter directly because an integration test cannot).
+        #
+        # The definitions stay so the services resolve identically in both
+        # environments; turning the guard on for tests is a real change with a
+        # real blast radius and is recorded as a decision, not done in passing.
         App\Core\Database\QueryCounter:
             arguments:
                 $maxQueriesPerTable: 10
 
         App\Core\Database\Middleware\QueryCounterMiddleware:
+            autoconfigure: false
             tags:
                 - { name: 'doctrine.middleware' }

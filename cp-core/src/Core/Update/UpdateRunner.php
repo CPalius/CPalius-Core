@@ -6,12 +6,14 @@ namespace App\Core\Update;
 
 use App\Core\Cache\CacheRebuildManager;
 use App\Core\Config\ConfigManager;
+use App\Core\Database\QueryCounter;
 use App\Core\Module\ModuleLifecycleManager;
 use App\Core\Module\ModuleManifest;
 use App\Core\Module\ModuleRegistry;
 use Doctrine\Migrations\DependencyFactory;
 use Doctrine\Migrations\MigratorConfiguration;
 use Psr\Log\LoggerInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 
@@ -65,7 +67,9 @@ final class UpdateRunner
         // does not hand back their manifests, and onActivated() needs one.
         #[Autowire('%kernel.project_dir%/cp-content/modules')]
         private readonly string $modulesDir,
+        private readonly TranslatorInterface $translator,
         private readonly ?LoggerInterface $logger = null,
+        private readonly ?QueryCounter $queryCounter = null,
     ) {
     }
 
@@ -76,6 +80,7 @@ final class UpdateRunner
     {
         $results = [];
 
+        $this->queryCounter?->reset();
         $migrations = $this->runMigrations($dryRun);
         $results[] = $migrations;
 
@@ -85,10 +90,25 @@ final class UpdateRunner
             return $results;
         }
 
-        $results[] = $this->runHooks($dryRun);
-        $results[] = $this->runModuleUpgrades($dryRun);
-        $results[] = $this->importConfig($dryRun);
-        $results[] = $this->rebuildCache($dryRun);
+        /*
+         * The N+1 guard budgets reads per table per REQUEST, on the premise
+         * that one request renders one page. An update breaks that premise
+         * honestly: five steps run back to back, and a table legitimately read
+         * a few times by each of them crosses the budget without any
+         * lazy-loading loop involved. MigrationRunner already resets per
+         * imported row for the same reason. Resetting between steps keeps the
+         * guard sharp where it still applies — a real loop inside one step
+         * still trips it — without failing the update itself.
+         */
+        foreach ([
+            fn (): UpdateStepResult => $this->runHooks($dryRun),
+            fn (): UpdateStepResult => $this->runModuleUpgrades($dryRun),
+            fn (): UpdateStepResult => $this->importConfig($dryRun),
+            fn (): UpdateStepResult => $this->rebuildCache($dryRun),
+        ] as $step) {
+            $this->queryCounter?->reset();
+            $results[] = $step();
+        }
 
         return $results;
     }
@@ -138,7 +158,7 @@ final class UpdateRunner
             }
 
             if ($pending === []) {
-                return UpdateStepResult::skipped(self::STEP_MIGRATIONS, 'Schema is up to date.');
+                return UpdateStepResult::skipped(self::STEP_MIGRATIONS, $this->t('migrations.none'));
             }
 
             $labels = array_map(static fn (object $v): string => self::shortVersion((string) $v), $pending);
@@ -146,7 +166,7 @@ final class UpdateRunner
             if ($dryRun) {
                 return UpdateStepResult::applied(
                     self::STEP_MIGRATIONS,
-                    sprintf('%d migration(s) would be applied.', \count($pending)),
+                    $this->t('migrations.would', ['count' => \count($pending)]),
                     $labels,
                 );
             }
@@ -158,7 +178,7 @@ final class UpdateRunner
 
             return UpdateStepResult::applied(
                 self::STEP_MIGRATIONS,
-                sprintf('%d migration(s) applied.', \count($pending)),
+                $this->t('migrations.done', ['count' => \count($pending)]),
                 $labels,
             );
         } catch (\Throwable $e) {
@@ -173,13 +193,13 @@ final class UpdateRunner
         $pending = $this->pendingHooks();
 
         if ($pending === []) {
-            return UpdateStepResult::skipped(self::STEP_HOOKS, 'No update hooks are pending.');
+            return UpdateStepResult::skipped(self::STEP_HOOKS, $this->t('hooks.none'));
         }
 
         if ($dryRun) {
             return UpdateStepResult::applied(
                 self::STEP_HOOKS,
-                sprintf('%d hook(s) would run.', \count($pending)),
+                $this->t('hooks.would', ['count' => \count($pending)]),
                 array_map(
                     static fn (UpdateHookInterface $h): string => sprintf('%s (%s) — %s', $h->id(), $h->version(), $h->description()),
                     $pending,
@@ -208,12 +228,12 @@ final class UpdateRunner
         if ($failures !== []) {
             return UpdateStepResult::failed(
                 self::STEP_HOOKS,
-                sprintf('%d hook(s) failed, %d succeeded.', \count($failures), \count($details)),
+                $this->t('hooks.partial', ['failed' => \count($failures), 'ok' => \count($details)]),
                 [...$failures, ...$details],
             );
         }
 
-        return UpdateStepResult::applied(self::STEP_HOOKS, sprintf('%d hook(s) ran.', \count($details)), $details);
+        return UpdateStepResult::applied(self::STEP_HOOKS, $this->t('hooks.done', ['count' => \count($details)]), $details);
     }
 
     private function runModuleUpgrades(bool $dryRun): UpdateStepResult
@@ -269,18 +289,18 @@ final class UpdateRunner
         if ($failures !== []) {
             return UpdateStepResult::failed(
                 self::STEP_MODULES,
-                sprintf('%d module upgrade(s) failed.', \count($failures)),
+                $this->t('modules.failed', ['count' => \count($failures)]),
                 [...$failures, ...$details],
             );
         }
 
         if ($details === []) {
-            return UpdateStepResult::skipped(self::STEP_MODULES, 'Every active module is at its manifest version.');
+            return UpdateStepResult::skipped(self::STEP_MODULES, $this->t('modules.none'));
         }
 
         return UpdateStepResult::applied(
             self::STEP_MODULES,
-            sprintf('%d module(s) %s.', \count($details), $dryRun ? 'would be upgraded' : 'upgraded'),
+            $this->t($dryRun ? 'modules.would' : 'modules.done', ['count' => \count($details)]),
             $details,
         );
     }
@@ -296,14 +316,14 @@ final class UpdateRunner
                 ));
 
                 return $changed === []
-                    ? UpdateStepResult::skipped(self::STEP_CONFIG, 'Configuration matches the database.')
-                    : UpdateStepResult::applied(self::STEP_CONFIG, sprintf('%d document(s) would be imported.', \count($changed)), $changed);
+                    ? UpdateStepResult::skipped(self::STEP_CONFIG, $this->t('config.none'))
+                    : UpdateStepResult::applied(self::STEP_CONFIG, $this->t('config.would', ['count' => \count($changed)]), $changed);
             }
 
             $applied = $this->config->import();
 
             if ($applied === []) {
-                return UpdateStepResult::skipped(self::STEP_CONFIG, 'Configuration matches the database.');
+                return UpdateStepResult::skipped(self::STEP_CONFIG, $this->t('config.none'));
             }
 
             // import() answers document name => list of changes applied; the
@@ -317,7 +337,7 @@ final class UpdateRunner
 
             return UpdateStepResult::applied(
                 self::STEP_CONFIG,
-                sprintf('%d document(s) imported.', \count($applied)),
+                $this->t('config.done', ['count' => \count($applied)]),
                 $details,
             );
         } catch (\Throwable $e) {
@@ -330,13 +350,13 @@ final class UpdateRunner
     private function rebuildCache(bool $dryRun): UpdateStepResult
     {
         if ($dryRun) {
-            return UpdateStepResult::applied(self::STEP_CACHE, 'The cache would be cleared.');
+            return UpdateStepResult::applied(self::STEP_CACHE, $this->t('cache.would'));
         }
 
         try {
             $this->cache->clearSymfonyCache();
 
-            return UpdateStepResult::applied(self::STEP_CACHE, 'Cache cleared.');
+            return UpdateStepResult::applied(self::STEP_CACHE, $this->t('cache.done'));
         } catch (\Throwable $e) {
             $this->logger?->error('cp:update could not clear the cache.', ['exception' => $e]);
 
@@ -351,5 +371,18 @@ final class UpdateRunner
         $position = strrpos($version, '\\');
 
         return $position === false ? $version : substr($version, $position + 1);
+    }
+
+    /**
+     * Step summaries are rendered in AACP, so they are translated at the source
+     * rather than left as English literals - the same convention
+     * PurgeLogEntriesTask already follows. Keys live under
+     * aacp.updates.summary.*, in the intl-icu messages catalogue.
+     *
+     * @param array<string, int|string> $params
+     */
+    private function t(string $key, array $params = []): string
+    {
+        return $this->translator->trans('aacp.updates.summary.'.$key, $params);
     }
 }

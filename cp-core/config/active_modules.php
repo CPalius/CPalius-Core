@@ -12,4 +12,5 @@ return [
   Modules\Seo\SeoModule::class,
   Modules\Pages\PagesModule::class,
   Modules\Importer\ImporterModule::class,
+  Modules\Whitepaper\WhitepaperModule::class,
 ];

@@ -37,7 +37,8 @@
             <p>{{ 'website.footer.copyright'|trans({'year': 'now'|date('Y')}) }}</p>
             <p>
                 {{ 'website.footer.founder_label'|trans }} <a href="#">Ali Çömez (slaweally)</a> &middot;
-                <a href="#">{{ 'website.footer.license'|trans }}</a>
+                <a href="#">{{ 'website.footer.license'|trans }}</a> &middot;
+                <span class="footer-version">CPalius CMF v{{ cp_version() }}</span>
             </p>
         </div>
     </div>

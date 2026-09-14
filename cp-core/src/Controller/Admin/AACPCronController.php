@@ -48,7 +48,7 @@ final class AACPCronController
     }
 
     #[Route('/aacp/cron', name: 'aacp_cron', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.cron', icon: 'heroicons:clock', panel: 'aacp', priority: 21, capability: 'system.cron.manage', parent: 'aacp_tools')]
+    #[CpAdminMenu(label: 'aacp.menu.cron', icon: 'heroicons:clock', panel: 'aacp', priority: 71, capability: 'system.cron.manage', parent: 'aacp_hub_automation')]
     #[IsGranted('system.cron.manage')]
     public function index(): Response
     {

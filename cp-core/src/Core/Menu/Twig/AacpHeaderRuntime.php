@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Menu\Twig;
 
+use App\Core\Media\AssetUrlGenerator;
 use App\Entity\User;
 use App\Repository\AssetRepository;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -18,6 +19,7 @@ final class AacpHeaderRuntime implements RuntimeExtensionInterface
     public function __construct(
         private readonly Security $security,
         private readonly AssetRepository $assetRepository,
+        private readonly AssetUrlGenerator $urls,
     ) {
     }
 
@@ -31,6 +33,6 @@ final class AacpHeaderRuntime implements RuntimeExtensionInterface
 
         $asset = $this->assetRepository->find($user->getAvatarAssetId());
 
-        return $asset?->getStorageKey() !== null ? '/uploads/'.$asset->getStorageKey() : null;
+        return $asset?->getStorageKey() !== null ? $this->urls->forKey($asset->getStorageKey()) : null;
     }
 }

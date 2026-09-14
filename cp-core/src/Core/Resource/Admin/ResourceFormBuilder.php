@@ -73,7 +73,20 @@ final class ResourceFormBuilder
             'number' => \in_array($field->type, ['integer', 'smallint', 'bigint'], true)
                 ? [IntegerType::class, []]
                 : [NumberType::class, ['scale' => 2]],
-            'textarea' => [TextareaType::class, ['attr' => ['rows' => 5]]],
+            // Five rows was a placeholder from when no resource existed. A
+            // text column holds prose, and editing prose through a letterbox
+            // is why the generic screens looked unusable on first contact.
+            'textarea' => [TextareaType::class, ['attr' => ['rows' => 10, 'class' => 'font-mono']]],
+            // Opt-in per property via #[CpField(widget: 'richtext')]. The
+            // marker is all the server does: the toggle between CKEditor and
+            // raw HTML is the operator's, because CKEditor normalises markup
+            // it does not recognise and a hand-written document must be able
+            // to refuse that.
+            'richtext' => [TextareaType::class, ['attr' => [
+                'rows' => 22,
+                'class' => 'font-mono',
+                'data-cp-richtext' => '',
+            ]]],
             'email' => [EmailType::class, []],
             'url' => [UrlType::class, ['default_protocol' => null]],
             'date' => [DateType::class, ['widget' => 'single_text', 'html5' => true]],

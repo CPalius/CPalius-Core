@@ -72,12 +72,7 @@ final class SecurityHeadersSubscriber implements EventSubscriberInterface
             $response = $event->getResponse();
             $nonce = (string) $request->attributes->get(CspNonceProvider::ATTRIBUTE, '');
 
-            // A download still gets the anti-sniffing headers. Dropping the whole
-            // set here used to hand an attachment whose bytes a user supplied
-            // (an avatar, an import file) to the browser with nothing stopping it
-            // from re-typing the body as HTML and running script on our origin.
-            // Only the policy headers that are meaningless on an attachment body
-            // — CSP and the framing rules — are skipped.
+            // Downloads keep nosniff; skip CSP/frame headers that do not apply to an attachment body.
             $skip = $this->isStreamedDownload($response)
                 ? ['Content-Security-Policy', 'Content-Security-Policy-Report-Only', 'X-Frame-Options']
                 : [];

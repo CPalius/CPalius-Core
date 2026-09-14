@@ -1,0 +1,10 @@
+# The locale prefix matches the core theme routes this page used to live in, so
+# /tr/whitepaper and /en/whitepaper keep working after the move.
+whitepaper_module_front:
+    resource: ../../Controller/
+    type: attribute
+    prefix: /{_locale}
+    requirements:
+        _locale: '%cpalius.locales_pattern%'
+    defaults:
+        _locale: '%cpalius.default_locale%'

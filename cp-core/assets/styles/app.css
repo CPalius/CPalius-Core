@@ -153,7 +153,43 @@
         @apply start-0;
     }
     .sidebar.active {
-        @apply xl:start-[-105%];
+        @apply xl:start-0 xl:w-[72px] xl:overflow-visible;
+    }
+    .sidebar.active .sidebar-logo {
+        @apply justify-center px-2;
+    }
+    .sidebar.active .sidebar-logo > div,
+    .sidebar.active .sidebar-meta,
+    .sidebar.active .sidebar-menu-group-title,
+    .sidebar.active .submenu-caret,
+    .sidebar.active .sidebar-menu > li > a > span {
+        @apply hidden;
+    }
+    .sidebar.active .sidebar-menu-area {
+        @apply overflow-visible px-2;
+    }
+    .sidebar.active .sidebar-menu > li {
+        @apply relative;
+    }
+    .sidebar.active .sidebar-menu > li > a {
+        @apply justify-center px-2;
+    }
+    .sidebar.active .sidebar-submenu {
+        @apply !hidden;
+    }
+    .sidebar.active .sidebar-menu > li.dropdown:hover > .sidebar-submenu,
+    .sidebar.active .sidebar-menu > li.dropdown:focus-within > .sidebar-submenu {
+        @apply !block absolute start-full top-0 z-40 ms-1 min-w-[13rem] !ps-0 !pt-2 rounded-lg border border-neutral-200 bg-white py-2 shadow-lg;
+    }
+    .sidebar.active .sidebar-submenu li a {
+        @apply justify-start;
+    }
+    .sidebar.active .sidebar-submenu li a span {
+        @apply inline;
+    }
+    .aacp-shell .sidebar.active .sidebar-menu > li.dropdown:hover > .sidebar-submenu,
+    .aacp-shell .sidebar.active .sidebar-menu > li.dropdown:focus-within > .sidebar-submenu {
+        @apply !border-white/10 !bg-dark-2;
     }
     .sidebar-close-btn {
         @apply absolute top-0 end-[0.625rem] w-[1.75rem] h-[1.75rem] border border-neutral-300 rounded-full inline-flex justify-center items-center xl:hidden;
@@ -218,7 +254,7 @@
         @apply ms-0 xl:ms-[220px] 2xl:ms-[275px] 3xl:ms-[312px] min-w-0 flex-1 overflow-y-auto transition-all duration-300;
     }
     .dashboard-main.sidebar-collapsed {
-        @apply xl:ms-0;
+        @apply xl:ms-[72px];
     }
 
     /* --- Navbar / Header --- */
@@ -465,7 +501,21 @@
         @apply flex flex-col gap-sp-sm;
     }
     .studio-cmd-panel {
-        @apply rounded-lg border border-neutral-200 bg-white p-sp-sm shadow-sm;
+        @apply relative rounded-lg border border-neutral-200 bg-white p-sp-sm shadow-sm;
+    }
+    /* Collapsible panels — same contract as the AACP desk: fold everything
+       after the panel's own header, and never the control that unfolds it. */
+    .studio-cmd-panel[data-studio-widget] > :first-child {
+        @apply pe-7;
+    }
+    .studio-cmd-panel.is-collapsed > :not(:first-child):not(.studio-widget-toggle) {
+        display: none !important;
+    }
+    .studio-cmd-panel.is-collapsed {
+        @apply py-2;
+    }
+    .studio-widget-toggle {
+        @apply absolute end-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded border border-neutral-200 bg-neutral-50 font-mono text-fs-sm leading-none text-neutral-500 transition hover:border-primary-300 hover:text-primary-700;
     }
     .studio-cmd-panel-title {
         @apply mb-2 text-[0.65rem] font-semibold uppercase tracking-wide text-neutral-500;
@@ -479,6 +529,25 @@
         display: block;
         width: 100% !important;
         height: 100% !important;
+    }
+    /* Workbench — workflow places still waiting on a human. */
+    .studio-cmd-workbench {
+        @apply flex flex-col gap-1.5;
+    }
+    .studio-cmd-workbench li {
+        @apply flex items-center justify-between gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-fs-sm text-neutral-600;
+    }
+    .studio-cmd-workbench li.is-actionable {
+        @apply border-primary-300 bg-primary-50 text-primary-800;
+    }
+    .studio-cmd-workbench-label {
+        @apply min-w-0 truncate font-medium;
+    }
+    .studio-cmd-workbench-count {
+        @apply shrink-0 font-mono font-semibold;
+    }
+    .studio-cmd-workbench-note {
+        @apply mt-2 text-fs-xs text-neutral-500;
     }
     .studio-cmd-shortcuts {
         @apply flex flex-col gap-1.5;
@@ -563,7 +632,23 @@
         }
     }
     .aacp-cmd-panel {
-        @apply rounded-lg border border-white/10 bg-dark-2 p-sp-sm;
+        @apply relative rounded-lg border border-white/10 bg-dark-2 p-sp-sm;
+    }
+    /* Collapsible panels: the first child is the panel's own header, so folding
+       is "hide everything after the title". The toggle is excluded explicitly —
+       it is appended last by the script, and hiding the control that expands
+       the panel would make the fold one-way. */
+    .aacp-cmd-panel[data-aacp-widget] > :first-child {
+        @apply pe-7;
+    }
+    .aacp-cmd-panel.is-collapsed > :not(:first-child):not(.aacp-widget-toggle) {
+        display: none !important;
+    }
+    .aacp-cmd-panel.is-collapsed {
+        @apply py-2;
+    }
+    .aacp-widget-toggle {
+        @apply absolute end-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded border border-white/10 bg-white/5 font-mono text-fs-sm leading-none text-slate-400 transition hover:border-emerald-400/50 hover:text-emerald-300;
     }
     .aacp-cmd-panel-title {
         @apply mb-2 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500;
@@ -672,6 +757,53 @@
     }
     .aacp-visitor-kpis strong {
         @apply mt-0.5 block font-mono text-lg text-emerald-300;
+    }
+    /* Platform pulse — the four ops panels above the traffic feed. */
+    .aacp-pulse {
+        @apply grid grid-cols-1 gap-sp-xs md:grid-cols-2 xl:grid-cols-4;
+    }
+    .aacp-pulse-link {
+        @apply font-mono text-[0.65rem] uppercase tracking-wide text-emerald-400 hover:text-emerald-300;
+    }
+    .aacp-pulse-metrics {
+        @apply grid grid-cols-2 gap-x-3 gap-y-1.5;
+    }
+    .aacp-pulse-metrics dt {
+        @apply font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-pulse-metrics dd {
+        @apply font-mono text-fs-xs text-slate-200;
+    }
+    .aacp-pulse-note {
+        @apply mt-2 font-mono text-[0.65rem] leading-relaxed;
+    }
+    .aacp-pulse-unavailable {
+        @apply font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-pulse-ok {
+        @apply !text-emerald-300;
+    }
+    .aacp-pulse-bad {
+        @apply !text-danger-300;
+    }
+    .aacp-pulse-muted {
+        @apply !text-slate-500;
+    }
+    .aacp-pulse-findings {
+        @apply mt-2 space-y-1.5;
+    }
+    .aacp-pulse-findings li {
+        @apply flex items-center gap-2 rounded-md border border-white/10 bg-dark-1 px-2.5 py-1.5;
+    }
+    .aacp-pulse-finding-title {
+        @apply min-w-0 truncate font-mono text-fs-xs text-slate-200;
+    }
+    /* Rich-text / source toggle above a #[CpField(widget: 'richtext')] field. */
+    .aacp-editor-bar {
+        @apply mb-2 flex flex-wrap items-center gap-2;
+    }
+    .aacp-editor-hint {
+        @apply font-mono text-[0.65rem] leading-snug text-slate-500;
     }
     .aacp-cmd-subsys {
         @apply space-y-2;
@@ -809,56 +941,65 @@
         @apply text-success-300;
     }
 
-    /* Security Center — graphical posture */
+    /* Security Center — compact CSS ring (no SVG: default circle fill was blowing the layout) */
     .aacp-security-posture {
-        @apply flex flex-col gap-sp-sm lg:flex-row lg:items-center;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        align-items: center;
+    }
+    @media (min-width: 1024px) {
+        .aacp-security-posture {
+            flex-direction: row;
+            align-items: center;
+        }
     }
     .aacp-security-gauge {
-        @apply relative mx-auto h-36 w-36 shrink-0 lg:mx-0;
+        position: relative;
+        width: 9rem;
+        height: 9rem;
+        flex-shrink: 0;
+        --aacp-score: 0;
+        --aacp-gauge-color: rgb(248 113 113);
     }
-    .aacp-security-gauge-svg {
-        @apply h-full w-full -rotate-90;
+    .aacp-security-gauge.is-good {
+        --aacp-gauge-color: rgb(52 211 153);
     }
-    .aacp-security-gauge-track {
-        fill: none;
-        stroke: rgb(255 255 255 / 0.08);
-        stroke-width: 8;
+    .aacp-security-gauge.is-warn {
+        --aacp-gauge-color: rgb(251 191 36);
     }
-    .aacp-security-gauge-progress {
-        fill: none;
-        stroke-width: 8;
-        stroke-linecap: round;
-        transition: stroke-dashoffset 0.7s ease;
+    .aacp-security-gauge.is-bad {
+        --aacp-gauge-color: rgb(248 113 113);
     }
-    .aacp-security-gauge.is-good .aacp-security-gauge-progress {
-        stroke: rgb(52 211 153);
-        filter: drop-shadow(0 0 8px rgb(52 211 153 / 0.55));
-    }
-    .aacp-security-gauge.is-warn .aacp-security-gauge-progress {
-        stroke: rgb(251 191 36);
-        filter: drop-shadow(0 0 8px rgb(251 191 36 / 0.45));
-    }
-    .aacp-security-gauge.is-bad .aacp-security-gauge-progress {
-        stroke: rgb(248 113 113);
-        filter: drop-shadow(0 0 8px rgb(248 113 113 / 0.45));
+    .aacp-security-gauge-ring {
+        width: 9rem;
+        height: 9rem;
+        border-radius: 9999px;
+        background:
+            radial-gradient(closest-side, rgb(15 23 42) 78%, transparent 79% 100%),
+            conic-gradient(var(--aacp-gauge-color) calc(var(--aacp-score) * 1%), rgb(255 255 255 / 0.08) 0);
     }
     .aacp-security-gauge-value {
-        @apply absolute inset-0 flex flex-col items-center justify-center;
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
     }
     .aacp-security-gauge-number {
-        @apply font-mono text-3xl font-bold leading-none text-slate-100;
-    }
-    .aacp-security-gauge.is-good .aacp-security-gauge-number {
-        @apply text-emerald-300;
-    }
-    .aacp-security-gauge.is-warn .aacp-security-gauge-number {
-        @apply text-warning-300;
-    }
-    .aacp-security-gauge.is-bad .aacp-security-gauge-number {
-        @apply text-danger-300;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 1.875rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--aacp-gauge-color);
     }
     .aacp-security-gauge-denom {
-        @apply mt-1 font-mono text-fs-xs text-slate-500;
+        margin-top: 0.25rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.75rem;
+        color: rgb(100 116 139);
     }
     .aacp-security-sev {
         @apply rounded-lg border px-sp-sm py-2;

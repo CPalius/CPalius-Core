@@ -20,6 +20,11 @@ use Twig\Environment;
 final class SeoEngine implements SeoHeadRendererInterface
 {
     /**
+     * JSON-LD flags for |raw output in <script>. HEX_* encodes < > & quotes so a user title cannot close the tag.
+     */
+    private const SCHEMA_ESCAPE_FLAGS = \JSON_HEX_TAG | \JSON_HEX_AMP | \JSON_HEX_APOS | \JSON_HEX_QUOT;
+
+    /**
      * @param iterable<SeoPageProviderInterface> $providers
      */
     public function __construct(
@@ -81,7 +86,7 @@ final class SeoEngine implements SeoHeadRendererInterface
         try {
             $schemaJson = (string) json_encode(
                 $this->schema->build($document, $locale, $canonical, $title),
-                \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES,
+                \JSON_UNESCAPED_UNICODE | self::SCHEMA_ESCAPE_FLAGS,
             );
         } catch (\Throwable) {
             $schemaJson = '{}';

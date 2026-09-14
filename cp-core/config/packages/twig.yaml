@@ -9,7 +9,9 @@ twig:
         # every installed theme plus the shared "@Theme" namespace at compile time.
     globals:
         cp_app_name: '%env(CP_APP_NAME)%'
-        cp_app_version: '%env(CP_APP_VERSION)%'
+        # Running core version — from the CpVersion constant, not .env, so it
+        # stays correct after a file-overwrite update. See CpVersion.
+        cp_app_version: '%cpalius.version%'
         # cp_active_theme is registered by ThemeTwigPathPass: the parameter does
         # not exist yet when Twig extension config is merged.
     form_themes:

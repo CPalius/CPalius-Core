@@ -45,7 +45,7 @@ final class AACPPlaceholderController
      * Single AACP settings screen: core tabs plus module/plugin settings.
      */
     #[Route('/aacp/advanced/management', name: 'aacp_advanced_management', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.system_management', icon: 'heroicons:cog-6-tooth', panel: 'aacp', priority: 30, capability: 'system.aacp.access', group: 'aacp.group.genadset')]
+    #[CpAdminMenu(label: 'aacp.menu.system_management', icon: 'heroicons:cog-6-tooth', panel: 'aacp', priority: 24, capability: 'system.aacp.access', parent: 'aacp_hub_system')]
     #[IsGranted('system.aacp.access')]
     public function advancedManagement(Request $request): Response
     {

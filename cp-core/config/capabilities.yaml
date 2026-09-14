@@ -14,6 +14,11 @@ capabilities:
     - system.security.manage
     - system.queue.manage
     - system.logs.manage
+    # Deliberately separate from system.logs.manage: reading an audit
+    # trail and erasing one are not the same privilege, and collapsing
+    # them would let every log reader destroy the record of their own
+    # actions.
+    - system.logs.purge
     - system.performance.manage
     - system.cron.manage
     - system.backup.manage
@@ -38,3 +43,11 @@ capabilities:
     - text_format.full_html.use
     - text_format.markdown.use
     - admin.access
+    # The Studio landing screen. Separate from admin.access, which also gates the
+    # homepage settings surface: /admin had no capability at all, so any account
+    # that could log in — a forum member included — reached it, and reusing
+    # admin.access to close that would have handed editors homepage settings as a
+    # side effect. Content rows on the dashboard were never exposed
+    # (QueryScopeApplier denies with 1 = 0), but the aggregate media total, the
+    # module KPIs and the whole Studio navigation map were.
+    - admin.dashboard.view

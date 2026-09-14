@@ -8,8 +8,19 @@ import {
     Code,
     CodeBlock,
     Essentials,
+    ImageBlock,
+    ImageCaption,
+    ImageInline,
+    ImageInsert,
+    ImageInsertViaUrl,
+    ImageResize,
+    ImageStyle,
+    ImageTextAlternative,
+    ImageToolbar,
+    ImageUpload,
     Italic,
     Link,
+    LinkImage,
     List,
     ListProperties,
     Paragraph,
@@ -23,8 +34,9 @@ import 'ckeditor5/dist/ckeditor5.css';
 import 'ckeditor5/translations/tr';
 
 /**
- * Lightweight CKEditor 5 init for forum replies — same vendored bundle as admin cp-editor-init.js, trimmed toolbar (no image/table/source).
- * [data-forum-editor] textareas become ClassicEditor; forum.js "Quote" targets textarea.__cpForumEditor.
+ * Forum CKEditor 5 — same vendored bundle as admin, trimmed toolbar.
+ * Image insert is always on (URL). File upload is wired only when the
+ * textarea carries data-image-upload-* (board upload permission).
  */
 
 const forumEditorStyle = document.createElement('style');
@@ -42,6 +54,13 @@ forumEditorStyle.innerHTML = `
             min-height: max(450px, clamp(450px, 45vh, 560px));
         }
     }
+    .forum .ck-content img {
+        max-width: 100%;
+        height: auto;
+    }
+    .forum .ck-content .image {
+        margin: 0.75em 0;
+    }
     .forum .ck-editor__editable_invalid {
         border-color: #ef4444 !important;
         box-shadow: 0 0 0 1px #ef4444 !important;
@@ -49,31 +68,88 @@ forumEditorStyle.innerHTML = `
 `;
 document.head.appendChild(forumEditorStyle);
 
+function forumUploadAdapter(loader, options) {
+    return {
+        upload() {
+            return loader.file.then((file) => new Promise((resolve, reject) => {
+                const data = new FormData();
+                data.append('upload', file);
+                data.append('_token', options.token);
+                data.append('section_id', options.sectionId);
+
+                fetch(options.url, {
+                    method: 'POST',
+                    body: data,
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                }).then(async (response) => {
+                    const payload = await response.json().catch(() => ({}));
+                    const url = typeof payload.url === 'string' ? payload.url : '';
+                    if (!response.ok || url === '') {
+                        const message = payload?.error?.message;
+                        reject(typeof message === 'string' && message !== '' ? message : 'Görsel yüklenemedi.');
+                        return;
+                    }
+                    resolve({ default: url });
+                }).catch(() => {
+                    reject('Görsel yüklenemedi.');
+                });
+            }));
+        },
+        abort() {},
+    };
+}
+
 async function initForumEditor(textarea) {
+    if (textarea.dataset.cpEditorInit === '1') {
+        return textarea.__cpForumEditor ?? null;
+    }
+    textarea.dataset.cpEditorInit = '1';
+
     const minHeightAttr = textarea.getAttribute('data-forum-editor-min-height');
     const minHeightPx = minHeightAttr ? parseInt(minHeightAttr, 10) : 0;
+    const uploadUrl = textarea.getAttribute('data-image-upload-url') || '';
+    const uploadToken = textarea.getAttribute('data-image-upload-token') || '';
+    const sectionId = textarea.getAttribute('data-image-section') || '';
+    const uploadEnabled = uploadUrl !== '' && uploadToken !== '' && sectionId !== '';
+
+    const plugins = [
+        Autoformat,
+        AutoLink,
+        Autosave,
+        BlockQuote,
+        Bold,
+        Code,
+        CodeBlock,
+        Essentials,
+        ImageBlock,
+        ImageCaption,
+        ImageInline,
+        ImageInsert,
+        ImageInsertViaUrl,
+        ImageResize,
+        ImageStyle,
+        ImageTextAlternative,
+        ImageToolbar,
+        Italic,
+        Link,
+        LinkImage,
+        List,
+        ListProperties,
+        Paragraph,
+        RemoveFormat,
+        Strikethrough,
+        TextTransformation,
+        Underline,
+        Undo,
+    ];
+
+    if (uploadEnabled) {
+        plugins.push(ImageUpload);
+    }
 
     const editor = await ClassicEditor.create(textarea, {
-        plugins: [
-            Autoformat,
-            AutoLink,
-            Autosave,
-            BlockQuote,
-            Bold,
-            Code,
-            CodeBlock,
-            Essentials,
-            Italic,
-            Link,
-            List,
-            ListProperties,
-            Paragraph,
-            RemoveFormat,
-            Strikethrough,
-            TextTransformation,
-            Underline,
-            Undo,
-        ],
+        plugins,
         language: 'tr',
         licenseKey: 'GPL',
         toolbar: {
@@ -84,17 +160,37 @@ async function initForumEditor(textarea) {
                 '|',
                 'bulletedList', 'numberedList',
                 '|',
-                'link', 'blockQuote', 'code', 'codeBlock',
+                'link', 'insertImage', 'blockQuote', 'code', 'codeBlock',
                 '|',
                 'removeFormat',
             ],
             shouldNotGroupWhenFull: false,
+        },
+        image: {
+            toolbar: [
+                'toggleImageCaption',
+                'imageTextAlternative',
+                '|',
+                'imageStyle:inline',
+                'imageStyle:wrapText',
+                'imageStyle:breakText',
+                '|',
+                'resizeImage',
+            ],
         },
         link: {
             addTargetToExternalLinks: true,
             defaultProtocol: 'https://',
         },
     });
+
+    if (uploadEnabled) {
+        editor.plugins.get('FileRepository').createUploadAdapter = (loader) => forumUploadAdapter(loader, {
+            url: uploadUrl,
+            token: uploadToken,
+            sectionId,
+        });
+    }
 
     const editableEl = editor.ui.view.editable.element;
     if (editableEl && minHeightPx > 0) {

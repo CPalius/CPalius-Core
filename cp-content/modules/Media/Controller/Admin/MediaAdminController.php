@@ -8,6 +8,7 @@ use App\Core\Annotation\CpAdminMenu;
 use App\Core\Media\AssetManager;
 use App\Core\Media\Exception\InvalidUploadException;
 use App\Core\Media\Exception\UnsupportedAssetTypeException;
+use App\Core\Media\MediaOffloader;
 use App\Core\Media\MimeTypeAllowlist;
 use App\Entity\Asset;
 use App\Repository\AssetRepository;
@@ -36,6 +37,7 @@ final class MediaAdminController extends AbstractController
         private readonly EntityManagerInterface $entityManager,
         private readonly TranslatorInterface $translator,
         private readonly MimeTypeAllowlist $mimeTypeAllowlist,
+        private readonly MediaOffloader $offloader,
     ) {
     }
 
@@ -105,6 +107,12 @@ final class MediaAdminController extends AbstractController
         if ($this->cpaliusStorage->fileExists($asset->getStorageKey())) {
             $this->cpaliusStorage->delete($asset->getStorageKey());
         }
+
+        // Drop the offloaded copy too, so "delete" means the same thing
+        // wherever the file ended up. Best-effort by design: an orphaned object
+        // costs pennies, and a bucket outage must not turn deleting an image
+        // into a 500.
+        $this->offloader->forget($asset->getStorageKey());
 
         $this->entityManager->remove($asset);
         $this->entityManager->flush();

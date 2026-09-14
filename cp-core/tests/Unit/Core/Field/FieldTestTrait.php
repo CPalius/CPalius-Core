@@ -31,8 +31,13 @@ use App\Core\Field\Type\SelectFieldType;
 use App\Core\Field\Type\TextareaFieldType;
 use App\Core\Field\Type\TextFieldType;
 use App\Core\Field\Type\UrlFieldType;
+use App\Core\Localization\LocaleProvider;
+use App\Core\Media\AssetUrlGenerator;
 use App\Core\Media\ImageProcessor;
 use App\Core\Media\Twig\ImageThumbnailRuntime;
+use App\Core\Settings\SettingsRegistry;
+use App\Repository\LocaleRepository;
+use App\Repository\SettingRepository;
 use App\Core\Resource\ResourceRegistry;
 use App\Core\Taxonomy\Repository\VocabularyRepository;
 use App\Core\Taxonomy\VocabularyRegistry;
@@ -51,6 +56,7 @@ use App\Repository\AssetRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizer;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
@@ -182,12 +188,39 @@ trait FieldTestTrait
         return new ReferenceBatchLoader($resolver ?? $this->referenceResolver());
     }
 
+    /**
+     * A URL generator with no settings behind it, which is to say with the CDN
+     * off — field formatter tests assert on "/uploads/..." paths and have no
+     * opinion about hostnames.
+     */
+    protected function assetUrlGenerator(): AssetUrlGenerator
+    {
+        $settingRepository = $this->createMock(SettingRepository::class);
+        $settingRepository->method('findAllAsMap')->willReturn([]);
+
+        $localeRepository = $this->createMock(LocaleRepository::class);
+        $localeRepository->method('findActive')->willReturn([]);
+
+        return new AssetUrlGenerator(
+            new SettingsRegistry(
+                $settingRepository,
+                new LocaleProvider($localeRepository, new ArrayAdapter(), 'tr', 'tr'),
+                new RequestStack(),
+                new ArrayAdapter(),
+            ),
+        );
+    }
+
     protected function formatterResolver(?ReferenceBatchLoader $references = null): FieldFormatterResolver
     {
         return new FieldFormatterResolver(
             $this->fieldTypeRegistry(),
             $references ?? $this->referenceBatchLoader(),
-            new ImageThumbnailRuntime(new ImageProcessor(sys_get_temp_dir()), $this->assetRepository()),
+            new ImageThumbnailRuntime(
+                new ImageProcessor(sys_get_temp_dir()),
+                $this->assetRepository(),
+                $this->assetUrlGenerator(),
+            ),
             $this->assetRepository(),
             new IdentityTranslator(),
             $this->textFormatProcessor(),

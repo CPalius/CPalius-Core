@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Migrate;
 
+use App\Core\Database\QueryCounter;
 use App\Core\Migrate\Map\ArrayMigrationMap;
 use App\Core\Migrate\Map\MigrationMapInterface;
 use App\Core\Migrate\Map\MigrationMapRecord;
@@ -44,6 +45,11 @@ final class MigrationRunner
     public function __construct(
         private readonly MigrationMapInterface $map,
         private readonly ?LoggerInterface $logger = null,
+        /**
+         * Present in dev and test, where Law 6.1's N+1 tripwire runs. See
+         * newRow() for why a batch has to hand it a fresh budget per row.
+         */
+        private readonly ?QueryCounter $queryCounter = null,
     ) {
     }
 
@@ -67,6 +73,7 @@ final class MigrationRunner
                 break;
             }
             ++$seen;
+            $this->newRow();
 
             try {
                 $this->importRow($migration, $destination, $map, $row, $dryRun, $report);
@@ -98,6 +105,8 @@ final class MigrationRunner
         $destination = $migration->destination();
 
         foreach ($this->map->entries($migration->id()) as $record) {
+            $this->newRow();
+
             try {
                 if ($dryRun) {
                     $report->recordUpdated();
@@ -126,6 +135,48 @@ final class MigrationRunner
     public function importedCount(MigrationInterface $migration): int
     {
         return $this->map->countFor($migration->id());
+    }
+
+    /**
+     * The same number for several migrations at once, in one query.
+     *
+     * A screen that lists every migration wants all of them, and asking one at
+     * a time is the N+1 that took the import page down: eighteen registered
+     * migrations meant eighteen reads of the map, and Law 6.1 stops at ten.
+     *
+     * @param iterable<MigrationInterface> $migrations
+     *
+     * @return array<string, int> migration id => rows already imported
+     */
+    public function importedCounts(iterable $migrations): array
+    {
+        $ids = [];
+
+        foreach ($migrations as $migration) {
+            $ids[] = $migration->id();
+        }
+
+        return $this->map->countsFor(array_values(array_unique($ids)));
+    }
+
+    /**
+     * Starts a row's query budget over.
+     *
+     * Law 6.1 counts reads per table per HTTP request, because a page that
+     * reads one table eleven times is looping over lazy-loaded relations. An
+     * import breaks that premise honestly: it reads the map once and the
+     * destination table once or twice FOR EVERY ROW, because that is the work.
+     * Left as-is, any import of more than ten rows would be killed by the
+     * tripwire — which is what happens the first time anyone imports something
+     * real rather than a fixture.
+     *
+     * Suspending the guard outright would also hide a genuine lazy-load loop
+     * inside a destination, so the budget is applied per row instead: ten reads
+     * of one table while handling ONE row is still a defect, and still trips.
+     */
+    private function newRow(): void
+    {
+        $this->queryCounter?->reset();
     }
 
     private function importRow(

@@ -275,7 +275,9 @@ final class PageFieldNormalizer
 
     public function sanitizeJs(string $js): string
     {
-        $js = str_replace(["\0", '</script', '</SCRIPT'], '', $js);
+        // Strip any </script> spelling (case / whitespace). This is the defense when custom JS is off.
+        $js = str_replace("\0", '', $js);
+        $js = preg_replace('#</\s*script#i', '', $js) ?? $js;
 
         return mb_substr(trim($js), 0, 20000);
     }

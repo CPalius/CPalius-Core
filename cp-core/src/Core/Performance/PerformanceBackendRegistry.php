@@ -11,12 +11,13 @@ use App\Entity\Setting;
 use App\Repository\PerformanceBackendStatusRepository;
 use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * Orchestrates performance-backend config, live connection tests, and enable gating.
  * enable() is allowed only when the last recorded test succeeded.
  */
-final class PerformanceBackendRegistry
+final class PerformanceBackendRegistry implements ResetInterface
 {
     private const CONFIG_KEYS = [
         'redis' => ['host', 'port', 'password', 'timeout'],
@@ -33,6 +34,9 @@ final class PerformanceBackendRegistry
 
     /** @var list<PerformanceBackendCheckerInterface> */
     private readonly array $checkers;
+
+    /** @var array<string, PerformanceBackendStatus>|null request-scoped memo */
+    private ?array $statusMap = null;
 
     public function __construct(
         RedisConnectionTester $redisConnectionTester,
@@ -75,7 +79,7 @@ final class PerformanceBackendRegistry
 
     public function getStatus(string $backendId): ?PerformanceBackendStatus
     {
-        return $this->statusRepository->findOneByBackendId($backendId);
+        return $this->statusMap()[$backendId] ?? null;
     }
 
     /**
@@ -83,7 +87,35 @@ final class PerformanceBackendRegistry
      */
     public function getAllStatuses(): array
     {
-        return $this->statusRepository->findAllAsMap();
+        return $this->statusMap();
+    }
+
+    /**
+     * Every status row in one query, remembered for the rest of the request.
+     *
+     * Asking the repository per backend was a real N+1: five backends read
+     * from several call sites each put this table over the eleven-read budget
+     * in QueryCounter, and the guard then aborted whatever was running — in
+     * practice the origin cache write, which silently stopped caching pages.
+     *
+     * The map holds managed entities, so enable()/disable() mutations are
+     * visible through it without invalidation; only a newly persisted row has
+     * to be added by hand.
+     *
+     * @return array<string, PerformanceBackendStatus>
+     */
+    private function statusMap(): array
+    {
+        return $this->statusMap ??= $this->statusRepository->findAllAsMap();
+    }
+
+    /**
+     * Long-running workers (FrankenPHP, Swoole) keep services between
+     * requests; without this the map would outlive the data it describes.
+     */
+    public function reset(): void
+    {
+        $this->statusMap = null;
     }
 
     /**
@@ -132,10 +164,12 @@ final class PerformanceBackendRegistry
         $checker = $this->findChecker($backendId);
         $result = $checker->testConnection($merged);
 
-        $status = $this->statusRepository->findOneByBackendId($backendId);
+        $status = $this->getStatus($backendId);
         if (!$status instanceof PerformanceBackendStatus) {
             $status = new PerformanceBackendStatus($backendId);
             $this->entityManager->persist($status);
+            // getStatus() above populated the memo, so this keeps it truthful.
+            $this->statusMap[$backendId] = $status;
         }
 
         $status->recordTestResult($result->success, $result->status, $result->messageKey, $result->messageParams);
@@ -153,7 +187,7 @@ final class PerformanceBackendRegistry
      */
     public function enable(string $backendId): void
     {
-        $status = $this->statusRepository->findOneByBackendId($backendId);
+        $status = $this->getStatus($backendId);
 
         if ($status === null || !$status->isLastTestSuccess()) {
             throw new \DomainException('aacp.performance.enable_requires_success_test');
@@ -169,7 +203,7 @@ final class PerformanceBackendRegistry
 
     public function disable(string $backendId): void
     {
-        $status = $this->statusRepository->findOneByBackendId($backendId);
+        $status = $this->getStatus($backendId);
         if ($status === null) {
             return;
         }

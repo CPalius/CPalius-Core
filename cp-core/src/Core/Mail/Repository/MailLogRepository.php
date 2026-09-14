@@ -46,4 +46,20 @@ class MailLogRepository extends ServiceEntityRepository
             ->getQuery()
             ->execute();
     }
+
+    public function purgeAll(): int
+    {
+        return (int) $this->createQueryBuilder('m')
+            ->delete()
+            ->getQuery()
+            ->execute();
+    }
+
+    public function countAll(): int
+    {
+        return (int) $this->createQueryBuilder('m')
+            ->select('COUNT(m.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

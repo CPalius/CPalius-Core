@@ -11,12 +11,12 @@ use PHPUnit\Framework\TestCase;
  * Static guard: every executed <script> tag in a shipped template must carry
  * the CSP nonce.
  *
- * In strict mode script-src is "'self' 'nonce-X' 'strict-dynamic' https:", and
- * 'strict-dynamic' makes the browser IGNORE 'self' and https: — only a nonced
- * script (and what it loads) runs. So a template that forgets the attribute is
- * not degraded, it is dead, and only in the mode the operator turned on for
- * safety. That failure is invisible in the balanced default, which is why this
- * is checked statically instead of trusted to a rendered-page test.
+ * In strict mode script-src is "'self' 'nonce-X' https:". A nonce in the list
+ * makes the browser IGNORE 'unsafe-inline', so an INLINE script without the
+ * attribute is not degraded, it is dead — and only in the mode the operator
+ * turned on for safety. That failure is invisible in the balanced default,
+ * which is why this is checked statically instead of trusted to a
+ * rendered-page test.
  *
  * Data blocks (<script type="application/json"> and ld+json) are exempt: they
  * are never prepared for execution, so CSP never checks them.

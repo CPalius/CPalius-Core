@@ -28,6 +28,7 @@ final class StudioDashboardService
         private readonly QueryScopeApplier $queryScopeApplier,
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly ModuleContributionCatalog $contributions,
+        private readonly StudioWorkbenchService $workbench,
         #[TaggedIterator('cpalius.studio.dashboard_stats_provider')]
         private readonly iterable $statsProviders,
     ) {
@@ -43,6 +44,7 @@ final class StudioDashboardService
      *         extraKpis: list<array{key: string, labelKey: string, value: int|string}>
      *     },
      *     mix: list<array{key: string, labelKey: string, count: int}>,
+     *     workbench: array<string, mixed>,
      *     recentActivity: list<array{
      *         title: string,
      *         typeKey: string,
@@ -111,10 +113,27 @@ final class StudioDashboardService
                 'extraKpis' => $extraKpis,
             ],
             'mix' => $mix,
+            // What is waiting on a human, ahead of what has already shipped.
+            'workbench' => $this->buildWorkbench(),
             'recentActivity' => $this->buildRecentActivity(),
             'quickCreate' => $this->existingLinks($this->contributions->studioQuickCreate()),
             'quickLinks' => $this->existingLinks($this->contributions->studioQuickLinks()),
         ];
+    }
+
+    /**
+     * Guarded like the tagged providers above (Law 2.3): a workflow definition
+     * that fails to load must cost this desk one panel, not the whole screen.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildWorkbench(): array
+    {
+        try {
+            return ['available' => true] + $this->workbench->build();
+        } catch (\Throwable) {
+            return ['available' => false];
+        }
     }
 
     /**

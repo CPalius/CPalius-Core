@@ -40,12 +40,16 @@ $core = [
         'path' => './cp-core/assets/aacp-performance.js',
         'entrypoint' => true,
     ],
-    'aacp-security' => [
-        'path' => './cp-core/assets/aacp-security.js',
+    'aacp-storage' => [
+        'path' => './cp-core/assets/aacp-storage.js',
         'entrypoint' => true,
     ],
     'aacp-api-keys' => [
         'path' => './cp-core/assets/aacp-api-keys.js',
+        'entrypoint' => true,
+    ],
+    'aacp-resource-form' => [
+        'path' => './cp-core/assets/aacp-resource-form.js',
         'entrypoint' => true,
     ],
     'aacp-localization' => [

@@ -1,0 +1,13 @@
+<textarea
+    name="{{ name }}"
+    {% if id is defined and id %}id="{{ id }}"{% endif %}
+    data-forum-editor
+    {% if minHeight|default(0) %}data-forum-editor-min-height="{{ minHeight }}"{% endif %}
+    {% if attachmentsEnabled|default(false) and section is defined %}
+        data-image-upload-url="{{ path('forum_editor_image') }}"
+        data-image-upload-token="{{ csrf_token('forum_editor_image') }}"
+        data-image-section="{{ section.id }}"
+    {% endif %}
+    {% if required|default(true) %}required{% endif %}
+    {% if placeholder is defined and placeholder %}placeholder="{{ placeholder }}"{% endif %}
+>{{ value|default('') }}</textarea>

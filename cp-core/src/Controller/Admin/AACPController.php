@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Core\Aacp\SystemWidgetData;
 use App\Core\Aacp\SystemWidgetProviderInterface;
+use App\Core\Admin\PlatformPulseService;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Api\ApiKeyService;
 use App\Core\Audit\Entity\AuditLog;
@@ -21,6 +22,7 @@ use App\Core\Plugin\PluginInterface;
 use App\Core\Plugin\PluginRegistry;
 use App\Core\Plugin\PluginToggleRepository;
 use App\Core\Queue\QueueStatusService;
+use App\Core\Security\Flood\FloodService;
 use App\Core\Security\Repository\TelemetryLogRepository;
 use App\Core\Security\Service\IpBanService;
 use App\Core\Settings\SettingSecretCodec;
@@ -50,6 +52,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
@@ -107,8 +110,23 @@ final class AACPController
         #[Autowire('%env(MAILER_DSN)%')]
         private readonly string $mailerDsn,
         private readonly OptionalRedis $redis,
+        private readonly PlatformPulseService $platformPulse,
+        private readonly FloodService $flood,
     ) {
     }
+
+    /**
+     * Rows of live telemetry rendered on the command desk. The feed answers
+     * "is something happening right now"; ten rows answer that as well as
+     * thirty do, and leave the screen to the platform signals that an ERP,
+     * CRM or hosting-panel operator actually acts on.
+     */
+    private const TELEMETRY_FEED_ROWS = 10;
+
+    /** Recovery-gate attempts per IP: enough for mistyped tokens, not for guessing. */
+    private const RECOVERY_FLOOD_EVENT = 'aacp_recovery';
+    private const RECOVERY_LIMIT = 10;
+    private const RECOVERY_WINDOW = 600;
 
     /**
      * Manifesto Law 2.3: PUBLIC recovery gate using AACP_RECOVERY_TOKEN (no DB).
@@ -117,6 +135,8 @@ final class AACPController
     #[Route('/aacp/recovery', name: 'aacp_recovery', methods: ['GET'])]
     public function recovery(Request $request): Response
     {
+        $this->assertRecoveryNotFlooding($request);
+
         $submitted = (string) $request->query->get('token', '');
 
         if ($this->recoveryToken === '' || $submitted === '' || !hash_equals($this->recoveryToken, $submitted)) {
@@ -130,6 +150,23 @@ final class AACPController
         ]);
 
         return new Response($html);
+    }
+
+    /**
+     * Rate-limits /aacp/recovery. Fails open on cache outage so the lockout console stays reachable.
+     */
+    private function assertRecoveryNotFlooding(Request $request): void
+    {
+        $ip = (string) ($request->getClientIp() ?: '');
+        if ($ip === '') {
+            return;
+        }
+
+        if (!$this->flood->isAllowed(self::RECOVERY_FLOOD_EVENT, $ip, self::RECOVERY_LIMIT, self::RECOVERY_WINDOW, failOpen: true)) {
+            throw new TooManyRequestsHttpException(null, $this->translator->trans('aacp.system.recovery_token_invalid'));
+        }
+
+        $this->flood->register(self::RECOVERY_FLOOD_EVENT, $ip, self::RECOVERY_WINDOW);
     }
 
     /**
@@ -162,7 +199,7 @@ final class AACPController
      * System command desk: health, telemetry, audit feed. No content metrics.
      */
     #[Route('/aacp', name: 'aacp_dashboard', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.dashboard', icon: 'heroicons:chart-bar', panel: 'aacp', priority: 10, capability: 'system.aacp.access', group: 'aacp.group.system')]
+    #[CpAdminMenu(label: 'aacp.menu.dashboard', icon: 'heroicons:chart-bar', panel: 'aacp', priority: 10, capability: 'system.aacp.access')]
     #[IsGranted('system.aacp.access')]
     public function dashboard(): Response
     {
@@ -178,7 +215,10 @@ final class AACPController
             'system' => $system,
             'auditFeed' => $this->buildAuditFeed(),
             'telemetrySecurityEnabled' => $securityOn,
-            'telemetryFeed' => $this->telemetryLogRepository->findLiveFeed(30, null, !$securityOn),
+            // Ten rows, not thirty. The live feed is a pulse, not a log: the
+            // log has its own screen (/aacp/logs). Thirty rows pushed every
+            // platform signal below the fold on a 1080p panel.
+            'telemetryFeed' => $this->telemetryLogRepository->findLiveFeed(self::TELEMETRY_FEED_ROWS, null, !$securityOn),
             'telemetryTrend' => $securityOn
                 ? $this->telemetryLogRepository->hourlyTrend(24)
                 : $visitorStats['hourly'],
@@ -188,6 +228,12 @@ final class AACPController
             'securitySummary' => $securitySummary,
             'banStats' => $banStats,
             'quarantineLog' => array_slice($this->readQuarantineLog(), 0, 8),
+            'telemetryFeedRows' => self::TELEMETRY_FEED_ROWS,
+            'pulse' => $this->platformPulse->build(),
+            // Collapsed state is rendered by the server, not restored by a
+            // script after paint: a panel the operator chose to fold away must
+            // not flash open on every load.
+            'hiddenWidgets' => $this->getHiddenWidgetIdsForCurrentUser(),
         ]);
 
         return new Response($html);
@@ -235,7 +281,7 @@ final class AACPController
      * Toggle states come from PluginToggleRepository::findAllStates().
      */
     #[Route('/aacp/plugins', name: 'aacp_plugins', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.plugins', icon: 'heroicons:squares-plus', panel: 'aacp', priority: 31, capability: 'system.module.manage', parent: 'aacp_modules')]
+    #[CpAdminMenu(label: 'aacp.menu.plugins', icon: 'heroicons:squares-plus', panel: 'aacp', priority: 22, capability: 'system.module.manage', parent: 'aacp_hub_system')]
     #[IsGranted('system.module.manage')]
     public function plugins(): Response
     {
@@ -285,7 +331,7 @@ final class AACPController
     }
 
     #[Route('/aacp/quarantine', name: 'aacp_quarantine', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.quarantine', icon: 'heroicons:shield-exclamation', panel: 'aacp', priority: 15, capability: 'system.module.manage', group: 'aacp.group.system')]
+    #[CpAdminMenu(label: 'aacp.menu.quarantine', icon: 'heroicons:shield-exclamation', panel: 'aacp', priority: 23, capability: 'system.module.manage', parent: 'aacp_hub_system')]
     #[IsGranted('system.module.manage')]
     public function quarantine(): Response
     {
@@ -444,7 +490,7 @@ final class AACPController
      * Cache rebuild console (GET only); three POST actions run CacheRebuildManager jobs.
      */
     #[Route('/aacp/system/cache-rebuild', name: 'aacp_cache_rebuild', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.performance_cp_care', icon: 'heroicons:arrow-path', panel: 'aacp', priority: 35, capability: 'system.aacp.access', group: 'aacp.group.performance')]
+    #[CpAdminMenu(label: 'aacp.menu.performance_cp_care', icon: 'heroicons:arrow-path', panel: 'aacp', priority: 83, capability: 'system.aacp.access', parent: 'aacp_hub_maintenance')]
     #[IsGranted('system.aacp.access')]
     public function cacheRebuild(): Response
     {

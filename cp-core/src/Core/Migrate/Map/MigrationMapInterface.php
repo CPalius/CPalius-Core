@@ -33,4 +33,18 @@ interface MigrationMapInterface
     public function entries(string $migrationId): array;
 
     public function countFor(string $migrationId): int;
+
+    /**
+     * How many rows each of these migrations has imported, in ONE query.
+     *
+     * A screen listing every migration needs this number for all of them, and
+     * asking one at a time is a real N+1 — the kind Law 6.1 exists to catch,
+     * and did: opening the import page with eighteen migrations registered
+     * issued eighteen reads of the map and tripped the guard at eleven.
+     *
+     * @param list<string> $migrationIds
+     *
+     * @return array<string, int> migration id => count, including zeroes
+     */
+    public function countsFor(array $migrationIds): array;
 }

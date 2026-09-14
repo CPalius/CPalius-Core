@@ -77,14 +77,7 @@ final class ThreatAnalyzer
         'httpx',
     ];
 
-    /**
-     * Ceiling on the text handed to the signature engine.
-     *
-     * Twenty-eight regular expressions run over this blob on every single request.
-     * Without a cap, a request body of a few megabytes turns the WAF into the
-     * cheapest denial-of-service vector on the site — the attacker sends bytes, we
-     * spend CPU. Real attack payloads are tiny; anything past the cap is noise.
-     */
+    /** Max bytes scanned per request; uncapped bodies would turn the WAF into a CPU DoS. */
     private const MAX_HAYSTACK = 65536;
 
     /** Per-chunk cap, so one enormous field cannot consume the whole budget. */

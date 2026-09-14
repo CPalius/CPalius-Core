@@ -14,12 +14,7 @@ use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * TOTP second factor.
- *
- * State lives in User::$data (Law 6.3 hybrid model) rather than a side table: it
- * is per-user, never queried across users, and always loaded with the user anyway.
- * The shared secret is sealed with SecretBox so a leaked database dump does not
- * hand over the ability to mint codes.
+ * TOTP second factor. State lives in User::$data; the shared secret is sealed with SecretBox.
  */
 final class TwoFactorService
 {
@@ -59,15 +54,7 @@ final class TwoFactorService
     }
 
     /**
-     * True when the account completed enrollment but the sealed secret can no
-     * longer be opened — an APP_SECRET rotation, a truncated column, a tampered
-     * User::$data blob.
-     *
-     * This case used to be indistinguishable from "never enrolled": isEnrolled()
-     * returned false, the guard fell through, and the second factor of every
-     * affected account silently switched itself off while the account kept
-     * reporting as protected. The caller must treat it as a broken factor and
-     * force re-enrollment rather than let the session through.
+     * Enrollment exists but the sealed secret cannot be opened. Treat as broken 2FA, not "never enrolled".
      */
     public function isEnrollmentBroken(User $user): bool
     {

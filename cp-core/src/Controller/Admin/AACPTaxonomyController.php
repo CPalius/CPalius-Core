@@ -58,7 +58,7 @@ final class AACPTaxonomyController extends AbstractController
 
     #[Route('', name: 'index', methods: ['GET'])]
     #[IsGranted('taxonomy.manage')]
-    #[CpAdminMenu(label: 'aacp.menu.taxonomy', icon: 'heroicons:tag', panel: 'aacp', priority: 21, capability: 'taxonomy.manage', parent: 'aacp_tools')]
+    #[CpAdminMenu(label: 'aacp.menu.taxonomy', icon: 'heroicons:tag', panel: 'aacp', priority: 64, capability: 'taxonomy.manage', parent: 'aacp_hub_structure')]
     public function index(): Response
     {
         $vocabularies = $this->vocabularyRepository->findAllOrdered();

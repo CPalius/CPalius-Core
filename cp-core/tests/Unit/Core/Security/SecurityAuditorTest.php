@@ -45,6 +45,9 @@ final class SecurityAuditorTest extends TestCase
 {
     private Connection $connection;
 
+    /** @var list<string> temporary project roots removed in tearDown() */
+    private array $scratchDirs = [];
+
     public static function setUpBeforeClass(): void
     {
         SecurityClock::install();
@@ -58,6 +61,15 @@ final class SecurityAuditorTest extends TestCase
     protected function tearDown(): void
     {
         $this->connection->close();
+
+        foreach ($this->scratchDirs as $dir) {
+            foreach (glob($dir.'/public/*') ?: [] as $file) {
+                @unlink($file);
+            }
+            @rmdir($dir.'/public');
+            @rmdir($dir);
+        }
+        $this->scratchDirs = [];
     }
 
     /**
@@ -68,6 +80,7 @@ final class SecurityAuditorTest extends TestCase
         ?RequestStack $stack = null,
         bool $debug = false,
         string $environment = 'prod',
+        ?string $projectDir = null,
     ): SecurityAuditor {
         $registry = new ArraySettings($settings);
         $cache = new ArrayAdapter();
@@ -109,7 +122,44 @@ final class SecurityAuditorTest extends TestCase
             $this->connection,
             $debug,
             $environment,
+            // A directory with no public/ subdirectory, so the document-root
+            // check finds nothing stray and stays out of the way of the settings
+            // assertions. testDocumentRootScripts* supplies a real one.
+            $projectDir ?? sys_get_temp_dir().'/cp-no-project',
         );
+    }
+
+    /**
+     * A throwaway project root with the given files in public/.
+     *
+     * @param list<string> $publicFiles
+     */
+    private function makeProjectDir(array $publicFiles): string
+    {
+        $root = sys_get_temp_dir().'/cp-audit-'.bin2hex(random_bytes(6));
+        mkdir($root.'/public', 0777, true);
+
+        foreach ($publicFiles as $name) {
+            file_put_contents($root.'/public/'.$name, '');
+        }
+
+        $this->scratchDirs[] = $root;
+
+        return $root;
+    }
+
+    /**
+     * @param list<SecurityFinding> $findings
+     */
+    private function byId(array $findings, string $id): SecurityFinding
+    {
+        foreach ($findings as $finding) {
+            if ($finding->id === $id) {
+                return $finding;
+            }
+        }
+
+        self::fail(sprintf('No finding with id "%s".', $id));
     }
 
     /**
@@ -139,6 +189,7 @@ final class SecurityAuditorTest extends TestCase
 
         self::assertSame([
             'env.debug' => SecurityFinding::SEVERITY_PASS,
+            'env.docroot_scripts' => SecurityFinding::SEVERITY_PASS,
             'env.trusted_hosts' => SecurityFinding::SEVERITY_MEDIUM,
             'headers.enabled' => SecurityFinding::SEVERITY_PASS,
             'headers.csp' => SecurityFinding::SEVERITY_MEDIUM,
@@ -161,7 +212,7 @@ final class SecurityAuditorTest extends TestCase
         self::assertSame(0, $summary[SecurityFinding::SEVERITY_HIGH]);
         self::assertSame(6, $summary[SecurityFinding::SEVERITY_MEDIUM]);
         self::assertSame(3, $summary[SecurityFinding::SEVERITY_LOW]);
-        self::assertSame(7, $summary[SecurityFinding::SEVERITY_PASS]);
+        self::assertSame(8, $summary[SecurityFinding::SEVERITY_PASS]);
 
         // 6 medium (6 each) + 3 low (2 each) = 42 points off.
         self::assertSame(58, $auditor->score($findings));
@@ -240,6 +291,47 @@ final class SecurityAuditorTest extends TestCase
         $severities = $this->bySeverity($this->auditor(debug: true, environment: 'dev')->run());
 
         self::assertSame(SecurityFinding::SEVERITY_PASS, $severities['env.debug']);
+    }
+
+    /**
+     * public/.htaccess sends a request straight to disk when the file exists, so
+     * a leftover one-off script there runs before Symfony and therefore before
+     * the WAF, the ban list and telemetry. These are gitignored by habit, which
+     * is exactly why CI cannot see them and the running install has to.
+     */
+    public function testAStrayScriptInTheDocumentRootIsCritical(): void
+    {
+        $projectDir = $this->makeProjectDir(['index.php', 'import-users.php']);
+
+        $findings = $this->auditor(projectDir: $projectDir)->run();
+        $severities = $this->bySeverity($findings);
+
+        self::assertSame(SecurityFinding::SEVERITY_CRITICAL, $severities['env.docroot_scripts']);
+        self::assertSame(
+            ['files' => 'import-users.php'],
+            $this->byId($findings, 'env.docroot_scripts')->parameters,
+            'The finding must name the file, so the operator knows what to delete.',
+        );
+    }
+
+    public function testADocumentRootWithOnlyTheFrontControllerPasses(): void
+    {
+        $severities = $this->bySeverity($this->auditor(projectDir: $this->makeProjectDir(['index.php']))->run());
+
+        self::assertSame(SecurityFinding::SEVERITY_PASS, $severities['env.docroot_scripts']);
+    }
+
+    /**
+     * Static assets next to the front controller are normal and must not be
+     * reported — only things the web server would execute.
+     */
+    public function testNonPhpFilesInTheDocumentRootAreIgnored(): void
+    {
+        $projectDir = $this->makeProjectDir(['index.php', 'favicon.ico', 'robots.txt', 'logo.png']);
+
+        $severities = $this->bySeverity($this->auditor(projectDir: $projectDir)->run());
+
+        self::assertSame(SecurityFinding::SEVERITY_PASS, $severities['env.docroot_scripts']);
     }
 
     public function testDisablingTheHeaderLayerIsCriticalAndShortCircuitsTheHeaderChecks(): void

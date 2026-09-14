@@ -24,7 +24,7 @@ final class AACPHookController
     }
 
     #[Route('/aacp/hooks', name: 'aacp_hooks', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.hooks', icon: 'heroicons:bolt', panel: 'aacp', priority: 23, capability: 'system.hooks.manage', parent: 'aacp_tools')]
+    #[CpAdminMenu(label: 'aacp.menu.hooks', icon: 'heroicons:bolt', panel: 'aacp', priority: 73, capability: 'system.hooks.manage', parent: 'aacp_hub_automation')]
     #[IsGranted('system.hooks.manage')]
     public function index(): Response
     {

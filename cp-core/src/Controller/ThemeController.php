@@ -8,7 +8,6 @@ use App\Core\Localization\LocaleProvider;
 use App\Core\Module\ModuleContributionCatalog;
 use App\Core\Portal\PortalBlockDataProviderInterface;
 use App\Core\Portal\PortalLayoutService;
-use App\Core\Portal\WhitepaperContent;
 use App\Core\Settings\SettingsRegistry;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
@@ -32,7 +31,6 @@ final class ThemeController extends AbstractController
         private readonly RouterInterface $router,
         private readonly PortalLayoutService $portalLayoutService,
         private readonly LocaleProvider $localeProvider,
-        private readonly WhitepaperContent $whitepaperContent,
         private readonly ModuleContributionCatalog $contributions,
         #[TaggedIterator('cpalius.portal.block_data_provider')]
         private readonly iterable $portalBlockProviders = [],
@@ -65,23 +63,6 @@ final class ThemeController extends AbstractController
         }
 
         return $this->renderPortal($request);
-    }
-
-    /**
-     * Public technical whitepaper page rendered by the active theme.
-     * Structured per-locale body comes from WhitepaperContent.
-     */
-    #[Route(
-        '/{_locale}/whitepaper',
-        name: 'theme_whitepaper',
-        requirements: ['_locale' => '%cpalius.locales_pattern%'],
-        methods: ['GET'],
-    )]
-    public function whitepaper(Request $request): Response
-    {
-        return $this->render('@Theme/whitepaper.html.twig', [
-            'doc' => $this->whitepaperContent->forLocale($request->getLocale()),
-        ]);
     }
 
     private function redirectToModuleHomeOrPortal(string $routeName, Request $request): Response

@@ -23,14 +23,18 @@ final class AssetManager
         private readonly EntityManagerInterface $entityManager,
         private readonly AssetRepository $assetRepository,
         private readonly MimeTypeAllowlist $mimeTypeAllowlist,
+        private readonly ?MediaOffloader $offloader = null,
     ) {
     }
 
     /**
-     * @throws InvalidUploadException        upload failed or MIME could not be detected from content
-     * @throws UnsupportedAssetTypeException detected MIME is not on the core allowlist
+     * @param list<string>|null $allowedMimePrefixes narrower allowlist for this call (e.g. ['image/']); null = core list
+     * @param int|null          $maxBytes            reject larger uploads before write
+     *
+     * @throws InvalidUploadException        upload failed, is too large, or MIME could not be detected from content
+     * @throws UnsupportedAssetTypeException detected MIME is not on the core allowlist, or not in $allowedMimePrefixes
      */
-    public function upload(UploadedFile $uploadedFile): Asset
+    public function upload(UploadedFile $uploadedFile, ?array $allowedMimePrefixes = null, ?int $maxBytes = null): Asset
     {
         // Step 1: reject broken PHP uploads (size limit, partial transfer, missing temp dir).
         if (!$uploadedFile->isValid()) {
@@ -43,17 +47,31 @@ final class AssetManager
             throw new InvalidUploadException(sprintf('Uploaded temporary file is not readable: "%s".', $pathname));
         }
 
-        // Step 2: detect real MIME from content via finfo (fail-closed; never fall back to extension guessing).
+        // Step 2: caller size cap, before the file is read or copied.
+        if ($maxBytes !== null) {
+            $size = $uploadedFile->getSize();
+            $size = $size === false ? (filesize($pathname) ?: 0) : $size;
+            if ($size > $maxBytes) {
+                throw new InvalidUploadException(sprintf('Upload is %d bytes; the limit here is %d.', $size, $maxBytes));
+            }
+        }
+
+        // Step 3: detect real MIME from content via finfo (fail-closed; never fall back to extension guessing).
         $detectedMimeType = $this->detectMimeType($pathname);
 
-        // Step 3: core allowlist — fail-closed.
+        // Step 4: core allowlist — fail-closed.
         $extension = $this->mimeTypeAllowlist->extensionFor($detectedMimeType);
 
         if ($extension === null) {
             throw new UnsupportedAssetTypeException($detectedMimeType);
         }
 
-        // Step 4: content hash and dedup lookup.
+        // Step 5: caller allowlist, before write — a later check would leave the file on disk.
+        if ($allowedMimePrefixes !== null && !$this->matchesPrefix($detectedMimeType, $allowedMimePrefixes)) {
+            throw new UnsupportedAssetTypeException($detectedMimeType);
+        }
+
+        // Step 6: content hash and dedup lookup.
         $hash = hash_file('sha256', $pathname);
 
         if ($hash === false) {
@@ -65,12 +83,12 @@ final class AssetManager
             return $existing;
         }
 
-        // Step 5: storage extension comes from validated MIME; client name is display-only.
+        // Step 7: storage extension comes from validated MIME; client name is display-only.
         $filename = $hash.'.'.$extension;
         $path = date('Y/m');
         $storageKey = $path.'/'.$filename;
 
-        // Step 6: write to disk.
+        // Step 8: write to disk.
         $stream = fopen($pathname, 'r');
         if ($stream === false) {
             throw new InvalidUploadException(sprintf('Could not open uploaded file for reading: "%s".', $pathname));
@@ -97,7 +115,33 @@ final class AssetManager
         $this->entityManager->persist($asset);
         $this->entityManager->flush();
 
+        // Step 9: copy to the remote target, when one is configured and verified.
+        //
+        // After the flush, not before: the asset row is the record of truth and
+        // has to exist whether or not a bucket on the other side of the world is
+        // reachable this second. offload() swallows its own failures for the
+        // same reason — the file is on this disk and the site can serve it, so a
+        // failed copy is a missed optimisation, not a failed upload. The nightly
+        // sweep collects whatever did not make it.
+        $this->offloader?->offload($storageKey);
+
         return $asset;
+    }
+
+    /**
+     * @param list<string> $prefixes
+     */
+    private function matchesPrefix(string $mimeType, array $prefixes): bool
+    {
+        $mimeType = strtolower($mimeType);
+
+        foreach ($prefixes as $prefix) {
+            if ($prefix !== '' && str_starts_with($mimeType, strtolower($prefix))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

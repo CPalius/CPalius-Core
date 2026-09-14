@@ -33,7 +33,7 @@ final class AACPQueueController
     }
 
     #[Route('/aacp/queue', name: 'aacp_queue', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.queue.menu', icon: 'heroicons:queue-list', panel: 'aacp', priority: 35, capability: 'system.queue.manage', group: 'aacp.group.genadset')]
+    #[CpAdminMenu(label: 'aacp.queue.menu', icon: 'heroicons:queue-list', panel: 'aacp', priority: 72, capability: 'system.queue.manage', parent: 'aacp_hub_automation')]
     #[IsGranted('system.queue.manage')]
     public function index(): Response
     {

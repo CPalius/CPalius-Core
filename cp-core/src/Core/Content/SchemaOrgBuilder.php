@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Content;
 
+use App\Core\Media\AssetUrlGenerator;
 use App\Core\Module\ModuleContributionCatalog;
 use App\Entity\Node;
 use App\Repository\AssetRepository;
@@ -17,6 +18,7 @@ final class SchemaOrgBuilder
     public function __construct(
         private readonly AssetRepository $assetRepository,
         private readonly ModuleContributionCatalog $contributions,
+        private readonly AssetUrlGenerator $urls,
     ) {
     }
 
@@ -62,7 +64,10 @@ final class SchemaOrgBuilder
 
     public function buildJson(Node $node): string
     {
-        return (string) json_encode($this->build($node), \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES);
+        return (string) json_encode(
+            $this->build($node),
+            \JSON_UNESCAPED_UNICODE | \JSON_HEX_TAG | \JSON_HEX_AMP | \JSON_HEX_APOS | \JSON_HEX_QUOT,
+        );
     }
 
     private function defaultSchemaType(Node $node): string
@@ -82,6 +87,6 @@ final class SchemaOrgBuilder
 
         $asset = $this->assetRepository->find((int) $assetId);
 
-        return $asset?->getStorageKey() !== null ? '/uploads/'.$asset->getStorageKey() : null;
+        return $asset?->getStorageKey() !== null ? $this->urls->forKey($asset->getStorageKey()) : null;
     }
 }

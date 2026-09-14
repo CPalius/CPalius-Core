@@ -12,6 +12,62 @@
             </div>
         </div>
 
+        {# ---- Log temizleme ------------------------------------------------ #}
+        {% if is_granted('system.logs.purge') %}
+            <twig:cp:card>
+                <h2 class="text-fs-md">{{ 'aacp.logs.purge.heading'|trans }}</h2>
+                <p class="mt-1 text-fs-sm !text-slate-500">{{ 'aacp.logs.purge.intro'|trans }}</p>
+
+                {# Satır sayısı silmeden ÖNCE gösterilir: "4,2M satır sil" ile
+                   "12 satır sil" farklı kararlardır. -1 sayılamadı demektir. #}
+                <div class="mt-sp-sm grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    {% for store, count in counts %}
+                        <div class="rounded border border-white/10 px-3 py-2">
+                            <div class="text-fs-xs !text-slate-500">{{ ('aacp.logs.purge.store.' ~ store)|trans }}</div>
+                            <div class="font-mono text-fs-md">
+                                {{ count < 0 ? 'aacp.logs.purge.uncountable'|trans : count|number_format }}
+                            </div>
+                            <form method="post" action="{{ path('aacp_logs_purge') }}" class="mt-1"
+                                  onsubmit="return confirm('{{ 'aacp.logs.purge.confirm_store'|trans({ store: ('aacp.logs.purge.store.' ~ store)|trans })|e('js') }}');">
+                                <input type="hidden" name="_token" value="{{ purgeToken }}">
+                                <input type="hidden" name="store" value="{{ store }}">
+                                <button type="submit" class="btn btn-sm btn-outline"
+                                        {{ count == 0 ? 'disabled' : '' }}>
+                                    {{ 'aacp.logs.purge.button.store'|trans }}
+                                </button>
+                            </form>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-sp-sm flex flex-wrap items-center gap-2 border-t border-white/10 pt-sp-sm">
+                    {# Önce bu: yer açar ama okunmaya devam eden yakın geçmişi atmaz. #}
+                    <form method="post" action="{{ path('aacp_logs_purge_aged') }}"
+                          onsubmit="return confirm('{{ 'aacp.logs.purge.confirm_aged'|trans|e('js') }}');">
+                        <input type="hidden" name="_token" value="{{ purgeToken }}">
+                        <button type="submit" class="btn btn-sm btn-primary">
+                            {{ 'aacp.logs.purge.button.aged'|trans }}
+                        </button>
+                    </form>
+
+                    <form method="post" action="{{ path('aacp_logs_purge') }}"
+                          onsubmit="return confirm('{{ 'aacp.logs.purge.confirm_all'|trans|e('js') }}');">
+                        <input type="hidden" name="_token" value="{{ purgeToken }}">
+                        <input type="hidden" name="store" value="all">
+                        <button type="submit" class="btn btn-sm btn-danger">
+                            {{ 'aacp.logs.purge.button.all'|trans }}
+                        </button>
+                    </form>
+
+                    <span class="text-fs-xs !text-slate-500">
+                        {{ 'aacp.logs.purge.retention_hint'|trans({
+                            app: retention.app, mail: retention.mail, audit: retention.audit,
+                        }) }}
+                    </span>
+                </div>
+            </twig:cp:card>
+        {% endif %}
+
         <twig:cp:card>
             <form method="get" class="mb-sp-sm grid gap-3 md:grid-cols-4">
                 <div>

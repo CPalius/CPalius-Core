@@ -42,7 +42,13 @@ final class ResourceRegistrationPass implements CompilerPassInterface
                 continue;
             }
 
-            $moduleEntityDir = rtrim((string) $bundleMeta['path'], '/').'/src/Entity';
+            // "Entity", not "src/Entity". Modules are laid out flat — the
+            // namespace built on the next line (Modules\X\Entity) says so, and
+            // ModuleEntityMappingResolver maps the same directory for Doctrine.
+            // The old path pointed at a folder no module has, so the scan always
+            // found nothing and a module could never register a #[CpResource].
+            // Nobody noticed because no module had tried yet.
+            $moduleEntityDir = rtrim((string) $bundleMeta['path'], '/').'/Entity';
             $moduleEntityNamespace = $bundleMeta['namespace'].'\\Entity\\';
 
             try {

@@ -108,11 +108,22 @@ final class ImportController extends AbstractController
     public function index(): Response
     {
         $systems = $this->catalog->all();
+
+        // One query for every migration on the page. Asking per migration is
+        // the N+1 that took this screen down once eighteen of them existed.
+        $all = [];
+        foreach ($systems as $system) {
+            foreach ($this->catalog->migrationsFor($system) as $migration) {
+                $all[] = $migration;
+            }
+        }
+
+        $counts = $this->runner->importedCounts($all);
         $imported = [];
 
         foreach ($systems as $system) {
             $imported[$system->id] = array_sum(array_map(
-                fn (MigrationInterface $m): int => $this->runner->importedCount($m),
+                static fn (MigrationInterface $m): int => $counts[$m->id()] ?? 0,
                 $this->catalog->migrationsFor($system),
             ));
         }
@@ -233,13 +244,15 @@ final class ImportController extends AbstractController
      */
     private function describeMigrations(SourceSystem $system): array
     {
+        $migrations = $this->catalog->migrationsFor($system);
+        $counts = $this->runner->importedCounts($migrations);
         $rows = [];
 
-        foreach ($this->catalog->migrationsFor($system) as $migration) {
+        foreach ($migrations as $migration) {
             $rows[] = [
                 'id' => $migration->id(),
                 'label' => $migration->label(),
-                'imported' => $this->runner->importedCount($migration),
+                'imported' => $counts[$migration->id()] ?? 0,
             ];
         }
 

@@ -31,7 +31,8 @@ final class AacpUpdateControllerTest extends IntegrationTestCase
     {
         $controller = $this->boot('admin');
 
-        $before = $this->settingsRowCount();
+        $before = $this->settingsRowCountExcludingChecks();
+        $beforeLedger = $this->hookLedgerValue();
 
         $response = $controller->index();
 
@@ -54,9 +55,22 @@ final class AacpUpdateControllerTest extends IntegrationTestCase
 
         self::assertStringContainsString('cp:update --dry-run', $html, 'the shell equivalent is offered');
 
-        // The decisive assertion: a GET is an inspection. If the ledger or any
-        // other row had been written, this count would move.
-        self::assertSame($before, $this->settingsRowCount(), 'opening the page must not write anything');
+        // The decisive assertion: a GET is an inspection. It must not run the
+        // update pipeline, so the hook ledger must stay untouched.
+        //
+        // This deliberately no longer counts every cp_settings row. Opening the
+        // screen refreshes the release and patch checks — that is the documented
+        // behaviour and the reason the page shows current information rather
+        // than yesterday's — and both store their result in cp_settings. The
+        // old row count therefore passed only on a machine with no route to
+        // GitHub, and failed on every machine that had one, which made it a
+        // test of the network rather than of the controller.
+        //
+        // What must never happen is a migration running, a hook running, or a
+        // module being upgraded because somebody opened a page. That is what is
+        // asserted now.
+        self::assertSame($beforeLedger, $this->hookLedgerValue(), 'opening the page must not run update hooks');
+        self::assertSame($before, $this->settingsRowCountExcludingChecks(), 'opening the page must not write anything but the version checks');
     }
 
     public function testApplyRequiresAValidCsrfToken(): void
@@ -166,8 +180,29 @@ final class AacpUpdateControllerTest extends IntegrationTestCase
         return $translator->trans($key);
     }
 
-    private function settingsRowCount(): int
+    /**
+     * Every settings row except the two the version checks legitimately own.
+     *
+     * Named for what it excludes rather than filtered inline, so that adding a
+     * third check in future is a visible edit here and not a silently widened
+     * assertion somewhere else.
+     */
+    private function settingsRowCountExcludingChecks(): int
     {
-        return (int) $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM cp_settings');
+        return (int) $this->em()->getConnection()->fetchOne(
+            'SELECT COUNT(*) FROM cp_settings WHERE setting_key NOT IN (?, ?)',
+            ['update.core.latest_release', 'update.core.patch_index'],
+        );
+    }
+
+    /** The hook ledger's stored value, or null when no hook has ever run. */
+    private function hookLedgerValue(): ?string
+    {
+        $value = $this->em()->getConnection()->fetchOne(
+            'SELECT setting_value FROM cp_settings WHERE setting_key = ?',
+            ['update.core.applied_hooks'],
+        );
+
+        return $value === false ? null : (string) $value;
     }
 }

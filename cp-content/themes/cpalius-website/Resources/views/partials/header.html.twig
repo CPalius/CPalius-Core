@@ -25,7 +25,7 @@
                 {% else %}
                     <li><a href="{{ path('theme_cpalius_website_home') }}#about">{{ 'nav.about'|trans({}, 'portal') }}</a></li>
                     <li><a href="{{ path('theme_cpalius_website_home') }}#features">{{ 'nav.features'|trans({}, 'portal') }}</a></li>
-                    <li><a href="{{ path('theme_whitepaper', {_locale: app.request.locale}) }}">{{ 'nav.whitepaper'|trans({}, 'portal') }}</a></li>
+                    <li><a href="{{ path('whitepaper_show', {_locale: app.request.locale}) }}">{{ 'nav.whitepaper'|trans({}, 'portal') }}</a></li>
                     <li><a href="{{ path('roadmap_index') }}">{{ 'nav.roadmap'|trans({}, 'portal') }}</a></li>
                 {% endfor %}
             </ul>

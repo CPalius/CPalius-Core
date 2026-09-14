@@ -42,7 +42,7 @@ final class AACPThemeController
     }
 
     #[Route('/aacp/themes', name: 'aacp_themes', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.themes', icon: 'heroicons:swatch', panel: 'aacp', priority: 70, capability: 'system.settings.manage', group: 'aacp.group.appearance')]
+    #[CpAdminMenu(label: 'aacp.menu.themes', icon: 'heroicons:swatch', panel: 'aacp', priority: 50, capability: 'system.settings.manage')]
     #[IsGranted('system.settings.manage')]
     public function index(Request $request): Response
     {

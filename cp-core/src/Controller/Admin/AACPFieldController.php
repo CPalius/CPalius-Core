@@ -51,7 +51,7 @@ final class AACPFieldController
     }
 
     #[Route('/aacp/fields', name: 'aacp_fields', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.fields', icon: 'heroicons:rectangle-stack', panel: 'aacp', priority: 20, capability: 'system.fields.manage', parent: 'aacp_tools')]
+    #[CpAdminMenu(label: 'aacp.menu.fields', icon: 'heroicons:rectangle-stack', panel: 'aacp', priority: 61, capability: 'system.fields.manage', parent: 'aacp_hub_structure')]
     #[IsGranted('system.fields.manage')]
     public function index(): Response
     {

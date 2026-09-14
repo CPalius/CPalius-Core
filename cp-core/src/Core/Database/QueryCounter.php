@@ -51,6 +51,14 @@ final class QueryCounter
 
     /**
      * Clear counts at the start of each HTTP request so PHP-FPM workers do not leak the previous request.
+     *
+     * Also called once per row by MigrationRunner. The premise of this guard is
+     * "one request renders one page, so eleven reads of one table is a loop" —
+     * and a batch import breaks that premise honestly: it touches one table
+     * once per row because that is the work, not because of a defect. Applying
+     * the budget per row instead of per request keeps the guard doing its job
+     * where it still applies (a real lazy-load loop inside a single row still
+     * trips it) without making an import of eleven rows impossible.
      */
     public function reset(): void
     {

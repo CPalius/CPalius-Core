@@ -68,4 +68,38 @@ class AuditLogRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Deletes audit rows older than the given point.
+     *
+     * cp_audit_logs had no retention at all until this existed: AuditLogListener
+     * writes a row for every create/update/delete on an auditable entity, and
+     * nothing ever removed one. On an active site it is the fastest-growing
+     * table in the schema.
+     */
+    public function purgeOlderThan(\DateTimeImmutable $before): int
+    {
+        return (int) $this->createQueryBuilder('a')
+            ->delete()
+            ->andWhere('a.createdAt < :before')
+            ->setParameter('before', $before)
+            ->getQuery()
+            ->execute();
+    }
+
+    public function purgeAll(): int
+    {
+        return (int) $this->createQueryBuilder('a')
+            ->delete()
+            ->getQuery()
+            ->execute();
+    }
+
+    public function countAll(): int
+    {
+        return (int) $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

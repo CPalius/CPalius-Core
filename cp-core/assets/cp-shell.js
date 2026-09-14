@@ -10,10 +10,18 @@ function initSidebarToggle() {
     const desktopToggle = document.querySelector('[data-sidebar-toggle]');
     const mobileToggle = document.querySelector('[data-sidebar-mobile-toggle]');
     const closeBtn = document.querySelector('[data-sidebar-close]');
+    const storageKey = 'cp.sidebar.icon-rail';
 
     if (!sidebar) {
         return;
     }
+
+    const applyIconRail = (collapsed) => {
+        sidebar.classList.toggle('active', collapsed);
+        main?.classList.toggle('sidebar-collapsed', collapsed);
+    };
+
+    applyIconRail(window.localStorage.getItem(storageKey) === '1');
 
     const openMobile = () => {
         sidebar.classList.add('sidebar-open');
@@ -30,8 +38,9 @@ function initSidebarToggle() {
     overlay?.addEventListener('click', closeMobile);
 
     desktopToggle?.addEventListener('click', () => {
-        sidebar.classList.toggle('active');
-        main?.classList.toggle('sidebar-collapsed');
+        const next = !sidebar.classList.contains('active');
+        applyIconRail(next);
+        window.localStorage.setItem(storageKey, next ? '1' : '0');
     });
 }
 

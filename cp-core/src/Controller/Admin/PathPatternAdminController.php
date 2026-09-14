@@ -49,7 +49,7 @@ final class PathPatternAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.path_patterns', icon: 'heroicons:map', panel: 'aacp', priority: 27, capability: 'core.path_pattern.manage', parent: 'aacp_tools')]
+    #[CpAdminMenu(label: 'aacp.menu.path_patterns', icon: 'heroicons:map', panel: 'aacp', priority: 67, capability: 'core.path_pattern.manage', parent: 'aacp_hub_structure')]
     public function index(): Response
     {
         $byBundle = [];

@@ -37,7 +37,7 @@ final class UrlAliasAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.url_aliases', icon: 'heroicons:link', panel: 'aacp', priority: 26, capability: 'core.url_alias.manage', parent: 'aacp_tools')]
+    #[CpAdminMenu(label: 'aacp.menu.url_aliases', icon: 'heroicons:link', panel: 'aacp', priority: 66, capability: 'core.url_alias.manage', parent: 'aacp_hub_structure')]
     public function index(): Response
     {
         return $this->render('aacp/url_aliases/index.html.twig', [

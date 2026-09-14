@@ -2,10 +2,6 @@
 
 {% block header %}{{ 'aacp.security.header'|trans }}{% endblock %}
 
-{% block javascripts %}
-    {{ importmap(['app', 'studio-quick-cache-clear', 'aacp-security']) }}
-{% endblock %}
-
 {% block body %}
     {% set severityStyle = {
         'critical': '!border-danger-500/30 !bg-danger-500/10 !text-danger-300',
@@ -15,8 +11,6 @@
         'pass': '!border-success-500/30 !bg-success-500/10 !text-success-300',
     } %}
     {% set scoreTone = score >= 90 ? 'is-good' : (score >= 70 ? 'is-warn' : 'is-bad') %}
-    {% set circumference = 283 %}
-    {% set dashOffset = circumference - (circumference * score / 100) %}
     {% set issueTotal = (summary.critical|default(0)) + (summary.high|default(0)) + (summary.medium|default(0)) + (summary.low|default(0)) %}
     {% set maxSeverity = [summary.critical|default(0), summary.high|default(0), summary.medium|default(0), summary.low|default(0), summary.pass|default(0)]|sort|last %}
     {% if maxSeverity < 1 %}{% set maxSeverity = 1 %}{% endif %}
@@ -30,15 +24,10 @@
 
         <twig:cp:card padded="{{ true }}">
             <div class="aacp-security-posture">
-                <div class="aacp-security-gauge {{ scoreTone }}" aria-label="{{ 'aacp.security.posture_score'|trans }}: {{ score }}/100">
-                    <svg viewBox="0 0 120 120" class="aacp-security-gauge-svg" aria-hidden="true">
-                        <circle class="aacp-security-gauge-track" cx="60" cy="60" r="45" />
-                        <circle class="aacp-security-gauge-progress"
-                                cx="60" cy="60" r="45"
-                                stroke-dasharray="{{ circumference }}"
-                                stroke-dashoffset="{{ dashOffset }}"
-                                data-aacp-security-ring />
-                    </svg>
+                <div class="aacp-security-gauge {{ scoreTone }}"
+                     style="--aacp-score: {{ score }}"
+                     aria-label="{{ 'aacp.security.posture_score'|trans }}: {{ score }}/100">
+                    <div class="aacp-security-gauge-ring" aria-hidden="true"></div>
                     <div class="aacp-security-gauge-value">
                         <span class="aacp-security-gauge-number" data-aacp-security-score-text>{{ score }}</span>
                         <span class="aacp-security-gauge-denom">/100</span>

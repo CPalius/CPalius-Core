@@ -5,19 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Security;
 
 /**
- * Encrypts secrets at rest with a key derived from kernel.secret. Never log plaintext.
- *
- * New ciphertext is AES-256-GCM. The previous format was AES-256-CBC with no
- * authentication tag, which meant anyone who could write to the row could flip
- * ciphertext bits and have the plaintext change underneath us — a 2FA secret or
- * an SMTP password is exactly the kind of value where "decrypts to something"
- * must also mean "is what we wrote". GCM detects the tampering and open() throws
- * instead of returning an attacker-shaped secret.
- *
- * The versioned "v2:" prefix is what makes the upgrade non-breaking: values
- * written before this change have no prefix and are still read as CBC, so no
- * migration and no re-entry of every secret is required. Rewriting a value
- * (any seal()) silently upgrades it.
+ * Encrypts secrets at rest (AES-256-GCM, v2: prefix). Legacy unprefixed CBC remains readable.
  */
 final class SecretBox
 {

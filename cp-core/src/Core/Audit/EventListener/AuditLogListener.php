@@ -6,6 +6,7 @@ namespace App\Core\Audit\EventListener;
 
 use App\Core\Audit\Entity\AuditLog;
 use App\Core\Resource\ResourceRegistry;
+use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
 use Doctrine\ORM\EntityManagerInterface;
@@ -35,15 +36,50 @@ final class AuditLogListener
 
     private bool $flushingLogs = false;
 
+    /**
+     * Memoised audit.enabled. Resolved once per request, not per flush: this
+     * runs inside Doctrine's flush cycle, and issuing a settings query on every
+     * write would put a SELECT in front of every INSERT in the application.
+     */
+    private ?bool $enabled = null;
+
     public function __construct(
         private readonly ResourceRegistry $resourceRegistry,
         private readonly TokenStorageInterface $tokenStorage,
+        private readonly SettingsRegistry $settings,
     ) {
+    }
+
+    /**
+     * Whether the audit engine should record at all.
+     *
+     * Fails OPEN — an unreadable settings table means "keep recording", never
+     * "stop". The failure mode of an audit trail that silently switched itself
+     * off is one nobody notices until they need the trail.
+     */
+    private function isEnabled(): bool
+    {
+        if ($this->enabled !== null) {
+            return $this->enabled;
+        }
+
+        try {
+            return $this->enabled = (bool) $this->settings->get('audit.enabled', true);
+        } catch (\Throwable) {
+            return $this->enabled = true;
+        }
     }
 
     public function onFlush(OnFlushEventArgs $args): void
     {
         if ($this->flushingLogs) {
+            return;
+        }
+
+        // Checked here, at the write path, rather than only in the purge task:
+        // a disabled engine must stop PRODUCING rows, not produce them and
+        // delete them later.
+        if (!$this->isEnabled()) {
             return;
         }
 

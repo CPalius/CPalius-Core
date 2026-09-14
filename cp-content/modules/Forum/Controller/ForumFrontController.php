@@ -398,7 +398,7 @@ final class ForumFrontController extends AbstractController
             'replyDraft' => $viewer instanceof User ? $this->draftService->replyDraft($viewer, $topic) : null,
             'draftsEnabled' => $this->draftService->isEnabled(),
             'pollsEnabled' => $this->pollService->isEnabled(),
-            'attachmentsEnabled' => $this->attachmentService->isEnabled(),
+            'attachmentsEnabled' => $this->composerUploadEnabled($topic->getSection()),
         ]);
     }
 
@@ -515,8 +515,9 @@ final class ForumFrontController extends AbstractController
 
         /** @var User|null $user */
         $user = $this->getUser();
+
+        // Moderator = topic.moderate or post.edit.any. Unscoped post.edit is not a moderator grant.
         $isModerator = $this->isGranted('forum.topic.moderate')
-            || $this->isGranted('forum.post.edit')
             || $this->isGranted('forum.post.edit.any');
 
         if (!$this->topicService->canEditPost($post, $user, $isModerator)) {
@@ -534,13 +535,11 @@ final class ForumFrontController extends AbstractController
             if ($body === '' || ($isFirstPost && $topicTitle === '')) {
                 $this->addFlash('error', $this->translator->trans('site.forum.edit_post.title_body_required'));
 
-                return $this->render('@Theme/forum/edit_post.html.twig', [
-                    'post' => $post,
-                    'topic' => $post->getTopic(),
-                    'section' => $post->getSection(),
-                    'isFirstPost' => $isFirstPost,
-                    'formValues' => ['body' => $body, 'title' => $topicTitle ?? $post->getTopic()->getTitle()],
-                ]);
+                return $this->render('@Theme/forum/edit_post.html.twig', $this->editPostViewData(
+                    $post,
+                    $isFirstPost,
+                    ['body' => $body, 'title' => $topicTitle ?? $post->getTopic()->getTitle()],
+                ));
             }
 
             $this->topicService->updatePost($post, $user, $body, $isFirstPost ? $topicTitle : null);
@@ -549,13 +548,11 @@ final class ForumFrontController extends AbstractController
             return $this->redirectToRoute('forum_topic', $this->topicRouteParams($post->getTopic()));
         }
 
-        return $this->render('@Theme/forum/edit_post.html.twig', [
-            'post' => $post,
-            'topic' => $post->getTopic(),
-            'section' => $post->getSection(),
-            'isFirstPost' => $isFirstPost,
-            'formValues' => ['body' => $post->getBody(), 'title' => $post->getTopic()->getTitle()],
-        ]);
+        return $this->render('@Theme/forum/edit_post.html.twig', $this->editPostViewData(
+            $post,
+            $isFirstPost,
+            ['body' => $post->getBody(), 'title' => $post->getTopic()->getTitle()],
+        ));
     }
 
     #[Route('/forum/mesaj/{postId}/sil', name: 'forum_delete_post', methods: ['POST'], requirements: ['postId' => '\d+'])]
@@ -877,8 +874,32 @@ final class ForumFrontController extends AbstractController
             'contentLocales' => $this->localeProvider->getLocales(),
             'draftsEnabled' => $this->draftService->isEnabled(),
             'pollsEnabled' => $this->pollService->isEnabled() && $this->isGranted('forum.node.poll', $section),
-            'attachmentsEnabled' => $this->attachmentService->isEnabled() && $this->isGranted('forum.node.upload', $section),
+            'attachmentsEnabled' => $this->composerUploadEnabled($section),
         ];
+    }
+
+    /**
+     * @param array{body: string, title: string} $formValues
+     *
+     * @return array<string, mixed>
+     */
+    private function editPostViewData(ForumPost $post, bool $isFirstPost, array $formValues): array
+    {
+        $section = $post->getSection();
+
+        return [
+            'post' => $post,
+            'topic' => $post->getTopic(),
+            'section' => $section,
+            'isFirstPost' => $isFirstPost,
+            'formValues' => $formValues,
+            'attachmentsEnabled' => $this->composerUploadEnabled($section),
+        ];
+    }
+
+    private function composerUploadEnabled(ForumSection $section): bool
+    {
+        return $this->attachmentService->isEnabled() && $this->isGranted('forum.node.upload', $section);
     }
 
     private function finishPublishedTopic(ForumTopic $topic, User $user, Request $request, ForumSection $section): void

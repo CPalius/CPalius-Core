@@ -19,6 +19,9 @@ final class ForumLinkUnfurlService
     private const TIMEOUT = 4;
     private const FAILED_RETRY_AFTER = 86400;
 
+    /** Redirect hops followed, each validated and pinned before it is requested. */
+    private const MAX_REDIRECTS = 3;
+
     public function __construct(
         private readonly ForumLinkPreviewRepository $previewRepository,
         private readonly EntityManagerInterface $entityManager,
@@ -119,32 +122,45 @@ final class ForumLinkUnfurlService
 
     public function isPublicHttpUrl(string $url): bool
     {
+        return $this->resolvePublicTarget($url) !== null;
+    }
+
+    /**
+     * Validates the URL and returns the IP to pin, so the client does not resolve DNS again.
+     *
+     * @return array{host: string, ip: string}|null
+     */
+    private function resolvePublicTarget(string $url): ?array
+    {
         $parts = parse_url($url);
         if (!\is_array($parts)) {
-            return false;
+            return null;
         }
         $scheme = strtolower((string) ($parts['scheme'] ?? ''));
         if ($scheme !== 'http' && $scheme !== 'https') {
-            return false;
+            return null;
         }
         $host = strtolower((string) ($parts['host'] ?? ''));
         if ($host === '' || $host === 'localhost' || str_ends_with($host, '.local') || str_ends_with($host, '.internal')) {
-            return false;
+            return null;
         }
         if (filter_var($host, FILTER_VALIDATE_IP)) {
-            return $this->isPublicIp($host);
+            return $this->isPublicIp($host) ? ['host' => $host, 'ip' => $host] : null;
         }
+
         $ips = @gethostbynamel($host) ?: [];
         if ($ips === []) {
-            return false;
+            return null;
         }
+
+        // All answers must be public; one private IP in the set is a rebinding attempt.
         foreach ($ips as $ip) {
             if (!$this->isPublicIp($ip)) {
-                return false;
+                return null;
             }
         }
 
-        return true;
+        return ['host' => $host, 'ip' => $ips[0]];
     }
 
     /**
@@ -169,61 +185,104 @@ final class ForumLinkUnfurlService
     }
 
     /**
+     * Fetches HTML with max_redirects=0; each Location is validated and IP-pinned before the next hop.
+     *
      * @return array{html: string, url: string}|null
      */
     private function downloadHtml(string $url): ?array
     {
-        if (class_exists(HttpClient::class)) {
+        $client = HttpClient::create([
+            'timeout' => self::TIMEOUT,
+            // Zero: this method owns redirect handling.
+            'max_redirects' => 0,
+            'headers' => [
+                'User-Agent' => 'Mozilla/5.0 (compatible; CPaliusForum/1.0; +https://www.cpalius.com)',
+                'Accept' => 'text/html,application/xhtml+xml',
+                'Accept-Language' => 'tr,en;q=0.8',
+            ],
+        ]);
+
+        $current = $url;
+
+        for ($hop = 0; $hop <= self::MAX_REDIRECTS; ++$hop) {
+            $target = $this->resolvePublicTarget($current);
+            if ($target === null) {
+                return null;
+            }
+
             try {
-                $client = HttpClient::create([
-                    'timeout' => self::TIMEOUT,
-                    'max_redirects' => 3,
-                    'headers' => [
-                        'User-Agent' => 'Mozilla/5.0 (compatible; CPaliusForum/1.0; +https://www.cpalius.com)',
-                        'Accept' => 'text/html,application/xhtml+xml',
-                        'Accept-Language' => 'tr,en;q=0.8',
-                    ],
-                ]);
-                $response = $client->request('GET', $url, [
+                $response = $client->request('GET', $current, [
                     'max_duration' => self::TIMEOUT + 1,
+                    'resolve' => [$target['host'] => $target['ip']],
                 ]);
+
                 $status = $response->getStatusCode();
-                if ($status < 200 || $status >= 400) {
-                    return null;
+
+                if ($status >= 300 && $status < 400) {
+                    // getHeaders(false) so a 3xx is data rather than an exception.
+                    $location = $response->getHeaders(false)['location'][0] ?? null;
+                    if (!\is_string($location) || $location === '') {
+                        return null;
+                    }
+
+                    $next = $this->resolveRedirectLocation($location, $current);
+                    if ($next === null) {
+                        return null;
+                    }
+
+                    $current = $next;
+
+                    continue;
                 }
-                $finalUrl = (string) ($response->getInfo('url') ?: $url);
-                if (!$this->isPublicHttpUrl($finalUrl)) {
+
+                if ($status < 200 || $status >= 300) {
                     return null;
                 }
 
                 return [
                     'html' => mb_substr($response->getContent(), 0, self::MAX_BYTES),
-                    'url' => $finalUrl,
+                    'url' => $current,
                 ];
             } catch (ExceptionInterface|\Throwable) {
-                // fall through to streams
+                return null;
             }
         }
 
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'GET',
-                'timeout' => self::TIMEOUT,
-                'follow_location' => 1,
-                'max_redirects' => 3,
-                'header' => "User-Agent: Mozilla/5.0 (compatible; CPaliusForum/1.0)\r\nAccept: text/html\r\n",
-            ],
-            'ssl' => [
-                'verify_peer' => true,
-                'verify_peer_name' => true,
-            ],
-        ]);
-        $html = @file_get_contents($url, false, $context, 0, self::MAX_BYTES);
-        if (!\is_string($html) || $html === '') {
+        return null;
+    }
+
+    /** Turns a Location header into an absolute URL so the next hop can be validated. */
+    private function resolveRedirectLocation(string $location, string $base): ?string
+    {
+        $location = trim($location);
+        if ($location === '') {
             return null;
         }
 
-        return ['html' => $html, 'url' => $url];
+        if (preg_match('#^[a-zA-Z][a-zA-Z0-9+.-]*://#', $location) === 1) {
+            return $location;
+        }
+
+        $parts = parse_url($base);
+        if (!\is_array($parts) || !isset($parts['scheme'], $parts['host'])) {
+            return null;
+        }
+
+        $origin = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+
+        // Protocol-relative Location changes host; keep only the base scheme.
+        if (str_starts_with($location, '//')) {
+            return $parts['scheme'].':'.$location;
+        }
+
+        if (str_starts_with($location, '/')) {
+            return $origin.$location;
+        }
+
+        $basePath = $parts['path'] ?? '/';
+        $directory = substr($basePath, 0, (int) strrpos($basePath, '/') + 1);
+
+        return $origin.($directory === '' ? '/' : $directory).$location;
     }
 
     /**

@@ -63,7 +63,7 @@ final class AdminMenuRuntime implements RuntimeExtensionInterface
                 'routeName' => $item->routeName,
                 'routePrefix' => $item->routePrefix,
                 'group' => $item->group,
-                'hub' => $item->routeName === 'aacp_tools',
+                'hub' => str_starts_with($item->routeName, 'aacp_hub_'),
                 'children' => [],
             ];
         }

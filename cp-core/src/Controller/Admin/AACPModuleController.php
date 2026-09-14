@@ -40,7 +40,7 @@ final class AACPModuleController
     }
 
     #[Route('/aacp/modules', name: 'aacp_modules', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.modules', icon: 'heroicons:puzzle-piece', panel: 'aacp', priority: 28, capability: 'system.module.manage', group: 'aacp.group.system')]
+    #[CpAdminMenu(label: 'aacp.menu.modules', icon: 'heroicons:puzzle-piece', panel: 'aacp', priority: 21, capability: 'system.module.manage', parent: 'aacp_hub_system')]
     #[IsGranted('system.module.manage')]
     public function index(Request $request): Response
     {

@@ -8,7 +8,69 @@ const PALETTE = ['#487FFF', '#64748B', '#22C55E'];
 document.addEventListener('DOMContentLoaded', () => {
     initDonut();
     initCreateDropdown();
+    document.querySelectorAll('[data-studio-dashboard]').forEach(initWidgetToggles);
 });
+
+/**
+ * Lets an editor fold panels away and remembers the choice per user.
+ *
+ * Same contract as the AACP command desk: the collapsed class is rendered by
+ * the server (User::$data), so a folded panel is folded at first paint, and
+ * this only adds the control and keeps the server in step.
+ */
+function initWidgetToggles(root) {
+    const url = root.dataset.studioWidgetUrl;
+    const csrf = root.dataset.studioWidgetCsrf;
+    if (!url || !csrf) {
+        return;
+    }
+
+    const collapseLabel = root.dataset.labelWidgetCollapse || 'Collapse';
+    const expandLabel = root.dataset.labelWidgetExpand || 'Expand';
+
+    root.querySelectorAll('[data-studio-widget]').forEach((panel) => {
+        if (panel.querySelector('[data-studio-widget-toggle]')) {
+            return;
+        }
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'studio-widget-toggle';
+        button.setAttribute('data-studio-widget-toggle', '');
+
+        const paint = () => {
+            const collapsed = panel.classList.contains('is-collapsed');
+            button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            button.setAttribute('aria-label', collapsed ? expandLabel : collapseLabel);
+            button.title = collapsed ? expandLabel : collapseLabel;
+            button.textContent = collapsed ? '+' : '−';
+        };
+
+        paint();
+
+        button.addEventListener('click', async () => {
+            // Fold first, persist after: this is the editor's own view
+            // preference, and making them wait on a round trip to hide a box
+            // would be the slowest possible way to tidy a screen.
+            panel.classList.toggle('is-collapsed');
+            paint();
+
+            const body = new FormData();
+            body.append('_token', csrf);
+            body.append('widgetId', panel.dataset.studioWidget);
+            body.append('hidden', panel.classList.contains('is-collapsed') ? '1' : '0');
+
+            try {
+                await fetch(url, { method: 'POST', body, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            } catch {
+                // The fold already happened locally; a failed save costs the
+                // next page load, not this interaction.
+            }
+        });
+
+        panel.appendChild(button);
+    });
+}
 
 function readJson(el, attr, fallback) {
     try {

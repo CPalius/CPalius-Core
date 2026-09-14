@@ -99,7 +99,7 @@ final class AACPTelemetryController
     }
 
     #[Route('/aacp/settings/telemetry', name: 'aacp_telemetry_settings', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.telemetry', icon: 'heroicons:shield-exclamation', panel: 'aacp', priority: 27, capability: 'system.aacp.access', parent: 'aacp_tools')]
+    #[CpAdminMenu(label: 'aacp.menu.telemetry', icon: 'heroicons:signal', panel: 'aacp', priority: 31, capability: 'system.aacp.access', parent: 'aacp_security_center')]
     #[IsGranted('system.aacp.access')]
     public function settings(): Response
     {

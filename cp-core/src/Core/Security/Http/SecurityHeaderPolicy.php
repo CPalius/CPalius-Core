@@ -8,13 +8,7 @@ use App\Core\Settings\SettingsRegistry;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Builds the response header set from the security.* settings.
- *
- * CSP has four operator-facing modes instead of a bare on/off switch, because a
- * themable CMS cannot silently enforce a nonce policy over templates it does not
- * own: 'report' ships the strict policy as report-only so violations are visible
- * first, 'balanced' enforces origin isolation while still tolerating inline
- * script, and 'strict' enforces nonce + strict-dynamic.
+ * Builds response headers from security.* settings. CSP modes: off, report, balanced, strict.
  */
 final class SecurityHeaderPolicy
 {
@@ -44,10 +38,7 @@ final class SecurityHeaderPolicy
             : self::MODE_REPORT;
     }
 
-    /**
-     * Only the nonce-bearing modes need a per-response nonce; emitting one in
-     * 'balanced' would make browsers ignore the 'unsafe-inline' that mode relies on.
-     */
+    /** Nonce is only emitted in report/strict; balanced relies on 'unsafe-inline'. */
     public function nonceRequired(): bool
     {
         return \in_array($this->cspMode(), [self::MODE_REPORT, self::MODE_STRICT], true);
@@ -109,13 +100,37 @@ final class SecurityHeaderPolicy
         } elseif ($nonce === '') {
             // No nonce reached the response (a listener short-circuited the request
             // before the nonce was minted, or a cached response is being replayed).
-            // Emitting "'nonce-'" would be a malformed source expression, and the
-            // 'strict-dynamic' beside it would then reject every script on the page
-            // — the hardening layer would have taken the site down instead of the
-            // attacker. Degrade to a nonce-less origin policy instead.
+            // Emitting "'nonce-'" would be a malformed source expression that
+            // matches nothing, so degrade to a nonce-less origin policy instead
+            // of shipping a header that refuses every script on the page.
             $scriptSrc = ["'self'", 'https:'];
         } else {
-            $scriptSrc = ["'self'", "'nonce-".$nonce."'", "'strict-dynamic'", 'https:'];
+            // No 'strict-dynamic' here, and its removal (2026-09-13) is a
+            // correctness fix rather than a relaxation.
+            //
+            // 'strict-dynamic' makes the browser IGNORE every other source
+            // expression in script-src — 'self' and https: included — and
+            // trust only nonced scripts plus whatever those scripts insert
+            // into the DOM at runtime. CPalius ships its front end as an
+            // AssetMapper importmap: every module, including the vendored
+            // chart.js the command desk draws with, arrives as a STATIC module
+            // import, which is not a runtime DOM insertion and so inherits no
+            // trust. Strict mode was therefore blocking the panel's own
+            // JavaScript, and the browser said so in exactly those words
+            // ("'self' is ignored: 'strict-dynamic' is specified"). A
+            // hardening mode that switches off the admin panel is not a
+            // hardening mode: operators leave it off and the policy protects
+            // nobody.
+            //
+            // The nonce still does the work that matters — an injected inline
+            // <script> carries no nonce and is refused, which is the XSS
+            // primitive this mode exists to stop. What is given up is trust
+            // propagation to dynamically inserted scripts, which an importmap
+            // application does not rely on. This also settles the open
+            // question recorded in the roadmap: hosts added to
+            // security.csp_script_src were silently inert in strict mode
+            // because 'strict-dynamic' voided them. They now apply.
+            $scriptSrc = ["'self'", "'nonce-".$nonce."'", 'https:'];
         }
 
         $directives = [
@@ -162,10 +177,7 @@ final class SecurityHeaderPolicy
         return $value !== '' ? $value : "'self'";
     }
 
-    /**
-     * X-Frame-Options only models 'none' and 'self'; a custom ancestor list is left
-     * to frame-ancestors alone rather than emitting a header that contradicts it.
-     */
+    /** X-Frame-Options only models none/self; a custom ancestor list stays on frame-ancestors. */
     private function frameOptions(): ?string
     {
         return match ($this->frameAncestors()) {
@@ -192,11 +204,7 @@ final class SecurityHeaderPolicy
     }
 
     /**
-     * Directive names, so a pasted "default-src *" cannot survive as two loose
-     * tokens inside whichever source list it was pasted into. Stripping the ';'
-     * already stops a second directive from being created, but the leftovers
-     * still widen the directive they land in — in balanced mode a stray '*' in
-     * script-src is a real loosening, not just noise.
+     * CSP directive names stripped from operator source lists so a pasted "default-src *" cannot widen script-src.
      *
      * @var list<string>
      */
@@ -210,8 +218,7 @@ final class SecurityHeaderPolicy
     ];
 
     /**
-     * Source lists are operator-typed free text; ';' would let one directive
-     * inject another, so it is stripped rather than escaped.
+     * Tokenizes a source list. Semicolons are stripped so one directive cannot inject another.
      *
      * @return list<string>
      */

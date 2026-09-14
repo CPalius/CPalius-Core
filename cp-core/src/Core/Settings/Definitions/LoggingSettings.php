@@ -7,7 +7,8 @@ namespace App\Core\Settings\Definitions;
 use App\Core\Annotation\CpSetting;
 
 /**
- * Application watchdog + mail log retention (T3.5).
+ * Application watchdog + mail log retention.
+ * AACP → System Settings → Logging.
  */
 #[CpSetting(
     key: 'logging.min_level',
@@ -21,21 +22,21 @@ use App\Core\Annotation\CpSetting;
         'error' => 'aacp.system_settings.logging.level_error',
         'critical' => 'aacp.system_settings.logging.level_critical',
     ],
-    group: 'mail',
+    group: 'logging',
 )]
 #[CpSetting(
     key: 'logging.retention_days',
     label: 'aacp.system_settings.logging.retention_days',
     type: 'integer',
     default: 30,
-    group: 'mail',
+    group: 'logging',
 )]
 #[CpSetting(
     key: 'mail.log_retention_days',
     label: 'aacp.system_settings.mail.log_retention_days',
     type: 'integer',
     default: 90,
-    group: 'mail',
+    group: 'logging',
 )]
 final class LoggingSettings
 {

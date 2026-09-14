@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Studio command desk — first screen after editorial login.
@@ -31,13 +32,19 @@ final class AdminDashboardController extends AbstractController
     }
 
     #[Route('/admin', name: 'admin_dashboard', methods: ['GET'])]
-    #[CpAdminMenu(label: 'studio.dashboard.header', icon: 'heroicons:home', panel: 'studio', priority: 10)]
+    #[CpAdminMenu(label: 'studio.dashboard.header', icon: 'heroicons:home', panel: 'studio', priority: 10, capability: 'admin.dashboard.view')]
+    #[IsGranted('admin.dashboard.view')]
     public function index(): Response
     {
-        return $this->render('admin/dashboard.html.twig', $this->dashboardService->build());
+        $user = $this->security->getUser();
+
+        return $this->render('admin/dashboard.html.twig', $this->dashboardService->build() + [
+            'hiddenWidgets' => $user instanceof User ? $this->getHiddenWidgetIdsForUser($user) : [],
+        ]);
     }
 
     #[Route('/admin/dashboard/widget-visibility', name: 'admin_dashboard_widget_visibility', methods: ['POST'])]
+    #[IsGranted('admin.dashboard.view')]
     public function updateWidgetVisibility(Request $request): JsonResponse
     {
         $submittedToken = (string) $request->request->get('_token');

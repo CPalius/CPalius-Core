@@ -11,7 +11,7 @@ capabilities:
     - forum.thread.lock
     - forum.thread.sticky
     - forum.thread.move
-    - forum.post.edit
+    # Edit is always scoped (.own / .any). The unscoped name is not registered.
     - forum.post.edit.own
     - forum.post.edit.any
     - forum.post.delete.own

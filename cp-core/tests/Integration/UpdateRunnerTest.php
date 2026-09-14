@@ -18,6 +18,7 @@ use Doctrine\Migrations\Metadata\Storage\MetadataStorage;
 use Doctrine\Migrations\Version\Direction;
 use Doctrine\Migrations\Version\ExecutionResult;
 use PHPUnit\Framework\Attributes\CoversClass;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * T3.6 — the update runner.
@@ -175,6 +176,10 @@ final class UpdateRunnerTest extends IntegrationTestCase
             $container->get(ConfigManager::class),
             $container->get(CacheRebuildManager::class),
             $this->kernelModulesDir(),
+            // UpdateRunner gained a translator when its step summaries stopped
+            // being English string literals; the real one from the container
+            // keeps this test asserting on the same text the panel renders.
+            $container->get(TranslatorInterface::class),
         );
     }
 

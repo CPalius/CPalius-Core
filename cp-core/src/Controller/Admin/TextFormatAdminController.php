@@ -38,7 +38,7 @@ final class TextFormatAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.text_formats', icon: 'heroicons:document-text', panel: 'aacp', priority: 26, capability: 'core.text_format.manage', parent: 'aacp_tools')]
+    #[CpAdminMenu(label: 'aacp.menu.text_formats', icon: 'heroicons:document-text', panel: 'aacp', priority: 65, capability: 'core.text_format.manage', parent: 'aacp_hub_structure')]
     public function index(): Response
     {
         $this->seeder->ensureCatalog();

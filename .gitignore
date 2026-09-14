@@ -101,10 +101,27 @@ Thumbs.db
 # One-off public user importer (delete after use — do not deploy)
 /public/import-users.php
 
+# One-off migration metadata sync runner (delete after use — do not deploy)
+/public/cp-sync-meta.php
+
+# One-off prod cache diagnosis/clear runner (delete after use — do not deploy)
+/public/cp-cache-fix.php
+
+# One-off migration bookkeeping table repair (delete after use — do not deploy)
+/public/cp-fix-migration-table.php
+
 # Logs & temp
 *.log
 *.tmp
 *.cache
+# Karşılaştırma için yerel olarak tutulan üçüncü parti forum yazılımı.
+# MegaforBB kendi lisansı altındadır; CPalius tescillidir. Kod KOPYALANMAZ,
+# yalnızca özellik/mimari karşılaştırması için okunur.
+/MegaforBB/
+# FTP dagitim kimlik bilgileri (docs/deploy-ftp.sh okur). Canli sunucu
+# parolasi tasir; .env ile ayni siniftadir ve asla commit edilmez.
+.ftp-deploy
+
 ###< CPalius: private / local / generated ###
 
 ###> friendsofphp/php-cs-fixer ###

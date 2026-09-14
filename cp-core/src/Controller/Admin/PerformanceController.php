@@ -35,7 +35,7 @@ final class PerformanceController
     }
 
     #[Route('/aacp/performance', name: 'aacp_performance', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.performance_rmvp', icon: 'heroicons:cpu-chip', panel: 'aacp', priority: 25, capability: 'system.performance.manage', parent: 'aacp_tools')]
+    #[CpAdminMenu(label: 'aacp.menu.performance_rmvp', icon: 'heroicons:cpu-chip', panel: 'aacp', priority: 82, capability: 'system.performance.manage', parent: 'aacp_hub_maintenance')]
     #[IsGranted('system.performance.manage')]
     public function index(): Response
     {

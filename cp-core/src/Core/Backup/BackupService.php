@@ -19,6 +19,7 @@ final class BackupService
         private readonly Connection $connection,
         string $projectDir,
         ?string $backupDir = null,
+        private readonly ?BackupShipper $shipper = null,
     ) {
         $normalizedProject = rtrim(str_replace('\\', '/', $projectDir), '/');
         $this->backupDir = $backupDir !== null && $backupDir !== ''
@@ -62,6 +63,55 @@ final class BackupService
         }
 
         return $this->archiveFromFile($filename, $target);
+    }
+
+    /**
+     * Sends a finished archive off-site, applies remote retention, and — only
+     * on proven success — drops the local copy when the operator asked for
+     * that.
+     *
+     * Deliberately NOT folded into create(). Creating the archive and getting it
+     * off the box are two outcomes an operator needs told apart: a 4 GB full
+     * backup that was written correctly and then failed to upload is a partial
+     * success, and a create() that reported failure for it would invite the
+     * operator to run the expensive half all over again. So create() stays about
+     * the archive, this is about where it goes, and the two report separately.
+     *
+     * @return array{shipped: bool, pruned: int, local_removed: bool, target: ?string, error: ?string}
+     */
+    public function shipAndPrune(BackupArchive $archive): array
+    {
+        $result = ['shipped' => false, 'pruned' => 0, 'local_removed' => false, 'target' => null, 'error' => null];
+
+        if ($this->shipper === null) {
+            return $result;
+        }
+
+        $path = $this->absolutePath($archive->filename);
+
+        try {
+            $result['shipped'] = $this->shipper->ship($archive->filename, $path);
+        } catch (BackupException $e) {
+            $result['error'] = $e->getMessage();
+
+            return $result;
+        }
+
+        if (!$result['shipped']) {
+            return $result;
+        }
+
+        $result['target'] = $this->shipper->targetLabel();
+        $result['pruned'] = $this->shipper->prune();
+
+        // The order is the safety property: ship() already read the object back
+        // from the destination, so by the time this runs there are provably two
+        // copies and removing one of them is a space decision, not a risk.
+        if (!$this->shipper->keepLocal() && is_file($path) && @unlink($path)) {
+            $result['local_removed'] = true;
+        }
+
+        return $result;
     }
 
     /**

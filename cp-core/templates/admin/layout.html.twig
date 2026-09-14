@@ -6,8 +6,13 @@
         <title>{% block title %}{{ 'studio.layout.title.default'|trans }}{% endblock %}</title>
         <meta name="robots" content="noindex, nofollow">
 
-        {# Studio uses core AssetMapper (app.css/app.js), not theme/module assets. #}
-        {% block stylesheets %}{% endblock %}
+        {# Studio uses core AssetMapper (app.css/app.js), not theme/module assets.
+           The sheet is linked rather than imported from JS: a CSS import
+           resolves to a data: URL script that our CSP refuses, and a refused
+           static import rejects the entire module graph (see app.js). #}
+        {% block stylesheets %}
+            <link rel="stylesheet" href="{{ cp_asset('styles/app.css') }}">
+        {% endblock %}
         {% block javascripts %}
             {{ importmap(['app', 'studio-quick-cache-clear']) }}
         {% endblock %}
@@ -56,7 +61,8 @@
 
                             <li{% if item.children is not empty %} class="dropdown{{ (itemActive or childActive) ? ' open' : '' }}"{% endif %}>
                                 <a href="{{ path(item.routeName) }}"
-                                   class="{{ itemActive ? 'active-page' : '' }}{{ item.children is not empty ? ' has-submenu-trigger' : '' }}">
+                                   title="{{ item.label|trans }}"
+                                   class="{{ (itemActive or childActive) ? 'active-page' : '' }}{{ item.children is not empty ? ' has-submenu-trigger' : '' }}">
                                     <twig:ux:icon name="{{ item.icon }}" class="menu-icon shrink-0" />
                                     <span>{{ item.label|trans }}</span>
                                     {% if item.children is not empty %}
@@ -72,6 +78,7 @@
                                             {% set isChildActive = currentRoute == child.routeName or (child.routePrefix != child.routeName and currentRoute starts with child.routePrefix) %}
                                             <li{% if isChildActive %} class="active-page"{% endif %}>
                                                 <a href="{{ path(child.routeName) }}"
+                                                   title="{{ child.label|trans }}"
                                                    class="{{ isChildActive ? 'active-page' : '' }}">
                                                     <twig:ux:icon name="{{ child.icon }}" class="h-3.5 w-3.5 shrink-0" />
                                                     <span>{{ child.label|trans }}</span>
@@ -85,8 +92,19 @@
                     </ul>
                 </nav>
 
-                <div class="border-t border-neutral-200 px-sp-sm py-sp-xs text-fs-xs text-neutral-500 font-mono">
+                <div class="sidebar-meta border-t border-neutral-200 px-sp-sm py-sp-xs text-fs-xs text-neutral-500 font-mono">
                     {{ cp_app_name|default('CPalius CMF') }} · v{{ cp_app_version|default('1.0.0') }}
+                    {# Null status means "no successful check yet" — render nothing
+                       rather than implying the installation is current. #}
+                    {% set cp_release = cp_release_status() %}
+                    {% if cp_release and cp_release.outdated %}
+                        <a href="{{ cp_release.notes_url|default('https://github.com/CPalius/version') }}"
+                           target="_blank" rel="noopener"
+                           class="mt-1 block font-sans {{ cp_release.critical ? 'text-red-600' : 'text-amber-600' }}">
+                            {{ cp_release.critical ? '⚠' : '↑' }}
+                            {{ 'aacp.update.available'|trans({ version: cp_release.version }) }}
+                        </a>
+                    {% endif %}
                 </div>
             </aside>
 

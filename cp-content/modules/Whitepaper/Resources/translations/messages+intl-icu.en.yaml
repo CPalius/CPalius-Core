@@ -1,0 +1,15 @@
+# Whitepaper module catalogue.
+#
+# These keys label the two #[CpResource] screens (AACP > Tools > Resources).
+# They live with the module, not in the project catalogue, so deactivating the
+# module takes its strings with it — and so the module stays installable on its
+# own. The translator reads the module catalogue first, then English, then the
+# site default.
+aacp.whitepaper.field.locale: "Locale"
+aacp.whitepaper.field.slug: "Anchor (slug)"
+aacp.whitepaper.field.title: "Title"
+aacp.whitepaper.field.weight: "Order"
+aacp.whitepaper.field.body_html: "Body (HTML)"
+aacp.whitepaper.field.intro_html: "Intro (HTML)"
+aacp.whitepaper.field.version: "Version"
+aacp.whitepaper.field.updated_at: "Updated"

@@ -2,6 +2,8 @@ role:
     id: editor
     label: 'role.label.editor'
     capabilities:
+        # Studio /admin landing; not admin.access (that also opens homepage settings).
+        - admin.dashboard.view
         - node.post.view.own
         - node.post.create
         - node.post.edit.own
@@ -17,7 +19,7 @@ role:
         - forum.view
         - forum.topic.create
         - forum.thread.create
-        - forum.post.edit
+        # Unscoped forum.post.edit is not granted; moderating others needs .any.
         - forum.post.edit.own
         - forum.post.delete.own
         - forum.post.report

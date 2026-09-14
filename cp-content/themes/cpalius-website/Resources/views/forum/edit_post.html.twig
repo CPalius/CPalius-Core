@@ -32,7 +32,14 @@
 
         <div class="forum-field">
             <label>{{ 'forum.field.message'|trans }}</label>
-            <textarea id="fe-body" name="body" data-forum-editor required>{{ formValues.body }}</textarea>
+            {% include '@Theme/forum/partials/editor_textarea.html.twig' with {
+                name: 'body',
+                id: 'fe-body',
+                required: true,
+                value: formValues.body,
+                section: section,
+                attachmentsEnabled: attachmentsEnabled|default(false),
+            } only %}
             <p class="forum-field-hint">{{ 'forum.edit_post.time_limit_hint'|trans }}</p>
         </div>
 

@@ -25,8 +25,19 @@
 ## 0. NEREDE KALDIK? (her oturum başında güncelle)
 
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
-  **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı), **GC3** bitti.
+  **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı), **GC3**, **T3.7** bitti.
   **T3.2 (multisite/org) İPTAL** (öncelik dışı).
+- **Son oturum (9):** 2026-09-13 — **T3.7: panolar uygulama tipinden bağımsızlaştı.**
+  AACP komuta masası bir web sitesi panosu olmaktan çıktı: canlı akış 30 → **10** satır,
+  ziyaretçi panelleri (popüler sayfalar / en çok ziyaret eden IP'ler) kaldırıldı, üstüne
+  dört ops paneli (`PlatformPulseService` — iş akışı · arızalar · kurulum bütünlüğü ·
+  veri hacmi). Studio'ya **iş tezgâhı** geldi: bekleyen kayıtlar `status`'tan değil
+  **workflow motorundan** okunuyor, yani "taslak/inceleme" kadar "teklif/onaylı/faturalı"
+  için de aynı ekran. Her iki panoda paneller **açılır-kapanır** (kalıcılık altyapısı
+  vardı, arayüzü hiç bağlanmamıştı). **Yan bulgu — çekirdek güvenlik hatası:** strict CSP
+  modu, `'strict-dynamic'` yüzünden panelin kendi importmap modüllerini engelliyordu;
+  direktif kaldırıldı ve geri gelmemesi teste bağlandı. 16 yeni/güncellenen test.
+  Ayrıntı §4 (29).
 - **Son oturum (8):** 2026-09-12 — **Faz B3 bitti: MyBB + Joomla.** Beş kaynak sistem
   (WordPress, XenForo, MyBB, Joomla, CSV) tek motor üstünde, 18 migration. **Satır 26:
   A → A+.** Ayrıntı §4 (28).
@@ -60,11 +71,24 @@
   şablon çağırmıyordu** — 19 script etiketi nonce'suzdu, yani strict CSP modu paneli ve
   temayı sessizce öldürüyordu. Hepsi nonce'landı + `TemplateScriptNonceTest` ile kalıcı
   koruma altına alındı. **Commit'li, push yok.**
-- **Sıradaki iş:** **T3.4 Faz B3** — XenForo / MyBB DB kaynak sürücüleri (satır 26'yı A+'a
-  taşıyan tek şey; MyBB merge sistemi 16 forum yazılımının şemasını içeriyor, şema referansı
-  olarak okunacak). Sonra Faz C (AACP sihirbazı) · T5.1 maker · T5.5 el kitabı.
+- **ÖZELLİK GELİŞTİRME DURDU (kullanıcı kararı, 2026-09-13).** Bir süre yeni tier maddesi
+  açılmayacak; yapılacak iş **inceleme ve hata düzeltme**. Daha önce "sıradaki" olarak
+  seçilen **T5.1 maker paketi başlatılmadı** ve beklemeye alındı; T4.x, T6.x ve T3.4 Faz B4
+  de aynı şekilde sırada duruyor. Bu kararı değiştirmeden yeni özellik eklenmez.
+- **Bugfix modunun açık kuyruğu (öncelik sırasıyla):**
+  1. **Satır sonu kayması** — `.gitattributes` yok, `core.autocrlf=true`. Çalışma ağacında
+     **998 dosyanın 162'si CRLF**, gerisi LF; php-cs-fixer LF beklediği için stil kapısı bu
+     162 dosyada *içeriğe bakmadan* düşüyor ve gerçek stil hatalarını maskeliyor. Çözüm
+     mekanik ve ayrı bir commit olmalı: `.gitattributes` (`* text=auto eol=lf`) + tek
+     normalizasyon. **Özellik commit'leriyle karıştırılmamalı** (bkz. memory
+     `no-destructive-bulk-edits`).
+  2. **N+1 guard testte hiç çalışmıyor** — `QueryCounterMiddleware` CLI'da sarmalamıyor,
+     PHPUnit CLI. Karar bekliyor: test ortamında açılsın mı (yarıçapı var, bkz. §4 (30)).
+  3. `SECURITY.md` / `LICENSE` iletişim adresi onayı · migration'ların MySQL'e çivili
+     olması (skor satırı 40) — ikisi de **karar**, kod değil.
 - **Bekleyen migration:** yok. `Version20260912170000` (`cp_migration_map`) uygulandı.
-- **Aktif modül sayısı: 9** — `Importer` eklendi ve etkinleştirildi.
+- **Aktif modül sayısı: 10** — `Whitepaper` eklendi (2026-09-13). Whitepaper çekirdekten
+  çıkarılıp modüle alındı: çekirdek artık "whitepaper" kelimesini bilmiyor.
 - **Doğrulama durumu (2026-09-12):** PHPStan level 6 temiz (baseline **372**) ·
   php-cs-fixer temiz · **969 unit + 71 entegrasyon testi yeşil** ·
   `lint:twig` 241 dosya temiz · lint:container dev OK.
@@ -78,12 +102,18 @@
 - **Kalan teknik borç:** migration'lar MySQL'e çivili (bkz. skor satırı 40 —
   **karar bekliyor:** "MySQL-only, bilinçli" mi, DBAL-taşınabilir mi).
   `SECURITY.md` / `LICENSE` iletişim adresi (`sys@rootali.net`) onay bekliyor.
-- **Yeni karar konusu (2026-09-12):** strict modda `script-src` içinde `'strict-dynamic'`
-  var, bu da ana kaynak ifadelerini geçersiz kılıyor → `security.csp_script_src` ayarına
-  eklenen host'lar **strict modda hiçbir işe yaramıyor**, operatör "ekledim ama olmadı"
-  durumunda kalıyor. Seçenekler: (a) ekstra host varsa `'strict-dynamic'`'i düşür,
-  (b) ayarı strict modda arayüzde devre dışı bırakıp gerekçesini yaz. Sessiz bırakılmadı,
-  bilinçli olarak sıraya alındı.
+- **~~Karar konusu (2026-09-12)~~ → KAPANDI (2026-09-13, seçenek (a)):** strict modda
+  `script-src` içindeki `'strict-dynamic'` **kaldırıldı**. Sorun sanılandan büyüktü:
+  `'strict-dynamic'` yalnız `security.csp_script_src` host'larını değil **`'self'`'i de**
+  geçersiz kılıyor ve güveni sadece "nonce'lu bir script'in çalışma anında DOM'a
+  eklediği" script'lere veriyor. CPalius ön yüzü AssetMapper **importmap**'i: vendor
+  `chart.js` dahil her modül **statik import**, yani DOM eklemesi değil, yani hiç güven
+  almıyor. Sonuç: strict modu açan operatörün **panelinin kendi JavaScript'i** (grafikler
+  dahil) engelleniyordu; tarayıcı bunu birebir söylüyordu (`"'self'" yok sayılıyor:
+  'strict-dynamic' belirtildi`). Paneli kapatan bir sertleştirme modu kimseyi korumaz —
+  operatör onu kapalı bırakır. Nonce asıl işi yapmaya devam ediyor: nonce'suz enjekte
+  edilmiş inline `<script>` reddediliyor. `SecurityHeaderPolicyTest` artık
+  `'strict-dynamic'`'in **geri gelmemesini** de test ediyor.
 
 ---
 
@@ -116,7 +146,10 @@ güvenlik-varsayılan** ekseninde dört rakibi de geçmiş durumda.
   Revision engine (`NodeRevision` + `NodeSnapshot`), Content Moderation
   (`moderation_state`, `status`'tan ayrı), Workflow engine (özel state machine, YAML).
 - **`#[CpResource]` auto-admin** — otomatik CRUD + form + capability + audit + workflow
-  butonları (Law 4.1/4.2). Henüz isimli bir `#[CpResource]` yok — saf makine.
+  butonları (Law 4.1/4.2). **2026-09-13'ten beri artık saf makine değil:** ilk iki isimli
+  kaynak `whitepaper` ve `whitepaper_section` (bkz. §4 (31)). Makine ilk gerçek tüketicisini
+  tek satır controller yazılmadan taşıdı; çıkan tek pürüz liste başlıklarının çevrilmemesiydi
+  ve tek satırla düzeltildi.
 - **Diğer** — Menu (WP tarzı drag-drop), `#[CpAdminMenu]`, Studio dashboard katkıları,
   Portal/anasayfa blok sistemi, Plugin katmanı (`PluginInterface` + toggle), Tema sistemi
   (decoupled, `theme.json`, çekirdek asset derlemez), `UrlAlias`, Pagination,
@@ -175,7 +208,7 @@ Sütunlar: **CP**=CPalius · **DR**=Drupal 10/11 · **T3**=TYPO3 v13 · **WP**=W
 | 24 | Cron / zamanlanmış görevler | A | A | A | C | B | — (CP: birleşik motor + izole subprocess + UI) |
 | 25 | Modül paketleme + lifecycle + tek-tık dağıtım | **A** | A | A | A+ | B | T3.6 ✅ `cp:update` sıralı+devam ettirilebilir; kalan: paket deposu / tek-tık kurulum |
 | 26 | Migrate / CMS-ten CMS'e veri taşıma | **A+** | A+ | B | B | C | T3.4 Faz A ✅ (motor + CSV + `cp:migrate`) · Faz B1 ✅ (**Importer modülü** + WXR: yazar/kategori/etiket/yazı) · **Faz B2 ✅ (medya + yorumlar)**. WordPress yolu artık gerçekten tam: görseller asset'e giriyor, **gövdedeki `-300x200` boyut türevleri dahil** yeniden yazılıyor (eski alan adı markup'ta kalmıyor), öne çıkan görsel `_thumbnail_id`'den çözülüyor, yorumlar thread'iyle geliyor. Drupal'ın dört zaafına karşı tasarlandı: dry-run varsayılan, transform tipli PHP (YAML eklenti id'si yok), koşucu çekirdekte, rollback map'e göre kesin; WXR **akışlı** (WP'nin kendi importer'ı tüm dosyayı belleğe alır). Faz C ✅ (Studio ekranı `/admin/import` + dosya yükleme). **Faz B3 ✅: XenForo, MyBB, Joomla** — keyset sayfalı DB kaynağı, BBCode→HTML, Forum modülünde import hedefleri. **Beş kaynak sistem tek motor üstünde**, hepsi dry-run varsayılan ve map'e göre geri alınabilir. Drupal yok, ekranda "Planlandı". **Kanıtın sınırı:** sürücüler belgelenmiş şemalardan yazıldı ve SQLite fixture'larına karşı testli; her gerçek kurulumla uyum kanıtlanmış değil |
-| 27 | Admin UI + kurtarma konsolu | **A+** | A | A | A | A | T3.5 ✅ — `/aacp/logs` watchdog + mail resend; `/aacp/recovery` DB'siz (ayırt edici) |
+| 27 | Admin UI + kurtarma konsolu | **A+** | A | A | A | A | T3.5 ✅ — `/aacp/logs` watchdog + mail resend; `/aacp/recovery` DB'siz (ayırt edici). **T3.7 ✅ (2026-09-13):** iki pano da uygulama tipinden bağımsız — AACP dört ops paneli (iş akışı/arıza/bütünlük/hacim), Studio'da workflow motorundan okunan iş tezgâhı. Rakip zaafı: dördünün de panosu yayıncı sorularını sorar (kaç yazı, kaç ziyaretçi); CRM/ERP kurulumunda o panonun yerine contrib bir pano konur |
 | 28 | Güvenlik telemetri + IP ban (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
 | 29 | Yedekleme (çekirdekte) | A | C | C | C | C | — (çoğu rakipte contrib) |
 | 30 | DX: maker + doctor + test kit + geliştirici dokümanı | **A** | A | B | B | B | T5.2 ✅ `cp:doctor` (10 kontrol) + `cp:debug` (6 konu) + `IntegrationTestCase`/`IntegrationSchema`; kalan: maker (T5.1), el kitabı (T5.5) |
@@ -714,6 +747,62 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 - **Kanıt:** `cp:update --dry-run` gerçek kurulumda beş adımı da sırayla raporluyor ve hiçbir şeye dokunmuyor; `--fail-on` yok çünkü çıkış kodu zaten başarısızlığı taşıyor. İkinci koşumda tamamlanan iş atlanıyor.
 - **Alan notu:** Drupal `update.php` + `drush updb`, WordPress `wp core update-db` aynı işi görür ama ikisi de **veri düzeltmelerini** ayrı bir mekanizmaya bırakır (Drupal `hook_update_N`, WP sürüm karşılaştırmalı elle kod). CPalius'ta hook'lar tipli bir arayüz, ledger'ı var, sürüm sırası garantili, `--dry-run` ile önce prod'da sorulabiliyor ve aynı motor hem kabuktan hem AACP'den çalışıyor. **B → A** (A+ değil: modül paket deposu / tek-tık kurulum yok — bkz. skor satırı 35).
 
+#### T3.7 — Uygulama tipinden bağımsız panolar  `[x]`  (2026-09-13)
+
+- [x] `PlatformPulseService` (`Core/Admin`) — AACP komuta masasının okuma modeli. Dört soru:
+      **iş akışı** (Messenger + AsyncJob kuyrukları ayrı ayrı, cron görev sayısı/pasif/son
+      koşum/üst üste başarısız olanların adı, kuyruktaki + başarısız e-posta), **arızalar**
+      (24 saatte ERROR ve üstü watchdog kaydı, kanal başına ilk 4, karantinadaki modül),
+      **kurulum bütünlüğü** (`cp:doctor`'ın tamamı: engelleyici bulgu sayısı + ilk 5 bulgu
+      + denetim zamanı), **veri hacmi** (`#[CpEntityType]` başına satır sayısı)
+- [x] Canlı telemetri akışı **30 → 10 satır** (`AACPController::TELEMETRY_FEED_ROWS`).
+      İstemci tarafındaki 40 satırlık budama da aynı bütçeyi **sunucudan** okuyor
+      (`data-aacp-telemetry-rows`) — iki sabit birbirinden kayamaz
+- [x] `StudioWorkbenchService` — Studio'da **iş tezgâhı**: hangi kayıt bir insanı bekliyor
+      ve o insan ben miyim. Kaynak `Node::status` değil **workflow motoru**; yayın yerine
+      (publish place) ulaşmış kayıt kuyruk sayılmıyor. "Bende bekleyen" ve "yarım kalan işin"
+      KPI'ları panonun başına geçti
+- [x] Testler: `AacpPlatformPulseTest` (5) + `StudioWorkbenchTest` (5) — dördü de gerçek
+      DB'ye karşı, ikisi **sayfayı gerçekten render ederek**
+- **Kanıt:** `/aacp` dört ops panelini basıyor ve 18 telemetri satırı varken tabloda tam
+  **10** satır var; `/admin` moderasyon açık bir kurulumda yerleri `editorial.yaml`'dan
+  gelen etiketlerle listeliyor, `content.moderate`/`content.publish` tutmayan bir kullanıcıya
+  kuyruğu gösteriyor ama "eyleme geçilebilir" demiyor.
+- **Alan notu (lider zaafına karşı tasarım):** Dört rakibin de panosu bir **yayıncının**
+  sorularını sorar — kaç yazı, kaç yorum, kaç ziyaretçi (WP "At a Glance", Drupal "Status
+  report" + contrib, TYPO3 backend, PW dashboard modülü). CRM/ERP/panel kurulumunda o pano
+  ya boş durur ya contrib bir panoyla değiştirilir. CPalius'ta panonun **hiçbir yerinde**
+  entity adı yazmıyor: hacim `#[CpEntityType]`'tan, kuyruk workflow yerlerinden, arıza
+  watchdog kanallarından geliyor. Bir CRM modülünün `Contact`'ı ile `Node` aynı yoldan
+  görünür, çekirdek ikisini de tanımadan. **Ayrıca:** "okunamadı" ile "sıfır" bilinçli
+  olarak ayrı basılıyor — modül keşfi patlarsa panel `null` taşır ve ekranda "Bilinmiyor"
+  yazar, "karantinada 0 modül" değil. Sessiz bir sıfır, operatörün ekranda görebileceği
+  en kötü yalandır.
+- **Maliyet kararı:** `cp:doctor` koşumu pano yüklemesi başına bir kez fazla — 300 sn,
+  entity sayımları 60 sn `cache.app`'te. Panel canlıymış gibi davranmıyor, **denetim
+  saatini basıyor.**
+- [x] **İkinci tur (2026-09-13, kullanıcı geri bildirimi):** üç iş.
+      **(1) CSP** — strict modda grafikler ölüydü; `'strict-dynamic'` kaldırıldı (bkz. §0,
+      kapanan karar konusu). Bu bir pano işi değil, **çekirdek güvenlik katmanı hatasıydı**:
+      panoya grafik eklenince görünür oldu. **(2) Ziyaretçi panelleri kaldırıldı** — "en çok
+      ziyaret edilen sayfalar" ve "en çok ziyaret eden IP'ler" bir web sitesinin soruları;
+      masa CPalius çekirdeğini özetliyor. İstemcideki tazeleme kancaları ve ölü render
+      yardımcıları da silindi (render edilmeyen bir listeyi 3 sn'de bir güncellemeye
+      çalışan kod kalmasın). Güvenlik tarayıcısı açıkken çalışan tehdit panelleri **duruyor** —
+      onlar trafik değil güvenlik sinyali. **(3) Paneller açılır-kapanır** — her panel
+      `data-aacp-widget` / `data-studio-widget` kimliği taşıyor, düğme **script tarafından
+      enjekte ediliyor** (aksi hâlde her panel aynı altı satır işaretlemeyi taşırdı ve
+      sonradan eklenen panel sessizce kontrolsüz kalırdı), katlanmış durum **sunucudan**
+      basılıyor (`User::$data`), yani katlanmış panel her yüklemede açık parlamıyor.
+      Kalıcılık zaten var olan ama **hiçbir şablonun kullanmadığı** CSRF'li uçlara bağlandı.
+- [ ] **KALAN (ertelendi):** ops panellerinin canlı poll'a (`/aacp/system-metrics`) bağlanması
+      — bugün tam sayfa yüklemesinde geliyor; kuyruk/arıza sayaçları 4 sn'de bir tazelenebilir
+- [ ] **KALAN (ertelendi):** iş tezgâhında yerden kayda tıklayıp filtrelenmiş listeye gitmek
+      (bugün sayı var, bağlantı yok)
+- [ ] **KALAN (ertelendi):** panelleri sürükleyerek sıralamak (bugün yalnız aç/kapa)
+
+---
+
 ---
 
 ### TIER 4 — Headless / API  `[ ]`
@@ -794,6 +883,272 @@ korumaya çalıştığı saldırıdan daha büyük bir kesinti olurdu.
 ## 4. İLERLEME GÜNLÜĞÜ
 
 > En yeni en üstte. Her oturum sonunda: değişen dosyalar, doğrulama, kalan risk.
+
+### 2026-09-13 (31) — Whitepaper koddan çıktı: **ilk isimli `#[CpResource]`**
+
+**Sorun.** Sitedeki whitepaper sayfasını Studio'da da AACP'de de düzenleyemiyordunuz, çünkü
+orada değildi: içerik `WhitepaperContent` sınıfında **842 satır PHP heredoc**'tu, iki dil iç
+içe. Düzenlemek için IDE ve dağıtım yetkisi gerekiyordu.
+
+**Nereye taşındı — ve bir kere yanlış yere taşındı.** İlk denemede entity'ler, repository'ler,
+config sağlayıcısı ve migration **`cp-core/` içine** kondu. Bu yanlıştı ve kullanıcı haklı
+olarak reddetti: whitepaper *bu projenin içeriği*, çerçeve yeteneği değil. CPalius ile ERP
+yazan bir kurulumun çekirdeğinde iki whitepaper tablosu olmamalı. Hepsi
+**`cp-content/modules/Whitepaper/`** modülüne alındı — kendi `module.json`'ı, kendi
+`ModuleInstaller`'ı (SQL kurulum/kaldırma), kendi rotası. Modül kapatılınca sayfa ve
+ekranlar gider; kaldırılınca tablolar düşer. **Çekirdekten net kazanç:** `ThemeController`
+artık "whitepaper" kelimesini bilmiyor — rota ve `WhitepaperContent` bağımlılığı oradan
+silindi, yani taşıma çekirdeği eskisinden **daha** temiz bıraktı.
+
+**Yapılan.** İçerik iki entity'ye taşındı ve çekirdeğin **zaten var olan** otomatik yönetim
+makinesine bağlandı:
+- `WhitepaperDocument` (locale tekil) — başlık, giriş HTML'i, sürüm.
+- `WhitepaperSection` (locale+slug tekil) — çapa, başlık, sıra ağırlığı, gövde HTML'i.
+- İkisi de `#[CpResource]`; AACP → Araçlar → Kaynaklar altında liste/ekle/düzenle/sil
+  ekranları **tek satır controller yazılmadan** geldi. `#[CpField]` ile sütun/etiket/arama
+  /sıra kontrolü entity'nin kendisinde.
+
+**Bu projenin ilk isimli `#[CpResource]`'u ve makinede iki gerçek hata buldu.** Yol haritası
+bugüne kadar "saf makine, henüz tüketicisi yok" diyordu; ilk gerçek tüketici olmanın bedeli
+ve faydası tam olarak budur.
+
+- **(1) Etiket iki yerde farklı davranıyordu.** `#[CpField(label:)]` form tarafında
+  çevriliyordu (Symfony Form etiketleri çevirir) ama **liste başlığında çevrilmiyordu**.
+  `aacp/resources/index.html.twig`'de tek `|trans` ile düzeltildi; çeviri anahtarı olmayan
+  etiket aynen geçtiği için geriye dönük uyumlu.
+- **(3) Bir modül hiç `#[CpResource]` sahibi olamıyordu.** `ResourceRegistrationPass` modül
+  entity'lerini **`{modül}/src/Entity`** altında arıyordu — hiçbir modülde olmayan bir dizin.
+  Oluşturduğu ad alanı (`Modules\X\Entity`) ve `ModuleEntityMappingResolver`'ın Doctrine için
+  eşlediği dizin zaten `Entity/` idi; yani yol, kendi kurduğu ad alanıyla çelişiyordu. Tarama
+  hep boş dönüyordu ve fark edilmemişti çünkü hiçbir modül denememişti. Bu düzeltilmeden
+  whitepaper modüle taşınamazdı.
+- **(2) Satırı olan hiçbir liste açılamıyordu.** Hücre içeriği `{% macro cell %}` idi ve
+  `_self.cell()` ile çağrılıyordu — ama o işaretleme bir `<twig:block>` gövdesi, TwigComponent
+  onu **bileşenin** bağlamında render ediyor, dolayısıyla `_self` bileşen şablonuna çözülüyor
+  ve Twig `Macro "cell" is not defined` diyor. Yani `/aacp/resources/{name}` sayfası,
+  **içinde veri olan** bir kaynak var olduğu ilk anda patlıyordu. Bugüne kadar görünmemesinin
+  sebebi basit: isimli kaynak yoktu, her liste boştu, satır kodu hiç çalışmıyordu. Makro
+  kaldırıldı, hücre `{% set %}` ile yakalanıyor — şablonlar arası hiçbir arama yok.
+
+**İkincisi bir test boşluğuydu, kod boşluğu kadar.** Hiçbir test genel liste ekranını
+**satırla** render etmemişti. `WhitepaperResourceTest` artık ediyor; bu, bir sonraki
+`#[CpResource]` tüketicisinin aynı duvara toslamasını engelleyen asıl koruma.
+
+**Asıl mesele: DB'ye taşınan içerik nasıl dağıtılır.** Bu olmadan iş yarım kalırdı — belge
+sizin makinenizin veritabanında olur, canlıda boş sayfa çıkardı. `WhitepaperConfigProvider`
+(CMI'ın yedinci sağlayıcısı) bunu çözüyor:
+
+```
+AACP'de düzenle → cp:config export → YAML git'e girer → dağıtımda cp:config import
+```
+
+`cp:update` zaten config import adımını koşuyor, yani ayrı bir tören yok. Taşıma da bu
+yoldan yapıldı: eski sınıftan `cp-content/config/sync/whitepaper.{en,tr}.yaml` üretildi
+(14+14 bölüm, 72 KB) ve `cp:config import --force` ile yüklendi — migration'a 70 KB HTML
+gömmek yerine, çünkü migration'ı kimse bir daha okumaz, YAML ise diff'te incelenir.
+
+**Bilinçli karar — import eksik bölümü siler.** `TaxonomyConfigProvider` upsert-only'dir,
+çünkü bir sözlüğü silmek terimlerini (gerçek içerik) cascade ile götürür. Burada durum tersi:
+bölümler **belgenin kendisi** ve hepsi tek dosyada. Dosyadan çıkarılmış bir bölüm bir unutma
+değil, bir talimattır. Bunun bedeli gerçek ve yazıya geçiyor: **AACP'de eklenip export
+edilmemiş bir bölüm, bir sonraki import'ta silinir.** `diffDocument()` her silmeyi başında
+`-` ile basıyor, `cp:config import` varsayılan olarak kuru çalıştığı için operatör uygulamadan
+önce görüyor.
+
+**Dil geri düşmesi.** `/tr/whitepaper` yalnız İngilizce kurulu bir sistemde boş sayfa yerine
+İngilizce özgün metni veriyor. Bu tek, sürümlü bir teknik belge — yanlış dil, hiç metin
+olmamasından iyidir. Hiçbir dilde içerik yoksa boş yapı dönüyor; uydurma yer tutucu metin
+basılmıyor.
+
+**Şekil korundu:** `forLocale()` aynı diziyi döndürüyor (`title`/`intro_html`/`sections[]`
+→ `id`/`title`/`html`), bu yüzden `ThemeController` ve tema şablonu **hiç değişmedi**.
+Depolama değişti, sözleşme değişmedi.
+
+**Testler:** `WhitepaperResourceTest` (5) — ağırlık sırası (ekleme sırası değil), eksik dilin
+geri düşmesi ve boş kurulumun boş kalması, export→import **tam turu** (yeniden import
+hiçbir şey değiştirmiyor, yoksa her dağıtım satırları yeniden yazar ve her diff gürültü
+olurdu), dosyadan düşen bölümün silinmesi + kuru çalıştırmada duyurulması, iki kaynağın
+kayıt defterine gerçekten girmesi.
+
+### 2026-09-13 (30) — Commit edilmemiş bulunan iş kayda geçti: **import ekranını çökerten iki N+1**
+
+Bu oturumun envanterinde, ağaçta **hiçbir yere yazılmamış ve commit edilmemiş** bir iş yığını
+bulundu. Kod tamdı, testleri vardı, ama yol haritası onu bilmiyordu — yani "nerede kaldık"
+sorusunun cevabı yanlıştı. Kayıt altına alınıyor.
+
+**Ne bozuktu.** İçe aktarma ekranı (`/admin/import`) Law 6.1'in N+1 tripwire'ına takılıyordu:
+ekran kayıtlı her migration için "kaç satır aktarılmış" diye ayrı ayrı soruyordu, **on sekiz
+migration = on sekiz map okuması**, guard onuncuda duruyor. İkinci bir yerde daha aynı guard
+yanlış yere basıyordu: `MigrationRunner` bir tabloya **satır başına bir kez** dokunur, çünkü
+iş budur — on bir satırlık bir import "döngü" sanılıp reddediliyordu.
+
+**Nasıl çözüldü.**
+- `MigrationMapInterface::countsFor(array $ids)` — hepsini **tek sorguda** döndürür,
+  sıfırlar dahil. `MigrationRunner::importedCounts()` ekranın çağırdığı yüz.
+- `QueryCounter::reset()` artık koşucu tarafından **satır başına** çağrılıyor. Guard'ın
+  varsayımı "bir istek bir sayfa çizer, bir tablonun on bir kez okunması döngüdür" —
+  toplu import bu varsayımı dürüstçe bozar. Bütçeyi satır başına uygulamak, guard'ı hâlâ
+  geçerli olduğu yerde (tek satır içindeki gerçek lazy-load döngüsü) çalışır bırakıyor.
+
+**Asıl ders `services.yaml`'a yazılmış ve orada kalması önemli:** `QueryCounterMiddleware`
+`PHP_SAPI === 'cli'` olduğunda sürücüyü sarmalamadan döndürüyor ve **PHPUnit CLI'dır**.
+Yani "aynı tripwire CI'da da önümüzde" diye duran yorum, yazıldığı günden beri yanlıştı.
+Gerçek bir N+1 testten kaçabilir — ve kaçtı: on satırdan büyük bir import tarayıcıda
+ölürken paket yeşil kaldı. `MigrationRunnerQueryBudgetTest` bu davranışı sayacı doğrudan
+sürerek tutuyor, çünkü bir entegrasyon testi tutamıyor. Guard'ı test ortamında açmak
+gerçek bir değişiklik ve gerçek bir yarıçapı var; **geçerken yapılmadı, karar olarak
+kaydedildi.**
+
+**Aynı yığındaki diğer iki iş:** log ayarları (`logging.min_level`, retention'lar) mail
+sekmesinden çıkıp **kendi "Log yönetimi" sekmesine** taşındı; Güvenlik Merkezi'ndeki duruş
+göstergesi SVG halkadan **CSS conic-gradient**'e geçti (`--aacp-score`), `aacp-security`
+ayrı bir entrypoint olmaktan çıkıp `app.js` içinden **koşullu dinamik import** oldu —
+sayfada işareti yoksa dosya hiç indirilmiyor.
+
+### 2026-09-13 (29) — T3.7: panolar bir web sitesinin panosu olmaktan çıktı
+
+**Tetikleyen gözlem (kullanıcı):** AACP panosunda ziyaretçi akışı 30 satır basıyordu ve
+ana sayfanın kullanım alanını yiyordu; dahası pano bütünüyle "bir web sitesinin
+istatistikleri" gibi duruyordu. CPalius ise bir web sitesi motoru değil, ERP/CRM/hosting
+paneli/personel yönetimi gibi yüzlerce farklı uygulama tipinin altına girecek bir çerçeve.
+Pano, çerçevenin ne olduğunu yanlış anlatıyordu.
+
+**Sorulan tasarım sorusu** (§ KAPSAM SINIRI kuralının aynısı): bir pano öğesi yalnızca web
+sitesi işletmek için mi var, yoksa her tür uygulamaya hizmet eden genel bir çekirdek
+yeteneği mi? "En çok ziyaret edilen sayfa" ilkiydi. "Kuyruktaki iş, başarısız cron, uygulanmamış
+migration, entity başına satır sayısı" ikincisi — çünkü bunların hiçbiri uygulamanın ne
+olduğunu bilmiyor.
+
+#### AACP komuta masası — `PlatformPulseService`
+
+Dört bölüm, her biri **bağımsız korumalı** (Law 2.3): bir bölüm okunamazsa `available:false`
+taşır ve o panel "Okunamadı" yazar; masa ayakta kalır. Gerekçe kuru değil: operatör bu
+ekrana **zaten bir şey bozukken** gelir, ilk gerçek arızada ölen teşhis ekranı tam ihtiyaç
+anında işe yaramaz.
+
+1. **İş akışı** — Messenger ve AsyncJob kuyrukları `QueueStatusService` disipliniyle **ayrı
+   ayrı** (tek sahte toplam üretilmiyor), cron görev sayısı + pasifler + son koşum +
+   **üst üste başarısız olanların adı** (bir kez başarısız olmak kilitli satır olabilir,
+   üst üste başarısız olmak arızadır ve operatör hangisi olduğunu bilmek zorundadır),
+   kuyruktaki ve 24 saatte başarısız e-posta.
+2. **Arızalar** — trafikten değil **watchdog tablosundan** (T3.5): 24 saatteki ERROR ve üstü,
+   kanal başına ilk 4, karantinadaki modül. On kullanıcılı bir ERP'nin bozuk fatura işi,
+   hiç ziyaretçisi olmayan bir siteden daha kötü durumdur ve bunu yalnız bu panel söyleyebilir.
+3. **Kurulum bütünlüğü** — `cp:doctor`'ın tamamı panoya bağlandı: engelleyici (critical+high)
+   bulgu sayısı, geçen kontrol sayısı, ilk 5 bulgu ve **denetim saati**. Her CMS'te en az
+   raporlanan arıza sınıfı bu: uygulanmamış bir migration ya da çalışmamış bir update-hook
+   hata sayfası değil **sessizlik** üretir (bkz. `PendingMigrationsCheck`'in yazılma sebebi).
+4. **Veri hacmi** — `#[CpEntityType]` başına satır sayısı. Serviste hiçbir entity adı geçmiyor;
+   bir CRM modülünün `Contact`'ı `Node` ile aynı yoldan görünür. Soft-delete'li kayıt
+   sayılmıyor (metadata'da `deletedAt` varsa dışarıda), sayılamayan tip **atlanıyor** —
+   "henüz kayıt yok" ile "tablo gitmiş" aynı şekilde basılamaz.
+
+**Canlı akış 30 → 10.** Akış bir **nabız**, kayıt defteri değil; defterin kendi ekranı var
+(`/aacp/logs`). İstemcideki 40 satırlık budama da artık aynı bütçeyi sunucudan okuyor
+(`data-aacp-telemetry-rows`), yani iki sabit birbirinden kayamaz.
+
+**Maliyet kararı:** doctor koşumu (migration deposu okuma, çeviri kataloğu gezme, güvenlik
+duruşu) pano yüklemesi başına **bir kez fazla** olurdu; 300 sn `cache.app`'te, entity sayımları
+60 sn. Panel canlıymış gibi davranmıyor — **denetim saatini basıyor.**
+
+#### Studio — `StudioWorkbenchService`
+
+Studio "ne kadar yayımlandı, kaç taslak var, kaç MB medya" ile açılıyordu: bir **yayıncının**
+soruları. Yerine her uygulama tipinin paylaştığı soru kondu: **hangi kayıt bir insanı
+bekliyor ve o insan ben miyim?**
+
+- Kaynak `Node::status` değil **workflow motoru**. Motor zaten herhangi bir özne üzerinde
+  çalışan düz bir durum makinesi; içerik moderasyonu onun yalnızca ilk tüketicisi. Yerleri
+  `teklif / onaylı / faturalı` olan bir kurulum, yerleri `taslak / inceleme / yayında` olan
+  bir kurulumla **aynı** paneli alır ve çekirdek hangisini koşturduğunu öğrenmez.
+- Yayın yerine (publish place) ulaşmış kayıt kuyruğa girmiyor: biten iş kuyruk değildir,
+  listelemek insan bekleyenleri gömerdi.
+- **"Eyleme geçilebilir" sorusu, örnek kayda sorularak değil geçişin capability'sinden
+  cevaplanıyor.** Örnek kayıt `.own`/`.any` ayrımında **iki yönde de** yalan söylerdi:
+  ilk kaydın sahibi olduğunuz için yüz kayıt üzerinde eylem vaat ederdi, ya da sahibi
+  olmadığınız için koca bir kuyruğu gizlerdi.
+- Kuyruk sayımı `QueryScopeApplier` ile kapsamlı (bir moderatör açamadığı kapının arkasında
+  kaç kayıt olduğunu öğrenmemeli); "yarım kalan işin" sayacı ise kapsamsız, çünkü zaten
+  kullanıcının kendi yazdığı kayıtlar.
+- KPI sırası değişti: insan bekleyen iş **başa**, çoktan yayımlanmış toplamlar arkaya.
+
+#### Testler
+
+- `AacpPlatformPulseTest` (5): dört bölümün de okunabildiği; hacmin **registry'den** geldiği
+  (`node` ve `user` serviste adı geçmeden çıkıyor); soft-delete'li kaydın sayılmadığı;
+  dört panelin **gerçekten render edildiği**; 18 telemetri satırı varken tabloda **tam 10**
+  satır olduğu (dokuz satırla kurulmuş bir fixture, limit ne olursa olsun geçerdi).
+- `StudioWorkbenchTest` (5): yerlerin sayımı ve yayın yerinin kuyruk sayılmaması; etiketin
+  `editorial.yaml`'dan gelmesi; aynı iki kaydın `admin`'e eyleme geçilebilir, `editor`'e
+  (node.post.* var, `content.moderate`/`content.publish` yok) **görünür ama eylemsiz**
+  görünmesi; kendi yarım işinin ayrı sayılması; moderasyon kapalıyken kuyruk **uydurulmaması**.
+
+#### İkinci tur — kullanıcı panoyu açtıktan sonra (aynı gün)
+
+**1. Grafikler ölüydü ve suçlu pano değildi.** Konsol iki satır yazıyordu:
+`"'self'" yok sayılıyor: 'strict-dynamic' belirtildi`. Bu bir uyarı gibi görünüyor ama
+tarifin kendisi: `'strict-dynamic'` script-src'deki **diğer bütün kaynak ifadelerini**
+geçersiz kılar ve güveni yalnız nonce'lu script'lere + onların **çalışma anında DOM'a
+eklediklerine** verir. CPalius ön yüzü bir AssetMapper importmap'i; vendor `chart.js`
+dahil her modül **statik import**'la geliyor, statik import DOM eklemesi değil, dolayısıyla
+hiçbir güven miras almıyor. Yani strict mod **panelin kendi JavaScript'ini** engelliyordu.
+Direktif kaldırıldı. Bunun bir gevşetme olmadığı önemli: nonce asıl işi yapıyor — enjekte
+edilmiş nonce'suz inline `<script>` hâlâ reddediliyor; vazgeçilen şey importmap uygulamasının
+zaten kullanmadığı "dinamik script'e güven aktarımı". Yan kazanç: roadmap'te açık duran
+"`security.csp_script_src`'e eklenen host'lar strict modda neden işe yaramıyor" sorusu da
+aynı kaldırmayla kapandı. `SecurityHeaderPolicyTest` artık direktifin **geri gelmemesini**
+de test ediyor — bir sonraki "sertleştirelim" refleksi paneli tekrar kapatmasın diye.
+
+**Ders:** bu bir pano hatası değil, çekirdek güvenlik katmanında **kullanılmadığı için
+görünmeyen** bir hataydı. Strict mod muhtemelen hiç gerçek bir sayfada denenmemişti;
+`TemplateScriptNonceTest` her script etiketinin nonce'unu statik olarak denetliyordu ama
+hiçbir şey "nonce'lu script'in import ettiği modül gerçekten yükleniyor mu" sorusunu
+sormuyordu. Statik denetim, çalışma zamanı sözleşmesinin yerini tutmadı.
+
+**2. Ziyaretçi panelleri kaldırıldı.** "En çok ziyaret edilen sayfalar" ve "en çok ziyaret
+eden IP'ler" ilk turda durmuştu; ikisi de bir web sitesinin sorusu. Silindi — ve onlarla
+birlikte istemcideki tazeleme kancaları ve `renderTopPages`/`renderVisitorIps` yardımcıları
+da, çünkü render edilmeyen bir listeyi üç saniyede bir güncellemeye çalışan kod bir sonraki
+okuyucuyu yanıltır. Güvenlik tarayıcısı açıkken çıkan **tehdit** panelleri duruyor: onlar
+trafik istatistiği değil, çekirdek güvenlik sinyali.
+
+**3. Paneller açılır-kapanır oldu.** Kalıcılık altyapısı **zaten vardı** —
+`/aacp/dashboard/widget-visibility` ve `/admin/dashboard/widget-visibility` uçları,
+CSRF'i, `User::$data` şeması, widget id doğrulaması. Hiçbir şablon onları çağırmıyordu;
+yani ölü koddu. Arayüz şimdi bağlandı:
+- Her panel `data-aacp-widget` / `data-studio-widget` kimliği taşıyor.
+- Düğme **script tarafından enjekte ediliyor**, şablona yazılmıyor. Aksi hâlde her panel
+  aynı altı satırı taşırdı ve sonradan eklenen panel, sessizce kontrolü olmayan tek panel
+  olurdu.
+- Katlanmış durum **sunucudan** basılıyor. Bir script'in paint sonrası geri yüklemesi,
+  operatörün kapattığı paneli her yüklemede bir an için açık gösterirdi.
+- Katlama önce yerel, kayıt sonra: bu kişinin kendi görünüm tercihi; bir kutuyu gizlemek
+  için gidiş-dönüş beklemek ekranı toplamanın en yavaş yolu olurdu. Kayıt başarısız olursa
+  bedel bir sonraki yüklemede eski düzen — kozmetik bir eylem için hata afişi değil.
+- CSS'te katlama "ilk çocuktan sonrasını gizle" biçiminde; katlama düğmesi **açıkça
+  dışarıda tutuluyor**, yoksa katlama tek yönlü olurdu.
+
+**4. Asıl suçlu: donmuş `public/assets`.** İlk iki teşhisim (CSP, sonra derlenmemiş
+Tailwind) gerçek problemlerdi ama kullanıcının gördüğü şeyin sebebi değildi. Sebep şuydu:
+`public/assets/` içinde **4 Eylül'den kalma derlenmiş varlıklar** duruyordu ve AssetMapper,
+o klasör varken canlı dosyaları **hiç sunmaz** — komutun kendi uyarısı bunu söylüyor
+("Symfony will not serve any changed assets until you delete the files in the public/assets
+directory"). Üstelik `asset-map:compile` eski dosyaları **budamaz**, sadece yeni digest
+yazar; orada 27 Ağustos–13 Eylül arası **yedi ayrı `app-*.css`** birikmişti. `cache:clear`
+oraya hiç dokunmaz, çünkü orası cache değil **dağıtım çıktısı**. Klasör silindi (zaten
+`.gitignore`'da, satır 9); geliştirmede AssetMapper artık canlı sunuyor, dağıtımda tek
+komutla geri geliyor.
+
+**Teşhis dersi:** "CSS uygulanmıyor" denince kaynağa üç kez baktım, **sunulana** bir kez
+bakmadım. Derlenmiş çıktıyı kaynakla karşılaştırmak ilk adım olmalıydı, üçüncü değil.
+
+#### Dokunulmayanlar (bilinçli)
+
+Ziyaretçi panelleri **kaldırılmadı** — bir web sitesi kuran operatör için gerçek veriler ve
+telemetri ayarı zaten aç/kapa. Yapılan şey **sıralamaydı**: platform sinyalleri üste, trafik
+alta. Modül katkı mekanizmaları (`cpalius.studio.dashboard_stats_provider`,
+`cpalius.aacp.system_widget_provider`) olduğu gibi duruyor; yeni paneller onların yerine
+değil, çekirdek katmanına eklendi.
 
 ### 2026-09-12 (28) — Faz B3 bitti: **MyBB ve Joomla** — satır 26 **A → A+**
 

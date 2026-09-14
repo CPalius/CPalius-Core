@@ -18,13 +18,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
- * Self-audit of the running configuration.
- *
- * The point is not to restate the settings back to the operator, but to catch the
- * combinations that quietly cancel each other out: a CSP left in report-only, a
- * WAF that only watches, an HSTS header that never ships because the site is
- * still on HTTP, a reverse proxy whose forwarded IP nobody trusts — so every ban
- * and every rate limit is keyed on the proxy instead of the client.
+ * Self-audit of the running configuration. Flags combinations that cancel each other out.
  */
 final class SecurityAuditor
 {
@@ -39,6 +33,7 @@ final class SecurityAuditor
         private readonly Connection $connection,
         private readonly bool $debug,
         private readonly string $environment,
+        private readonly string $projectDir,
     ) {
     }
 
@@ -93,6 +88,39 @@ final class SecurityAuditor
     }
 
     /**
+     * public/ must contain only index.php. Other PHP files are served before Symfony (no WAF/ban/telemetry).
+     */
+    private function auditDocumentRootScripts(): SecurityFinding
+    {
+        $publicDir = $this->projectDir.'/public';
+        $stray = [];
+
+        foreach (glob($publicDir.'/*.php') ?: [] as $file) {
+            if (basename($file) !== 'index.php') {
+                $stray[] = basename($file);
+            }
+        }
+
+        if ($stray === []) {
+            return SecurityFinding::pass(
+                'env.docroot_scripts',
+                'aacp.security.audit.docroot_scripts',
+                'aacp.security.audit.docroot_scripts_clean',
+            );
+        }
+
+        sort($stray);
+
+        return new SecurityFinding(
+            'env.docroot_scripts',
+            SecurityFinding::SEVERITY_CRITICAL,
+            'aacp.security.audit.docroot_scripts',
+            'aacp.security.audit.docroot_scripts_found',
+            ['files' => implode(', ', $stray)],
+        );
+    }
+
+    /**
      * @return list<SecurityFinding>
      */
     private function auditEnvironment(): array
@@ -113,6 +141,8 @@ final class SecurityAuditor
                 'aacp.security.audit.debug_off',
             );
         }
+
+        $findings[] = $this->auditDocumentRootScripts();
 
         $request = $this->requestStack->getMainRequest();
 

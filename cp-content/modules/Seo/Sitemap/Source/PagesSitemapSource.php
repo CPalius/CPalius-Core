@@ -30,7 +30,7 @@ final class PagesSitemapSource implements SeoSitemapSourceInterface
     {
         $routes = [
             'theme_cpalius_website_home' => ['changefreq' => 'daily', 'priority' => '1.0'],
-            'theme_whitepaper' => ['changefreq' => 'monthly', 'priority' => '0.6'],
+            'whitepaper_show' => ['changefreq' => 'monthly', 'priority' => '0.6'],
             'blog_index' => ['changefreq' => 'daily', 'priority' => '0.8'],
             'forum_index' => ['changefreq' => 'hourly', 'priority' => '0.8'],
             'roadmap_index' => ['changefreq' => 'weekly', 'priority' => '0.7'],

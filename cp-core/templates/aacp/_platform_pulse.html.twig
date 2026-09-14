@@ -1,0 +1,181 @@
+{#
+    Platform pulse — the four questions an operator of ANY CPalius application
+    asks, regardless of whether the installation is a site, a CRM, an ERP or a
+    hosting panel. Sits above the traffic feed on purpose: "is work getting
+    done and is anything broken" outranks "who visited" on every install that
+    is not a public website.
+
+    Data comes from App\Core\Admin\PlatformPulseService. Every section carries
+    its own `available` flag; a section that could not be read says so instead
+    of rendering zeros, because a silent zero is indistinguishable from health.
+#}
+{% set sevClass = {
+    'critical': 'aacp-sev-threat',
+    'high': 'aacp-sev-critical',
+    'medium': 'aacp-sev-warning',
+    'low': 'aacp-sev-info',
+    'pass': 'aacp-sev-info',
+} %}
+
+<div class="aacp-pulse">
+
+    {# 1. Is queued and scheduled work getting done? #}
+    <section class="aacp-cmd-panel{{ hidden["platform.work"] is defined ? ' is-collapsed' }}" data-aacp-widget="platform.work">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 class="aacp-cmd-panel-title !mb-0">{{ 'aacp.pulse.work.title'|trans }}</h3>
+            <a href="{{ path('aacp_queue') }}" class="aacp-pulse-link">{{ 'aacp.pulse.open_queue'|trans }} →</a>
+        </div>
+        {% if not pulse.work.available|default(false) %}
+            <p class="aacp-pulse-unavailable">{{ 'aacp.pulse.unavailable'|trans }}</p>
+        {% else %}
+            {% set queue = pulse.work.queue %}
+            {% set cron = pulse.work.cron %}
+            {% set mail = pulse.work.mail %}
+            <dl class="aacp-pulse-metrics">
+                <div>
+                    <dt>{{ 'aacp.pulse.work.messenger'|trans }}</dt>
+                    <dd>
+                        {{ queue.messengerPending }}
+                        {% if queue.messengerFailed > 0 %}
+                            <span class="aacp-pulse-bad">· {{ 'aacp.pulse.failed'|trans }} {{ queue.messengerFailed }}</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.work.platform_jobs'|trans }}</dt>
+                    <dd>
+                        {{ queue.platformPending }}
+                        {% if queue.platformFailed > 0 %}
+                            <span class="aacp-pulse-bad">· {{ 'aacp.pulse.failed'|trans }} {{ queue.platformFailed }}</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.work.cron_jobs'|trans }}</dt>
+                    <dd>
+                        {{ cron.total }}
+                        {% if cron.inactive > 0 %}
+                            <span class="aacp-pulse-muted">· {{ 'aacp.pulse.work.inactive'|trans }} {{ cron.inactive }}</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.work.cron_last_run'|trans }}</dt>
+                    <dd>{{ cron.lastRunAt ? cron.lastRunAt|date('d.m.Y H:i') : 'aacp.dashboard.cron_never'|trans }}</dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.work.mail_queued'|trans }}</dt>
+                    <dd>{{ mail.queued }}</dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.work.mail_failed'|trans }}</dt>
+                    <dd class="{{ mail.failed > 0 ? 'aacp-pulse-bad' : '' }}">{{ mail.failed }}</dd>
+                </div>
+            </dl>
+            {% if cron.failing is not empty %}
+                <p class="aacp-pulse-note aacp-pulse-bad">
+                    {{ 'aacp.pulse.work.cron_failing'|trans }}: {{ cron.failing|join(', ') }}
+                </p>
+            {% endif %}
+        {% endif %}
+    </section>
+
+    {# 2. Is anything failing right now? #}
+    <section class="aacp-cmd-panel{{ hidden["platform.faults"] is defined ? ' is-collapsed' }}" data-aacp-widget="platform.faults">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 class="aacp-cmd-panel-title !mb-0">{{ 'aacp.pulse.faults.title'|trans }}</h3>
+            <a href="{{ path('aacp_logs_index') }}" class="aacp-pulse-link">{{ 'aacp.pulse.open_logs'|trans }} →</a>
+        </div>
+        {% if not pulse.faults.available|default(false) %}
+            <p class="aacp-pulse-unavailable">{{ 'aacp.pulse.unavailable'|trans }}</p>
+        {% else %}
+            <dl class="aacp-pulse-metrics">
+                <div>
+                    <dt>{{ 'aacp.pulse.faults.errors'|trans({ hours: pulse.faults.hours }) }}</dt>
+                    <dd class="{{ pulse.faults.errors > 0 ? 'aacp-pulse-bad' : 'aacp-pulse-ok' }}">{{ pulse.faults.errors }}</dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.faults.critical'|trans }}</dt>
+                    <dd class="{{ pulse.faults.critical > 0 ? 'aacp-pulse-bad' : 'aacp-pulse-ok' }}">{{ pulse.faults.critical }}</dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.faults.quarantined'|trans }}</dt>
+                    {# null means discovery itself failed: "cannot tell" must not read as "none". #}
+                    <dd class="{{ pulse.faults.quarantinedModules ? 'aacp-pulse-bad' : '' }}">
+                        {{ pulse.faults.quarantinedModules is null ? 'aacp.pulse.unknown'|trans : pulse.faults.quarantinedModules }}
+                    </dd>
+                </div>
+            </dl>
+            {% if pulse.faults.topChannels is empty %}
+                <p class="aacp-pulse-note aacp-pulse-ok">{{ 'aacp.pulse.faults.clean'|trans }}</p>
+            {% else %}
+                <ul class="aacp-top-ips mt-2">
+                    {% for row in pulse.faults.topChannels %}
+                        <li>
+                            <span class="min-w-0 truncate font-mono text-slate-100" title="{{ row.channel }}">{{ row.channel }}</span>
+                            <span class="shrink-0 font-mono text-danger-300">{{ row.count }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endif %}
+    </section>
+
+    {# 3. Is this installation in the state its own code expects? #}
+    <section class="aacp-cmd-panel{{ hidden["platform.integrity"] is defined ? ' is-collapsed' }}" data-aacp-widget="platform.integrity">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 class="aacp-cmd-panel-title !mb-0">{{ 'aacp.pulse.integrity.title'|trans }}</h3>
+            <a href="{{ path('aacp_updates_index') }}" class="aacp-pulse-link">{{ 'aacp.pulse.open_updates'|trans }} →</a>
+        </div>
+        {% if not pulse.integrity.available|default(false) %}
+            <p class="aacp-pulse-unavailable">{{ 'aacp.pulse.unavailable'|trans }}</p>
+        {% else %}
+            <dl class="aacp-pulse-metrics">
+                <div>
+                    <dt>{{ 'aacp.pulse.integrity.blocking'|trans }}</dt>
+                    <dd class="{{ pulse.integrity.blocking > 0 ? 'aacp-pulse-bad' : 'aacp-pulse-ok' }}">{{ pulse.integrity.blocking }}</dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.integrity.passing'|trans }}</dt>
+                    <dd>{{ pulse.integrity.summary.pass|default(0) }}</dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.integrity.checked_at'|trans }}</dt>
+                    <dd>{{ pulse.integrity.checkedAt|date('H:i') }}</dd>
+                </div>
+            </dl>
+            {% if pulse.integrity.findings is empty %}
+                <p class="aacp-pulse-note aacp-pulse-ok">{{ 'aacp.pulse.integrity.clean'|trans }}</p>
+            {% else %}
+                <ul class="aacp-pulse-findings">
+                    {% for finding in pulse.integrity.findings %}
+                        <li>
+                            <span class="aacp-sev {{ sevClass[finding.severity]|default('aacp-sev-info') }}">{{ finding.severity }}</span>
+                            <span class="aacp-pulse-finding-title" title="{{ finding.detail }}">{{ finding.title }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endif %}
+    </section>
+
+    {# 4. How much of each entity type does this installation hold? #}
+    <section class="aacp-cmd-panel{{ hidden["platform.volume"] is defined ? ' is-collapsed' }}" data-aacp-widget="platform.volume">
+        <h3 class="aacp-cmd-panel-title">{{ 'aacp.pulse.volume.title'|trans }}</h3>
+        {% if not pulse.volume.available|default(false) %}
+            <p class="aacp-pulse-unavailable">{{ 'aacp.pulse.unavailable'|trans }}</p>
+        {% elseif pulse.volume.types is empty %}
+            <p class="aacp-pulse-note">{{ 'aacp.pulse.volume.empty'|trans }}</p>
+        {% else %}
+            <ul class="aacp-top-ips">
+                {% for type in pulse.volume.types %}
+                    <li>
+                        <span class="min-w-0 truncate font-mono text-slate-100" title="{{ type.id }}">{{ type.label }}</span>
+                        <span class="shrink-0 font-mono text-emerald-300">{{ type.count }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
+
+</div>

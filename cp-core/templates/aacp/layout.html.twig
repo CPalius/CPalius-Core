@@ -6,8 +6,14 @@
         <title>{% block title %}{{ 'aacp.layout.title.default'|trans }}{% endblock %}</title>
         <meta name="robots" content="noindex, nofollow">
 
+        {# Linked, not imported from JS: an `import './styles/app.css'` resolves
+           to a data: URL script, which our CSP refuses — and a refused static
+           import takes the whole module graph down with it (see app.js). #}
+        {% block stylesheets %}
+            <link rel="stylesheet" href="{{ cp_asset('styles/app.css') }}">
+        {% endblock %}
+
         {# One importmap() call only; extra calls break the browser. #}
-        {% block stylesheets %}{% endblock %}
         {% block javascripts %}
             {{ importmap(['app', 'studio-quick-cache-clear']) }}
         {% endblock %}
@@ -31,13 +37,7 @@
 
                 <nav class="sidebar-menu-area !border-white/10">
                     <ul class="sidebar-menu" id="sidebar-menu">
-                        {% set currentGroup = null %}
                         {% for item in cp_admin_menu('aacp') %}
-                            {% if item.group is not null and item.group != currentGroup %}
-                                <li class="sidebar-menu-group-title !text-slate-600">{{ item.group|trans }}</li>
-                                {% set currentGroup = item.group %}
-                            {% endif %}
-
                             {% set currentRoute = app.request.attributes.get('_route') %}
                             {% set itemActive = currentRoute == item.routeName or (item.routePrefix != item.routeName and currentRoute starts with item.routePrefix) %}
                             {% set childActive = false %}
@@ -48,12 +48,14 @@
                             {% endfor %}
 
                             {% set isHub = item.hub|default(false) %}
+                            {% set itemLabel = item.label|trans %}
                             <li{% if item.children is not empty %} class="dropdown{{ (itemActive or childActive) ? ' open' : '' }}"{% endif %}>
                                 <a href="{{ isHub ? '#' : path(item.routeName) }}"
                                    {% if isHub %}data-sidebar-dropdown-trigger{% endif %}
-                                   class="{{ (itemActive or (isHub and childActive)) ? 'active-page' : '!text-slate-400 hover:!bg-white/5 hover:!text-slate-200' }}{{ item.children is not empty ? ' has-submenu-trigger' : '' }}">
+                                   title="{{ itemLabel }}"
+                                   class="{{ (itemActive or childActive) ? 'active-page' : '!text-slate-400 hover:!bg-white/5 hover:!text-slate-200' }}{{ item.children is not empty ? ' has-submenu-trigger' : '' }}">
                                     <twig:ux:icon name="{{ item.icon }}" class="menu-icon shrink-0" />
-                                    <span>{{ item.label|trans }}</span>
+                                    <span>{{ itemLabel }}</span>
                                     {% if item.children is not empty %}
                                         <span data-sidebar-dropdown-trigger class="submenu-caret ms-auto">
                                             <twig:ux:icon name="tabler:chevron-down" class="h-3.5 w-3.5 shrink-0" />
@@ -65,11 +67,13 @@
                                     <ul class="sidebar-submenu{{ (itemActive or childActive) ? ' open' : '' }}">
                                         {% for child in item.children %}
                                             {% set isChildActive = currentRoute == child.routeName or (child.routePrefix != child.routeName and currentRoute starts with child.routePrefix) %}
+                                            {% set childLabel = child.label|trans %}
                                             <li{% if isChildActive %} class="active-page"{% endif %}>
                                                 <a href="{{ path(child.routeName) }}"
+                                                   title="{{ childLabel }}"
                                                    class="{{ isChildActive ? '!bg-primary-500/10 !text-primary-300' : '!text-slate-500 hover:!text-slate-300' }}">
                                                     <twig:ux:icon name="{{ child.icon }}" class="h-3.5 w-3.5 shrink-0" />
-                                                    <span>{{ child.label|trans }}</span>
+                                                    <span>{{ childLabel }}</span>
                                                 </a>
                                             </li>
                                         {% endfor %}
@@ -80,8 +84,19 @@
                     </ul>
                 </nav>
 
-                <div class="border-t border-white/10 px-sp-sm py-sp-xs text-fs-xs text-slate-600 font-mono">
+                <div class="sidebar-meta border-t border-white/10 px-sp-sm py-sp-xs text-fs-xs text-slate-600 font-mono">
                     {{ cp_app_name|default('CPalius CMF') }} · v{{ cp_app_version|default('1.0.0') }}
+                    {# Null status means "no successful check yet" — render nothing
+                       rather than implying the installation is current. #}
+                    {% set cp_release = cp_release_status() %}
+                    {% if cp_release and cp_release.outdated %}
+                        <a href="{{ cp_release.notes_url|default('https://github.com/CPalius/version') }}"
+                           target="_blank" rel="noopener"
+                           class="mt-1 block font-sans {{ cp_release.critical ? 'text-red-400' : 'text-amber-400' }}">
+                            {{ cp_release.critical ? '⚠' : '↑' }}
+                            {{ 'aacp.update.available'|trans({ version: cp_release.version }) }}
+                        </a>
+                    {% endif %}
                 </div>
             </aside>
 

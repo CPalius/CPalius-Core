@@ -56,4 +56,15 @@ final class ArrayMigrationMap implements MigrationMapInterface
     {
         return \count($this->records[$migrationId] ?? []);
     }
+
+    public function countsFor(array $migrationIds): array
+    {
+        $counts = [];
+
+        foreach ($migrationIds as $migrationId) {
+            $counts[$migrationId] = $this->countFor($migrationId);
+        }
+
+        return $counts;
+    }
 }

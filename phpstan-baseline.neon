@@ -325,6 +325,60 @@ parameters:
 			path: cp-content/modules/Seo/Provider/WhitepaperSeoProvider.php
 
 		-
+			message: '#^Service "App\\Core\\Localization\\Twig\\LocaleRuntime" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-content/modules/Seo/Tests/Integration/SeoJsonLdEscapingTest.php
+
+		-
+			message: '#^Service "App\\Core\\Settings\\SettingsRegistry" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-content/modules/Seo/Tests/Integration/SeoJsonLdEscapingTest.php
+
+		-
+			message: '#^Service "Modules\\Seo\\Engine\\SchemaGraphBuilder" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-content/modules/Seo/Tests/Integration/SeoJsonLdEscapingTest.php
+
+		-
+			message: '#^Service "Modules\\Seo\\Engine\\SeoUrlBuilder" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-content/modules/Seo/Tests/Integration/SeoJsonLdEscapingTest.php
+
+		-
+			message: '#^Service "Modules\\Seo\\Engine\\TitleFormatter" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-content/modules/Seo/Tests/Integration/SeoJsonLdEscapingTest.php
+
+		-
+			message: '#^Service "Twig\\Environment" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-content/modules/Seo/Tests/Integration/SeoJsonLdEscapingTest.php
+
+		-
+			message: '#^Service "App\\Core\\Resource\\ResourceRegistry" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-content/modules/Whitepaper/Tests/Integration/WhitepaperResourceTest.php
+
+		-
+			message: '#^Service "Modules\\Whitepaper\\Content\\WhitepaperContent" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-content/modules/Whitepaper/Tests/Integration/WhitepaperResourceTest.php
+
+		-
+			message: '#^Service "Symfony\\Contracts\\Translation\\TranslatorInterface" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-content/modules/Whitepaper/Tests/Integration/WhitepaperResourceTest.php
+
+		-
 			message: '#^Parameter \$variants of attribute class App\\Core\\Annotation\\CpSetting constructor expects array\<string, string\>, array\<int, string\> given\.$#'
 			identifier: argument.type
 			count: 1
@@ -398,12 +452,6 @@ parameters:
 
 		-
 			message: '#^Method App\\Controller\\Admin\\AACPController\:\:buildWidgetCatalog\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: cp-core/src/Controller/Admin/AACPController.php
-
-		-
-			message: '#^Method App\\Controller\\Admin\\AACPController\:\:getHiddenWidgetIdsForCurrentUser\(\) is unused\.$#'
 			identifier: method.unused
 			count: 1
 			path: cp-core/src/Controller/Admin/AACPController.php
@@ -563,12 +611,6 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: cp-core/src/Core/Account/NotificationPreferenceExtension.php
-
-		-
-			message: '#^PHPDoc tag @var for constant App\\Core\\Account\\UserAvatarService\:\:IMAGE_MIME_PREFIX with type list\<string\> is incompatible with value ''image/''\.$#'
-			identifier: classConstant.phpDocType
-			count: 1
-			path: cp-core/src/Core/Account/UserAvatarService.php
 
 		-
 			message: '#^Strict comparison using \=\=\= between string and null will always evaluate to false\.$#'
@@ -1489,6 +1531,24 @@ parameters:
 			path: cp-core/tests/Integration/AacpFieldControllerTest.php
 
 		-
+			message: '#^Service "App\\Core\\Admin\\PlatformPulseService" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/AacpPlatformPulseTest.php
+
+		-
+			message: '#^Service "Symfony\\Contracts\\Translation\\TranslatorInterface" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/AacpPlatformPulseTest.php
+
+		-
+			message: '#^Service "security\.csrf\.token_manager" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/AacpPlatformPulseTest.php
+
+		-
 			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertInstanceOf\(\) with ''App\\\\Controller\\\\Admin\\\\AACPController'' and App\\Controller\\Admin\\AACPController will always evaluate to true\.$#'
 			identifier: staticMethod.alreadyNarrowedType
 			count: 1
@@ -1705,6 +1765,24 @@ parameters:
 			path: cp-core/tests/Integration/NodeRevisionTest.php
 
 		-
+			message: '#^Service "App\\Core\\Cache\\CacheRebuildManager" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/PatchInstallerTest.php
+
+		-
+			message: '#^Service "App\\Repository\\SettingRepository" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/PatchInstallerTest.php
+
+		-
+			message: '#^Service "Doctrine\\ORM\\EntityManagerInterface" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/PatchInstallerTest.php
+
+		-
 			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertInstanceOf\(\) with ''App\\\\Controller\\\\Admin\\\\ResourceAdminController'' and App\\Controller\\Admin\\ResourceAdminController will always evaluate to true\.$#'
 			identifier: staticMethod.alreadyNarrowedType
 			count: 1
@@ -1727,6 +1805,42 @@ parameters:
 			identifier: symfonyContainer.serviceNotFound
 			count: 1
 			path: cp-core/tests/Integration/ResourceAdminTest.php
+
+		-
+			message: '#^Service "App\\Core\\Content\\RichTextSanitizer" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/RichTextSanitizerMediaTest.php
+
+		-
+			message: '#^Service "App\\Core\\Security\\CapabilityRegistry" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/RoleCapabilityScopingTest.php
+
+		-
+			message: '#^Service "App\\Core\\Security\\RoleConfigManager" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/RoleCapabilityScopingTest.php
+
+		-
+			message: '#^Service "Symfony\\Component\\Security\\Core\\Authorization\\AuthorizationCheckerInterface" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/RoleCapabilityScopingTest.php
+
+		-
+			message: '#^Service "App\\Core\\Admin\\StudioWorkbenchService" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/StudioWorkbenchTest.php
+
+		-
+			message: '#^Service "App\\Core\\Settings\\SettingsRegistry" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/StudioWorkbenchTest.php
 
 		-
 			message: '#^Service "App\\Core\\Entity\\EntityTypeRegistry" is private\.$#'
@@ -1790,6 +1904,12 @@ parameters:
 
 		-
 			message: '#^Service "App\\Repository\\SettingRepository" is private\.$#'
+			identifier: symfonyContainer.privateService
+			count: 1
+			path: cp-core/tests/Integration/UpdateRunnerTest.php
+
+		-
+			message: '#^Service "Symfony\\Contracts\\Translation\\TranslatorInterface" is private\.$#'
 			identifier: symfonyContainer.privateService
 			count: 1
 			path: cp-core/tests/Integration/UpdateRunnerTest.php

@@ -51,3 +51,6 @@ framework:
 
                 allowed_link_schemes: ['http', 'https']
                 allow_relative_links: true
+                # img src="/uploads/..." is a relative media URL. Without this,
+                # Symfony drops src and leaves a broken <img width height>.
+                allow_relative_medias: true

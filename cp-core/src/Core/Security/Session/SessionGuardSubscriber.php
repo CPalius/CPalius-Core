@@ -18,13 +18,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Security\Http\Event\LogoutEvent;
 
 /**
- * Session lifetime and integrity rules that PHP's own session GC does not cover:
- * an idle cut-off, an absolute cap regardless of activity, binding to the browser
- * that created the session, and honouring a remote revocation.
- *
- * Every rule is opt-in through settings, defaulting to the least surprising
- * behaviour, because an over-eager session rule is indistinguishable from a bug
- * to the person being logged out.
+ * Idle/absolute timeout, browser binding, and remote revoke. All rules are opt-in via settings.
  */
 final class SessionGuardSubscriber implements EventSubscriberInterface
 {
@@ -56,10 +50,7 @@ final class SessionGuardSubscriber implements EventSubscriberInterface
         ];
     }
 
-    /**
-     * Drops the registry row on an explicit sign-out, so the session list shows
-     * what is actually still usable rather than every session ever created.
-     */
+    /** Drops the registry row on sign-out so the session list matches what is still usable. */
     public function onLogout(LogoutEvent $event): void
     {
         try {

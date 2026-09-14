@@ -44,6 +44,11 @@ final class SystemSettingsService
                 'icon' => 'heroicons:envelope',
                 'description' => 'aacp.system_settings.tab.email_desc',
             ],
+            'logging' => [
+                'label' => 'aacp.system_settings.tab.logging',
+                'icon' => 'heroicons:document-text',
+                'description' => 'aacp.system_settings.tab.logging_desc',
+            ],
             'security' => [
                 'label' => 'aacp.system_settings.tab.security',
                 'icon' => 'heroicons:shield-check',
@@ -295,6 +300,7 @@ final class SystemSettingsService
         return match ($tab) {
             'general' => [['module' => 'core', 'group' => 'genel']],
             'email' => [['module' => 'core', 'group' => 'mail']],
+            'logging' => [['module' => 'core', 'group' => 'logging']],
             // Captcha (security) plus the hardening groups formerly only on
             // /aacp/security. Security Center keeps posture / bans / sessions.
             'security' => [

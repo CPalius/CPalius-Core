@@ -31,6 +31,8 @@ security:
                 check_path: admin_login
                 default_target_path: admin_dashboard
                 enable_csrf: true
+                # Off-origin _target_path / session target is refused by this handler.
+                success_handler: App\Core\Security\Http\SameOriginAuthenticationSuccessHandler
 
             logout:
                 path: admin_logout

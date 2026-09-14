@@ -1,24 +1,5 @@
 {% extends 'aacp/layout.html.twig' %}
 
-{% macro cell(entity, col) %}
-    {%- set v = attribute(entity, col.property) -%}
-    {%- if col.type == 'reference' -%}
-        {%- if v is null -%}—{%- elseif v.name is defined -%}{{ v.name }}{%- elseif v.title is defined -%}{{ v.title }}{%- elseif v.email is defined -%}{{ v.email }}{%- else -%}#{{ v.id ?? '?' }}{%- endif -%}
-    {%- elseif col.type == 'boolean' -%}
-        {{ v ? 'field.value.yes'|trans : 'field.value.no'|trans }}
-    {%- elseif v is null -%}—
-    {%- elseif v.format is defined -%}{{ v.format('d.m.Y H:i') }}
-    {#-
-        Kısaltma bilinçli olarak yerel Twig ile yapılıyor. Önceki sürüm
-        "|u.truncate()" kullanıyordu; "u" filtresi twig/string-extra
-        paketinden gelir ve bu projede kurulu DEĞİL — şablon lint'te hata
-        veriyor, çalışma zamanında da her #[CpResource] liste sayfasını
-        kırıyordu. slice + length aynı işi ek bağımlılık olmadan görür.
-    -#}
-    {%- else -%}{% set s = v|default('')|trim %}{{ s|slice(0, 80) }}{{ s|length > 80 ? '…' : '' }}
-    {%- endif -%}
-{% endmacro %}
-
 {% block header %}{{ definition.name }}{% endblock %}
 
 {% block body %}
@@ -39,15 +20,43 @@
         </div>
 
         <twig:cp:card title="{{ 'aacp.resources.rows'|trans({'count': result.totalItems}) }}" padded="{{ false }}">
-            <twig:cp:table headers="{{ columns|map(c => c.label)|merge(['']) }}" empty="{{ result.isEmpty }}" emptyText="{{ 'aacp.resources.no_rows'|trans }}">
+            {# |trans here so #[CpField(label:)] behaves the same in the list as
+               it already does in the form, where Symfony translates it. A label
+               that is not a translation key passes through unchanged, so the
+               humanised defaults and literal labels are unaffected. #}
+            <twig:cp:table headers="{{ columns|map(c => c.label|trans)|merge(['']) }}" empty="{{ result.isEmpty }}" emptyText="{{ 'aacp.resources.no_rows'|trans }}">
                 <twig:block name="rows">
                     {% for entity in result.items %}
                         <tr>
                             {% for col in columns %}
+                                {#- This used to be a {% macro cell %} called through _self, and
+                                    it could never work here: the markup below is the body of a
+                                    <twig:block>, which TwigComponent renders in the COMPONENT's
+                                    context, so _self resolved to the component template and Twig
+                                    reported "Macro cell is not defined". The bug stayed invisible
+                                    until a #[CpResource] finally had rows — an empty list never
+                                    reaches the call. Captured with {% set %} instead, which does
+                                    no cross-template lookup at all.
+
+                                    Truncation stays local Twig on purpose: an earlier version used
+                                    |u.truncate(), which comes from twig/string-extra and is NOT
+                                    installed here — it broke lint and every resource list at
+                                    runtime. slice + length does the same job with no dependency. -#}
+                                {% set v = attribute(entity, col.property) %}
+                                {% set cellText %}
+                                    {%- if col.type == 'reference' -%}
+                                        {%- if v is null -%}—{%- elseif v.name is defined -%}{{ v.name }}{%- elseif v.title is defined -%}{{ v.title }}{%- elseif v.email is defined -%}{{ v.email }}{%- else -%}#{{ v.id ?? '?' }}{%- endif -%}
+                                    {%- elseif col.type == 'boolean' -%}
+                                        {{- v ? 'field.value.yes'|trans : 'field.value.no'|trans -}}
+                                    {%- elseif v is null -%}—
+                                    {%- elseif v.format is defined -%}{{ v.format('d.m.Y H:i') }}
+                                    {%- else -%}{% set s = v|default('')|trim %}{{ s|slice(0, 80) }}{{ s|length > 80 ? '…' : '' }}
+                                    {%- endif -%}
+                                {% endset %}
                                 <td class="text-fs-xs !text-slate-300">
                                     {% if loop.first and canEdit %}
-                                        <a href="{{ path('aacp_resource_show', {name: definition.name, id: entity.id}) }}" class="!text-slate-200 hover:text-primary-400">{{ _self.cell(entity, col) }}</a>
-                                    {% else %}{{ _self.cell(entity, col) }}{% endif %}
+                                        <a href="{{ path('aacp_resource_show', {name: definition.name, id: entity.id}) }}" class="!text-slate-200 hover:text-primary-400">{{ cellText }}</a>
+                                    {% else %}{{ cellText }}{% endif %}
                                 </td>
                             {% endfor %}
                             <td class="text-right">

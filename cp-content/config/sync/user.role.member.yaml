@@ -1,8 +1,4 @@
-# CPalius role config — NOT in the DB; lives here (cp-content/config/sync/) for VCS and portability.
-# File naming: user.role.<id>.yaml — <id> must match User::$roles (see RoleConfigManager).
-#
-# "member": default role for registered forum/site users (AccountController::DEFAULT_ROLE).
-# Unlike "editor", it excludes node.post.* — registration must not grant content management; only registered-member forum capabilities.
+# Default registered-user role. No node.post.* — registration must not grant content management.
 
 role:
     id: member
@@ -11,7 +7,7 @@ role:
         - forum.view
         - forum.topic.create
         - forum.thread.create
-        - forum.post.edit
+        # Unscoped forum.post.edit is not granted: CPaliusVoter treats it as global.
         - forum.post.edit.own
         - forum.post.delete.own
         - forum.post.report

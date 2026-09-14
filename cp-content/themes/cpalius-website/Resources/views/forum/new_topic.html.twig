@@ -60,7 +60,16 @@
 
         <div class="forum-field forum-composer">
             <label>{{ 'forum.field.message'|trans }}</label>
-            <textarea id="ft-body" name="body" data-forum-editor data-forum-editor-min-height="450" required placeholder="{{ 'forum.field.message_placeholder'|trans }}">{{ formValues.body }}</textarea>
+            {% include '@Theme/forum/partials/editor_textarea.html.twig' with {
+                name: 'body',
+                id: 'ft-body',
+                minHeight: 450,
+                required: true,
+                placeholder: 'forum.field.message_placeholder'|trans,
+                value: formValues.body,
+                section: section,
+                attachmentsEnabled: attachmentsEnabled|default(false),
+            } only %}
             <p class="forum-field-hint">{{ 'forum.new_topic.edit_hint'|trans }}</p>
         </div>
 

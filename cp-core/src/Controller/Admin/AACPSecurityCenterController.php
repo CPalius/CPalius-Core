@@ -43,7 +43,7 @@ final class AACPSecurityCenterController
     }
 
     #[Route('/aacp/security', name: 'aacp_security_center', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.security.menu', icon: 'heroicons:shield-check', panel: 'aacp', priority: 25, capability: 'system.security.manage', group: 'aacp.group.genadset')]
+    #[CpAdminMenu(label: 'aacp.security.menu', icon: 'heroicons:shield-check', panel: 'aacp', priority: 30, capability: 'system.security.manage')]
     #[IsGranted('system.security.manage')]
     public function index(): Response
     {

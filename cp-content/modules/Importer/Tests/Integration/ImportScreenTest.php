@@ -296,6 +296,45 @@ final class ImportScreenTest extends IntegrationTestCase
         self::assertSame(1, $this->rowsOf(Node::class));
     }
 
+    /**
+     * A realistically-sized import through the screen.
+     *
+     * It does NOT hold the N+1 budget fix that prompted it, and saying so
+     * matters: QueryCounterMiddleware::wrap() returns the driver unwrapped when
+     * PHP_SAPI is "cli", so Law 6.1's tripwire is inert under PHPUnit and no
+     * integration test can reproduce that failure. MigrationRunnerQueryBudgetTest
+     * holds it directly instead.
+     *
+     * What this does hold is the other half of why the bug went unseen: every
+     * fixture in this module was under ten rows, so nothing here ever ran an
+     * import at a size where per-row cost matters.
+     */
+    public function testAnImportOfManyRowsThroughTheScreenCompletes(): void
+    {
+        $controller = $this->boot();
+        $rows = 25;
+
+        $csv = "id,title\n";
+        for ($i = 1; $i <= $rows; ++$i) {
+            $csv .= sprintf("%d,Satır %d\n", $i, $i);
+        }
+
+        $path = sys_get_temp_dir().'/cpalius-many-'.bin2hex(random_bytes(6)).'.csv';
+        file_put_contents($path, $csv);
+        $this->scratch[] = $path;
+
+        $response = $controller->run(
+            $this->post('apply', ['file' => $path, 'idColumn' => 'id', 'type' => 'post', 'locale' => 'tr', 'delimiter' => ','], limit: 100),
+            'csv',
+        );
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringNotContainsString('N+1', (string) $response->getContent());
+
+        $this->em()->clear();
+        self::assertSame($rows, $this->rowsOf(Node::class), 'every row lands, not just the first ten');
+    }
+
     public function testAnUploadedExportAppearsOnThePageAndCanBeSelected(): void
     {
         $controller = $this->boot();

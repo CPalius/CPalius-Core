@@ -23,13 +23,13 @@ final class WhitepaperSeoProvider implements SeoPageProviderInterface
 
     public function supports(Request $request): bool
     {
-        return $request->attributes->get('_route') === 'theme_whitepaper';
+        return $request->attributes->get('_route') === 'whitepaper_show';
     }
 
     public function document(Request $request): ?SeoDocument
     {
         $locale = (string) $request->getLocale();
-        $url = $this->urls->absolute('theme_whitepaper', ['_locale' => $locale], $locale);
+        $url = $this->urls->absolute('whitepaper_show', ['_locale' => $locale], $locale);
 
         return new SeoDocument(
             headline: 'Whitepaper',

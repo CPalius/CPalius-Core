@@ -9,6 +9,7 @@ use App\Core\Account\AccountRegistrationService;
 use App\Core\Localization\LocaleProvider;
 use App\Core\Mail\CpMailerService;
 use App\Core\Security\CaptchaService;
+use App\Core\Security\Flood\FloodService;
 use App\Core\Security\Password\PasswordChanger;
 use App\Core\Security\Service\LoginDefenseService;
 use App\Entity\User;
@@ -16,23 +17,27 @@ use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Public themed login/register pages using App\Entity\User (one session site-wide).
- * Form posts to admin_login check_path; login_path points here for themed UX.
- * Post-login redirect is set via session target_path without changing security.yaml defaults.
+ * Public themed login/register. Form posts to admin_login; post-login target is same-origin only.
  */
 final class AccountController extends AbstractController
 {
     private const DEFAULT_ROLE = 'member';
+
+    /** Per-IP registration cap; high enough for a shared NAT, low enough to stop a script. */
+    private const REGISTER_LIMIT = 5;
+    private const REGISTER_WINDOW = 3600;
 
     public function __construct(
         private readonly UserRepository $userRepository,
@@ -47,6 +52,9 @@ final class AccountController extends AbstractController
         private readonly CpMailerService $mailerService,
         private readonly LocaleProvider $localeProvider,
         private readonly AccountLandingResolver $landingResolver,
+        private readonly FloodService $flood,
+        #[Autowire('%kernel.debug%')]
+        private readonly bool $debug,
     ) {
     }
 
@@ -57,13 +65,14 @@ final class AccountController extends AbstractController
             return $this->redirectToRoute('theme_cpalius_website_home');
         }
 
-        // When set, form_login ignores default_target_path. Keep existing target;
-        // otherwise use referer or the account landing route.
+        // Keep an existing target_path; otherwise use same-origin referer or the account landing.
         $targetPathKey = '_security.main.target_path';
         $session = $request->getSession();
         if (!$session->has($targetPathKey)) {
-            $referer = $request->headers->get('referer');
-            $session->set($targetPathKey, $referer ?: $this->generateUrl($this->landingResolver->routeName()));
+            $session->set(
+                $targetPathKey,
+                $this->sameOriginReferer($request) ?? $this->generateUrl($this->landingResolver->routeName()),
+            );
         }
 
         return $this->render('account/login.html.twig', [
@@ -89,6 +98,7 @@ final class AccountController extends AbstractController
 
         if ($request->isMethod('POST')) {
             $this->assertValidCsrf($request);
+            $this->assertRegistrationNotFlooding($request);
 
             $email = trim((string) $request->request->get('email'));
             $username = trim((string) $request->request->get('username'));
@@ -143,9 +153,15 @@ final class AccountController extends AbstractController
 
                 if ($deferLogin) {
                     $emailSent = $this->registrationService->sendVerificationEmail($user);
-                    if (!$emailSent && $this->registrationService->isEmailVerificationRequired()) {
+
+                    // Verification URL on screen is debug-only; in prod a null mailer must not skip proof of inbox.
+                    if ($this->debug
+                        && !$emailSent
+                        && $this->registrationService->isEmailVerificationRequired()
+                        && !$this->mailerService->canSend()
+                    ) {
                         $verifyUrl = $this->registrationService->buildVerificationUrl($user);
-                        if ($verifyUrl !== null && !$this->mailerService->canSend()) {
+                        if ($verifyUrl !== null) {
                             $this->addFlash('info', $this->translator->trans('account.register.verify_link_dev', ['url' => $verifyUrl]));
                         }
                     }
@@ -212,5 +228,37 @@ final class AccountController extends AbstractController
         if (!$this->isCsrfTokenValid('account_register', (string) $request->request->get('_token'))) {
             throw new BadRequestHttpException($this->translator->trans('account.invalid_csrf'));
         }
+    }
+
+    /**
+     * Caps registrations per IP. Failed attempts count too so a script cannot cycle addresses for free.
+     */
+    private function assertRegistrationNotFlooding(Request $request): void
+    {
+        $ip = (string) ($request->getClientIp() ?: '');
+        if ($ip === '') {
+            return;
+        }
+
+        if (!$this->flood->isAllowed(FloodService::EVENT_REGISTER, $ip, self::REGISTER_LIMIT, self::REGISTER_WINDOW)) {
+            throw new TooManyRequestsHttpException(null, $this->translator->trans('account.register.too_many'));
+        }
+
+        $this->flood->register(FloodService::EVENT_REGISTER, $ip, self::REGISTER_WINDOW);
+    }
+
+    /**
+     * Same-origin Referer, or null. Compared to this request's scheme+host, not a configured domain.
+     */
+    private function sameOriginReferer(Request $request): ?string
+    {
+        $referer = $request->headers->get('referer');
+        if (!\is_string($referer) || $referer === '') {
+            return null;
+        }
+
+        $origin = $request->getSchemeAndHttpHost();
+
+        return $referer === $origin || str_starts_with($referer, $origin.'/') ? $referer : null;
     }
 }

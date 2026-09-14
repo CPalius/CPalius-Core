@@ -17,6 +17,7 @@
          data-aacp-dashboard-interval="4000"
          data-aacp-telemetry-url="{{ path('aacp_telemetry_live_feed') }}"
          data-aacp-telemetry-interval="3000"
+         data-aacp-telemetry-rows="{{ telemetryFeedRows|default(10) }}"
          data-aacp-ban-url="{{ path('aacp_telemetry_ban_ip') }}"
          data-aacp-ban-csrf="{{ csrf_token('aacp_telemetry_ban_ip') }}"
          data-telemetry-mode="{{ telemetryMode }}"
@@ -29,6 +30,10 @@
          data-label-perf-off="{{ 'aacp.dashboard.perf.offline'|trans }}"
          data-label-perf-na="{{ 'aacp.dashboard.perf.count_na'|trans }}"
          data-label-perf-pages-empty="{{ 'aacp.dashboard.perf.pages.empty'|trans }}"
+         data-aacp-widget-url="{{ path('aacp_dashboard_widget_visibility') }}"
+         data-aacp-widget-csrf="{{ csrf_token('aacp_widget_visibility') }}"
+         data-label-widget-collapse="{{ 'aacp.dashboard.widget.collapse'|trans }}"
+         data-label-widget-expand="{{ 'aacp.dashboard.widget.expand'|trans }}"
          data-cache-rebuild-csrf="{{ csrf_token('aacp_cache_rebuild') }}"
          data-cache-rebuild-clear-url="{{ path('aacp_cache_rebuild_clear_symfony') }}"
          data-cache-rebuild-opcache-url="{{ path('aacp_cache_rebuild_reset_opcache') }}"
@@ -83,8 +88,10 @@
             </div>
         </div>
 
+        {{ include('aacp/_platform_pulse.html.twig', { pulse: pulse|default({}), hidden: hiddenWidgets|default({}) }, with_context = false) }}
+
         <div class="aacp-cmd-grid">
-            <section class="aacp-cmd-panel">
+            <section class="aacp-cmd-panel{{ hiddenWidgets["telemetry.feed"] is defined ? ' is-collapsed' }}" data-aacp-widget="telemetry.feed">
                 <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <h3 class="aacp-cmd-panel-title !mb-0">{{ telemetrySecurityEnabled ? 'aacp.telemetry.feed.title'|trans : 'aacp.telemetry.visitors.title'|trans }}</h3>
                     <a href="{{ path('aacp_telemetry_settings') }}" class="font-mono text-[0.65rem] uppercase tracking-wide text-emerald-400 hover:text-emerald-300">{{ 'aacp.telemetry.settings_link'|trans }} →</a>
@@ -164,20 +171,20 @@
             </section>
 
             <aside class="aacp-cmd-subsys">
-                <section class="aacp-cmd-panel">
+                <section class="aacp-cmd-panel{{ hiddenWidgets["telemetry.trend"] is defined ? ' is-collapsed' }}" data-aacp-widget="telemetry.trend">
                     <h3 class="aacp-cmd-panel-title">{{ telemetrySecurityEnabled ? 'aacp.telemetry.trend.title'|trans : 'aacp.telemetry.visitors.traffic'|trans }}</h3>
                     <div class="aacp-chart-box">
                         <canvas data-telemetry-chart="trend"></canvas>
                     </div>
                 </section>
                 {% if telemetrySecurityEnabled %}
-                    <section class="aacp-cmd-panel">
+                    <section class="aacp-cmd-panel{{ hiddenWidgets["telemetry.vectors"] is defined ? ' is-collapsed' }}" data-aacp-widget="telemetry.vectors">
                         <h3 class="aacp-cmd-panel-title">{{ 'aacp.telemetry.vectors.title'|trans }}</h3>
                         <div class="aacp-chart-box aacp-chart-box--donut">
                             <canvas data-telemetry-chart="vectors"></canvas>
                         </div>
                     </section>
-                    <section class="aacp-cmd-panel">
+                    <section class="aacp-cmd-panel{{ hiddenWidgets["telemetry.top_ips"] is defined ? ' is-collapsed' }}" data-aacp-widget="telemetry.top_ips">
                         <h3 class="aacp-cmd-panel-title">{{ 'aacp.telemetry.top_ips.title'|trans }}</h3>
                         <ul class="aacp-top-ips" data-telemetry-top-ips>
                             {% if topThreatIps is empty %}
@@ -199,39 +206,13 @@
                             {% endif %}
                         </ul>
                     </section>
-                {% else %}
-                    <section class="aacp-cmd-panel">
-                        <h3 class="aacp-cmd-panel-title">{{ 'aacp.telemetry.visitors.top_pages'|trans }}</h3>
-                        <ul class="aacp-top-ips" data-telemetry-top-pages>
-                            {% if visitorStats.topPages is empty %}
-                                <li class="!text-slate-500">{{ 'aacp.telemetry.visitors.top_pages.empty'|trans }}</li>
-                            {% else %}
-                                {% for page in visitorStats.topPages %}
-                                    <li>
-                                        <span class="min-w-0 truncate font-mono text-slate-100" title="{{ page.path }}">{{ page.path }}</span>
-                                        <span class="shrink-0 font-mono text-slate-500">{{ page.hits }}</span>
-                                    </li>
-                                {% endfor %}
-                            {% endif %}
-                        </ul>
-                    </section>
-                    <section class="aacp-cmd-panel">
-                        <h3 class="aacp-cmd-panel-title">{{ 'aacp.telemetry.visitors.top_ips'|trans }}</h3>
-                        <ul class="aacp-top-ips" data-telemetry-top-ips>
-                            {% if visitorStats.topIps is empty %}
-                                <li class="!text-slate-500">{{ 'aacp.telemetry.visitors.top_ips.empty'|trans }}</li>
-                            {% else %}
-                                {% for ip in visitorStats.topIps %}
-                                    <li data-ip="{{ ip.ip }}">
-                                        <span class="font-mono text-slate-100">{{ ip.ip }}</span>
-                                        <span class="font-mono text-slate-500">{{ ip.hits }}</span>
-                                    </li>
-                                {% endfor %}
-                            {% endif %}
-                        </ul>
-                    </section>
                 {% endif %}
-                <section class="aacp-cmd-panel">
+                {# "Most visited pages" and "most frequent visitors" were removed
+                   on 2026-09-13: they are a website's questions, and this desk
+                   summarises the CPalius core. Traffic that matters as a
+                   security signal is still here — the threat panels above run
+                   when the scanner is on. #}
+                <section class="aacp-cmd-panel{{ hiddenWidgets["system.subsystems"] is defined ? ' is-collapsed' }}" data-aacp-widget="system.subsystems">
                     <h3 class="aacp-cmd-panel-title">{{ 'aacp.dashboard.subsys.title'|trans }}</h3>
                     <div class="space-y-2">
                         <div class="aacp-cmd-subsys-item">
@@ -316,7 +297,7 @@
 
         {% set perf = system.performance|default({}) %}
         {% set origin = perf.cpalius|default({online: false, count: 0, sizeLabel: '—', meta: '', pages: []}) %}
-        <section class="aacp-cmd-panel aacp-perf">
+        <section class="aacp-cmd-panel aacp-perf{{ hiddenWidgets["system.performance"] is defined ? ' is-collapsed' }}" data-aacp-widget="system.performance">
             <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <h3 class="aacp-cmd-panel-title !mb-0">{{ 'aacp.dashboard.perf.title'|trans }}</h3>
                 <a href="{{ path('aacp_performance') }}" class="font-mono text-[0.65rem] uppercase tracking-wide text-emerald-400 hover:text-emerald-300">{{ 'aacp.dashboard.perf.settings'|trans }} →</a>

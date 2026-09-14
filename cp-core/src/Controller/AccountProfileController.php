@@ -9,6 +9,7 @@ use App\Core\Account\AccountProfileExtensionInterface;
 use App\Core\Account\UserAvatarService;
 use App\Core\Media\Exception\InvalidUploadException;
 use App\Core\Media\Exception\UnsupportedAssetTypeException;
+use App\Core\Security\Flood\FloodService;
 use App\Core\Security\Password\PasswordChanger;
 use App\Core\Security\Password\PasswordPolicy;
 use App\Entity\User;
@@ -24,6 +25,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -34,6 +36,10 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 final class AccountProfileController extends AbstractController
 {
+    private const AVATAR_FLOOD_EVENT = 'avatar_upload';
+    private const AVATAR_LIMIT = 10;
+    private const AVATAR_WINDOW = 3600;
+
     /**
      * @param iterable<AccountProfileExtensionInterface> $profileExtensions
      */
@@ -46,6 +52,7 @@ final class AccountProfileController extends AbstractController
         private readonly UserAvatarService $avatarService,
         private readonly TranslatorInterface $translator,
         private readonly AccountLandingResolver $landingResolver,
+        private readonly FloodService $flood,
         #[TaggedIterator('cpalius.account.profile_extension')]
         private readonly iterable $profileExtensions = [],
     ) {
@@ -99,6 +106,15 @@ final class AccountProfileController extends AbstractController
             throw new BadRequestHttpException($this->translator->trans('account.invalid_csrf'));
         }
 
+        // Per-account upload cap: each distinct image is kept; replacing does not delete the old file.
+        $floodKey = (string) $user->getId();
+        if ($floodKey !== '' && !$this->flood->isAllowed(self::AVATAR_FLOOD_EVENT, $floodKey, self::AVATAR_LIMIT, self::AVATAR_WINDOW)) {
+            throw new TooManyRequestsHttpException(null, $this->translator->trans('account.profile.avatar_too_many'));
+        }
+        if ($floodKey !== '') {
+            $this->flood->register(self::AVATAR_FLOOD_EVENT, $floodKey, self::AVATAR_WINDOW);
+        }
+
         $file = $request->files->get('avatar');
         if ($file === null) {
             if ($request->isXmlHttpRequest()) {
@@ -111,7 +127,7 @@ final class AccountProfileController extends AbstractController
 
         try {
             $asset = $this->avatarService->upload($user, $file);
-            $url = '/uploads/'.$asset->getStorageKey();
+            $url = $this->avatarService->urlForAsset($asset);
 
             if ($request->isXmlHttpRequest()) {
                 return new JsonResponse(['url' => $url, 'assetId' => $asset->getId()]);

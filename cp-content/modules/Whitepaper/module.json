@@ -1,0 +1,13 @@
+{
+    "name": "Whitepaper",
+    "version": "1.0.0",
+    "description": "Public technical whitepaper: editable chapters, exported to config so the document travels in git.",
+    "author": "CPalius",
+    "bundle": "Modules\\Whitepaper\\WhitepaperModule",
+    "core_version": "^1.0",
+    "requires": {},
+    "conflicts": {},
+    "provides": [
+        "whitepaper"
+    ]
+}

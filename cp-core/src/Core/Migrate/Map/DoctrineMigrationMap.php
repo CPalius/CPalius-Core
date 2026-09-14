@@ -74,8 +74,42 @@ final class DoctrineMigrationMap implements MigrationMapInterface
 
     public function countFor(string $migrationId): int
     {
-        return \count($this->entityManager->getRepository(MigrationMapEntry::class)
-            ->findBy(['migrationId' => $migrationId]));
+        // COUNT in the database rather than findBy()->count(): the old form
+        // hydrated every mapped row into an entity just to measure how many
+        // there were, so opening a screen after a fifty-thousand-row import
+        // loaded fifty thousand objects to print one number.
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(m.id)')
+            ->from(MigrationMapEntry::class, 'm')
+            ->where('m.migrationId = :id')
+            ->setParameter('id', $migrationId)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countsFor(array $migrationIds): array
+    {
+        $counts = array_fill_keys($migrationIds, 0);
+
+        if ($migrationIds === []) {
+            return $counts;
+        }
+
+        /** @var list<array{migrationId: string, total: int|string}> $rows */
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('m.migrationId AS migrationId, COUNT(m.id) AS total')
+            ->from(MigrationMapEntry::class, 'm')
+            ->where('m.migrationId IN (:ids)')
+            ->setParameter('ids', $migrationIds)
+            ->groupBy('m.migrationId')
+            ->getQuery()
+            ->getArrayResult();
+
+        foreach ($rows as $row) {
+            $counts[$row['migrationId']] = (int) $row['total'];
+        }
+
+        return $counts;
     }
 
     private function entry(string $migrationId, string $sourceId): ?MigrationMapEntry

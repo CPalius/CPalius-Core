@@ -1,0 +1,203 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.storage.header'|trans }}{% endblock %}
+
+{% block javascripts %}
+    {{ importmap(['app', 'aacp-storage']) }}
+{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <p class="text-fs-sm !text-slate-500">{{ 'aacp.storage.intro'|trans }}</p>
+
+        {# ---- Routing: what uses which target ------------------------------ #}
+        <twig:cp:card title="{{ 'aacp.storage.routing.heading'|trans }}">
+            <form method="post" action="{{ path('aacp_storage_assign') }}" class="space-y-sp-md">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+                <div class="grid grid-cols-1 gap-sp-md lg:grid-cols-2">
+                    {# --- Media --- #}
+                    <div class="space-y-sp-sm">
+                        <h3 class="text-fs-sm">{{ 'aacp.storage.routing.media'|trans }}</h3>
+                        <p class="text-fs-xs !text-slate-500">{{ 'aacp.storage.routing.media_hint'|trans }}</p>
+
+                        <div>
+                            <label class="form-label !text-slate-400">{{ 'aacp.storage.field.media_target'|trans }}</label>
+                            <select name="media_target" class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                                {% for option in ['off', 's3', 'r2', 'ftp'] %}
+                                    <option value="{{ option }}" {{ mediaTarget == option ? 'selected' : '' }}>
+                                        {{ ('aacp.storage.target.' ~ option)|trans }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <p class="text-fs-xs">
+                            {% if mediaTarget == 'off' %}
+                                <span class="badge badge-muted">{{ 'aacp.storage.state.local_only'|trans }}</span>
+                            {% elseif mediaActive %}
+                                <span class="badge badge-success">{{ 'aacp.storage.state.active'|trans }}</span>
+                            {% else %}
+                                <span class="badge badge-danger">{{ 'aacp.storage.state.selected_unverified'|trans }}</span>
+                            {% endif %}
+                        </p>
+
+                        <label class="flex items-center gap-2 text-fs-sm text-slate-200">
+                            <input type="checkbox" name="sweep_enabled" value="1" {{ sweepEnabled ? 'checked' : '' }}
+                                   class="rounded border-white/20 bg-dark-1">
+                            {{ 'aacp.storage.field.sweep_enabled'|trans }}
+                        </label>
+                        <p class="text-fs-xs !text-slate-500">{{ 'aacp.storage.field.sweep_enabled_hint'|trans }}</p>
+
+                        <div>
+                            <label class="form-label !text-slate-400">{{ 'aacp.storage.field.sweep_batch'|trans }}</label>
+                            <input type="number" name="sweep_batch" min="1" max="2000" value="{{ sweepBatch }}"
+                                   class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                        </div>
+                    </div>
+
+                    {# --- Backup --- #}
+                    <div class="space-y-sp-sm">
+                        <h3 class="text-fs-sm">{{ 'aacp.storage.routing.backup'|trans }}</h3>
+                        <p class="text-fs-xs !text-slate-500">{{ 'aacp.storage.routing.backup_hint'|trans }}</p>
+
+                        <div>
+                            <label class="form-label !text-slate-400">{{ 'aacp.storage.field.backup_target'|trans }}</label>
+                            <select name="backup_target" class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                                {% for option in ['off', 's3', 'r2', 'ftp'] %}
+                                    <option value="{{ option }}" {{ backupTarget == option ? 'selected' : '' }}>
+                                        {{ option == 'off' ? 'aacp.storage.target.local_only'|trans : ('aacp.storage.target.' ~ option)|trans }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <p class="text-fs-xs">
+                            {% if backupTarget == 'off' %}
+                                <span class="badge badge-muted">{{ 'aacp.storage.state.local_only'|trans }}</span>
+                            {% elseif backupActive %}
+                                <span class="badge badge-success">{{ 'aacp.storage.state.active'|trans }}</span>
+                                <span class="ml-1 font-mono !text-slate-500">{{ backupLabel }}</span>
+                            {% else %}
+                                <span class="badge badge-danger">{{ 'aacp.storage.state.selected_unverified'|trans }}</span>
+                            {% endif %}
+                        </p>
+
+                        <div>
+                            <label class="form-label !text-slate-400">{{ 'aacp.storage.field.backup_prefix'|trans }}</label>
+                            <input type="text" name="backup_prefix" value="{{ backupPrefix }}"
+                                   class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                        </div>
+
+                        <label class="flex items-center gap-2 text-fs-sm text-slate-200">
+                            <input type="checkbox" name="keep_local" value="1" {{ keepLocal ? 'checked' : '' }}
+                                   class="rounded border-white/20 bg-dark-1">
+                            {{ 'aacp.storage.field.keep_local'|trans }}
+                        </label>
+                        <p class="text-fs-xs !text-slate-500">{{ 'aacp.storage.field.keep_local_hint'|trans }}</p>
+
+                        <div>
+                            <label class="form-label !text-slate-400">{{ 'aacp.storage.field.remote_retention'|trans }}</label>
+                            <input type="number" name="remote_retention" min="1" max="200" value="{{ remoteRetention }}"
+                                   class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                        </div>
+                    </div>
+                </div>
+
+                {# --- CDN --- #}
+                <div class="space-y-sp-sm border-t border-white/10 pt-sp-md">
+                    <h3 class="text-fs-sm">{{ 'aacp.storage.routing.cdn'|trans }}</h3>
+                    <p class="text-fs-xs !text-slate-500">{{ 'aacp.storage.routing.cdn_hint'|trans }}</p>
+
+                    <div class="grid grid-cols-1 gap-sp-sm sm:grid-cols-2">
+                        <div class="sm:col-span-2">
+                            <label class="form-label !text-slate-400">{{ 'aacp.storage.field.cdn_base_url'|trans }}</label>
+                            <input type="text" name="cdn_base_url" value="{{ cdnBaseUrl }}"
+                                   placeholder="https://cdn.example.com/uploads"
+                                   class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                            <p class="mt-1 text-fs-xs !text-slate-500">{{ 'aacp.storage.field.cdn_base_url_hint'|trans }}</p>
+                        </div>
+
+                        <label class="flex items-center gap-2 text-fs-sm text-slate-200">
+                            <input type="checkbox" name="cdn_enabled" value="1" {{ cdnEnabled ? 'checked' : '' }}
+                                   class="rounded border-white/20 bg-dark-1">
+                            {{ 'aacp.storage.field.cdn_enabled'|trans }}
+                        </label>
+
+                        <label class="flex items-center gap-2 text-fs-sm text-slate-200">
+                            <input type="checkbox" name="cdn_images_only" value="1" {{ cdnImagesOnly ? 'checked' : '' }}
+                                   class="rounded border-white/20 bg-dark-1">
+                            {{ 'aacp.storage.field.cdn_images_only'|trans }}
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-sp-xs border-t border-white/10 pt-sp-md">
+                    <button type="submit" class="btn btn-primary">{{ 'aacp.storage.action.save'|trans }}</button>
+                </div>
+            </form>
+
+            {# Its own form: a sweep is an action, not a setting, and submitting
+               it must not also write whatever is currently in the fields above. #}
+            <form method="post" action="{{ path('aacp_storage_sweep') }}" class="mt-sp-sm">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-secondary" {{ mediaActive ? '' : 'disabled' }}>
+                    {{ 'aacp.storage.action.sweep'|trans({ count: sweepBatch }) }}
+                </button>
+                <span class="ml-2 text-fs-xs !text-slate-500">{{ 'aacp.storage.action.sweep_hint'|trans }}</span>
+            </form>
+        </twig:cp:card>
+
+        {# ---- Credentials -------------------------------------------------- #}
+        {{ include('aacp/storage/_target_card.html.twig', {
+            type: 's3',
+            title: 'aacp.storage.target.s3'|trans,
+            intro: 'aacp.storage.provider.s3_intro'|trans,
+            provider: providers.s3,
+            csrf_token: csrf_token,
+            fields: [
+                {key: 'bucket', label: 'aacp.storage.field.bucket'|trans},
+                {key: 'region', label: 'aacp.storage.field.region'|trans, hint: 'aacp.storage.field.region_hint'|trans},
+                {key: 'endpoint', label: 'aacp.storage.field.endpoint'|trans, hint: 'aacp.storage.field.endpoint_s3_hint'|trans, wide: true},
+                {key: 'access_key', label: 'aacp.storage.field.access_key'|trans},
+                {key: 'secret_key', label: 'aacp.storage.field.secret_key'|trans, type: 'password'},
+                {key: 'prefix', label: 'aacp.storage.field.prefix'|trans, hint: 'aacp.storage.field.prefix_hint'|trans},
+                {key: 'path_style', label: 'aacp.storage.field.path_style'|trans, type: 'checkbox', hint: 'aacp.storage.field.path_style_hint'|trans},
+            ],
+        }) }}
+
+        {{ include('aacp/storage/_target_card.html.twig', {
+            type: 'r2',
+            title: 'aacp.storage.target.r2'|trans,
+            intro: 'aacp.storage.provider.r2_intro'|trans,
+            provider: providers.r2,
+            csrf_token: csrf_token,
+            fields: [
+                {key: 'bucket', label: 'aacp.storage.field.bucket'|trans},
+                {key: 'endpoint', label: 'aacp.storage.field.endpoint'|trans, hint: 'aacp.storage.field.endpoint_r2_hint'|trans},
+                {key: 'access_key', label: 'aacp.storage.field.access_key'|trans},
+                {key: 'secret_key', label: 'aacp.storage.field.secret_key'|trans, type: 'password'},
+                {key: 'region', label: 'aacp.storage.field.region'|trans, hint: 'aacp.storage.field.region_r2_hint'|trans},
+                {key: 'prefix', label: 'aacp.storage.field.prefix'|trans, hint: 'aacp.storage.field.prefix_hint'|trans},
+            ],
+        }) }}
+
+        {{ include('aacp/storage/_target_card.html.twig', {
+            type: 'ftp',
+            title: 'aacp.storage.target.ftp'|trans,
+            intro: 'aacp.storage.provider.ftp_intro'|trans,
+            provider: providers.ftp,
+            csrf_token: csrf_token,
+            fields: [
+                {key: 'host', label: 'aacp.storage.field.host'|trans},
+                {key: 'port', label: 'aacp.storage.field.port'|trans},
+                {key: 'username', label: 'aacp.storage.field.username'|trans},
+                {key: 'password', label: 'aacp.storage.field.password'|trans, type: 'password'},
+                {key: 'path', label: 'aacp.storage.field.path'|trans, hint: 'aacp.storage.field.path_hint'|trans, wide: true},
+                {key: 'passive', label: 'aacp.storage.field.passive'|trans, type: 'checkbox', hint: 'aacp.storage.field.passive_hint'|trans},
+                {key: 'ssl', label: 'aacp.storage.field.ssl'|trans, type: 'checkbox', hint: 'aacp.storage.field.ssl_hint'|trans},
+                {key: 'timeout', label: 'aacp.storage.field.timeout'|trans},
+            ],
+        }) }}
+    </div>
+{% endblock %}

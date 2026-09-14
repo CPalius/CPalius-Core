@@ -8,7 +8,12 @@
 
 {% block body %}
     {% set displayName = app.user.fullName|default(app.user.userIdentifier|default('')) %}
-    <div class="studio-cmd" data-studio-dashboard>
+    <div class="studio-cmd"
+         data-studio-dashboard
+         data-studio-widget-url="{{ path('admin_dashboard_widget_visibility') }}"
+         data-studio-widget-csrf="{{ csrf_token('studio_widget_visibility') }}"
+         data-label-widget-collapse="{{ 'studio.dashboard.widget.collapse'|trans }}"
+         data-label-widget-expand="{{ 'studio.dashboard.widget.expand'|trans }}">
         <div class="studio-cmd-actionbar">
             <div>
                 <h2 class="studio-cmd-welcome">{{ 'studio.dashboard.welcome'|trans({name: displayName}) }}</h2>
@@ -32,7 +37,22 @@
             {% endif %}
         </div>
 
+        {# Work waiting on a human leads the row; totals that have already
+           shipped follow it. An operator opens this desk to find out what to
+           do next, not to read how much exists. #}
         <div class="studio-cmd-kpis">
+            {% if workbench.available|default(false) and workbench.moderated %}
+                <div class="studio-cmd-kpi studio-cmd-kpi--action">
+                    <span class="studio-cmd-kpi-label">{{ 'studio.dashboard.kpi.waiting_on_you'|trans }}</span>
+                    <span class="studio-cmd-kpi-value">{{ workbench.actionable }}</span>
+                </div>
+            {% endif %}
+            {% if workbench.available|default(false) and workbench.mine.unfinished > 0 %}
+                <div class="studio-cmd-kpi studio-cmd-kpi--action">
+                    <span class="studio-cmd-kpi-label">{{ 'studio.dashboard.kpi.my_open_work'|trans }}</span>
+                    <span class="studio-cmd-kpi-value">{{ workbench.mine.unfinished }}</span>
+                </div>
+            {% endif %}
             <div class="studio-cmd-kpi">
                 <span class="studio-cmd-kpi-label">{{ 'studio.dashboard.kpi.published'|trans }}</span>
                 <span class="studio-cmd-kpi-value">{{ kpis.published }}</span>
@@ -54,7 +74,7 @@
         </div>
 
         <div class="studio-cmd-grid">
-            <section class="studio-cmd-panel">
+            <section class="studio-cmd-panel{{ hiddenWidgets["studio.recent"] is defined ? ' is-collapsed' }}" data-studio-widget="studio.recent">
                 <h3 class="studio-cmd-panel-title">{{ 'studio.dashboard.recent.title'|trans }}</h3>
                 <div class="table-responsive">
                     <table class="table table-compact">
@@ -102,7 +122,30 @@
             </section>
 
             <aside class="studio-cmd-side">
-                <section class="studio-cmd-panel">
+                {# Driven by the workflow engine, not by publication status, so
+                   an install whose places are "quote / approved / invoiced"
+                   renders exactly like one whose places are editorial. #}
+                {% if workbench.available|default(false) and workbench.states is not empty %}
+                    <section class="studio-cmd-panel{{ hiddenWidgets["studio.workbench"] is defined ? ' is-collapsed' }}" data-studio-widget="studio.workbench">
+                        <h3 class="studio-cmd-panel-title">{{ 'studio.dashboard.workbench.title'|trans }}</h3>
+                        <ul class="studio-cmd-workbench">
+                            {% for state in workbench.states %}
+                                <li class="{{ state.actionable ? 'is-actionable' : '' }}">
+                                    <span class="studio-cmd-workbench-label">{{ state.label|trans }}</span>
+                                    <span class="studio-cmd-workbench-count">{{ state.count }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        {% if workbench.actionable == 0 %}
+                            {# Records are parked, but none of their exits are
+                               open to this viewer: say so rather than showing
+                               a queue they cannot move. #}
+                            <p class="studio-cmd-workbench-note">{{ 'studio.dashboard.workbench.not_yours'|trans }}</p>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                <section class="studio-cmd-panel{{ hiddenWidgets["studio.mix"] is defined ? ' is-collapsed' }}" data-studio-widget="studio.mix">
                     <h3 class="studio-cmd-panel-title">{{ 'studio.dashboard.mix.title'|trans }}</h3>
                     <div class="studio-cmd-donut">
                         <canvas data-studio-chart="doughnut-center"
@@ -113,7 +156,7 @@
                     </div>
                 </section>
 
-                <section class="studio-cmd-panel">
+                <section class="studio-cmd-panel{{ hiddenWidgets["studio.shortcuts"] is defined ? ' is-collapsed' }}" data-studio-widget="studio.shortcuts">
                     <h3 class="studio-cmd-panel-title">{{ 'studio.dashboard.shortcuts.title'|trans }}</h3>
                     {% if quickLinks is empty %}
                         <p class="text-fs-sm text-neutral-500">{{ 'studio.dashboard.shortcuts.empty'|trans }}</p>

@@ -56,7 +56,7 @@ final class ResourceAdminController
     }
 
     #[Route('/aacp/resources', name: 'aacp_resources', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.resources', icon: 'heroicons:table-cells', panel: 'aacp', priority: 15, capability: 'system.aacp.access', parent: 'aacp_tools')]
+    #[CpAdminMenu(label: 'aacp.menu.resources', icon: 'heroicons:table-cells', panel: 'aacp', priority: 62, capability: 'system.aacp.access', parent: 'aacp_hub_structure')]
     #[IsGranted('system.aacp.access')]
     public function landing(): Response
     {
@@ -215,11 +215,28 @@ final class ResourceAdminController
             ? $this->audit->findForResource($definition->name, (string) $id, 20)
             : [];
 
+        // The template splits the form into a wide column and a narrow one, the
+        // way the Studio content screens do. It cannot work that out from the
+        // FormView alone, because the widget lives on the field descriptor, so
+        // the split is handed over as two lists of property names.
+        $wide = [];
+        $hasRichText = false;
+        foreach ($this->fields->formFields($definition->entityClass) as $field) {
+            if ($field->widget === 'richtext') {
+                $hasRichText = true;
+            }
+            if (\in_array($field->widget, ['textarea', 'richtext'], true)) {
+                $wide[] = $field->property;
+            }
+        }
+
         return new Response($this->twig->render('aacp/resources/form.html.twig', [
             'definition' => $definition,
             'entity' => $entity,
             'form' => $formView,
             'id' => $id,
+            'wideFields' => $wide,
+            'hasRichText' => $hasRichText,
             'workflow' => $workflow,
             'transitions' => $transitions,
             'marking' => $workflow !== null ? $this->workflows->getMarking($entity, $definition->workflow) : null,

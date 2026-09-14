@@ -4,6 +4,213 @@
 
 {% block body %}
     <div class="space-y-sp-md">
+
+        {# ---- Version & release ------------------------------------------- #}
+        <twig:cp:card>
+            <div class="flex flex-wrap items-start justify-between gap-sp-sm">
+                <div>
+                    <h2 class="text-fs-md">{{ 'aacp.version.heading'|trans }}</h2>
+                    <p class="mt-1 text-fs-sm !text-slate-500">
+                        {{ 'aacp.version.running'|trans({ version: currentVersion }) }}
+                        <span class="badge badge-muted ml-1">{{ channel }}</span>
+                        <span class="ml-1 font-mono text-fs-xs">{{ currentReleasedAt }}</span>
+                    </p>
+                </div>
+
+                <div class="text-right">
+                    {% if release is null %}
+                        <span class="badge badge-muted">{{ 'aacp.version.state.unknown'|trans }}</span>
+                    {% elseif release.outdated %}
+                        <span class="badge {{ release.critical ? 'badge-danger' : 'badge-warning' }}">
+                            {{ 'aacp.version.state.outdated'|trans({ version: release.version }) }}
+                        </span>
+                    {% else %}
+                        <span class="badge badge-success">{{ 'aacp.version.state.current'|trans }}</span>
+                    {% endif %}
+
+                    {% if release is not null and release.checked_at %}
+                        <p class="mt-1 font-mono text-fs-xs !text-slate-500">
+                            {{ 'aacp.version.checked_at'|trans({ when: release.checked_at|date('Y-m-d H:i') }) }}
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if upgradeError is not null %}
+                <div class="toast toast-danger mt-sp-sm">
+                    {{ 'aacp.version.upgrade.failed'|trans }} — {{ upgradeError }}
+                </div>
+            {% endif %}
+
+            {% if upgradeLog is not null %}
+                <div class="toast toast-success mt-sp-sm">{{ 'aacp.version.upgrade.ok'|trans }}</div>
+                <ul class="mt-sp-xs list-disc pl-4 text-fs-xs !text-slate-500">
+                    {% for line in upgradeLog %}<li>{{ line }}</li>{% endfor %}
+                </ul>
+            {% endif %}
+
+            {% if release is not null and release.outdated %}
+                <div class="mt-sp-sm border-t border-white/10 pt-sp-sm">
+                    <h3 class="text-fs-sm">
+                        {{ 'aacp.version.new_release'|trans({ version: release.version }) }}
+                        {% if release.released_at %}<span class="ml-1 font-mono text-fs-xs !text-slate-500">{{ release.released_at }}</span>{% endif %}
+                    </h3>
+
+                    {% if latestNotes %}
+                        <div class="cp-prose mt-sp-xs text-fs-sm">{{ latestNotes|raw }}</div>
+                    {% elseif release.notes_url %}
+                        <p class="mt-sp-xs text-fs-sm">
+                            <a href="{{ release.notes_url }}" target="_blank" rel="noopener">{{ 'aacp.version.notes_link'|trans }}</a>
+                        </p>
+                    {% endif %}
+
+                    <div class="mt-sp-sm flex flex-wrap items-center gap-sp-xs">
+                        {% if blockers is empty %}
+                            <form method="post" action="{{ path('aacp_updates_upgrade') }}"
+                                  onsubmit="return confirm('{{ 'aacp.version.upgrade.confirm'|trans|e('js') }}');">
+                                <input type="hidden" name="_token" value="{{ upgradeToken }}">
+                                <button type="submit" class="btn btn-primary">
+                                    {{ 'aacp.version.upgrade.button'|trans({ version: release.version }) }}
+                                </button>
+                            </form>
+                        {% else %}
+                            {# Why the button is absent, rather than a button that
+                               fails on click. #}
+                            <ul class="list-disc pl-4 text-fs-xs !text-slate-500">
+                                {% for blocker in blockers %}<li>{{ blocker|trans }}</li>{% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if currentNotes %}
+                <details class="mt-sp-sm border-t border-white/10 pt-sp-sm">
+                    <summary class="cursor-pointer text-fs-sm">
+                        {{ 'aacp.version.current_notes'|trans({ version: currentVersion }) }}
+                    </summary>
+                    <div class="cp-prose mt-sp-xs text-fs-sm">{{ currentNotes|raw }}</div>
+                </details>
+            {% endif %}
+        </twig:cp:card>
+
+        {# ---- File patches ------------------------------------------------- #}
+        <twig:cp:card>
+            <div class="flex flex-wrap items-start justify-between gap-sp-sm">
+                <div>
+                    <h2 class="text-fs-md">{{ 'aacp.patch.heading'|trans }}</h2>
+                    <p class="mt-1 text-fs-sm !text-slate-500">{{ 'aacp.patch.intro'|trans }}</p>
+                </div>
+                {% if patchCheckedAt %}
+                    <p class="font-mono text-fs-xs !text-slate-500">
+                        {{ 'aacp.version.checked_at'|trans({ when: patchCheckedAt|date('Y-m-d H:i') }) }}
+                    </p>
+                {% endif %}
+            </div>
+
+            {% if patchError is not null %}
+                <div class="toast toast-danger mt-sp-sm">{{ 'aacp.patch.failed'|trans }} — {{ patchError }}</div>
+            {% endif %}
+
+            {% if patchLog is not null %}
+                <div class="toast toast-success mt-sp-sm">{{ 'aacp.patch.ok'|trans }}</div>
+                <ul class="mt-sp-xs list-disc pl-4 text-fs-xs !text-slate-500">
+                    {% for line in patchLog %}<li>{{ line }}</li>{% endfor %}
+                </ul>
+            {% endif %}
+
+            {% if patchPlanError is not null %}
+                {# A manifest that does not validate is reported, never silently
+                   hidden: "no patch pending" and "the pending patch was refused"
+                   are very different facts. #}
+                <div class="toast toast-warning mt-sp-sm">{{ 'aacp.patch.plan_failed'|trans }} — {{ patchPlanError }}</div>
+            {% elseif patch is not null %}
+                <div class="mt-sp-sm border-t border-white/10 pt-sp-sm">
+                    <h3 class="text-fs-sm">
+                        {{ 'aacp.patch.pending'|trans({ version: patch.version, base: patch.base }) }}
+                        {% if patch.critical %}<span class="badge badge-danger ml-1">{{ 'aacp.patch.critical'|trans }}</span>{% endif %}
+                        {% if patch.releasedAt %}<span class="ml-1 font-mono text-fs-xs !text-slate-500">{{ patch.releasedAt }}</span>{% endif %}
+                    </h3>
+
+                    {% if patch.summary %}
+                        <p class="mt-sp-xs text-fs-sm">{{ patch.summary }}</p>
+                    {% endif %}
+
+                    {# The file list is the point of the screen. An operator is
+                       being asked to let a remote list overwrite code on their
+                       server; they get to read the list first, digests and all. #}
+                    <details class="mt-sp-sm" open>
+                        <summary class="cursor-pointer text-fs-sm">
+                            {{ 'aacp.patch.files'|trans({ count: patch.files|length, bytes: patch.totalBytes }) }}
+                        </summary>
+                        <ul class="mt-sp-xs space-y-1">
+                            {% for file in patch.files %}
+                                <li class="flex flex-wrap items-baseline gap-2 font-mono text-fs-xs">
+                                    <span class="badge {{ file.action == 'delete' ? 'badge-danger' : 'badge-muted' }}">
+                                        {{ ('aacp.patch.action.' ~ file.action)|trans }}
+                                    </span>
+                                    <span class="!text-slate-300">{{ file.path }}</span>
+                                    {% if file.sha256 %}
+                                        <span class="!text-slate-500">{{ file.sha256|slice(0, 12) }}…</span>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+
+                    <div class="mt-sp-sm flex flex-wrap items-center gap-sp-xs">
+                        {% if patchBlockers is empty %}
+                            <form method="post" action="{{ path('aacp_updates_patch') }}"
+                                  onsubmit="return confirm('{{ 'aacp.patch.confirm'|trans|e('js') }}');">
+                                <input type="hidden" name="_token" value="{{ patchToken }}">
+                                <button type="submit" class="btn btn-primary">
+                                    {{ 'aacp.patch.apply'|trans({ version: patch.version }) }}
+                                </button>
+                            </form>
+                        {% else %}
+                            <ul class="list-disc pl-4 text-fs-xs !text-slate-500">
+                                {% for blocker in patchBlockers %}<li>{{ blocker|trans }}</li>{% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <p class="mt-sp-sm text-fs-sm !text-slate-500">
+                    {% for blocker in patchBlockers %}{{ blocker|trans }}{% else %}{{ 'aacp.patch.blocker.none_pending'|trans }}{% endfor %}
+                </p>
+            {% endif %}
+
+            {% if patchQueued is not empty %}
+                {# Patches form a chain. Showing what is behind the next one stops
+                   "1.1.3 exists but the panel only offers 1.1.1" from reading as
+                   a bug. #}
+                <div class="mt-sp-sm border-t border-white/10 pt-sp-sm">
+                    <h4 class="text-fs-xs uppercase tracking-wide !text-slate-500">{{ 'aacp.patch.queued'|trans }}</h4>
+                    <ul class="mt-1 list-disc pl-4 text-fs-xs !text-slate-500">
+                        {% for entry in patchQueued %}
+                            <li>
+                                <span class="font-mono">{{ entry.version }}</span>
+                                {{ 'aacp.patch.queued_after'|trans({ base: entry.base }) }}
+                                {% if entry.summary %}— {{ entry.summary }}{% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            {% if patchApplied is not empty %}
+                <details class="mt-sp-sm border-t border-white/10 pt-sp-sm">
+                    <summary class="cursor-pointer text-fs-sm">{{ 'aacp.patch.history'|trans }}</summary>
+                    <ul class="mt-sp-xs list-disc pl-4 text-fs-xs !text-slate-500">
+                        {% for version, at in patchApplied %}
+                            <li><span class="font-mono">{{ version }}</span> — {{ at|date('Y-m-d H:i') }}</li>
+                        {% endfor %}
+                    </ul>
+                </details>
+            {% endif %}
+        </twig:cp:card>
+
+        {# ---- Pending migrations & update hooks ---------------------------- #}
         <p class="text-fs-sm !text-slate-500">{{ 'aacp.updates.intro'|trans }}</p>
 
         {% if applied is not null %}

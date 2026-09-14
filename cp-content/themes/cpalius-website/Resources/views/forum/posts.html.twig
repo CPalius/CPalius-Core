@@ -266,7 +266,15 @@
         </div>
         <form action="{{ path('forum_reply', {topicId: topic.id}) }}" method="post" id="forum-reply-form" data-forum-reply-form enctype="multipart/form-data" data-forum-draft data-draft-topic="{{ topic.id }}" data-draft-token="{{ csrf_token('forum_draft') }}" data-draft-url="{{ path('forum_draft_save') }}">
             <div class="forum-field forum-field--reply">
-                <textarea name="body" id="forum-reply-body" data-forum-editor required placeholder="{{ 'forum.reply.placeholder'|trans }}">{{ replyDraft ? replyDraft.body : '' }}</textarea>
+                {% include '@Theme/forum/partials/editor_textarea.html.twig' with {
+                    name: 'body',
+                    id: 'forum-reply-body',
+                    required: true,
+                    placeholder: 'forum.reply.placeholder'|trans,
+                    value: replyDraft ? replyDraft.body : '',
+                    section: section,
+                    attachmentsEnabled: attachmentsEnabled|default(false),
+                } only %}
             </div>
             {% if attachmentsEnabled|default(false) %}
                 <div class="forum-field">

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Core\Account;
 
 use App\Core\Media\AssetManager;
+use App\Core\Media\AssetUrlGenerator;
 use App\Core\Media\Exception\UnsupportedAssetTypeException;
+use App\Core\Settings\SettingsRegistry;
 use App\Entity\Asset;
 use App\Entity\User;
 use App\Repository\AssetRepository;
@@ -18,14 +20,28 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
  */
 final class UserAvatarService
 {
-    /** @var list<string> */
     private const IMAGE_MIME_PREFIX = 'image/';
+
+    /** Default ceiling in KiB; the operator can lower it via account.avatar_max_kb. */
+    private const DEFAULT_MAX_KB = 1024;
 
     public function __construct(
         private readonly AssetManager $assetManager,
         private readonly AssetRepository $assetRepository,
         private readonly EntityManagerInterface $entityManager,
+        private readonly SettingsRegistry $settings,
+        private readonly AssetUrlGenerator $urls,
     ) {
+    }
+
+    /**
+     * Public URL for an avatar that was just uploaded, before the caller has a
+     * User to re-resolve from. Same CDN treatment as resolveUrl(), in one place
+     * so the two can never disagree about where avatars are served from.
+     */
+    public function urlForAsset(Asset $asset): string
+    {
+        return $this->urls->forKey($asset->getStorageKey());
     }
 
     public function resolveUrl(?User $user): ?string
@@ -53,13 +69,17 @@ final class UserAvatarService
             return null;
         }
 
-        return '/uploads/'.$key;
+        return $this->urls->forKey($key);
     }
 
+    /**
+     * MIME and size are checked in AssetManager before write; a rejected avatar must never land on disk.
+     */
     public function upload(User $user, UploadedFile $file): Asset
     {
-        $asset = $this->assetManager->upload($file);
+        $asset = $this->assetManager->upload($file, [self::IMAGE_MIME_PREFIX], $this->maxBytes());
 
+        // Dedup may return an existing Asset; resolveUrl() trusts this MIME.
         if (!$this->isImageMime($asset->getMimeType())) {
             throw new UnsupportedAssetTypeException($asset->getMimeType());
         }
@@ -68,6 +88,13 @@ final class UserAvatarService
         $this->entityManager->flush();
 
         return $asset;
+    }
+
+    private function maxBytes(): int
+    {
+        $kb = (int) $this->settings->get('account.avatar_max_kb', self::DEFAULT_MAX_KB);
+
+        return max(1, min(self::DEFAULT_MAX_KB * 8, $kb)) * 1024;
     }
 
     public function remove(User $user): void

@@ -10,12 +10,7 @@ use Doctrine\DBAL\Exception as DBALException;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Tracks which sessions belong to which account so an operator (or the account
- * owner) can see them and revoke one remotely.
- *
- * Session ids are stored hashed: the table is a security feature, and a readable
- * session id in it would be a session-hijacking shortcut for anyone who could
- * read the row.
+ * Tracks sessions per account for remote revoke. Session ids are stored hashed.
  */
 final class SessionRegistry
 {
@@ -88,10 +83,7 @@ final class SessionRegistry
         }
     }
 
-    /**
-     * @param string|null $exceptSessionId keeps the caller's own session alive, so
-     *                                     "sign out everywhere else" does not also sign the user out here
-     */
+    /** @param string|null $exceptSessionId current session to keep when signing out everywhere else */
     public function revokeAllForUser(User $user, ?string $exceptSessionId = null): int
     {
         if ($user->getId() === null) {
@@ -204,9 +196,7 @@ final class SessionRegistry
     }
 
     /**
-     * Binding material: the parts of a request that should not change mid-session.
-     * The IP is deliberately excluded here and checked separately, because mobile
-     * networks change it legitimately all the time.
+     * Request fingerprint for session binding. IP is excluded — mobile networks change it legitimately.
      */
     public function fingerprint(Request $request): string
     {

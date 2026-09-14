@@ -8,14 +8,7 @@ use App\Core\Settings\SettingsRegistry;
 use Psr\Cache\CacheItemPoolInterface;
 
 /**
- * Generic abuse limiter for any repeatable action (login, registration, password
- * reset, comment posting, report endpoints).
- *
- * Uses a sliding window of attempt timestamps rather than a fixed counter window:
- * a fixed window lets an attacker send 2x the limit by straddling the boundary.
- *
- * Identifiers are hashed into the cache key so e-mail addresses never sit in the
- * cache keyspace.
+ * Sliding-window abuse limiter. Identifiers are hashed so e-mail never appears in cache keys.
  */
 final class FloodService
 {
@@ -43,9 +36,7 @@ final class FloodService
     }
 
     /**
-     * @param bool $failOpen Allow the action when the cache is unreachable. Used for
-     *                       login so a Redis outage cannot lock every operator out of their own site;
-     *                       anonymous abuse endpoints leave it false and fail closed instead.
+     * @param bool $failOpen true on login so a cache outage cannot lock operators out; false on anonymous abuse paths
      */
     public function isAllowed(string $event, string $identifier, int $limit, int $window, bool $failOpen = false): bool
     {
@@ -58,10 +49,6 @@ final class FloodService
                 return false;
             }
 
-            // enabled() reads the settings registry, which reads the database. It
-            // sat outside this try, so a database blip on the login path raised out
-            // of the limiter and 500'd the login form — the one failure mode the
-            // $failOpen contract exists to prevent.
             return \count($this->load($event, $identifier, $window)) < $limit;
         } catch (\Throwable) {
             return $failOpen;
@@ -107,11 +94,7 @@ final class FloodService
     }
 
     /**
-     * Drops the attempt window. Deliberately leaves a hard lock in place: lock()
-     * promises that clearing counters cannot silently unlock an account, and this
-     * method used to break that promise by deleting both keys — so any code path
-     * that resets counters (a successful verification elsewhere, an operator
-     * clearing a limit) also cancelled an active lockout. Use unlock() to lift one.
+     * Drops the attempt window but leaves a hard lock in place. Use unlock() to lift a lockout.
      */
     public function clear(string $event, string $identifier): void
     {
