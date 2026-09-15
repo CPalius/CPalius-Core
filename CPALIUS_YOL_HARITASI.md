@@ -27,6 +27,24 @@
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
   **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı), **GC3**, **T3.7** bitti.
   **T3.2 (multisite/org) İPTAL** (öncelik dışı).
+- **Son oturum (11):** 2026-09-16 — **1.1.3: yama kurucusunun kendi hatası.** 1.1.2
+  canlıya uygulanınca site `ArgumentCountError` ile düştü: `ForumReputationService`
+  kurucusu 6'dan 7 argümana çıkmıştı, `cache/prod` içindeki derlenmiş fabrika hâlâ 6
+  geçiyordu. Kök sebep tek bir işte değil **pencerede**: kernel önbellek temizliği
+  (haklı olarak) shutdown'a erteleniyor, dolayısıyla `apply()` döndükten sonra çalışan
+  her şey **yeni dosyaları eski konteynerden** geçiriyor — ve yama ekranı tam orada
+  `UpdateRunner`'ı çalıştırıp sayfayı baştan render ediyordu. Önceki yamaların
+  kurtulma sebebi hiçbirinin bir kurucuyu değiştirmemiş olmasıymış. Başarı yolu artık
+  sadece `RedirectResponse`. İkinci yarısı: başarısız temizlik **tamamen sessizdi**
+  (her çağrı `@` ile bastırılmış, operatöre "temizlendi" gösteriliyordu);
+  `flushDeferredKernelPurge()` artık sonucu doğruluyor ve
+  `cp-core/var/update/cache-purge-failed.json` bırakıp ekranda gösteriyor.
+  Kurtarma aracı: `public/cp-unstick.php` (gitignore'lu, kernel'i boot etmiyor —
+  `cp-cache-fix.php` bu durumda kendisi de patlıyor).
+  **Migration uyarısı zararsız:** `Version20260916100000` `addSql()` yerine
+  `connection->executeStatement()` kullanıyor (MySQL DDL + `isTransactional: false`
+  deseni, `Version20260912170000` ile aynı), Doctrine bu yüzden "no SQL statements"
+  diyor; tablo yine de oluşuyor.
 - **Son oturum (10):** 2026-09-16 — **1.1.2 yaması yayınlandı** (kod + sürüm deposu
   push'landı, `v1.1.2` etiketi atıldı). Bugfix modunda dört iş:
   **(1) Çok dilli e-posta şablonları.** Yeni `cp_mail_templates` tablosu, 9 kayıtlı
@@ -129,7 +147,8 @@
 - **Bekleyen migration:** `Version20260916100000` (`cp_mail_templates`) — 1.1.2 ile geldi;
   yamayı alan kurulumda tabloyu `MailTemplateSchema` zaten kuruyor, migration taze
   kurulum ve `cp:update` yolu için duruyor.
-- **Yayınlanan son sürüm:** **1.1.2** (yama, 2026-09-16). `CpVersion::VERSION` = 1.1.2.
+- **Yayınlanan son sürüm:** **1.1.3** (yama, 2026-09-16). `CpVersion::VERSION` = 1.1.3.
+  Zincir: 1.1.0 → 1.1.1 → 1.1.2 → 1.1.3, her adım için ayrı yama yayında.
 - **Forum modülü 1.1.0** (`topic_url` kolonu).
 - **Aktif modül sayısı: 10** — `Whitepaper` eklendi (2026-09-13). Whitepaper çekirdekten
   çıkarılıp modüle alındı: çekirdek artık "whitepaper" kelimesini bilmiyor.
