@@ -31,6 +31,20 @@ Bu belge bakımcılar içindir; **dağıtım paketine girmez** (bkz. §7).
 **Kural:** yeni bir bağımlılık, yeni bir tablo veya yeni bir kolon varsa tam
 sürüm çıkarın. Yama, "bir dosyada mantık hatası vardı" durumu içindir.
 
+> **İstisna ve bedeli (1.1.2):** şema değişikliği olan bir işi yine de yama
+> olarak göndermek mümkün, ama tabloyu/kolonu **kodun kendisi** oluşturmak
+> zorunda — çünkü yama migration çalıştırmaz. Desen: idempotent bir şema
+> koruyucu (`MailTemplateSchema`, `Modules\Forum\Install\ReputationSchema`);
+> istek başına en fazla bir kez çalışan, hata yutan, ve migration'la yan yana
+> duran (`CREATE TABLE IF NOT EXISTS` / `information_schema` kontrolü) bir sınıf.
+> Migration yine de yazılır: taze kurulumun yolu odur, ve hangisi ikinci
+> çalışırsa hiçbir şey yapmaz.
+>
+> Bedeli var: DDL yetkisi olmayan bir veritabanı kullanıcısında kod sessizce eski
+> davranışa düşer. Kabul edilebilir olması, o "eski davranış"ın çalışır bir şey
+> olmasına bağlı — 1.1.2'de e-postalar sürümle gelen metne düşüyordu. Düşecek bir
+> yer yoksa tam sürüm çıkarın.
+
 ---
 
 ## 0. Ortam kısayolları
@@ -434,32 +448,75 @@ git push origin main --tags
 Etiket **önce** gitmeli: manifest ona işaret eder, ve etiket yokken yayınlanan
 bir manifest herkesi 404'e yollar.
 
-### 9.3 Manifesti üretin
+### 9.3 Manifesti üretin — çalışma ağacından DEĞİL, etiketli blob'lardan
 
 Elle yazmayın — digest'ler işin güvenlik temelidir.
 
+> **ÖNCE BUNU OKUYUN.** `patch-manifest.php` dosyaları `getcwd()` altından okur.
+> Bu makinede `core.autocrlf=true`, yani **çalışma ağacındaki dosyalar CRLF,
+> depodaki blob'lar LF**. Yama ise dosyaları `raw.githubusercontent.com`'dan
+> çeker ve orası blob'u olduğu gibi sunar. Manifesti doğrudan proje kökünde
+> üretirseniz digest'ler **CRLF'li** içeriğin olur, indirilen içerik **LF**'li
+> olur, ve yama sahadaki her kurulumda doğrulamadan düşer — tek bayt bile
+> yazılmaz.
+>
+> 1.1.2'de bu birebir yaşandı: 52 dosyanın **40'ı** uyuşmuyordu. 1.1.1
+> yamasının kurtulmasının tek sebebi, o altı dosyanın tesadüfen LF olmasıydı.
+>
+> `git archive` de kurtarmaz — o da dönüşüm uygular. Tek güvenilir kaynak
+> `git cat-file blob <etiket>:<yol>`.
+
+Doğru yöntem: etiketli blob'ları geçici bir dizine çıkarın, manifesti **orada**
+üretin.
+
 ```bash
 PHP="/c/laragon/bin/php/php-8.4.14-nts-Win32-vs17-x64/php.exe"
+SRC=/c/laragon/www/CPalius-CMF
+OUT=/c/laragon/www/cpalius-version
+TMP=$(mktemp -d)
 
-"$PHP" docs/tools/patch-manifest.php 1.1.1 1.1.0 "Blog yorum sayacı düzeltildi" \
-  cp-core/src/Core/Version/CpVersion.php \
-  cp-content/modules/Blog/Service/BlogCommentService.php \
-  > /c/laragon/www/cpalius-version/patches/1.1.1.json
-```
+cd "$SRC"
+# docs/ yamaya giremez (ProtectedPaths reddeder) — listeden çıkarın.
+git diff --name-only v1.1.1..v1.1.2 | grep -v '^docs/' > "$TMP/files.txt"
 
-Değişenleri git'e saydırabilirsiniz:
+while read -r f; do
+  mkdir -p "$TMP/blobs/$(dirname "$f")"
+  git cat-file blob "v1.1.2:$f" > "$TMP/blobs/$f"
+done < "$TMP/files.txt"
 
-```bash
-git diff --name-only v1.1.0..v1.1.1 \
-  | "$PHP" docs/tools/patch-manifest.php 1.1.1 1.1.0 "..." - \
-  > /c/laragon/www/cpalius-version/patches/1.1.1.json
+cd "$TMP/blobs"
+cat "$TMP/files.txt" | "$PHP" "$SRC/docs/tools/patch-manifest.php" \
+  1.1.2 1.1.1 "Kısa özet" - > "$OUT/patches/1.1.2.json"
 ```
 
 Silinen bir dosya için yolun başına `-` koyun: `-cp-content/modules/Blog/Old.php`
 
 Araç, kurulumun reddedeceği her şeyi peşinen reddeder: vendor, uploads, var,
-`.env`, çalışma ağacında olmayan yol, tekrarlanan yol, ve sabiti manifestle
-uyuşmayan `CpVersion.php`.
+`.env`, listede olup blob dizininde olmayan yol, tekrarlanan yol, ve sabiti
+manifestle uyuşmayan `CpVersion.php`.
+
+### 9.3.1 Yayınlamadan önce indirip doğrulayın — atlamayın
+
+Manifest yayına girdikten sonra, sahadaki kurulumun yapacağı işin aynısını yapın:
+her dosyayı gerçek URL'sinden indirip digest'i karşılaştırın. Yukarıdaki satır
+sonu tuzağını da, unutulmuş `git push --tags`'i de yakalayan tek adım budur.
+
+```bash
+"$PHP" -r '
+$m = json_decode(file_get_contents("https://raw.githubusercontent.com/CPalius/version/main/patches/1.1.2.json"), true);
+$bad = 0;
+foreach ($m["files"] as $f) {
+    if (($f["action"] ?? "write") === "delete") { continue; }
+    $d = @file_get_contents($m["source"].$f["path"]);
+    if ($d === false || hash("sha256", $d) !== $f["sha256"] || strlen($d) !== $f["size"]) {
+        echo "FAIL ", $f["path"], "\n"; $bad++;
+    }
+}
+echo "files=", count($m["files"]), " failures=", $bad, "\n";'
+```
+
+`failures=0` görmeden yamayı duyurmayın.
+
 
 ### 9.4 `patches/index.json` dizinine ekleyin — **en başa**
 
@@ -540,7 +597,10 @@ zaten kendisi geri yükler ve kurulum eski sürümde kalır.
 
 - [ ] `CpVersion::VERSION` artırıldı ve commit'lendi
 - [ ] `git tag v<sürüm>` atıldı ve `--tags` ile push'landı
-- [ ] `patches/<sürüm>.json` **araçla** üretildi (elle yazılmadı)
+- [ ] `patches/<sürüm>.json` **araçla** ve **etiketli blob'lardan** üretildi
+      (proje kökünde değil — bkz. §9.3 satır sonu uyarısı)
+- [ ] §9.3.1 indirip-doğrulama betiği `failures=0` verdi
+- [ ] Şema değişikliği varsa yama içi idempotent koruyucu yazıldı
 - [ ] `patches/index.json` başına eklendi, `base` bir önceki sürüm
 - [ ] Atlanan ara sürüm yok (her adım için bir yama)
 - [ ] `cp:patch --refresh` yamayı ve dosya listesini doğru gösterdi

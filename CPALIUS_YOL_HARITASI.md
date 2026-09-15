@@ -27,6 +27,46 @@
 - **Aktif faz:** TIER 1–2 tamamlandı. **TS**, **T3.1**, **T3.3**, **GC1**, **T3.5**,
   **GC2**, **T5.2a** (`cp:doctor`), **T3.6** (tamamı), **GC3**, **T3.7** bitti.
   **T3.2 (multisite/org) İPTAL** (öncelik dışı).
+- **Son oturum (10):** 2026-09-16 — **1.1.2 yaması yayınlandı** (kod + sürüm deposu
+  push'landı, `v1.1.2` etiketi atıldı). Bugfix modunda dört iş:
+  **(1) Çok dilli e-posta şablonları.** Yeni `cp_mail_templates` tablosu, 9 kayıtlı
+  şablon, AACP → Sistem → E-posta şablonları ekranı (her etkin dil için bir kart,
+  sıfırlama, kendine test gönderme). Zincir: operatörün satırı → varsayılan dil
+  satırı → sürümle gelen katalog. Operatör metni **hiçbir zaman** ICU'dan geçmiyor
+  (tek bir kaçık `{` bütün kayıt e-postalarını hataya çevirirdi); yerine `strtr`.
+  Varsayılanla birebir aynı metin kaydedilince satır siliniyor, böylece dokunulmamış
+  kurulum sonraki sürümlerin metin iyileştirmelerini almaya devam ediyor.
+  **Yan bulgu — dil hiç okunmuyordu:** kayıt sırasında seçilen dil `User.data`'ya
+  yazılıyordu ama hiçbir yer geri okumuyordu. `MailInstantChannel` `locale: null`
+  gönderiyor, digest cron'da kernel varsayılanını kullanıyordu; yani e-postanın dili
+  alıcının değil, **tetikleyen isteğin** diliydi. `UserLocaleResolver` + `LocaleScope`
+  ile üç gönderim yolu da düzeltildi. Kayıt formu da sabit `tr/en` listeliyordu.
+  **(2) Log gürültüsü.** 404/405 artık `notice` (`framework.exceptions`) — bot
+  taramaları panelin hata defterini doldurmuyor. Ayrıca ikincisi: `PostFrontController`
+  kategori için sert 404 fırlatıyordu; `blog_show`'un zaten yaptığı gibi çeviriye
+  yönlendirip yoksa 404 statüsüyle arşiv sayfası veriyor.
+  **(3) Kimlik değişikliği onayı.** E-posta/kullanıcı adı artık yönetici onayından
+  geçiyor (`account.require_identity_change_approval`, varsayılan **açık**). Talep
+  `User.data` içinde bekliyor, hesapta hiçbir şey değişmiyor, onay anında yeniden
+  doğrulanıyor. AACP → Kullanıcılar → Değişiklik talepleri.
+  **(4) İtibar.** Zorunlu konu seçici kalktı — yalnızca alıcının katıldığı konuları
+  listelediği için çoğu zaman boştu ve itibar hiç verilemiyordu. Yerine isteğe bağlı
+  konu URL'si; buradaki thread linki tanınıp `topic_id`'ye bağlanıyor.
+  **Yama içinde şema:** yama migration çalıştıramadığı için `cp_mail_templates` ve
+  `forum_user_reputations.topic_url` idempotent koruyucularla (`MailTemplateSchema`,
+  `ReputationSchema`) kodun kendisi tarafından da kuruluyor; migration'lar taze
+  kurulum yolu için duruyor. Desen `docs/SURUM_YAYINLAMA.md` §9'a yazıldı.
+  **Yayın sürecinde yakalanan tuzak:** manifest digest'leri çalışma ağacından
+  üretilmişti; `core.autocrlf=true` yüzünden 52 dosyanın **40'ı** GitHub'ın ham
+  olarak sunduğu içerikle uyuşmuyordu — yama sahadaki her kurulumda doğrulamadan
+  düşecekti. Manifest `git cat-file blob` çıktısından yeniden üretildi; 52/52 hem
+  git blob'larına hem canlı URL'lere karşı doğrulandı. §9.3 ve §9.3.1 bu adımı
+  zorunlu kılacak şekilde yeniden yazıldı. (1.1.1 yaması tesadüfen kurtulmuş: o altı
+  dosya LF'ymiş — o da yeniden indirilip doğrulandı, 0 hata.)
+  **Açık kalanlar:** `cp-core/tests` çalışma ağacından silinmiş durumda (152 takipli
+  dosya, commit'lenmedi); `.gitignore`'daki `*.sql` kuralı modül migration'larını da
+  yutuyor (mevcut iki Forum migration'ı depoda yok, yenisi `-f` ile eklendi);
+  `latest.json` bilerek 1.1.1'de bırakıldı (bu bir yama, yeni tam paket değil).
 - **Son oturum (9):** 2026-09-13 — **T3.7: panolar uygulama tipinden bağımsızlaştı.**
   AACP komuta masası bir web sitesi panosu olmaktan çıktı: canlı akış 30 → **10** satır,
   ziyaretçi panelleri (popüler sayfalar / en çok ziyaret eden IP'ler) kaldırıldı, üstüne
@@ -86,7 +126,11 @@
      PHPUnit CLI. Karar bekliyor: test ortamında açılsın mı (yarıçapı var, bkz. §4 (30)).
   3. `SECURITY.md` / `LICENSE` iletişim adresi onayı · migration'ların MySQL'e çivili
      olması (skor satırı 40) — ikisi de **karar**, kod değil.
-- **Bekleyen migration:** yok. `Version20260912170000` (`cp_migration_map`) uygulandı.
+- **Bekleyen migration:** `Version20260916100000` (`cp_mail_templates`) — 1.1.2 ile geldi;
+  yamayı alan kurulumda tabloyu `MailTemplateSchema` zaten kuruyor, migration taze
+  kurulum ve `cp:update` yolu için duruyor.
+- **Yayınlanan son sürüm:** **1.1.2** (yama, 2026-09-16). `CpVersion::VERSION` = 1.1.2.
+- **Forum modülü 1.1.0** (`topic_url` kolonu).
 - **Aktif modül sayısı: 10** — `Whitepaper` eklendi (2026-09-13). Whitepaper çekirdekten
   çıkarılıp modüle alındı: çekirdek artık "whitepaper" kelimesini bilmiyor.
 - **Doğrulama durumu (2026-09-12):** PHPStan level 6 temiz (baseline **372**) ·
