@@ -110,6 +110,9 @@ Thumbs.db
 # One-off migration bookkeeping table repair (delete after use — do not deploy)
 /public/cp-fix-migration-table.php
 
+# One-off recovery for a stale compiled container after a patch (delete after use)
+/public/cp-unstick.php
+
 # Logs & temp
 *.log
 *.tmp

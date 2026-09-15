@@ -3319,3 +3319,6 @@ aacp.mail_templates.tpl.notification_digest.description: "Günlük veya haftalı
 forum.rep.topic_url_label: "Bağlantı (isteğe bağlı)"
 forum.rep.topic_url_placeholder: "https://…"
 forum.rep.topic_url_hint: "Bu itibarın konusu olan bağlantıyı yapıştırın ya da boş bırakın. Buradaki bir konunun bağlantısı otomatik olarak tanınır."
+
+# --- 1.1.3: bayat konteyner uyarisi ---
+aacp.patch.cache_stale: "Son yama derlenmiş önbelleği temizleyemedi ({reason}). Site yeni dosyaları eski konteynerle çalıştırıyor — FTP ile cp-core/var/cache/prod içindeki her şeyi silip sayfayı yenileyin."

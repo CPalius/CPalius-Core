@@ -3319,3 +3319,6 @@ aacp.mail_templates.tpl.notification_digest.description: "The envelope around th
 forum.rep.topic_url_label: "Link (optional)"
 forum.rep.topic_url_placeholder: "https://…"
 forum.rep.topic_url_hint: "Paste the link this reputation is about, or leave it empty. A link to a thread here is recognised automatically."
+
+# --- 1.1.3: bayat konteyner uyarisi ---
+aacp.patch.cache_stale: "The last patch could not clear the compiled cache ({reason}). The site is running new files against an old container — delete everything inside cp-core/var/cache/prod over FTP, then reload."

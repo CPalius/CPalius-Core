@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
+use App\Core\Cache\CacheRebuildManager;
 use App\Core\TextFormat\Filter\MarkdownFilter;
 use App\Core\TextFormat\TextFilterContext;
 use App\Core\Update\UpdateRunner;
@@ -62,12 +63,13 @@ final class AACPUpdateController extends AbstractController
         private readonly PatchChecker $patches,
         private readonly PatchInstaller $patchInstaller,
         private readonly RequestStack $requestStack,
+        private readonly CacheRebuildManager $cacheRebuild,
     ) {
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
     #[CpAdminMenu(label: 'aacp.updates.menu', icon: 'heroicons:arrow-path', panel: 'aacp', priority: 25, capability: 'system.update.manage', parent: 'aacp_hub_system')]
-    public function index(): Response
+    public function index(Request $request): Response
     {
         // Opening the screen is the operator asking "where do I stand?", so the
         // answer is refreshed here rather than left until tomorrow's cron. The
@@ -77,6 +79,8 @@ final class AACPUpdateController extends AbstractController
 
         $results = $this->runner->run(dryRun: true);
 
+        $flashed = $request->getSession()->getFlashBag()->get('patch_log');
+
         return $this->render('aacp/updates/index.html.twig', $this->viewData([
             'results' => $results,
             'pending' => $this->pendingCount($results),
@@ -84,7 +88,7 @@ final class AACPUpdateController extends AbstractController
             'applied' => null,
             'upgradeLog' => null,
             'upgradeError' => null,
-            'patchLog' => null,
+            'patchLog' => $flashed !== [] ? $flashed : null,
             'patchError' => null,
         ]));
     }
@@ -104,27 +108,50 @@ final class AACPUpdateController extends AbstractController
             throw new BadRequestHttpException($this->translator->trans('aacp.common.error.invalid_csrf'));
         }
 
-        $log = null;
-        $error = null;
-
         try {
             $log = $this->patchInstaller->apply();
         } catch (\Throwable $e) {
-            $error = $e->getMessage();
+            // The installer restored the previous files before throwing, so the
+            // tree matches the compiled container again and it is safe to render
+            // the full screen with the reason on it.
+            $results = $this->runner->run(dryRun: true);
+
+            return $this->render('aacp/updates/index.html.twig', $this->viewData([
+                'results' => $results,
+                'pending' => $this->pendingCount($results),
+                'hasFailure' => $this->hasFailure($results),
+                'applied' => null,
+                'upgradeLog' => null,
+                'upgradeError' => null,
+                'patchLog' => null,
+                'patchError' => $e->getMessage(),
+            ]));
         }
 
-        $results = $this->runner->run(dryRun: true);
+        /*
+         * Success is a REDIRECT and nothing else, deliberately.
+         *
+         * The moment apply() returns, the files on disk are the new version and
+         * the compiled container still describes the old one — the kernel cache
+         * purge is deferred to shutdown so that this request does not pull the
+         * container out from under itself. Everything executed between here and
+         * that shutdown therefore runs NEW class files through an OLD factory.
+         *
+         * This used to run UpdateRunner and render the whole updates screen in
+         * that window. 1.1.2 changed a service constructor from six arguments to
+         * seven and the screen died with ArgumentCountError, because the cached
+         * factory still passed six — with the patch already applied, so a retry
+         * could not help either.
+         *
+         * A RedirectResponse needs the router and nothing else, both long since
+         * instantiated. The purge then runs at shutdown and the GET that follows
+         * is served by a container rebuilt from the new code.
+         */
+        foreach ($log as $line) {
+            $this->addFlash('patch_log', $line);
+        }
 
-        return $this->render('aacp/updates/index.html.twig', $this->viewData([
-            'results' => $results,
-            'pending' => $this->pendingCount($results),
-            'hasFailure' => $this->hasFailure($results),
-            'applied' => null,
-            'upgradeLog' => null,
-            'upgradeError' => null,
-            'patchLog' => $log,
-            'patchError' => $error,
-        ]));
+        return $this->redirectToRoute('aacp_updates_index');
     }
 
     /**
@@ -250,6 +277,10 @@ final class AACPUpdateController extends AbstractController
             'patchBlockers' => $this->patchInstaller->blockers(),
             'patchQueued' => $this->patches->queued(),
             'patchCheckedAt' => $this->patches->checkedAt(),
+            // Set only when the deferred purge after the last patch failed. The
+            // site is then running new files through an old container, which is
+            // the one state an operator must not have to guess at.
+            'cachePurgeFailure' => $this->cacheRebuild->lastPurgeFailure(),
             'patchApplied' => $this->patchInstaller->appliedLedger(),
         ], $extra);
     }

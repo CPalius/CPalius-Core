@@ -22,6 +22,17 @@ final class CacheRebuildManager
     private const OK = '[OK] ';
     private const ERR = '[ERR] ';
 
+    /**
+     * Marker written when the deferred purge could not do its job.
+     *
+     * A failed purge used to be completely silent: the shutdown hook swallowed
+     * every error, the operator had already been shown "caches cleared", and the
+     * site kept serving a container that no longer matched the code on disk —
+     * with no way to tell that apart from "nothing was wrong". The file is the
+     * signal; the updates screen reads it and says so.
+     */
+    public const PURGE_FAILURE_MARKER = 'cache-purge-failed.json';
+
     private bool $deferKernelPurge = false;
 
     public function __construct(
@@ -98,14 +109,103 @@ final class CacheRebuildManager
             @\fastcgi_finish_request();
         }
 
+        $problem = null;
+
         try {
             $this->purgeKernelCacheDirectory();
-        } catch (\Throwable) {
+
+            // Verifying instead of trusting: every filesystem call in the purge
+            // is silenced with @, so "no exception" says nothing at all about
+            // whether the directory is actually gone.
+            $leftover = $this->compiledContainerFilesIn($this->cacheDir);
+
+            if ($leftover > 0) {
+                $problem = sprintf('%d compiled container files could not be deleted', $leftover);
+            }
+        } catch (\Throwable $e) {
+            $problem = $e->getMessage();
         }
 
         if (\function_exists('opcache_reset')) {
             @opcache_reset();
         }
+
+        $this->recordPurgeOutcome($problem);
+    }
+
+    /**
+     * The reason the last deferred purge failed, or null when it worked.
+     *
+     * Read by the updates screen on the request AFTER a patch — which is the
+     * first moment anyone could be told, because the purge runs at the shutdown
+     * of the request that applied it.
+     */
+    public function lastPurgeFailure(): ?string
+    {
+        $marker = $this->purgeMarkerPath();
+
+        if (!is_file($marker)) {
+            return null;
+        }
+
+        $decoded = json_decode((string) @file_get_contents($marker), true);
+
+        return \is_array($decoded) && \is_string($decoded['reason'] ?? null)
+            ? $decoded['reason']
+            : 'unknown';
+    }
+
+    public function clearPurgeFailure(): void
+    {
+        @unlink($this->purgeMarkerPath());
+    }
+
+    private function recordPurgeOutcome(?string $problem): void
+    {
+        $marker = $this->purgeMarkerPath();
+
+        if ($problem === null) {
+            @unlink($marker);
+
+            return;
+        }
+
+        @mkdir(\dirname($marker), 0775, true);
+        @file_put_contents($marker, json_encode([
+            'reason' => $problem,
+            'cache_dir' => $this->cacheDir,
+            'at' => (new \DateTimeImmutable())->format(DATE_ATOM),
+        ], JSON_THROW_ON_ERROR));
+    }
+
+    private function purgeMarkerPath(): string
+    {
+        return $this->projectDir.'/cp-core/var/update/'.self::PURGE_FAILURE_MARKER;
+    }
+
+    /**
+     * How many compiled service-factory files survive in the cache dir.
+     *
+     * Counting these rather than "is the directory empty": Symfony recreates the
+     * directory and starts writing a fresh container the moment the next request
+     * boots, so emptiness is not the property that matters. A leftover compiled
+     * factory is.
+     */
+    private function compiledContainerFilesIn(string $cacheDir): int
+    {
+        if (!is_dir($cacheDir)) {
+            return 0;
+        }
+
+        $count = 0;
+
+        foreach (glob($cacheDir.'/Container*/*.php') ?: [] as $file) {
+            if (is_file($file)) {
+                ++$count;
+            }
+        }
+
+        return $count;
     }
 
     private function purgeKernelCacheDirectory(): void

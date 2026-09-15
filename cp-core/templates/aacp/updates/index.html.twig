@@ -159,6 +159,12 @@
                 {% endif %}
             </div>
 
+            {% if cachePurgeFailure is defined and cachePurgeFailure %}
+                <div class="toast toast-danger mt-sp-sm">
+                    {{ 'aacp.patch.cache_stale'|trans({ reason: cachePurgeFailure }) }}
+                </div>
+            {% endif %}
+
             {% if patchError is not null %}
                 <div class="toast toast-danger mt-sp-sm">{{ 'aacp.patch.failed'|trans }} — {{ patchError }}</div>
             {% endif %}
