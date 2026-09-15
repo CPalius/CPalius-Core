@@ -25,14 +25,14 @@
         {% if fixedTopicId %}
             <input type="hidden" name="topic_id" value="{{ fixedTopicId }}">
         {% else %}
+            {# A free-text link, not a picker. The picker could only list topics
+               the recipient had posted in, so there was routinely nothing to
+               pick and the form could not be submitted at all. #}
             <div class="forum-field">
-                <label for="forum-rep-topic">{{ 'forum.rep.topic_label'|trans }}</label>
-                <select name="topic_id" id="forum-rep-topic" required>
-                    <option value="">{{ 'forum.rep.topic_placeholder'|trans }}</option>
-                    {% for topic in selectableTopics %}
-                        <option value="{{ topic.id }}">{{ topic.title }}</option>
-                    {% endfor %}
-                </select>
+                <label for="forum-rep-topic-url">{{ 'forum.rep.topic_url_label'|trans }}</label>
+                <input type="url" name="topic_url" id="forum-rep-topic-url" maxlength="500"
+                       inputmode="url" placeholder="{{ 'forum.rep.topic_url_placeholder'|trans }}">
+                <p class="forum-field-hint">{{ 'forum.rep.topic_url_hint'|trans }}</p>
             </div>
         {% endif %}
 

@@ -59,10 +59,15 @@
 
         <div class="forum-field">
             <label for="reg-locale">{{ 'account.register.locale_label'|trans }}</label>
+            {# Active locales, not a hard-coded pair: this choice decides which
+               language every future mail is written in, so a site that added a
+               third language must be able to offer it here. #}
             <select id="reg-locale" name="locale">
-                <option value="tr" {{ formValues.locale == 'tr' ? 'selected' : '' }}>{{ 'account.register.locale_tr'|trans }}</option>
-                <option value="en" {{ formValues.locale == 'en' ? 'selected' : '' }}>{{ 'account.register.locale_en'|trans }}</option>
+                {% for locale in cp_locales() %}
+                    <option value="{{ locale.code }}" {{ formValues.locale == locale.code ? 'selected' : '' }}>{{ locale.nativeName ?: locale.name }}</option>
+                {% endfor %}
             </select>
+            <p class="forum-field-hint">{{ 'account.register.locale_hint'|trans }}</p>
         </div>
 
         <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 var(--sp-sm);">

@@ -71,6 +71,34 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
     }
 
     /**
+     * Accounts waiting for an administrator to rule on an e-mail or username
+     * change.
+     *
+     * Narrowed with LIKE and finished in PHP, the same shape findByRole() uses:
+     * the marker lives inside the `data` JSON column, and JSON_EXTRACT would
+     * pin this query to MySQL while the LIKE costs nothing on a screen an
+     * operator opens by hand. The PHP pass is what makes the answer correct —
+     * LIKE alone would also match the string appearing in some other value.
+     *
+     * @return list<User>
+     */
+    public function findWithPendingIdentityChange(): array
+    {
+        /** @var list<User> $candidates */
+        $candidates = $this->createQueryBuilder('u')
+            ->andWhere('u.data LIKE :marker')
+            ->setParameter('marker', '%'.User::DATA_IDENTITY_CHANGE.'%')
+            ->orderBy('u.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+
+        return array_values(array_filter(
+            $candidates,
+            static fn (User $user): bool => \is_array($user->getDataValue(User::DATA_IDENTITY_CHANGE)),
+        ));
+    }
+
+    /**
      * Lookup by email first, then username (email is always present).
      */
     public function findOneByEmailOrUsername(string $identifier): ?User

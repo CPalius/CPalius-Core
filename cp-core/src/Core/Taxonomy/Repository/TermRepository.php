@@ -8,6 +8,7 @@ use App\Core\Taxonomy\Entity\Term;
 use App\Core\Taxonomy\Entity\Vocabulary;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * @extends ServiceEntityRepository<Term>
@@ -46,6 +47,26 @@ class TermRepository extends ServiceEntityRepository
     public function findOneBySlug(Vocabulary $vocabulary, string $slug, string $locale): ?Term
     {
         return $this->findOneBy(['vocabulary' => $vocabulary, 'slug' => $slug, 'locale' => $locale]);
+    }
+
+    /**
+     * First term with this slug in any language.
+     *
+     * The slug is unique per (vocabulary, locale), not globally, so this can
+     * legitimately match more than one row; ordered by locale so the answer is
+     * at least stable between requests rather than left to the storage engine.
+     */
+    public function findOneBySlugAnyLocale(Vocabulary $vocabulary, string $slug): ?Term
+    {
+        return $this->findOneBy(
+            ['vocabulary' => $vocabulary, 'slug' => $slug],
+            ['locale' => 'ASC'],
+        );
+    }
+
+    public function findOneByTranslationGroup(Uuid $translationGroupId, string $locale): ?Term
+    {
+        return $this->findOneBy(['translationGroupId' => $translationGroupId, 'locale' => $locale]);
     }
 
     /**

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Core\Account;
 
-use App\Core\Mail\CpMailerService;
+use App\Core\Localization\Service\UserLocaleResolver;
+use App\Core\Mail\Template\CoreMailTemplates;
 use App\Core\Security\Password\PasswordPolicy;
 use App\Core\Settings\SettingsRegistry;
-use App\Core\Token\TokenReplacer;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -42,8 +42,8 @@ final class AccountRegistrationService
         private readonly EntityManagerInterface $entityManager,
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly TranslatorInterface $translator,
-        private readonly CpMailerService $mailerService,
-        private readonly TokenReplacer $tokenReplacer,
+        private readonly AccountMailer $accountMailer,
+        private readonly UserLocaleResolver $userLocale,
         private readonly PasswordPolicy $passwordPolicy,
     ) {
     }
@@ -93,7 +93,10 @@ final class AccountRegistrationService
             'username' => '',
             'firstName' => '',
             'lastName' => '',
-            'locale' => 'tr',
+            // The site default, not a hard-coded 'tr': the form offers whatever
+            // locales are active, and pre-selecting a code that is switched off
+            // would make the first option look chosen when it is not.
+            'locale' => $this->userLocale->resolve(null),
         ];
     }
 
@@ -197,6 +200,10 @@ final class AccountRegistrationService
         $user->setStatus(User::STATUS_ACTIVE);
         $user->markRegistrationApproved();
         $this->entityManager->flush();
+
+        $this->sendAccountMail($user, CoreMailTemplates::ACCOUNT_APPROVED, [
+            'login_url' => $this->accountMailer->loginUrl(),
+        ]);
     }
 
     public function buildVerificationUrl(User $user): ?string
@@ -216,31 +223,37 @@ final class AccountRegistrationService
         }
 
         $url = $this->buildVerificationUrl($user);
-        if ($url === null || !$this->mailerService->canSend()) {
+        if ($url === null) {
             return false;
         }
 
-        try {
-            // T2.4: translation catalog strings may additionally contain
-            // [user:display_name]/[site:name]-style tokens; a no-op for today's
-            // catalog values (no brackets in them), real once one is edited to add some.
-            $tokenContext = ['user' => $user];
+        return $this->sendAccountMail($user, CoreMailTemplates::ACCOUNT_VERIFY, ['url' => $url]);
+    }
 
-            $this->mailerService->sendHtml(
-                $user->getEmail(),
-                $this->tokenReplacer->replace($this->translator->trans('account.verify.email_subject'), $tokenContext, true),
-                $this->tokenReplacer->replace(
-                    $this->translator->trans('account.verify.email_body_html', ['url' => $url]),
-                    $tokenContext,
-                    true,
-                ),
-                $this->tokenReplacer->replace($this->translator->trans('account.verify.email_body_text', ['url' => $url]), $tokenContext),
-            );
+    /**
+     * Sent once registration has completed and the member can log in straight
+     * away. Not sent when verification or approval is pending — those states get
+     * their own mail, and a "welcome, you're in" note while the account is still
+     * locked is the kind of contradiction support tickets are made of.
+     */
+    public function sendWelcomeEmail(User $user): bool
+    {
+        return $this->sendAccountMail($user, CoreMailTemplates::ACCOUNT_WELCOME, [
+            'login_url' => $this->accountMailer->loginUrl(),
+        ]);
+    }
 
-            return true;
-        } catch (\Throwable) {
-            return false;
-        }
+    public function sendPendingApprovalEmail(User $user): bool
+    {
+        return $this->sendAccountMail($user, CoreMailTemplates::ACCOUNT_PENDING_APPROVAL);
+    }
+
+    /**
+     * @param array<string, string|int> $parameters
+     */
+    public function sendAccountMail(User $user, string $templateKey, array $parameters = []): bool
+    {
+        return $this->accountMailer->send($user, $templateKey, $parameters);
     }
 
     /**

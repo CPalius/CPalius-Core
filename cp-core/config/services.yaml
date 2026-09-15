@@ -309,6 +309,10 @@ services:
         arguments:
             $providers: !tagged_iterator cp.token_value_provider
 
+    App\Core\Mail\Template\MailTemplateRegistry:
+        arguments:
+            $providers: !tagged_iterator cpalius.mail.template_provider
+
     App\Core\TextFormat\TextFormatProcessor:
         arguments:
             $filters: !tagged_iterator cp.text_filter

@@ -105,6 +105,8 @@ final class ForumProfileController extends AbstractController
             'reputations' => $reputations,
             'canGiveRep' => $canGiveRep,
             'repReasons' => ForumUserReputation::REASONS,
+            // Still handed to the template as a convenience list; the form no
+            // longer requires a choice from it (see ForumReputationService::give).
             'selectableTopics' => $canGiveRep ? $this->reputationService->selectableTopicsForUser($user) : [],
             'reputationEnabled' => $this->reputationService->isEnabled(),
         ]);
@@ -127,6 +129,7 @@ final class ForumProfileController extends AbstractController
         $value = (int) $request->request->get('value', 1);
         $reason = (string) $request->request->get('reason', ForumUserReputation::REASON_HELPFUL);
         $comment = trim((string) $request->request->get('comment', ''));
+        $topicUrl = trim((string) $request->request->get('topic_url', ''));
         $topicId = $request->request->getInt('topic_id');
         $postId = $request->request->getInt('post_id');
 
@@ -146,6 +149,7 @@ final class ForumProfileController extends AbstractController
                 $topic instanceof ForumTopic ? $topic : null,
                 $post instanceof ForumPost ? $post : null,
                 $comment !== '' ? $comment : null,
+                $topicUrl !== '' ? $topicUrl : null,
             );
             $this->addFlash('success', $this->translator->trans('site.forum.reputation.given'));
         } catch (\InvalidArgumentException $e) {

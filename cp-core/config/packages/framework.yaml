@@ -10,6 +10,22 @@ framework:
     trusted_proxies: '%env(default::TRUSTED_PROXIES)%'
     trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-port', 'x-forwarded-proto', 'x-forwarded-prefix']
 
+    # A 404 is not an error, and Symfony's own file handler already excludes it
+    # (see monolog.yaml). The DB handler behind AACP → Logs did not, so every
+    # scanner probing /autodiscover/autodiscover.xml, /wp-login.php or /.env
+    # wrote an ERROR row into cp_log_entries — and an operator reading a log
+    # that is mostly bot traffic stops reading the log.
+    #
+    # NOTICE rather than silence: the rows still exist for anyone who lowers
+    # logging.min_level to notice or below, so "which links are broken" is still
+    # an answerable question. What changes is that a 404 no longer arrives
+    # dressed as a failure of the application.
+    exceptions:
+        Symfony\Component\HttpKernel\Exception\NotFoundHttpException:
+            log_level: notice
+        Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException:
+            log_level: notice
+
     # Host header allowlist lives in security.trusted_hosts (AACP → Security Center)
     # rather than here: framework.trusted_hosts is applied during boot, so a typo or
     # an unresolved env var takes the whole site down with no way back in.

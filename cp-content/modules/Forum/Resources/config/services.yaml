@@ -13,6 +13,15 @@ services:
     Modules\Forum\Repository\:
         resource: '../../Repository/'
 
+    # Install/ holds the module installer (found by the lifecycle manager, not
+    # the container) plus ReputationSchema, which IS injected — so the directory
+    # has to be registered, and the installer excluded because it is constructed
+    # by ModuleLifecycleManager with no arguments.
+    Modules\Forum\Install\:
+        resource: '../../Install/'
+        exclude:
+            - '../../Install/ModuleInstaller.php'
+
     # Migrate/ destinations for the core Migrate API. Forum owns its entities,
     # so Forum owns what it means to write one; an importer supplies the source.
     Modules\Forum\Migrate\:

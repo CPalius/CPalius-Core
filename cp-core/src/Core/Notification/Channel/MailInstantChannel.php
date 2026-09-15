@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Notification\Channel;
 
+use App\Core\Localization\Service\UserLocaleResolver;
 use App\Core\Notification\Message\SendNotificationMailMessage;
 use App\Core\Notification\NotificationChannelInterface;
 use App\Core\Notification\NotificationDeliveryContext;
@@ -13,6 +14,7 @@ final class MailInstantChannel implements NotificationChannelInterface
 {
     public function __construct(
         private readonly MessageBusInterface $messageBus,
+        private readonly UserLocaleResolver $userLocale,
     ) {
     }
 
@@ -43,7 +45,9 @@ final class MailInstantChannel implements NotificationChannelInterface
             userId: (int) $context->recipient->getId(),
             eventKey: $context->type->eventKey,
             to: $email,
-            locale: null,
+            // Resolved here rather than in the handler so the queued message
+            // records the language the recipient had when the event fired.
+            locale: $this->userLocale->resolve($context->recipient),
             payload: $context->payload,
             mailTemplate: $context->type->mailTemplate,
         ));

@@ -75,6 +75,21 @@ use App\Core\Annotation\CpSetting;
     module: 'account',
     group: 'account.registration',
 )]
+/*
+ * Identity is not an ordinary profile field. A member who can silently swap the
+ * address a password reset goes to — or take over a username somebody else is
+ * known by — can change who the account IS, so the default is that an
+ * administrator sees the change before it takes effect. An operator who runs a
+ * low-stakes site can turn it off; nobody has to turn it on to be safe.
+ */
+#[CpSetting(
+    key: 'account.require_identity_change_approval',
+    label: 'settings.account.require_identity_change_approval',
+    type: 'checkbox',
+    default: true,
+    module: 'account',
+    group: 'account.registration',
+)]
 final class AccountRegistrationSettings
 {
 }

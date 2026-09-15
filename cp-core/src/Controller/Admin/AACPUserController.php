@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Core\Account\AccountIdentityChangeService;
 use App\Core\Account\AccountRegistrationService;
 use App\Core\Account\UserAvatarService;
 use App\Core\Annotation\CpAdminMenu;
@@ -59,6 +60,7 @@ final class AACPUserController extends AbstractController
         private readonly Paginator $paginator,
         private readonly TranslatorInterface $translator,
         private readonly AccountRegistrationService $registrationService,
+        private readonly AccountIdentityChangeService $identityChanges,
         private readonly UserAvatarService $avatarService,
         private readonly FieldValuePersister $fieldValuePersister,
         private readonly FieldDefinitionRegistry $fieldDefinitions,
@@ -90,6 +92,67 @@ final class AACPUserController extends AbstractController
 
         return $this->render('aacp/users/pending.html.twig', [
             'users' => $pending,
+        ]);
+    }
+
+    /**
+     * E-mail and username changes members have asked for.
+     *
+     * Approve and reject are one route with an action field rather than two,
+     * because the operator is making one decision and the audit question
+     * ("what happened to request X") should have one answer to look for.
+     */
+    #[Route('/aacp/users/identity-requests', name: 'aacp_users_identity_requests', methods: ['GET', 'POST'])]
+    #[CpAdminMenu(label: 'aacp.users.identity_menu', icon: 'heroicons:identification', panel: 'aacp', priority: 45, capability: 'system.users.manage', parent: 'aacp_users')]
+    #[IsGranted('system.users.manage')]
+    public function identityRequests(Request $request): Response
+    {
+        if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('aacp_user_identity', (string) $request->request->get('_token'))) {
+                throw new BadRequestHttpException($this->translator->trans('aacp.users.invalid_csrf'));
+            }
+
+            $action = (string) $request->request->get('action');
+
+            if (!\in_array($action, ['approve', 'reject'], true)) {
+                throw new BadRequestHttpException($this->translator->trans('aacp.users.identity.unknown_action'));
+            }
+
+            $user = $this->userRepository->find($request->request->getInt('user_id'));
+
+            if ($user instanceof User) {
+                if ($action === 'approve') {
+                    $errors = $this->identityChanges->approve($user);
+
+                    if ($errors === []) {
+                        $this->addFlash('success', $this->translator->trans('aacp.users.identity.approved', ['email' => $user->getEmail()]));
+                    } else {
+                        foreach ($errors as $error) {
+                            $this->addFlash('error', $error);
+                        }
+                    }
+                } else {
+                    $this->identityChanges->reject($user, (string) $request->request->get('reason', ''));
+                    $this->addFlash('success', $this->translator->trans('aacp.users.identity.rejected', ['email' => $user->getEmail()]));
+                }
+            }
+
+            return $this->redirectToRoute('aacp_users_identity_requests');
+        }
+
+        $pending = [];
+
+        foreach ($this->identityChanges->pendingRequests() as $user) {
+            $request_ = $this->identityChanges->pendingFor($user);
+
+            if ($request_ !== null) {
+                $pending[] = ['user' => $user, 'request' => $request_];
+            }
+        }
+
+        return $this->render('aacp/users/identity_requests.html.twig', [
+            'pending' => $pending,
+            'approvalRequired' => $this->identityChanges->isApprovalRequired(),
         ]);
     }
 

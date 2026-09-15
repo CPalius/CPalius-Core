@@ -60,6 +60,18 @@ class ForumUserReputation
     #[ORM\JoinColumn(name: 'post_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
     private ?ForumPost $post = null;
 
+    /**
+     * Free-text link to whatever the rep is about.
+     *
+     * Kept alongside $topic rather than instead of it: when the URL points at a
+     * topic on this forum the relation is filled too, so the ledger keeps
+     * working when that topic is renamed or moved. The string is what survives
+     * when it is not — a link to another site, or to a page the giver could
+     * reach and this code cannot resolve.
+     */
+    #[ORM\Column(name: 'topic_url', type: 'string', length: 500, nullable: true)]
+    private ?string $topicUrl = null;
+
     #[ORM\Column(type: 'smallint')]
     private int $value;
 
@@ -80,6 +92,7 @@ class ForumUserReputation
         ?ForumTopic $topic = null,
         ?ForumPost $post = null,
         ?string $comment = null,
+        ?string $topicUrl = null,
     ) {
         $this->fromUser = $fromUser;
         $this->toUser = $toUser;
@@ -88,6 +101,7 @@ class ForumUserReputation
         $this->topic = $topic;
         $this->post = $post;
         $this->comment = $comment !== null && $comment !== '' ? mb_substr($comment, 0, 500) : null;
+        $this->topicUrl = $topicUrl !== null && trim($topicUrl) !== '' ? mb_substr(trim($topicUrl), 0, 500) : null;
         $this->createdAt = new \DateTimeImmutable();
     }
 
@@ -129,6 +143,11 @@ class ForumUserReputation
     public function getComment(): ?string
     {
         return $this->comment;
+    }
+
+    public function getTopicUrl(): ?string
+    {
+        return $this->topicUrl;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

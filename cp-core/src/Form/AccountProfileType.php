@@ -8,6 +8,7 @@ use App\Core\Account\AccountProfileExtensionInterface;
 use App\Form\DTO\AccountProfileFormModel;
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -45,6 +46,12 @@ final class AccountProfileType extends AbstractType
                 'label' => 'account.profile.last_name',
                 'required' => false,
             ])
+            ->add('locale', ChoiceType::class, [
+                'label' => 'account.profile.locale',
+                'help' => 'account.profile.locale_help',
+                'choices' => $options['locale_choices'],
+                'required' => true,
+            ])
             ->add('currentPassword', PasswordType::class, [
                 'label' => 'account.profile.current_password',
                 'required' => false,
@@ -77,6 +84,12 @@ final class AccountProfileType extends AbstractType
         $resolver->setDefaults([
             'data_class' => AccountProfileFormModel::class,
             'csrf_token_id' => 'account_profile_form',
+            // Filled by the controller from LocaleProvider. A default of [] keeps
+            // the type constructible in isolation (form tests, a module reusing
+            // it) without hard-coding a language list anywhere but the database.
+            'locale_choices' => [],
         ]);
+
+        $resolver->setAllowedTypes('locale_choices', 'array');
     }
 }

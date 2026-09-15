@@ -16,6 +16,12 @@ final class AccountProfileFormModel
     public ?string $username = null;
     public string $firstName = '';
     public string $lastName = '';
+
+    /**
+     * Preferred language for mail. Not an identity field — it needs no approval,
+     * because changing it can only affect what the account's own owner reads.
+     */
+    public string $locale = '';
     public ?string $currentPassword = null;
     public ?string $newPassword = null;
 

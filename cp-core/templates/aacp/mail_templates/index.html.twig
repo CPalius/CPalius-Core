@@ -1,0 +1,56 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.mail_templates.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <p class="text-fs-sm !text-slate-500">{{ 'aacp.mail_templates.intro'|trans }}</p>
+
+        {% if not mailConfigured %}
+            <twig:cp:card variant="danger">
+                <p class="text-fs-sm !text-danger-300">{{ 'aacp.mail_templates.mail_disabled'|trans }}</p>
+            </twig:cp:card>
+        {% endif %}
+
+        <twig:cp:card padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.mail_templates.column.template'|trans,
+                'aacp.mail_templates.column.languages'|trans,
+                '',
+            ] }}" empty="{{ rows is empty }}" emptyText="{{ 'aacp.mail_templates.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for row in rows %}
+                        <tr>
+                            <td>
+                                <p class="font-medium !text-slate-200">{{ row.definition.labelKey|trans }}</p>
+                                <p class="text-fs-xs !text-slate-500">{{ row.definition.descriptionKey|trans }}</p>
+                                <p class="mt-1 font-mono text-fs-xs !text-slate-600">{{ row.definition.key }}</p>
+                            </td>
+                            <td>
+                                <div class="flex flex-wrap gap-1">
+                                    {% for locale in locales %}
+                                        {% if locale.code in row.customised %}
+                                            <span class="badge badge-success" title="{{ 'aacp.mail_templates.state.customised'|trans }}">
+                                                {{ locale.code|upper }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-muted" title="{{ 'aacp.mail_templates.state.shipped'|trans }}">
+                                                {{ locale.code|upper }}
+                                            </span>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td class="text-right">
+                                <a href="{{ path('aacp_mail_templates_edit', {key: row.definition.key}) }}"
+                                   class="btn btn-sm btn-outline">{{ 'aacp.mail_templates.edit_action'|trans }}</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+
+        <p class="text-fs-xs !text-slate-600">{{ 'aacp.mail_templates.legend'|trans }}</p>
+    </div>
+{% endblock %}

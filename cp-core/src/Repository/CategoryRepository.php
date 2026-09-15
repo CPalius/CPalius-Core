@@ -38,6 +38,35 @@ class CategoryRepository
     }
 
     /**
+     * The same slug in whichever language happens to have it.
+     *
+     * Needed because a category URL is shared, bookmarked and indexed without
+     * its locale prefix surviving the journey: /en/blog/kategori/duyurular is a
+     * Turkish slug requested in English, and the honest answer is "here is the
+     * English one", not a 404.
+     */
+    public function findOneBySlugAnyLocale(string $slug): ?Term
+    {
+        return $this->terms->findOneBySlugAnyLocale($this->vocabulary(), $slug);
+    }
+
+    /**
+     * The sibling of $term in $locale, when the two are in a translation group.
+     */
+    public function findTranslation(Term $term, string $locale): ?Term
+    {
+        $groupId = $term->getTranslationGroupId();
+
+        if ($groupId === null) {
+            return null;
+        }
+
+        $translation = $this->terms->findOneByTranslationGroup($groupId, $locale);
+
+        return $this->isCategory($translation) ? $translation : null;
+    }
+
+    /**
      * @return list<Term>
      */
     public function findByLocale(string $locale): array

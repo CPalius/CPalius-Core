@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace App\Core\Notification\Task;
 
 use App\Core\Cron\Attribute\CpCronJob;
+use App\Core\Localization\Service\LocaleScope;
+use App\Core\Localization\Service\UserLocaleResolver;
 use App\Core\Mail\CpMailerService;
+use App\Core\Mail\Template\CoreMailTemplates;
+use App\Core\Mail\Template\MailTemplateRenderer;
 use App\Core\Notification\Entity\NotificationDigestItem;
 use App\Core\Notification\NotificationPreferenceResolver;
 use App\Core\Notification\Repository\NotificationDigestItemRepository;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Contracts\Translation\TranslatorInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Environment;
 
 /**
@@ -25,7 +29,10 @@ final class NotificationDigestTask
         private readonly CpMailerService $mailer,
         private readonly EntityManagerInterface $entityManager,
         private readonly Environment $twig,
-        private readonly TranslatorInterface $translator,
+        private readonly MailTemplateRenderer $mailTemplates,
+        private readonly UserLocaleResolver $userLocale,
+        private readonly LocaleScope $localeScope,
+        private readonly UrlGeneratorInterface $urlGenerator,
     ) {
     }
 
@@ -79,17 +86,28 @@ final class NotificationDigestTask
             return false;
         }
 
-        $html = $this->twig->render('notification/email/digest.html.twig', [
-            'user' => $user,
-            'items' => $items,
-        ]);
-
-        $subject = $this->translator->trans('notification.mail.subject.digest', [
-            'count' => \count($items),
-        ]);
+        // Cron has no request locale, so without this every digest went out in
+        // the kernel default no matter what the member picked at registration.
+        $locale = $this->userLocale->resolve($user);
 
         try {
-            $this->mailer->sendNow($email, $subject, $html);
+            $content = $this->localeScope->run($locale, fn (): string => $this->twig->render(
+                'notification/email/digest.html.twig',
+                ['user' => $user, 'items' => $items],
+            ));
+
+            $mail = $this->mailTemplates->render(
+                CoreMailTemplates::NOTIFICATION_DIGEST,
+                $locale,
+                [
+                    'content' => $content,
+                    'inbox_url' => $this->urlGenerator->generate('account_notifications', [], UrlGeneratorInterface::ABSOLUTE_URL),
+                    'count' => \count($items),
+                ],
+                ['user' => $user],
+            );
+
+            $this->mailer->sendNow($email, $mail->subject, $mail->html, $mail->text);
         } catch (\Throwable) {
             return false;
         }

@@ -154,6 +154,13 @@ final class AccountController extends AbstractController
                 if ($deferLogin) {
                     $emailSent = $this->registrationService->sendVerificationEmail($user);
 
+                    // Approval-pending members get told so in their own language;
+                    // without it the only signal is an account that silently
+                    // refuses to log in.
+                    if ($this->registrationService->isAdminApprovalRequired()) {
+                        $this->registrationService->sendPendingApprovalEmail($user);
+                    }
+
                     // Verification URL on screen is debug-only; in prod a null mailer must not skip proof of inbox.
                     if ($this->debug
                         && !$emailSent
@@ -168,6 +175,8 @@ final class AccountController extends AbstractController
 
                     return $this->redirectToRoute('account_register_pending');
                 }
+
+                $this->registrationService->sendWelcomeEmail($user);
 
                 $this->security->login($user, null, 'main');
                 $this->addFlash('success', $this->translator->trans('account.register.welcome', ['fullName' => $user->getFullName()]));

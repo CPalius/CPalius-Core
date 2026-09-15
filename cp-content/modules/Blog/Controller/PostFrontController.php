@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Blog\Controller;
 
 use App\Core\OriginCache\CacheTagCollector;
+use App\Core\Pagination\PaginatedResult;
 use App\Core\Pagination\Paginator;
 use App\Core\Taxonomy\Entity\Term;
 use App\Entity\Node;
@@ -17,7 +18,6 @@ use Modules\Blog\Service\BlogPostPresentationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -66,6 +66,17 @@ final class PostFrontController extends AbstractController
         ]);
     }
 
+    /**
+     * Missing locale sibling behaves like blog_show: redirect to the translated
+     * category when there is one, otherwise a theme page with a 404 status.
+     *
+     * The hard throw this replaces was the second-largest source of rows in the
+     * production error log. A category URL is shared and indexed without its
+     * locale surviving the trip — a Turkish slug arriving on the English site is
+     * ordinary traffic, not an application failure, and answering it with an
+     * uncaught exception both logged it as one and showed the visitor the
+     * framework error page instead of the site.
+     */
     #[Route('/blog/kategori/{slug}', name: 'blog_category')]
     public function category(Request $request, string $slug): Response
     {
@@ -73,7 +84,7 @@ final class PostFrontController extends AbstractController
 
         $category = $this->categoryRepository->findOneBySlug($slug, $locale);
         if (!$category instanceof Term) {
-            throw new NotFoundHttpException($this->translator->trans('blog.front.error.category_not_found'));
+            return $this->resolveCrossLocaleCategory($slug, $locale);
         }
 
         $qb = $this->nodeRepository->createPublishedByCategoryQueryBuilder($category->getId(), self::NODE_TYPE, $locale);
@@ -216,6 +227,44 @@ final class PostFrontController extends AbstractController
                 $user instanceof User ? $user : null,
             ),
         ]);
+    }
+
+    /**
+     * Same category slug in another locale → redirect to the sibling, or a soft
+     * 404 page listing no posts.
+     */
+    private function resolveCrossLocaleCategory(string $slug, string $locale): Response
+    {
+        $source = $this->categoryRepository->findOneBySlugAnyLocale($slug);
+
+        if ($source instanceof Term) {
+            $translation = $this->categoryRepository->findTranslation($source, $locale);
+
+            if ($translation instanceof Term) {
+                return $this->redirectToRoute('blog_category', [
+                    '_locale' => $locale,
+                    'slug' => $translation->getSlug(),
+                ]);
+            }
+        }
+
+        // No sibling: the archive shell with an empty list says "this category
+        // has nothing here in your language" far better than an error page,
+        // and the 404 status keeps search engines from indexing it.
+        //
+        // An empty PaginatedResult rather than null, so any theme's archive
+        // template keeps working — `posts.isEmpty` on a null is a Twig error,
+        // and a theme is the one file a site owner is expected to have replaced.
+        return $this->render(
+            '@Theme/blog/archive.html.twig',
+            [
+                'posts' => new PaginatedResult([], 0, 1, $this->appearanceService->postsPerPage()),
+                'category' => null,
+                'heading' => $this->translator->trans('blog.front.error.category_not_found'),
+                ...$this->appearanceViewData($locale, showFeatured: false),
+            ],
+            new Response('', Response::HTTP_NOT_FOUND),
+        );
     }
 
     /**

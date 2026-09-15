@@ -27,6 +27,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Fieldab
     public const STATUS_INACTIVE = 'inactive';
     public const STATUS_BANNED = 'banned';
 
+    /**
+     * `data` key holding an e-mail/username change the member has asked for and
+     * an administrator has not yet ruled on. Named here rather than inline
+     * because UserRepository narrows on it with a LIKE — the query and the
+     * writer must not be able to drift apart.
+     */
+    public const DATA_IDENTITY_CHANGE = 'identity_change_request';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
@@ -226,6 +234,20 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Fieldab
     public function setDataValue(string $key, mixed $value): static
     {
         $this->data[$key] = $value;
+
+        return $this;
+    }
+
+    /**
+     * Drops the key entirely rather than setting it to null.
+     *
+     * The difference is visible from SQL: UserRepository narrows on the JSON
+     * text with a LIKE, so a key left behind with a null value keeps matching
+     * long after the thing it marked is gone.
+     */
+    public function removeDataValue(string $key): static
+    {
+        unset($this->data[$key]);
 
         return $this;
     }

@@ -1,0 +1,119 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ definition.labelKey|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <div class="flex flex-wrap items-center justify-between gap-sp-sm">
+            <p class="text-fs-sm !text-slate-500">{{ definition.descriptionKey|trans }}</p>
+            <a href="{{ path('aacp_mail_templates') }}" class="btn btn-sm btn-outline">{{ 'aacp.mail_templates.back'|trans }}</a>
+        </div>
+
+        <twig:cp:card title="{{ 'aacp.mail_templates.placeholders.heading'|trans }}">
+            <p class="text-fs-xs !text-slate-500">{{ 'aacp.mail_templates.placeholders.hint'|trans }}</p>
+            <div class="mt-sp-sm flex flex-wrap gap-2">
+                {% for parameter in definition.parameters %}
+                    <code class="rounded bg-white/5 px-2 py-1 font-mono text-fs-xs text-primary-300">&#123;{{ parameter }}&#125;</code>
+                {% else %}
+                    <span class="text-fs-xs !text-slate-600">{{ 'aacp.mail_templates.placeholders.none'|trans }}</span>
+                {% endfor %}
+            </div>
+
+            <p class="mt-sp-md text-fs-xs !text-slate-500">{{ 'aacp.mail_templates.tokens.hint'|trans }}</p>
+            <div class="mt-sp-sm flex flex-wrap gap-2">
+                {% for token in definition.tokens %}
+                    <code class="rounded bg-white/5 px-2 py-1 font-mono text-fs-xs !text-slate-300">[{{ token }}]</code>
+                {% endfor %}
+            </div>
+        </twig:cp:card>
+
+        <form method="post" action="{{ path('aacp_mail_templates_edit', {key: definition.key}) }}" class="space-y-sp-md">
+            <input type="hidden" name="_token" value="{{ csrf_token('aacp_mail_template_save') }}">
+
+            {% for locale in locales %}
+                {% set row = rows[locale.code] %}
+                <twig:cp:card title="{{ locale.nativeName ?: locale.name }} ({{ locale.code|upper }})">
+                    <twig:block name="actions">
+                        {% if row.customised %}
+                            <span class="badge badge-success">{{ 'aacp.mail_templates.state.customised'|trans }}</span>
+                        {% else %}
+                            <span class="badge badge-muted">{{ 'aacp.mail_templates.state.shipped'|trans }}</span>
+                        {% endif %}
+                    </twig:block>
+
+                    <div class="space-y-sp-sm">
+                        <div>
+                            <label class="form-label !text-slate-400" for="subject-{{ locale.code }}">
+                                {{ 'aacp.mail_templates.field.subject'|trans }}
+                            </label>
+                            <input type="text" id="subject-{{ locale.code }}" name="subject_{{ locale.code }}"
+                                   maxlength="255" value="{{ row.subject }}"
+                                   class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                        </div>
+
+                        <div>
+                            <label class="form-label !text-slate-400" for="html-{{ locale.code }}">
+                                {{ 'aacp.mail_templates.field.body_html'|trans }}
+                            </label>
+                            <textarea id="html-{{ locale.code }}" name="html_{{ locale.code }}" rows="8"
+                                      class="form-control !border-white/10 !bg-dark-1 font-mono text-fs-xs !text-slate-100">{{ row.html }}</textarea>
+                            <p class="mt-1 text-fs-xs !text-slate-600">{{ 'aacp.mail_templates.field.body_html_hint'|trans }}</p>
+                        </div>
+
+                        <div>
+                            <label class="form-label !text-slate-400" for="text-{{ locale.code }}">
+                                {{ 'aacp.mail_templates.field.body_text'|trans }}
+                            </label>
+                            <textarea id="text-{{ locale.code }}" name="text_{{ locale.code }}" rows="4"
+                                      class="form-control !border-white/10 !bg-dark-1 font-mono text-fs-xs !text-slate-100">{{ row.text }}</textarea>
+                            <p class="mt-1 text-fs-xs !text-slate-600">{{ 'aacp.mail_templates.field.body_text_hint'|trans }}</p>
+                        </div>
+
+                        <label class="flex items-center gap-2 text-fs-sm text-slate-200">
+                            <input type="checkbox" name="enabled_{{ locale.code }}" value="1" {{ row.enabled ? 'checked' : '' }}
+                                   class="rounded border-white/20 bg-dark-1">
+                            {{ 'aacp.mail_templates.field.enabled'|trans }}
+                        </label>
+                        <p class="text-fs-xs !text-slate-600">{{ 'aacp.mail_templates.field.enabled_hint'|trans }}</p>
+
+                        {% if previews[locale.code] is defined and previews[locale.code].subject is not empty %}
+                            <details class="rounded border border-white/10 bg-dark-1 p-sp-sm">
+                                <summary class="cursor-pointer text-fs-xs !text-slate-400">{{ 'aacp.mail_templates.preview.heading'|trans }}</summary>
+                                <p class="mt-sp-sm text-fs-sm font-medium !text-slate-200">{{ previews[locale.code].subject }}</p>
+                                {# Escaped on purpose: the operator is previewing markup, and a
+                                   rendered <script> here would run inside the panel. #}
+                                <pre class="mt-sp-sm overflow-x-auto whitespace-pre-wrap break-words font-mono text-fs-xs !text-slate-400">{{ previews[locale.code].html }}</pre>
+                            </details>
+                        {% endif %}
+                    </div>
+                </twig:cp:card>
+            {% endfor %}
+
+            <div class="flex flex-wrap items-center gap-sp-sm">
+                <button type="submit" class="btn btn-primary">{{ 'aacp.mail_templates.save_action'|trans }}</button>
+            </div>
+        </form>
+
+        <twig:cp:card title="{{ 'aacp.mail_templates.maintenance.heading'|trans }}">
+            <div class="flex flex-wrap items-center gap-sp-sm">
+                <form method="post" action="{{ path('aacp_mail_templates_reset', {key: definition.key}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('aacp_mail_template_reset') }}">
+                    <button type="submit" class="btn btn-sm btn-outline">{{ 'aacp.mail_templates.reset_action'|trans }}</button>
+                </form>
+
+                {% if mailConfigured %}
+                    <form method="post" action="{{ path('aacp_mail_templates_preview', {key: definition.key}) }}" class="flex items-center gap-2">
+                        <input type="hidden" name="_token" value="{{ csrf_token('aacp_mail_template_preview') }}">
+                        <select name="locale" class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                            {% for locale in locales %}
+                                <option value="{{ locale.code }}">{{ locale.nativeName ?: locale.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-outline">{{ 'aacp.mail_templates.send_test_action'|trans }}</button>
+                    </form>
+                {% endif %}
+            </div>
+            <p class="mt-sp-sm text-fs-xs !text-slate-600">{{ 'aacp.mail_templates.maintenance.hint'|trans }}</p>
+        </twig:cp:card>
+    </div>
+{% endblock %}

@@ -95,6 +95,10 @@
                     </div>
                     {% if rep.topic %}
                         <a class="forum-rep-item__topic" href="{{ path('forum_topic', {topicId: rep.topic.id, slug: rep.topic.slug}) }}{% if rep.post %}#post{{ rep.post.id }}{% endif %}">{{ rep.topic.title }}</a>
+                    {% elseif rep.topicUrl %}
+                        {# Someone else's link: rel keeps it from passing ranking or
+                           handing the destination this page's referrer. #}
+                        <a class="forum-rep-item__topic" href="{{ rep.topicUrl }}" rel="nofollow ugc noopener noreferrer" target="_blank">{{ rep.topicUrl }}</a>
                     {% endif %}
                     {% if rep.comment %}<p class="forum-rep-item__comment">{{ rep.comment }}</p>{% endif %}
                 </div>

@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Core\Account\AccountIdentityChangeService;
 use App\Core\Account\AccountLandingResolver;
 use App\Core\Account\AccountProfileExtensionInterface;
 use App\Core\Account\UserAvatarService;
+use App\Core\Localization\LocaleProvider;
+use App\Core\Localization\Service\UserLocaleResolver;
 use App\Core\Media\Exception\InvalidUploadException;
 use App\Core\Media\Exception\UnsupportedAssetTypeException;
 use App\Core\Security\Flood\FloodService;
@@ -15,7 +18,6 @@ use App\Core\Security\Password\PasswordPolicy;
 use App\Entity\User;
 use App\Form\AccountProfileType;
 use App\Form\DTO\AccountProfileFormModel;
-use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
@@ -45,7 +47,6 @@ final class AccountProfileController extends AbstractController
      */
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly UserRepository $userRepository,
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly PasswordPolicy $passwordPolicy,
         private readonly PasswordChanger $passwordChanger,
@@ -53,6 +54,9 @@ final class AccountProfileController extends AbstractController
         private readonly TranslatorInterface $translator,
         private readonly AccountLandingResolver $landingResolver,
         private readonly FloodService $flood,
+        private readonly AccountIdentityChangeService $identityChanges,
+        private readonly UserLocaleResolver $userLocale,
+        private readonly LocaleProvider $localeProvider,
         #[TaggedIterator('cpalius.account.profile_extension')]
         private readonly iterable $profileExtensions = [],
     ) {
@@ -64,7 +68,10 @@ final class AccountProfileController extends AbstractController
     {
         $user = $this->getCurrentUserOrFail();
         $dto = AccountProfileFormModel::fromUser($user);
-        $form = $this->createForm(AccountProfileType::class, $dto);
+        $dto->locale = $this->userLocale->resolve($user);
+        $form = $this->createForm(AccountProfileType::class, $dto, [
+            'locale_choices' => $this->localeChoices(),
+        ]);
         foreach ($this->profileExtensions as $extension) {
             foreach ($extension->valuesFromUser($user) as $field => $value) {
                 if ($form->has($field)) {
@@ -75,15 +82,26 @@ final class AccountProfileController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            if ($this->userRepository->isEmailTakenByAnotherUser($dto->email, $user->getId())) {
-                $form->get('email')->addError(new FormError($this->translator->trans('account.profile.email_taken')));
+            // Identity first: it is the only part of this form that may be
+            // refused or deferred, and the rest must not be saved on the
+            // strength of a change that was not accepted.
+            $identityErrors = $this->identityChanges->submit($user, $dto->email, $dto->username);
+
+            if ($identityErrors !== []) {
+                foreach ($identityErrors as $error) {
+                    $form->get('email')->addError(new FormError($error));
+                }
             } elseif (!$this->applyPasswordChangeIfRequested($dto, $user, $form)) {
                 // errors added to form
             } else {
                 $this->mapDtoToUser($dto, $user, $form);
                 $this->entityManager->flush();
 
-                $this->addFlash('success', $this->translator->trans('account.profile.saved'));
+                $pending = $this->identityChanges->pendingFor($user);
+
+                $this->addFlash('success', $pending !== null
+                    ? $this->translator->trans('account.profile.saved_identity_pending')
+                    : $this->translator->trans('account.profile.saved'));
 
                 return $this->redirectToRoute('account_profile');
             }
@@ -93,7 +111,43 @@ final class AccountProfileController extends AbstractController
             'form' => $form,
             'avatarUrl' => $this->avatarService->resolveUrl($user),
             'accountHomeRoute' => $this->landingResolver->routeName(),
+            'identityPending' => $this->identityChanges->pendingFor($user),
+            'identityApprovalRequired' => $this->identityChanges->isApprovalRequired(),
         ]);
+    }
+
+    /**
+     * Withdraws the member's own outstanding e-mail/username change.
+     */
+    #[Route('/hesap/profil/kimlik-talebi/iptal', name: 'account_identity_request_cancel', methods: ['POST'])]
+    #[IsGranted('account.profile.edit')]
+    public function cancelIdentityRequest(Request $request): Response
+    {
+        $user = $this->getCurrentUserOrFail();
+
+        if (!$this->isCsrfTokenValid('account_identity_cancel', (string) $request->request->get('_token'))) {
+            throw new BadRequestHttpException($this->translator->trans('account.invalid_csrf'));
+        }
+
+        if ($this->identityChanges->cancel($user)) {
+            $this->addFlash('success', $this->translator->trans('account.profile.identity_request_cancelled'));
+        }
+
+        return $this->redirectToRoute('account_profile');
+    }
+
+    /**
+     * @return array<string, string> label => locale code, for the preference select
+     */
+    private function localeChoices(): array
+    {
+        $choices = [];
+
+        foreach ($this->localeProvider->getLocales() as $locale) {
+            $choices[$locale->nativeName !== '' ? $locale->nativeName : $locale->name] = $locale->code;
+        }
+
+        return $choices;
     }
 
     #[Route('/hesap/profil/avatar', name: 'account_avatar_upload', methods: ['POST'])]
@@ -189,12 +243,16 @@ final class AccountProfileController extends AbstractController
         return true;
     }
 
+    /**
+     * E-mail and username are absent on purpose: AccountIdentityChangeService
+     * owns them now, and writing them here as well would apply the change the
+     * approval queue was asked to hold.
+     */
     private function mapDtoToUser(AccountProfileFormModel $dto, User $user, FormInterface $form): void
     {
-        $user->setEmail($dto->email);
-        $user->setUsername(trim((string) $dto->username) !== '' ? trim((string) $dto->username) : null);
         $user->setFirstName(trim($dto->firstName));
         $user->setLastName(trim($dto->lastName));
+        $this->userLocale->remember($user, $dto->locale);
 
         foreach ($this->profileExtensions as $extension) {
             $extension->saveToUser($user, $form);
