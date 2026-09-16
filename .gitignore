@@ -159,3 +159,6 @@ Thumbs.db
 
 # Tek kullanimlik 2.0.0 sema kurtarma betigi (kullandiktan sonra sil)
 /public/cp-2.0.0-recover.php
+
+# Tek kullanimlik Redis temizleme betigi (kullandiktan sonra sil)
+/public/cp-redis-flush.php
