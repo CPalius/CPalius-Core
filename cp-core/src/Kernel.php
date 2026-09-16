@@ -84,7 +84,22 @@ class Kernel extends BaseKernel
 
     public function getCacheDir(): string
     {
-        return $this->getProjectDir().'/cp-core/var/cache/'.$this->environment;
+        return self::resolveCacheDir($this->getProjectDir(), $this->environment);
+    }
+
+    /**
+     * Module dry-run lint points this at a throwaway directory via
+     * CPALIUS_CACHE_DIR so `cache:clear --no-warmup` never deletes the live
+     * container a request is still requiring (the ContainerXxx/getY.php miss).
+     */
+    public static function resolveCacheDir(string $projectDir, string $environment): string
+    {
+        $raw = $_SERVER['CPALIUS_CACHE_DIR'] ?? $_ENV['CPALIUS_CACHE_DIR'] ?? getenv('CPALIUS_CACHE_DIR');
+        if (\is_string($raw) && $raw !== '') {
+            return $raw;
+        }
+
+        return $projectDir.'/cp-core/var/cache/'.$environment;
     }
 
     public function getLogDir(): string

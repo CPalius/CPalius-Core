@@ -1,0 +1,146 @@
+{#
+    Custom-field input macros, shared by the admin screen and the member form.
+
+    The showcase renders its own inputs instead of going through FieldsFormType so
+    the SAME markup can live inside the admin layout and inside a theme, and so
+    the member form works without the admin media picker. The values still travel
+    under `fields[<name>]` and are written only through FieldValuePersister, which
+    normalizes and validates them — this file is presentation, never trust.
+#}
+
+{#
+    One field input.
+
+    definition  FieldDefinition
+    value       current stored value (scalar, list, or {value, format} for rich text)
+    errors      list of violation keys for this field
+    formats     usable text-format choices (label => id), for rich_text
+#}
+{% macro input(definition, value, errors, formats) %}
+    {% set name = definition.name %}
+    {% set inputId = 'field_' ~ name %}
+    {% set required = definition.required %}
+
+    <div class="showcase-field{{ errors is not empty ? ' showcase-field--error' : '' }}">
+        <label class="showcase-field__label" for="{{ inputId }}">
+            {{ definition.label|trans }}{% if required %} <span aria-hidden="true">*</span>{% endif %}
+        </label>
+
+        {% if definition.multiValue %}
+            {# One value per line: FieldValueNormalizer splits on newlines/commas
+               and applies the field's cardinality cap. #}
+            <textarea id="{{ inputId }}" name="fields[{{ name }}]" rows="3" class="form-control showcase-input"
+                      {{ required ? 'required' : '' }}>{{ value is iterable ? value|join("\n") : value }}</textarea>
+            <p class="showcase-field__help">{{ 'showcase.fields.multi_hint'|trans }}</p>
+
+        {% elseif definition.type == 'rich_text' %}
+            {% set html = value.value is defined ? value.value : value %}
+            {% set currentFormat = value.format is defined ? value.format : definition.getSetting('default_format', 'basic_html') %}
+            <textarea id="{{ inputId }}" name="fields[{{ name }}][value]" rows="6" class="form-control showcase-input">{{ html }}</textarea>
+            {% if formats|length > 1 %}
+                <select name="fields[{{ name }}][format]" class="form-control showcase-input showcase-input--inline">
+                    {% for formatId, formatLabel in formats %}
+                        <option value="{{ formatId }}"{{ currentFormat == formatId ? ' selected' : '' }}>{{ formatLabel|trans }}</option>
+                    {% endfor %}
+                </select>
+            {% else %}
+                <input type="hidden" name="fields[{{ name }}][format]" value="{{ currentFormat }}">
+            {% endif %}
+
+        {% elseif definition.type == 'textarea' %}
+            <textarea id="{{ inputId }}" name="fields[{{ name }}]" rows="4" class="form-control showcase-input"
+                      {{ required ? 'required' : '' }}>{{ value }}</textarea>
+
+        {% elseif definition.type == 'boolean' %}
+            <label class="showcase-check">
+                <input type="hidden" name="fields[{{ name }}]" value="0">
+                <input type="checkbox" id="{{ inputId }}" name="fields[{{ name }}]" value="1"{{ value ? ' checked' : '' }}>
+                <span>{{ 'showcase.fields.yes'|trans }}</span>
+            </label>
+
+        {% elseif definition.type == 'select' %}
+            {% set raw = definition.getSetting('choices', '') %}
+            <select id="{{ inputId }}" name="fields[{{ name }}]" class="form-control showcase-input" {{ required ? 'required' : '' }}>
+                <option value="">—</option>
+                {# Double quotes: a single-quoted Twig string would split on a
+                   literal backslash-n rather than on newlines. #}
+                {% for line in raw|split("\n") %}
+                    {% set line = line|trim %}
+                    {% if line %}
+                        {% set parts = line|split('|', 2) %}
+                        {% set optionValue = parts[0]|trim %}
+                        {% set optionLabel = (parts[1]|default(parts[0]))|trim %}
+                        <option value="{{ optionValue }}"{{ value == optionValue ? ' selected' : '' }}>{{ optionLabel }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+
+        {% elseif definition.type in ['image', 'file'] %}
+            {# The Field API stores an asset id. The admin media picker is not
+               available in a theme, so the browser posts a file and
+               ShowcaseFieldUploadHandler converts it through AssetManager. #}
+            <input type="file" id="{{ inputId }}" name="field_upload[{{ name }}]" class="form-control showcase-input"
+                   {{ definition.type == 'image' ? 'accept="image/*"' : '' }}>
+            {% if value %}
+                <input type="hidden" name="fields[{{ name }}]" value="{{ value }}">
+                <p class="showcase-field__help">{{ 'showcase.fields.current_asset'|trans({ id: value }) }}</p>
+            {% endif %}
+
+        {% elseif definition.type == 'integer' %}
+            <input type="number" step="1" id="{{ inputId }}" name="fields[{{ name }}]" value="{{ value }}"
+                   class="form-control showcase-input" {{ required ? 'required' : '' }}>
+
+        {% elseif definition.type == 'decimal' %}
+            <input type="number" step="0.01" id="{{ inputId }}" name="fields[{{ name }}]" value="{{ value }}"
+                   class="form-control showcase-input" {{ required ? 'required' : '' }}>
+
+        {% elseif definition.type == 'date' %}
+            <input type="date" id="{{ inputId }}" name="fields[{{ name }}]" value="{{ value }}"
+                   class="form-control showcase-input" {{ required ? 'required' : '' }}>
+
+        {% elseif definition.type == 'datetime' %}
+            <input type="datetime-local" id="{{ inputId }}" name="fields[{{ name }}]" value="{{ value }}"
+                   class="form-control showcase-input" {{ required ? 'required' : '' }}>
+
+        {% elseif definition.type == 'email' %}
+            <input type="email" id="{{ inputId }}" name="fields[{{ name }}]" value="{{ value }}"
+                   class="form-control showcase-input" {{ required ? 'required' : '' }}>
+
+        {% elseif definition.type == 'url' %}
+            <input type="url" id="{{ inputId }}" name="fields[{{ name }}]" value="{{ value }}"
+                   class="form-control showcase-input" {{ required ? 'required' : '' }}>
+
+        {% elseif definition.type == 'reference' %}
+            <input type="number" step="1" min="1" id="{{ inputId }}" name="fields[{{ name }}]" value="{{ value }}"
+                   class="form-control showcase-input" {{ required ? 'required' : '' }}>
+            <p class="showcase-field__help">{{ 'showcase.fields.reference_hint'|trans({ target: definition.getSetting('target', 'node') }) }}</p>
+
+        {% else %}
+            <input type="text" id="{{ inputId }}" name="fields[{{ name }}]" value="{{ value }}"
+                   maxlength="{{ definition.getSetting('max_length', 255) }}"
+                   class="form-control showcase-input" {{ required ? 'required' : '' }}>
+        {% endif %}
+
+        {% if definition.help %}
+            <p class="showcase-field__help">{{ definition.help|trans }}</p>
+        {% endif %}
+
+        {% for violation in errors %}
+            <p class="showcase-field__error">{{ violation|trans }}</p>
+        {% endfor %}
+    </div>
+{% endmacro %}
+
+{#
+    Read-only display of one field value on the detail page.
+    Uses cp_field(), so formatters, reference resolution and per-field view
+    capabilities all behave exactly as they do for core content.
+#}
+{% macro display(item, definition) %}
+    {% if cp_has_field(item, definition.name) %}
+        <div class="showcase-spec">
+            <dt class="showcase-spec__label">{{ definition.label|trans }}</dt>
+            <dd class="showcase-spec__value">{{ cp_field(item, definition.name) }}</dd>
+        </div>
+    {% endif %}
+{% endmacro %}

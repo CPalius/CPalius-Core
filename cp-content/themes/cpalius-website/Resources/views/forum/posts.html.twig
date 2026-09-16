@@ -184,6 +184,7 @@
                     <div class="forum-postbit__joined">
                         <i class="bi bi-calendar3"></i> {{ 'post.joined'|trans({}, 'forums') }} {{ post.author.createdAt|date('d.m.Y') }}
                     </div>
+                    {{ cp_hook('forum.post.author.actions', { user: post.author, author: post.author }) }}
                 {% endif %}
             </aside>
 

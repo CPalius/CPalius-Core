@@ -1,0 +1,56 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'messages.menu.reports'|trans }}{% endblock %}
+{% block header %}{{ 'messages.menu.reports'|trans }}{% endblock %}
+
+{% block body %}
+    {% include '@MessagesModule/admin/_desk_nav.html.twig' with {deskOpenReports: openCount} %}
+
+    <div class="mb-4 flex gap-2">
+        {% for key in ['open', 'reviewing', 'resolved', 'dismissed', 'all'] %}
+            <a href="{{ path('admin_messages_reports_index', {status: key}) }}"
+               class="btn btn-sm {{ status == (key == 'all' ? '' : key) ? 'btn-primary' : 'btn-neutral' }}">
+                {{ ('messages.report.status.' ~ key)|trans }}
+            </a>
+        {% endfor %}
+    </div>
+
+    <twig:studio:card padded="{{ false }}">
+        <table class="w-full text-fs-sm">
+            <thead>
+                <tr class="border-b text-left">
+                    <th class="p-3">{{ 'messages.admin.col.reason'|trans }}</th>
+                    <th class="p-3">{{ 'messages.admin.col.reporter'|trans }}</th>
+                    <th class="p-3">{{ 'messages.admin.col.status'|trans }}</th>
+                    <th class="p-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in result %}
+                    <tr class="border-b align-top">
+                        <td class="p-3">
+                            <a href="{{ path('admin_messages_threads_show', {id: report.message.thread.id}) }}">
+                                {{ ('messages.report.reason.' ~ report.reason)|trans }}
+                            </a>
+                            {% if report.details %}<div class="text-neutral-500">{{ report.details }}</div>{% endif %}
+                        </td>
+                        <td class="p-3">{{ report.reporter ? report.reporter.publicDisplayName : '—' }}</td>
+                        <td class="p-3">{{ ('messages.report.status.' ~ report.status)|trans }}</td>
+                        <td class="p-3">
+                            {% if report.open %}
+                                <form method="post" action="{{ path('admin_messages_reports_decide', {id: report.id}) }}" class="flex flex-wrap gap-2">
+                                    <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                    <input type="text" name="note" class="form-control" placeholder="{{ 'messages.admin.resolution_note'|trans }}">
+                                    <button name="decision" value="resolve" class="btn btn-sm btn-primary">{{ 'messages.admin.resolve'|trans }}</button>
+                                    <button name="decision" value="dismiss" class="btn btn-sm btn-neutral">{{ 'messages.admin.dismiss'|trans }}</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="p-3 text-neutral-500" colspan="4">{{ 'messages.admin.empty_reports'|trans }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </twig:studio:card>
+{% endblock %}

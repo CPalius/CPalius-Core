@@ -1,0 +1,109 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% set isNew = type is null %}
+
+{% block title %}{{ (isNew ? 'showcase.types.create_action' : 'showcase.types.edit_action')|trans }}{% endblock %}
+{% block header %}{{ (isNew ? 'showcase.types.create_action' : 'showcase.types.edit_action')|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_showcase_types_index') }}" class="btn btn-sm btn-neutral">{{ 'showcase.action.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <form method="post" class="space-y-sp-md"
+          action="{{ isNew ? path('admin_showcase_types_create') : path('admin_showcase_types_edit', {machineName: type.machineName}) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+
+        <twig:studio:card title="{{ 'showcase.types.section.identity'|trans }}">
+            <twig:block name="content">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="form-label" for="machine_name">{{ 'showcase.types.field.machine_name'|trans }}</label>
+                        {% if isNew %}
+                            <input type="text" id="machine_name" name="machine_name" value="{{ machineName }}"
+                                   class="form-control" required pattern="[a-z][a-z0-9_]{1,31}" maxlength="32">
+                            <p class="form-help">{{ 'showcase.types.help.machine_name'|trans }}</p>
+                        {% else %}
+                            {# Immutable: it keys this type's field bundle and its
+                               category vocabulary, so renaming would orphan both. #}
+                            <input type="text" id="machine_name" value="{{ machineName }}" class="form-control" disabled>
+                            <p class="form-help">{{ 'showcase.types.help.machine_name_locked'|trans }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="icon">{{ 'showcase.types.field.icon'|trans }}</label>
+                        <input type="text" id="icon" name="icon" value="{{ icon }}" class="form-control" maxlength="64">
+                        <p class="form-help">{{ 'showcase.types.help.icon'|trans }}</p>
+                    </div>
+
+                    {% if not isNew %}
+                        <div>
+                            <label class="form-label" for="weight">{{ 'showcase.types.field.weight'|trans }}</label>
+                            <input type="number" id="weight" name="weight" value="{{ weight }}" class="form-control">
+                        </div>
+
+                        <div class="flex items-end">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="enabled" value="1"{{ enabled ? ' checked' : '' }}>
+                                <span class="text-fs-sm">{{ 'showcase.types.field.enabled'|trans }}</span>
+                            </label>
+                        </div>
+                    {% endif %}
+                </div>
+            </twig:block>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'showcase.types.section.labels'|trans }}">
+            <twig:block name="content">
+                <p class="mb-sp-sm text-fs-sm text-neutral-600">{{ 'showcase.types.help.labels'|trans }}</p>
+
+                {% for locale in locales %}
+                    <div class="mb-4 rounded-lg border border-neutral-200 p-3">
+                        <p class="mb-2 text-fs-xs font-semibold uppercase tracking-wide text-neutral-500">
+                            {{ locale.nativeName }} <span class="font-mono">{{ locale.code }}</span>
+                        </p>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label class="form-label" for="label_{{ locale.code }}">{{ 'showcase.types.field.label'|trans }}</label>
+                                <input type="text" id="label_{{ locale.code }}" name="labels[{{ locale.code }}][label]"
+                                       value="{{ labels[locale.code].label|default('') }}" class="form-control" maxlength="191">
+                            </div>
+                            <div>
+                                <label class="form-label" for="desc_{{ locale.code }}">{{ 'showcase.types.field.description'|trans }}</label>
+                                <input type="text" id="desc_{{ locale.code }}" name="labels[{{ locale.code }}][description]"
+                                       value="{{ labels[locale.code].description|default('') }}" class="form-control" maxlength="500">
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'showcase.types.section.features'|trans }}">
+            <twig:block name="content">
+                <p class="mb-sp-sm text-fs-sm text-neutral-600">{{ 'showcase.types.help.features'|trans }}</p>
+
+                <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {% for feature in featureKeys %}
+                        <label class="flex items-center gap-2 rounded-md border border-neutral-200 px-3 py-2">
+                            <input type="checkbox" name="features[{{ feature }}]" value="1"{{ features[feature]|default(false) ? ' checked' : '' }}>
+                            <span class="text-fs-sm">{{ ('showcase.types.feature.' ~ feature)|trans }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+
+                <label class="mt-4 flex items-center gap-2">
+                    <input type="checkbox" name="with_vocabulary" value="1"{{ withVocabulary ? ' checked' : '' }}>
+                    <span class="text-fs-sm">{{ 'showcase.types.field.with_vocabulary'|trans }}</span>
+                </label>
+                <p class="form-help">{{ 'showcase.types.help.with_vocabulary'|trans }}</p>
+            </twig:block>
+        </twig:studio:card>
+
+        <div class="flex items-center gap-2">
+            <button type="submit" class="btn btn-primary">{{ 'showcase.action.save'|trans }}</button>
+            <a href="{{ path('admin_showcase_types_index') }}" class="btn btn-neutral">{{ 'showcase.action.cancel'|trans }}</a>
+        </div>
+    </form>
+{% endblock %}

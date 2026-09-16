@@ -955,6 +955,10 @@
   margin-top: 4px;
 }
 
+.forum-postbit__pm {
+  margin-top: 8px;
+}
+
 /* ---- Post Main Content ---- */
 .forum-post__main {
   min-width: 0;
@@ -1330,6 +1334,11 @@
 .forum-profile-card__body {
   flex: 1;
   min-width: 0;
+}
+
+.forum-profile-card__body .btn {
+  margin-top: 10px;
+  margin-right: 8px;
 }
 
 .forum-profile-card__name {

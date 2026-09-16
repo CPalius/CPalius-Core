@@ -1,0 +1,166 @@
+<script{{ csp_nonce_attr() }}>
+(function () {
+  var root = document.querySelector('[data-messages-suggest]');
+  if (!root) return;
+
+  var url = root.getAttribute('data-messages-suggest');
+  var hidden = document.getElementById('messagesTo');
+  var query = document.getElementById('messagesToQuery');
+  var list = document.getElementById('messagesToList');
+  var empty = document.getElementById('messagesToEmpty');
+  var search = document.getElementById('messagesToSearch');
+  var picked = document.getElementById('messagesToPicked');
+  var clearBtn = document.getElementById('messagesToClear');
+  var handleEl = document.getElementById('messagesToHandle');
+  var nameEl = document.getElementById('messagesToName');
+  var avatarEl = picked ? picked.querySelector('.messages-recipient__avatar') : null;
+  var timer = null;
+  var abort = null;
+  var items = [];
+  var active = -1;
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, function (ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+    });
+  }
+
+  function setOpen(open) {
+    query.setAttribute('aria-expanded', open ? 'true' : 'false');
+    list.hidden = !open || items.length === 0;
+    if (empty) empty.hidden = !open || items.length > 0 || query.value.trim() === '';
+  }
+
+  function showSearch() {
+    if (search) search.hidden = false;
+    if (picked) picked.hidden = true;
+    hidden.value = '';
+    query.value = '';
+    query.focus();
+    setOpen(false);
+  }
+
+  function pick(item) {
+    hidden.value = item.username;
+    if (handleEl) handleEl.textContent = '@' + item.username;
+    if (nameEl) nameEl.textContent = item.name && item.name !== item.username ? item.name : '';
+    if (avatarEl) {
+      if (item.avatar) {
+        avatarEl.innerHTML = '<img src="' + escapeHtml(item.avatar) + '" alt="">';
+      } else {
+        avatarEl.innerHTML = '<span>' + escapeHtml(item.initial || '?') + '</span>';
+      }
+    }
+    if (search) search.hidden = true;
+    if (picked) picked.hidden = false;
+    items = [];
+    setOpen(false);
+  }
+
+  function render() {
+    list.innerHTML = items.map(function (item, index) {
+      var avatar = item.avatar
+        ? '<img src="' + escapeHtml(item.avatar) + '" alt="">'
+        : '<span>' + escapeHtml(item.initial || '?') + '</span>';
+      var extra = item.name && item.name !== item.username
+        ? '<small>' + escapeHtml(item.name) + '</small>'
+        : '';
+      return '<li role="option" data-index="' + index + '"' + (index === active ? ' aria-selected="true"' : '') + '>' +
+        '<span class="messages-recipient__avatar">' + avatar + '</span>' +
+        '<span class="messages-recipient__meta"><strong>@' + escapeHtml(item.username) + '</strong>' + extra + '</span>' +
+        '</li>';
+    }).join('');
+    setOpen(true);
+  }
+
+  function fetchUsers(term) {
+    if (abort) abort.abort();
+    abort = new AbortController();
+    var q = term.replace(/^@+/, '').trim();
+    if (q === '') {
+      items = [];
+      setOpen(false);
+      return;
+    }
+    fetch(url + (url.indexOf('?') === -1 ? '?' : '&') + 'q=' + encodeURIComponent(q), {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      signal: abort.signal
+    }).then(function (res) {
+      if (!res.ok) throw new Error('suggest');
+      return res.json();
+    }).then(function (payload) {
+      items = payload && payload.data ? payload.data : [];
+      active = items.length ? 0 : -1;
+      render();
+    }).catch(function (err) {
+      if (err && err.name === 'AbortError') return;
+      items = [];
+      setOpen(false);
+    });
+  }
+
+  query.addEventListener('input', function () {
+    hidden.value = '';
+    window.clearTimeout(timer);
+    timer = window.setTimeout(function () { fetchUsers(query.value); }, 180);
+  });
+
+  query.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!items.length) return;
+      active = (active + 1) % items.length;
+      render();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!items.length) return;
+      active = (active - 1 + items.length) % items.length;
+      render();
+    } else if (e.key === 'Enter') {
+      if (items[active]) {
+        e.preventDefault();
+        pick(items[active]);
+      }
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  });
+
+  list.addEventListener('mousedown', function (e) {
+    var li = e.target.closest('li[data-index]');
+    if (!li) return;
+    e.preventDefault();
+    pick(items[parseInt(li.getAttribute('data-index'), 10)]);
+  });
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      showSearch();
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!root.contains(e.target)) setOpen(false);
+  });
+
+  var form = root.closest('form');
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      if (hidden.value) return;
+      if (items.length === 1) {
+        pick(items[0]);
+        return;
+      }
+      if (items[active]) {
+        pick(items[active]);
+        return;
+      }
+      e.preventDefault();
+      if (search) search.hidden = false;
+      query.focus();
+    });
+  }
+})();
+</script>

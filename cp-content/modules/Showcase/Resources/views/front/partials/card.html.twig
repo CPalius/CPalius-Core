@@ -1,0 +1,49 @@
+{#
+    One entry in a listing grid.
+
+    Also reachable from any other template through {{ cp_showcase_card(item) }},
+    which is how a blog post or a forum sidebar embeds a product without knowing
+    anything about this module. The runtime passes the pre-resolved url, price,
+    cover and excerpt; when the partial is included directly they are computed
+    here instead, so both call sites render the same card.
+#}
+{# "is defined" rather than |default(): the include uses "only", and strict_variables
+   is on in the test environment, where |default() on an undefined variable throws. #}
+{% set cardUrl = showcaseUrl is defined ? showcaseUrl : cp_showcase_url(item) %}
+{% set cardPrice = showcasePrice is defined ? showcasePrice : cp_showcase_price(item) %}
+{% set cardCover = showcaseCover is defined ? showcaseCover : cp_showcase_cover(item) %}
+{% set cardExcerpt = showcaseExcerpt is defined ? showcaseExcerpt : cp_showcase_excerpt(item, 120) %}
+{% set cardLayout = layout is defined and layout == 'list' ? 'list' : 'grid' %}
+
+<a class="showcase-card{{ cardLayout == 'list' ? ' is-list' : '' }}" href="{{ cardUrl }}">
+    <div class="showcase-card__media">
+        {% if cardCover %}
+            <img src="{{ cardCover|cp_thumb(480, 320) }}" alt="{{ item.title }}" loading="lazy">
+        {% else %}
+            <span class="showcase-card__placeholder">{{ 'showcase.card.no_image'|trans }}</span>
+        {% endif %}
+
+        {% if item.featured %}
+            <span class="showcase-card__badge">{{ 'showcase.items.featured'|trans }}</span>
+        {% endif %}
+    </div>
+
+    <div class="showcase-card__body">
+        <span class="showcase-card__type">{{ item.type.label(app.request.locale) }}</span>
+        <h3 class="showcase-card__title">{{ item.title }}</h3>
+
+        {% if cardExcerpt %}
+            <p class="showcase-card__excerpt">{{ cardExcerpt }}</p>
+        {% endif %}
+
+        <div class="showcase-card__footer">
+            <span class="showcase-card__price">{{ cardPrice ?? '' }}</span>
+
+            {% if item.ratingAverage %}
+                <span class="showcase-card__rating">
+                    ★ {{ item.ratingAverage }} <span>({{ item.ratingCount }})</span>
+                </span>
+            {% endif %}
+        </div>
+    </div>
+</a>

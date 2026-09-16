@@ -1,0 +1,13 @@
+{
+    "name": "Messages",
+    "version": "1.0.0",
+    "description": "Private messaging between members: inbox, quotas, blocks, reports. Other modules attach via hooks; this module never imports them.",
+    "author": "CPalius",
+    "bundle": "Modules\\Messages\\MessagesModule",
+    "core_version": "^2.0",
+    "requires": {},
+    "conflicts": {},
+    "provides": [
+        "messaging"
+    ]
+}

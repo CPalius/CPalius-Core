@@ -1,0 +1,267 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'showcase.dashboard.header'|trans }}{% endblock %}
+{% block header %}{{ 'showcase.dashboard.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('showcase_index', {_locale: app.request.locale}) }}" target="_blank" rel="noopener" class="btn btn-sm btn-neutral">
+        {{ 'showcase.dashboard.action.view_site'|trans }}
+    </a>
+    <a href="{{ path('admin_showcase_types_index') }}" class="btn btn-sm btn-neutral">{{ 'showcase.menu.types'|trans }}</a>
+    <a href="{{ path('admin_showcase_settings_index') }}" class="btn btn-sm btn-neutral">{{ 'showcase.menu.settings'|trans }}</a>
+    <a href="{{ path('admin_showcase_items_create') }}" class="btn btn-sm btn-primary">{{ 'showcase.items.create_action'|trans }}</a>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap(['app', 'showcase-dashboard']) }}
+{% endblock %}
+
+{% block body %}
+    {% include '@ShowcaseModule/admin/_desk_nav.html.twig' with {
+        deskPendingCount: stats.pending,
+        deskPendingReviews: stats.pendingReviews,
+    } %}
+
+    {# Where the public pages live. An operator who has just activated the module
+       should not have to guess the URL or dig through the router to find it. #}
+    <div class="mb-6">
+        <twig:studio:card title="{{ 'showcase.dashboard.urls.title'|trans }}">
+            <twig:block name="content">
+                <p class="mb-sp-sm text-fs-sm text-neutral-600">{{ 'showcase.dashboard.urls.intro'|trans }}</p>
+
+                <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    {% set publicLinks = [
+                        { label: 'showcase.dashboard.urls.index'|trans, url: path('showcase_index', {_locale: app.request.locale}) },
+                        { label: 'showcase.dashboard.urls.member'|trans, url: path('showcase_member_index', {_locale: app.request.locale}) },
+                        { label: 'showcase.dashboard.urls.api_items'|trans, url: '/api/showcase/items' },
+                        { label: 'showcase.dashboard.urls.api_types'|trans, url: '/api/showcase/types' },
+                    ] %}
+
+                    {% for link in publicLinks %}
+                        <a href="{{ link.url }}" target="_blank" rel="noopener"
+                           class="rounded-lg border border-neutral-200 px-3 py-2 transition hover:border-primary-500">
+                            <span class="block text-fs-sm font-medium text-neutral-900">{{ link.label }}</span>
+                            <code class="block truncate text-fs-xs text-neutral-500">{{ link.url }}</code>
+                        </a>
+                    {% endfor %}
+                </div>
+
+                <p class="mt-sp-sm text-fs-xs text-neutral-500">{{ 'showcase.dashboard.urls.menu_note'|trans }}</p>
+            </twig:block>
+        </twig:studio:card>
+    </div>
+
+    {# --- Headline numbers --------------------------------------------------- #}
+    <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <twig:studio:card title="{{ 'showcase.dashboard.stat.total'|trans }}">
+            <twig:block name="content">
+                <p class="text-2xl font-semibold text-neutral-900">{{ stats.total }}</p>
+                <p class="text-fs-xs text-neutral-500">{{ 'showcase.dashboard.stat.trashed'|trans({ count: stats.trashed }) }}</p>
+            </twig:block>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'showcase.status.published'|trans }}">
+            <twig:block name="content">
+                <p class="text-2xl font-semibold text-success-600">{{ stats.published }}</p>
+                <p class="text-fs-xs text-neutral-500">{{ 'showcase.dashboard.stat.featured'|trans({ count: stats.featured }) }}</p>
+            </twig:block>
+        </twig:studio:card>
+
+        {# The one number a moderator opens this page for. #}
+        <twig:studio:card title="{{ 'showcase.status.pending'|trans }}" variant="{{ stats.pending > 0 ? 'danger' : 'default' }}">
+            <twig:block name="content">
+                <p class="text-2xl font-semibold {{ stats.pending > 0 ? 'text-danger-600' : 'text-neutral-900' }}">{{ stats.pending }}</p>
+                {% if stats.pending > 0 %}
+                    <a href="{{ path('admin_showcase_items_index', {status: 'pending'}) }}" class="text-fs-xs text-primary-600 hover:underline">
+                        {{ 'showcase.dashboard.stat.go_queue'|trans }}
+                    </a>
+                {% else %}
+                    <p class="text-fs-xs text-neutral-500">{{ 'showcase.dashboard.stat.queue_clear'|trans }}</p>
+                {% endif %}
+            </twig:block>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'showcase.dashboard.stat.views'|trans }}">
+            <twig:block name="content">
+                <p class="text-2xl font-semibold text-neutral-900">{{ stats.views|number_format(0, ',', '.') }}</p>
+                <p class="text-fs-xs text-neutral-500">{{ 'showcase.dashboard.stat.clicks'|trans({ count: stats.clicks }) }}</p>
+            </twig:block>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'showcase.dashboard.stat.rating'|trans }}">
+            <twig:block name="content">
+                <p class="text-2xl font-semibold text-neutral-900">
+                    {{ stats.avgRating is null ? '—' : stats.avgRating ~ ' / 5' }}
+                </p>
+                <p class="text-fs-xs text-neutral-500">{{ 'showcase.dashboard.stat.review_count'|trans({ count: stats.reviews }) }}</p>
+            </twig:block>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'showcase.dashboard.stat.structure'|trans }}">
+            <twig:block name="content">
+                <p class="text-2xl font-semibold text-neutral-900">{{ stats.types }}</p>
+                <p class="text-fs-xs text-neutral-500">
+                    {{ 'showcase.dashboard.stat.structure_detail'|trans({ enabled: stats.enabledTypes, fields: stats.fields }) }}
+                </p>
+            </twig:block>
+        </twig:studio:card>
+    </div>
+
+    {# --- Charts -------------------------------------------------------------- #}
+    <div class="mb-6 grid gap-4 lg:grid-cols-3">
+        <twig:studio:card title="{{ 'showcase.dashboard.chart.by_status'|trans }}">
+            <twig:block name="content">
+                <div style="height: 210px; position: relative;">
+                    <canvas id="showcase-chart-status"
+                            data-values="{{ chartStatusValues|json_encode }}"
+                            data-labels="{{ chartStatusLabels|map(s => ('showcase.status.' ~ s)|trans)|json_encode }}"></canvas>
+                </div>
+            </twig:block>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'showcase.dashboard.chart.by_type'|trans }}">
+            <twig:block name="content">
+                <div style="height: 210px; position: relative;">
+                    <canvas id="showcase-chart-type"
+                            data-labels="{{ chartTypeLabels|json_encode }}"
+                            data-values="{{ chartTypeValues|json_encode }}"
+                            data-i18n-items="{{ 'showcase.dashboard.chart.items'|trans }}"></canvas>
+                </div>
+            </twig:block>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'showcase.dashboard.chart.activity'|trans }}">
+            <twig:block name="content">
+                <div style="height: 210px; position: relative;">
+                    <canvas id="showcase-chart-activity"
+                            data-labels="{{ activity.labels|json_encode }}"
+                            data-values="{{ activity.values|json_encode }}"
+                            data-i18n-items="{{ 'showcase.dashboard.chart.new_items'|trans }}"></canvas>
+                </div>
+            </twig:block>
+        </twig:studio:card>
+    </div>
+
+    {# --- Moderation queue ---------------------------------------------------- #}
+    <div class="mb-6 grid gap-4 lg:grid-cols-2">
+        <twig:studio:card title="{{ 'showcase.dashboard.queue.title'|trans }}" padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'showcase.items.column.title'|trans,
+                'showcase.items.column.type'|trans,
+                'showcase.items.column.owner'|trans,
+                '',
+            ] }}" empty="{{ queue is empty }}" emptyText="{{ 'showcase.dashboard.queue.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for item in queue %}
+                        <tr>
+                            <td>
+                                <a href="{{ path('admin_showcase_items_edit', {id: item.id}) }}"
+                                   class="font-medium text-neutral-900 hover:text-primary-600">{{ item.title }}</a>
+                                <p class="text-fs-xs text-neutral-500">{{ item.createdAt|date('d.m.Y H:i') }}</p>
+                            </td>
+                            <td class="text-fs-xs text-neutral-500">{{ item.type.label(app.request.locale) }}</td>
+                            <td class="text-fs-xs text-neutral-500">{{ item.owner ? item.owner.publicDisplayName : '—' }}</td>
+                            <td class="text-right">
+                                {% if is_granted('showcase.item.moderate') %}
+                                    <form method="post" action="{{ path('admin_showcase_items_moderate', {id: item.id, action: 'approve'}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                        <button type="submit" class="btn btn-sm btn-primary">{{ 'showcase.items.action.approve'|trans }}</button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'showcase.dashboard.reviews.title'|trans }}" padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'showcase.reviews.column.item'|trans,
+                'showcase.reviews.column.author'|trans,
+                'showcase.reviews.column.rating'|trans,
+                '',
+            ] }}" empty="{{ pendingReviews is empty }}" emptyText="{{ 'showcase.dashboard.reviews.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for review in pendingReviews %}
+                        <tr>
+                            <td>
+                                <a href="{{ path('admin_showcase_items_edit', {id: review.item.id}) }}"
+                                   class="font-medium text-neutral-900 hover:text-primary-600">{{ review.item.title }}</a>
+                            </td>
+                            <td class="text-fs-xs text-neutral-500">{{ review.author ? review.author.publicDisplayName : '—' }}</td>
+                            <td class="text-fs-xs text-neutral-500">★ {{ review.rating }}</td>
+                            <td class="text-right">
+                                <a href="{{ path('admin_showcase_reviews_index') }}" class="btn btn-sm btn-neutral">
+                                    {{ 'showcase.dashboard.reviews.review'|trans }}
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
+    </div>
+
+    {# --- Types + latest ------------------------------------------------------ #}
+    <div class="grid gap-4 lg:grid-cols-2">
+        <twig:studio:card title="{{ 'showcase.dashboard.types.title'|trans }}" padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'showcase.types.column.label'|trans,
+                'showcase.types.column.items'|trans,
+                'showcase.types.column.fields'|trans,
+                '',
+            ] }}" empty="{{ perType is empty }}" emptyText="{{ 'showcase.types.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for row in perType %}
+                        <tr>
+                            <td>
+                                <span class="font-medium text-neutral-900">{{ row.label }}</span>
+                                <p class="text-fs-xs text-neutral-500"><code>{{ row.machineName }}</code></p>
+                            </td>
+                            <td class="text-fs-xs text-neutral-500">
+                                {{ row.total }}
+                                <span class="text-success-600">({{ row.published }} {{ 'showcase.status.published'|trans|lower }})</span>
+                            </td>
+                            <td class="text-fs-xs text-neutral-500">{{ row.fields }}</td>
+                            <td class="text-right">
+                                <a href="{{ path('admin_showcase_fields_index', {machineName: row.machineName}) }}" class="btn btn-sm btn-neutral">
+                                    {{ 'showcase.types.manage_fields'|trans }}
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'showcase.dashboard.latest.title'|trans }}" padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'showcase.items.column.title'|trans,
+                'showcase.items.column.status'|trans,
+                'showcase.items.column.updated'|trans,
+            ] }}" empty="{{ latest is empty }}" emptyText="{{ 'showcase.items.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for item in latest %}
+                        <tr>
+                            <td>
+                                <a href="{{ path('admin_showcase_items_edit', {id: item.id}) }}"
+                                   class="font-medium text-neutral-900 hover:text-primary-600">{{ item.title }}</a>
+                                <p class="text-fs-xs text-neutral-500">
+                                    {{ item.type.label(app.request.locale) }} · <span class="font-mono uppercase">{{ item.locale }}</span>
+                                </p>
+                            </td>
+                            <td>
+                                <span class="badge {{ item.status == 'published' ? 'badge-success' : (item.status == 'pending' ? 'badge-warning' : 'badge-neutral') }}">
+                                    {{ ('showcase.status.' ~ item.status)|trans }}
+                                </span>
+                            </td>
+                            <td class="text-fs-xs text-neutral-500">{{ item.updatedAt|date('d.m.Y H:i') }}</td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
+    </div>
+{% endblock %}

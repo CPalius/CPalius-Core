@@ -1,0 +1,75 @@
+{% extends '@ShowcaseModule/front/layout.html.twig' %}
+
+{% block title %}{{ 'showcase.member.title'|trans }}{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+
+{% block showcase_main %}
+    <div class="showcase-page">
+        <header class="showcase-hero">
+            <h1>{{ 'showcase.member.title'|trans }}</h1>
+            <p>{{ 'showcase.member.intro'|trans }}</p>
+        </header>
+
+        <div class="showcase-toolbar">
+            <a class="showcase-btn" href="{{ path('showcase_member_create') }}">{{ 'showcase.member.create_action'|trans }}</a>
+            <a class="showcase-btn showcase-btn--ghost" href="{{ path('showcase_index') }}">{{ 'showcase.front.title'|trans }}</a>
+
+            {% if quota.limit > 0 %}
+                <span class="showcase-card__type">
+                    {{ 'showcase.member.quota'|trans({ used: quota.used, limit: quota.limit }) }}
+                </span>
+            {% endif %}
+        </div>
+
+        {% if result.isEmpty %}
+            <p class="showcase-empty">{{ 'showcase.member.empty'|trans }}</p>
+        {% else %}
+            <table class="showcase-table">
+                <thead>
+                    <tr>
+                        <th>{{ 'showcase.items.column.title'|trans }}</th>
+                        <th>{{ 'showcase.items.column.type'|trans }}</th>
+                        <th>{{ 'showcase.items.column.status'|trans }}</th>
+                        <th>{{ 'showcase.items.column.updated'|trans }}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in result %}
+                        <tr>
+                            <td>
+                                <strong>{{ item.title }}</strong>
+                                {% if item.moderationNote %}
+                                    <p class="showcase-field__error">{{ item.moderationNote }}</p>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.type.label(app.request.locale) }}</td>
+                            <td>
+                                <span class="showcase-status showcase-status--{{ item.status }}">
+                                    {{ ('showcase.status.' ~ item.status)|trans }}
+                                </span>
+                            </td>
+                            <td>{{ item.updatedAt|date('Y-m-d') }}</td>
+                            <td>
+                                <a href="{{ path('showcase_member_edit', {id: item.id}) }}">{{ 'showcase.action.edit'|trans }}</a>
+                                {% if item.status == 'published' %}
+                                    ·
+                                    <a href="{{ path('showcase_show', {_locale: item.locale, slug: item.slug}) }}">
+                                        {{ 'showcase.items.action.view'|trans }}
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% include '@ShowcaseModule/front/partials/pagination.html.twig' with {
+                result: result,
+                routeName: 'showcase_member_index',
+                routeParams: {},
+                preserved: {},
+            } only %}
+        {% endif %}
+    </div>
+{% endblock %}

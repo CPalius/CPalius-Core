@@ -884,12 +884,49 @@ p {
   color: #E57368;
 }
 
-.navbar-user__trigger-badge {
+.navbar-inbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  z-index: 1100;
+}
+
+.navbar-alert {
+  position: relative;
+}
+
+.navbar-alert__btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 4px;
+  color: rgba(255,255,255,0.75);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all var(--tr-fast);
+}
+
+.navbar-alert__btn:hover,
+.navbar-alert.is-open .navbar-alert__btn {
+  color: var(--cp-white);
+  border-color: var(--cp-accent);
+  background: rgba(255,255,255,0.06);
+}
+
+.navbar-alert__badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: var(--cp-accent);
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -897,25 +934,18 @@ p {
   text-align: center;
 }
 
-.navbar-user__link--notif {
-  width: 100%;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  text-align: left;
-  font: inherit;
+.navbar-alert__badge--blue {
+  background: #2563eb;
 }
 
-.navbar-user.notif-open .navbar-user__link--notif {
-  background: rgba(255,255,255,0.08);
-  color: var(--cp-white);
+.navbar-alert__badge--red {
+  background: #dc2626;
 }
 
-.navbar-notif-box {
+.navbar-alert__panel {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  bottom: auto;
   width: 340px;
   max-width: min(340px, calc(100vw - 24px));
   max-height: min(420px, calc(100vh - var(--navbar-h, 64px) - 24px));
@@ -928,11 +958,7 @@ p {
   overflow: hidden;
 }
 
-.navbar-user.open.notif-open .navbar-user__dropdown {
-  right: 348px;
-}
-
-.navbar-user.notif-open .navbar-notif-box {
+.navbar-alert.is-open .navbar-alert__panel {
   display: flex;
 }
 
@@ -2308,6 +2334,15 @@ p {
     width: 100%;
   }
 
+  .navbar-inbox {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .navbar-inbox .navbar-user {
+    flex: 1 1 100%;
+  }
+
   .navbar-user__trigger {
     width: 100%;
     justify-content: space-between;
@@ -2338,7 +2373,7 @@ p {
     visibility: visible;
   }
 
-  .navbar-notif-box {
+  .navbar-alert__panel {
     position: static;
     width: 100%;
     max-width: none;
@@ -2347,8 +2382,8 @@ p {
     box-shadow: none;
   }
 
-  .navbar-user.open.notif-open .navbar-user__dropdown {
-    right: auto;
+  .navbar-alert.is-open .navbar-alert__panel {
+    display: flex;
   }
 
   .hero-actions {

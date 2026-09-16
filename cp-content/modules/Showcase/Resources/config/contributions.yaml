@@ -1,0 +1,47 @@
+# Declarative wiring into core surfaces. Nothing here imports another module;
+# core reads this file and ignores whatever it cannot resolve.
+
+# Adds "Showcase" to the homepage-mode picker in Studio, so an installation can
+# use the showcase as its landing page. Skipped automatically when the route is
+# unavailable (module deactivated).
+homepage_modes:
+    showcase:
+        route: showcase_index
+        label: showcase.homepage.mode
+        priority: 30
+
+studio:
+    quick_create:
+        - { label_key: showcase.studio.create_item, route: admin_showcase_items_create, icon: heroicons:sparkles }
+    quick_links:
+        - { label_key: showcase.studio.link_desk, route: admin_showcase_dashboard, icon: heroicons:rectangle-group }
+        - { label_key: showcase.studio.link_types, route: admin_showcase_types_index, icon: heroicons:squares-2x2 }
+        - { label_key: showcase.studio.link_moderation, route: admin_showcase_items_index, icon: heroicons:shield-check }
+
+# In-app notifications only: no mail templates ship with this module, and a
+# notification type pointing at a missing template would fail silently at send
+# time rather than at install time.
+notification_types:
+    showcase.item_submitted:
+        label: showcase.notification.item_submitted
+        module: Showcase
+        default_channels: [in_app]
+        expose_in_account: false
+    showcase.item_approved:
+        label: showcase.notification.item_approved
+        module: Showcase
+        preference_key: showcase_notif_status
+        default_channels: [in_app]
+        expose_in_account: true
+    showcase.item_rejected:
+        label: showcase.notification.item_rejected
+        module: Showcase
+        preference_key: showcase_notif_status
+        default_channels: [in_app]
+        expose_in_account: true
+    showcase.review_received:
+        label: showcase.notification.review_received
+        module: Showcase
+        preference_key: showcase_notif_review
+        default_channels: [in_app]
+        expose_in_account: true

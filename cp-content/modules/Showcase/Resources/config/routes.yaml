@@ -1,0 +1,17 @@
+# Public and member-facing screens carry the locale prefix so a showcase entry
+# has one canonical URL per language (Law 5.2). Admin screens live under /admin,
+# which security.yaml already gates behind authentication.
+showcase_module_front:
+    resource: ../../Controller/
+    type: attribute
+    prefix: /{_locale}
+    requirements:
+        _locale: '%cpalius.locales_pattern%'
+    defaults:
+        _locale: '%cpalius.default_locale%'
+    exclude:
+        - ../../Controller/Admin/
+
+showcase_module_admin:
+    resource: ../../Controller/Admin/
+    type: attribute

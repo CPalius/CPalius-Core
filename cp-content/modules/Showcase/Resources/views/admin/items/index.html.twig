@@ -1,0 +1,141 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'showcase.menu.items'|trans }}{% endblock %}
+{% block header %}{{ 'showcase.menu.items'|trans }}{% endblock %}
+
+{% block header_actions %}
+    {% if pendingReviews > 0 %}
+        <a href="{{ path('admin_showcase_reviews_index') }}" class="btn btn-sm btn-neutral">
+            {{ 'showcase.menu.reviews'|trans }} <span class="badge badge-warning">{{ pendingReviews }}</span>
+        </a>
+    {% endif %}
+    <a href="{{ path('admin_showcase_types_index') }}" class="btn btn-sm btn-neutral">{{ 'showcase.menu.types'|trans }}</a>
+    <a href="{{ path('admin_showcase_items_create') }}" class="btn btn-sm btn-primary">{{ 'showcase.items.create_action'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    {% include '@ShowcaseModule/admin/_desk_nav.html.twig' %}
+
+    <div class="mb-sp-md grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {% for status in statuses %}
+            <a href="{{ path('admin_showcase_items_index', {status: status}) }}"
+               class="rounded-lg border px-4 py-3 {{ currentStatus == status ? 'border-primary-500 bg-primary-50' : 'border-neutral-200 bg-white' }}">
+                <p class="text-fs-xs uppercase tracking-wide text-neutral-500">{{ ('showcase.status.' ~ status)|trans }}</p>
+                <p class="text-fs-lg font-semibold text-neutral-900">{{ counts[status] ?? 0 }}</p>
+            </a>
+        {% endfor %}
+    </div>
+
+    <twig:studio:card>
+        <twig:block name="content">
+            <form method="get" class="flex flex-wrap items-end gap-3">
+                <div>
+                    <label class="form-label" for="q">{{ 'showcase.items.filter.search'|trans }}</label>
+                    <input type="search" id="q" name="q" value="{{ search }}" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label" for="type">{{ 'showcase.items.filter.type'|trans }}</label>
+                    <select id="type" name="type" class="form-control">
+                        <option value="">{{ 'showcase.items.filter.all_types'|trans }}</option>
+                        {% for t in types %}
+                            <option value="{{ t.machineName }}"{{ currentType == t.machineName ? ' selected' : '' }}>
+                                {{ t.label(app.request.locale) }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label" for="status">{{ 'showcase.items.filter.status'|trans }}</label>
+                    <select id="status" name="status" class="form-control">
+                        <option value="">{{ 'showcase.items.filter.all_statuses'|trans }}</option>
+                        {% for status in statuses %}
+                            <option value="{{ status }}"{{ currentStatus == status ? ' selected' : '' }}>
+                                {{ ('showcase.status.' ~ status)|trans }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label" for="locale">{{ 'showcase.items.filter.locale'|trans }}</label>
+                    <select id="locale" name="locale" class="form-control">
+                        <option value="">{{ 'showcase.items.filter.all_locales'|trans }}</option>
+                        {% for locale in locales %}
+                            <option value="{{ locale.code }}"{{ currentLocale == locale.code ? ' selected' : '' }}>{{ locale.nativeName }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <label class="flex items-center gap-2 pb-2">
+                    <input type="checkbox" name="trashed" value="1"{{ trashed ? ' checked' : '' }}>
+                    <span class="text-fs-sm">{{ 'showcase.items.filter.trashed'|trans }}</span>
+                </label>
+                <button type="submit" class="btn btn-sm btn-primary">{{ 'showcase.items.filter.apply'|trans }}</button>
+            </form>
+        </twig:block>
+    </twig:studio:card>
+
+    <div class="mt-sp-md">
+        <twig:studio:card padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'showcase.items.column.title'|trans,
+                'showcase.items.column.type'|trans,
+                'showcase.items.column.owner'|trans,
+                'showcase.items.column.status'|trans,
+                'showcase.items.column.updated'|trans,
+                '',
+            ] }}" empty="{{ result.isEmpty }}" emptyText="{{ 'showcase.items.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for item in result %}
+                        <tr>
+                            <td>
+                                <a href="{{ path('admin_showcase_items_edit', {id: item.id}) }}"
+                                   class="font-medium text-neutral-900 hover:text-primary-600">{{ item.title }}</a>
+                                {% if item.featured %}
+                                    <span class="badge badge-warning">{{ 'showcase.items.featured'|trans }}</span>
+                                {% endif %}
+                                {% if item.deleted %}
+                                    <span class="badge badge-danger">{{ 'showcase.items.trashed'|trans }}</span>
+                                {% endif %}
+                                <p class="text-fs-xs text-neutral-500">
+                                    <code>{{ item.slug }}</code> · <span class="font-mono uppercase">{{ item.locale }}</span>
+                                </p>
+                            </td>
+                            <td class="text-fs-xs text-neutral-500">{{ item.type.label(app.request.locale) }}</td>
+                            <td class="text-fs-xs text-neutral-500">
+                                {{ item.owner ? item.owner.publicDisplayName : '—' }}
+                            </td>
+                            <td>
+                                <span class="badge {{ item.status == 'published' ? 'badge-success' : (item.status == 'pending' ? 'badge-warning' : 'badge-neutral') }}">
+                                    {{ ('showcase.status.' ~ item.status)|trans }}
+                                </span>
+                            </td>
+                            <td class="text-fs-xs text-neutral-500">{{ item.updatedAt|date('Y-m-d H:i') }}</td>
+                            <td class="text-right">
+                                <div class="flex flex-wrap items-center justify-end gap-2">
+                                    {% if item.deleted %}
+                                        <form method="post" action="{{ path('admin_showcase_items_restore', {id: item.id}) }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                            <button type="submit" class="btn btn-sm btn-neutral">{{ 'showcase.items.action.restore'|trans }}</button>
+                                        </form>
+                                    {% else %}
+                                        {% if item.status != 'published' %}
+                                            <form method="post" action="{{ path('admin_showcase_items_moderate', {id: item.id, action: 'approve'}) }}">
+                                                <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                                <button type="submit" class="btn btn-sm btn-primary">{{ 'showcase.items.action.approve'|trans }}</button>
+                                            </form>
+                                        {% endif %}
+                                        <a href="{{ path('admin_showcase_items_edit', {id: item.id}) }}" class="btn btn-sm btn-neutral">
+                                            {{ 'showcase.action.edit'|trans }}
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
+
+        <twig:studio:pagination result="{{ result }}" route="admin_showcase_items_index"
+                                routeParams="{{ {status: currentStatus, type: currentType, q: search} }}" />
+    </div>
+{% endblock %}

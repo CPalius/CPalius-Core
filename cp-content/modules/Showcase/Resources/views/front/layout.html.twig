@@ -1,0 +1,22 @@
+{#
+    Page chrome for every public showcase screen.
+
+    The parent template is resolved at runtime by ShowcaseTemplateResolver:
+    "@Theme/layout.html.twig" when the active theme has one, otherwise the core
+    base template. The two use different content blocks ("content" vs "body"), so
+    both are declared here and the parent renders whichever it knows about.
+
+    A theme that wants full control ships its own showcase/*.html.twig templates
+    and this file is never reached.
+#}
+{% extends showcaseParentLayout %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    {% include '@ShowcaseModule/front/partials/_styles.html.twig' %}
+{% endblock %}
+
+{% block content %}{% block showcase_main %}{% endblock %}{% endblock %}
+
+{# Core's base.html.twig renders "body" instead of "content". #}
+{% block body %}{{ block('showcase_main') }}{% endblock %}

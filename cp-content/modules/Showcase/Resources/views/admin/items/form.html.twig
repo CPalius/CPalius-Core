@@ -1,0 +1,327 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% set isNew = item is null %}
+
+{% block title %}{{ isNew ? 'showcase.items.create_action'|trans : item.title }}{% endblock %}
+{% block header %}{{ isNew ? 'showcase.items.create_action'|trans : item.title }}{% endblock %}
+
+{% block header_actions %}
+    {% if not isNew and item.status == 'published' %}
+        <a href="{{ path('showcase_show', {_locale: item.locale, slug: item.slug}) }}" target="_blank" rel="noopener" class="btn btn-sm btn-neutral">
+            {{ 'showcase.items.action.view'|trans }}
+        </a>
+    {% endif %}
+    <a href="{{ path('admin_showcase_items_index') }}" class="btn btn-sm btn-neutral">{{ 'showcase.action.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <form method="post" enctype="multipart/form-data" class="space-y-sp-md"
+          action="{{ isNew ? path('admin_showcase_items_create') : path('admin_showcase_items_edit', {id: item.id}) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+        <input type="hidden" name="type" value="{{ type.machineName }}">
+        <input type="hidden" name="locale" value="{{ locale }}">
+
+        {% if errors is not empty %}
+            <div class="rounded-lg border border-danger-300 bg-danger-50 px-4 py-3 text-fs-sm text-danger-700">
+                {{ 'showcase.items.error.has_violations'|trans }}
+            </div>
+        {% endif %}
+
+        <twig:studio:card title="{{ 'showcase.items.section.basics'|trans }}">
+            <twig:block name="content">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label class="form-label" for="title">{{ 'showcase.items.field.title'|trans }}</label>
+                        <input type="text" id="title" name="title" value="{{ item ? item.title : '' }}"
+                               class="form-control" required maxlength="191">
+                        {% for violation in errors.title|default([]) %}
+                            <p class="text-fs-xs text-danger-600">{{ violation|trans }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="form-label" for="summary">{{ 'showcase.items.field.summary'|trans }}</label>
+                        <textarea id="summary" name="summary" rows="2" class="form-control" maxlength="500">{{ item ? item.summary : '' }}</textarea>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="slug">{{ 'showcase.items.field.slug'|trans }}</label>
+                        <input type="text" id="slug" name="slug" value="{{ item ? item.slug : '' }}" class="form-control" maxlength="191">
+                        <p class="form-help">{{ 'showcase.items.help.slug'|trans }}</p>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="expires_at">{{ 'showcase.items.field.expires_at'|trans }}</label>
+                        <input type="date" id="expires_at" name="expires_at"
+                               value="{{ item and item.expiresAt ? item.expiresAt|date('Y-m-d') : '' }}" class="form-control">
+                        <p class="form-help">{{ 'showcase.items.help.expires_at'|trans }}</p>
+                    </div>
+                </div>
+
+                {% if type.supports('body') %}
+                    <div class="mt-4">
+                        <label class="form-label" for="body">{{ 'showcase.items.field.body'|trans }}</label>
+                        <textarea id="body" name="body" rows="10" class="form-control">{{ item ? item.body : '' }}</textarea>
+                        {% if formatChoices|length > 1 %}
+                            <select name="body_format" class="form-control mt-2 w-auto">
+                                {% for formatId, formatLabel in formatChoices %}
+                                    <option value="{{ formatId }}"{{ item and item.bodyFormat == formatId ? ' selected' : '' }}>
+                                        {{ formatLabel|trans }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </twig:block>
+        </twig:studio:card>
+
+        {% if type.supports('price') or type.supports('external_url') or type.supports('demo_url') or type.supports('contact') or type.supports('location') %}
+            <twig:studio:card title="{{ 'showcase.items.section.commerce'|trans }}">
+                <twig:block name="content">
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        {% if type.supports('price') %}
+                            <div>
+                                <label class="form-label" for="price_mode">{{ 'showcase.items.field.price_mode'|trans }}</label>
+                                <select id="price_mode" name="price_mode" class="form-control">
+                                    {% for mode in priceModes %}
+                                        <option value="{{ mode }}"{{ item and item.priceMode == mode ? ' selected' : '' }}>
+                                            {{ ('showcase.price_mode.' ~ mode)|trans }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label" for="price">{{ 'showcase.items.field.price'|trans }}</label>
+                                <input type="text" inputmode="decimal" id="price" name="price" value="{{ item ? item.price : '' }}" class="form-control">
+                            </div>
+                            <div>
+                                <label class="form-label" for="price_currency">{{ 'showcase.items.field.currency'|trans }}</label>
+                                <input type="text" id="price_currency" name="price_currency"
+                                       value="{{ item ? item.priceCurrency : '' }}" class="form-control" maxlength="3" placeholder="TRY">
+                            </div>
+                        {% endif %}
+
+                        {% if type.supports('external_url') %}
+                            <div class="sm:col-span-3">
+                                <label class="form-label" for="external_url">{{ 'showcase.items.field.external_url'|trans }}</label>
+                                <input type="url" id="external_url" name="external_url" value="{{ item ? item.externalUrl : '' }}" class="form-control">
+                            </div>
+                        {% endif %}
+
+                        {% if type.supports('demo_url') %}
+                            <div class="sm:col-span-3">
+                                <label class="form-label" for="demo_url">{{ 'showcase.items.field.demo_url'|trans }}</label>
+                                <input type="url" id="demo_url" name="demo_url" value="{{ item ? item.demoUrl : '' }}" class="form-control">
+                            </div>
+                        {% endif %}
+
+                        {% if type.supports('contact') %}
+                            <div>
+                                <label class="form-label" for="contact_email">{{ 'showcase.items.field.contact_email'|trans }}</label>
+                                <input type="email" id="contact_email" name="contact_email" value="{{ item ? item.contactEmail : '' }}" class="form-control">
+                            </div>
+                            <div>
+                                <label class="form-label" for="contact_phone">{{ 'showcase.items.field.contact_phone'|trans }}</label>
+                                <input type="text" id="contact_phone" name="contact_phone" value="{{ item ? item.contactPhone : '' }}" class="form-control">
+                            </div>
+                        {% endif %}
+
+                        {% if type.supports('location') %}
+                            <div>
+                                <label class="form-label" for="location">{{ 'showcase.items.field.location'|trans }}</label>
+                                <input type="text" id="location" name="location" value="{{ item ? item.location : '' }}" class="form-control">
+                            </div>
+                        {% endif %}
+                    </div>
+                </twig:block>
+            </twig:studio:card>
+        {% endif %}
+
+        {% if type.supports('categories') and categoryTerms is not empty %}
+            <twig:studio:card title="{{ 'showcase.items.section.categories'|trans }}">
+                <twig:block name="content">
+                    <div class="flex flex-wrap gap-2">
+                        {% for term in categoryTerms %}
+                            <label class="flex items-center gap-2 rounded-md border border-neutral-200 px-3 py-2">
+                                <input type="checkbox" name="terms[]" value="{{ term.id }}"{{ term.id in selectedTerms ? ' checked' : '' }}>
+                                <span class="text-fs-sm">{{ term.name }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </twig:block>
+            </twig:studio:card>
+        {% endif %}
+
+        {% if isNew and type.supports('gallery') %}
+            {# Attached straight after the entry is created, so the first save
+               already produces a card with a cover instead of a blank tile. #}
+            <twig:studio:card title="{{ 'showcase.items.section.gallery'|trans }}">
+                <twig:block name="content">
+                    <label class="form-label" for="images">{{ 'showcase.media.upload_action'|trans }}</label>
+                    <input type="file" id="images" name="images[]" multiple accept="image/*" class="form-control">
+                    <p class="form-help">{{ 'showcase.media.create_hint'|trans({ limit: galleryLimit }) }}</p>
+                </twig:block>
+            </twig:studio:card>
+        {% endif %}
+
+        {% if fields is not empty %}
+            <twig:studio:card title="{{ 'showcase.items.section.custom_fields'|trans({ type: type.label(app.request.locale) }) }}">
+                <twig:block name="content">
+                    {# Imported HERE, not at the top of the file: a <twig:block>
+                       body is compiled as its own embedded template, so macros
+                       imported in the outer template are out of scope inside it.
+                       Moving this line back up will raise "Variable
+                       showcaseField does not exist" the moment a type has a
+                       custom field. #}
+                    {% import '@ShowcaseModule/_fields.html.twig' as showcaseField %}
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        {% for field in fields %}
+                            {{ showcaseField.input(field, fieldValues[field.name]|default(null), errors[field.name]|default([]), formatChoices) }}
+                        {% endfor %}
+                    </div>
+                </twig:block>
+            </twig:studio:card>
+        {% endif %}
+
+        <div class="flex items-center gap-2">
+            <button type="submit" class="btn btn-primary">{{ 'showcase.action.save'|trans }}</button>
+            <a href="{{ path('admin_showcase_items_index') }}" class="btn btn-neutral">{{ 'showcase.action.cancel'|trans }}</a>
+        </div>
+    </form>
+
+    {% if not isNew %}
+        <div class="mt-sp-md grid gap-sp-md lg:grid-cols-2">
+            {% if type.supports('gallery') %}
+                <twig:studio:card title="{{ 'showcase.items.section.gallery'|trans }}">
+                    <twig:block name="content">
+                        <form method="post" enctype="multipart/form-data" action="{{ path('admin_showcase_items_media_add', {id: item.id}) }}" class="mb-4">
+                            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                            <input type="file" name="images[]" multiple accept="image/*" class="form-control">
+                            <button type="submit" class="btn btn-sm btn-neutral mt-2">{{ 'showcase.media.upload_action'|trans }}</button>
+                        </form>
+
+                        <div class="grid grid-cols-3 gap-3">
+                            {% for media in gallery %}
+                                <div class="rounded-lg border border-neutral-200 p-2">
+                                    <img src="{{ media.assetId|cp_thumb(240, 160) }}" alt="" class="mb-2 w-full rounded">
+                                    <div class="flex items-center justify-between gap-1">
+                                        <form method="post" action="{{ path('admin_showcase_items_media_cover', {id: item.id, mediaId: media.id}) }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                            <button type="submit" class="btn btn-sm btn-neutral"
+                                                    {{ item.coverAssetId == media.assetId ? 'disabled' : '' }}>
+                                                {{ 'showcase.media.set_cover'|trans }}
+                                            </button>
+                                        </form>
+                                        <form method="post" action="{{ path('admin_showcase_items_media_delete', {id: item.id, mediaId: media.id}) }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">×</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <p class="col-span-3 text-fs-sm text-neutral-500">{{ 'showcase.media.empty'|trans }}</p>
+                            {% endfor %}
+                        </div>
+                    </twig:block>
+                </twig:studio:card>
+            {% endif %}
+
+            {% if type.supports('links') %}
+                <twig:studio:card title="{{ 'showcase.items.section.links'|trans }}">
+                    <twig:block name="content">
+                        <p class="mb-3 text-fs-sm text-neutral-600">{{ 'showcase.links.intro'|trans }}</p>
+
+                        <form method="post" action="{{ path('admin_showcase_items_link_add', {id: item.id}) }}" class="mb-4 space-y-2">
+                            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                            <input type="text" name="link_url" class="form-control" placeholder="{{ 'showcase.links.url_placeholder'|trans }}" required>
+                            <input type="text" name="link_label" class="form-control" placeholder="{{ 'showcase.links.label_placeholder'|trans }}" maxlength="191">
+                            <button type="submit" class="btn btn-sm btn-neutral">{{ 'showcase.links.add_action'|trans }}</button>
+                        </form>
+
+                        <ul class="space-y-2">
+                            {% for link in resolvedLinks %}
+                                <li class="flex items-center justify-between gap-2 rounded-md border border-neutral-200 px-3 py-2">
+                                    <a href="{{ link.url }}" class="truncate text-fs-sm text-primary-600 hover:underline"
+                                       {{ link.internal ? '' : 'target="_blank" rel="noopener nofollow"' }}>
+                                        {{ link.label ?? link.url }}
+                                    </a>
+                                    <form method="post" action="{{ path('admin_showcase_items_link_delete', {id: item.id, linkId: link.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">×</button>
+                                    </form>
+                                </li>
+                            {% else %}
+                                <li class="text-fs-sm text-neutral-500">{{ 'showcase.links.empty'|trans }}</li>
+                            {% endfor %}
+                        </ul>
+                    </twig:block>
+                </twig:studio:card>
+            {% endif %}
+
+            <twig:studio:card title="{{ 'showcase.items.section.moderation'|trans }}">
+                <twig:block name="content">
+                    <p class="mb-3 text-fs-sm">
+                        {{ 'showcase.items.column.status'|trans }}:
+                        <span class="badge {{ item.status == 'published' ? 'badge-success' : 'badge-neutral' }}">
+                            {{ ('showcase.status.' ~ item.status)|trans }}
+                        </span>
+                    </p>
+
+                    {% if item.moderationNote %}
+                        <p class="mb-3 rounded-md bg-warning-50 px-3 py-2 text-fs-sm text-warning-700">{{ item.moderationNote }}</p>
+                    {% endif %}
+
+                    {% if is_granted('showcase.item.moderate') %}
+                        <div class="flex flex-wrap gap-2">
+                            {% for action in ['approve', 'archive', item.featured ? 'unfeature' : 'feature'] %}
+                                <form method="post" action="{{ path('admin_showcase_items_moderate', {id: item.id, action: action}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                    <button type="submit" class="btn btn-sm btn-neutral">{{ ('showcase.items.action.' ~ action)|trans }}</button>
+                                </form>
+                            {% endfor %}
+                        </div>
+
+                        <form method="post" action="{{ path('admin_showcase_items_moderate', {id: item.id, action: 'reject'}) }}" class="mt-3 space-y-2">
+                            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                            <input type="text" name="reason" class="form-control" placeholder="{{ 'showcase.items.reject_reason'|trans }}" maxlength="500">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'showcase.items.action.reject'|trans }}</button>
+                        </form>
+                    {% endif %}
+
+                    {% if siblings is not empty or locales|length > 1 %}
+                        <div class="mt-4 border-t border-neutral-200 pt-3">
+                            <p class="mb-2 text-fs-xs uppercase tracking-wide text-neutral-500">{{ 'showcase.items.section.translations'|trans }}</p>
+                            <div class="flex flex-wrap gap-2">
+                                {% for sibling in siblings %}
+                                    <a href="{{ path('admin_showcase_items_edit', {id: sibling.id}) }}" class="btn btn-sm btn-neutral">
+                                        {{ sibling.locale|upper }}
+                                    </a>
+                                {% endfor %}
+
+                                {% set presentLocales = [item.locale] %}
+                                {% for sibling in siblings %}{% set presentLocales = presentLocales|merge([sibling.locale]) %}{% endfor %}
+
+                                {% for locale in locales|filter(l => l.code not in presentLocales) %}
+                                    <form method="post" action="{{ path('admin_showcase_items_translate', {id: item.id, locale: locale.code}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">+ {{ locale.code|upper }}</button>
+                                    </form>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if is_granted('showcase.item.delete.any') %}
+                        <form method="post" action="{{ path('admin_showcase_items_delete', {id: item.id}) }}" class="mt-4 border-t border-neutral-200 pt-3"
+                              onsubmit="return confirm({{ 'showcase.items.delete_confirm'|trans|json_encode|raw }});">
+                            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'showcase.items.action.trash'|trans }}</button>
+                        </form>
+                    {% endif %}
+                </twig:block>
+            </twig:studio:card>
+        </div>
+    {% endif %}
+{% endblock %}

@@ -16,3 +16,13 @@ role:
         - account.profile.edit
         - account.avatar.upload
         - text_format.restricted.use
+        # Added by the Showcase module installer.
+        - showcase.item.create
+        - showcase.item.view.own
+        - showcase.item.edit.own
+        - showcase.item.delete.own
+        - showcase.review.create
+        # Added by the Messages module installer.
+        - messages.send
+        - messages.report
+        - messages.block

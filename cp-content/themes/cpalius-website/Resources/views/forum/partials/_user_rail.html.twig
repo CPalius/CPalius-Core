@@ -12,6 +12,7 @@
         <i class="bi bi-chat-square-text"></i>
         <span>{{ 'forum.my_topics.link'|trans }}</span>
     </a>
+    {{ cp_hook('forum.user.rail', { user: cp_user() }) }}
     <form method="post" action="{{ path('forum_mark_read') }}" class="forum-user-rail__item forum-user-rail__form">
         <input type="hidden" name="_token" value="{{ csrf_token('forum_mark_read') }}">
         {% if section is defined and section.id is defined %}

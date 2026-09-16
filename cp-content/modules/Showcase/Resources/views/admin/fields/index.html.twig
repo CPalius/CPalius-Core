@@ -1,0 +1,93 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'showcase.fields.header'|trans({ type: type.label(app.request.locale) }) }}{% endblock %}
+{% block header %}{{ 'showcase.fields.header'|trans({ type: type.label(app.request.locale) }) }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_showcase_fields_new', {machineName: type.machineName}) }}" class="btn btn-sm btn-primary">
+        {{ 'showcase.fields.create_action'|trans }}
+    </a>
+    <a href="{{ path('admin_showcase_types_index') }}" class="btn btn-sm btn-neutral">{{ 'showcase.action.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card>
+        <twig:block name="content">
+            <p class="text-fs-sm text-neutral-600">{{ 'showcase.fields.intro'|trans }}</p>
+            <p class="mt-2 text-fs-xs text-neutral-500">
+                {{ 'showcase.fields.bundle_note'|trans }} <code>{{ bundle }}</code>
+            </p>
+        </twig:block>
+    </twig:studio:card>
+
+    <form method="post" action="{{ path('admin_showcase_fields_reorder', {machineName: type.machineName}) }}" class="mt-sp-md">
+        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+
+        <twig:studio:card padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'showcase.fields.column.label'|trans,
+                'showcase.fields.column.name'|trans,
+                'showcase.fields.column.type'|trans,
+                'showcase.fields.column.group'|trans,
+                'showcase.fields.column.flags'|trans,
+                'showcase.fields.column.weight'|trans,
+                '',
+            ] }}" empty="{{ fields is empty }}" emptyText="{{ 'showcase.fields.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for field in fields %}
+                        <tr>
+                            <td>
+                                <a href="{{ path('admin_showcase_fields_edit', {machineName: type.machineName, name: field.name}) }}"
+                                   class="font-medium text-neutral-900 hover:text-primary-600">{{ field.label }}</a>
+                                {% if field.help %}<p class="text-fs-xs text-neutral-500">{{ field.help }}</p>{% endif %}
+                            </td>
+                            <td class="text-fs-xs text-neutral-500"><code>{{ field.name }}</code></td>
+                            <td class="text-fs-xs text-neutral-500">{{ ('field.type.' ~ field.type)|trans }}</td>
+                            <td class="text-fs-xs text-neutral-500">{{ field.fieldGroup ?? '—' }}</td>
+                            <td class="text-fs-xs text-neutral-500">
+                                {% if field.required %}<span class="badge badge-warning">{{ 'showcase.fields.flag.required'|trans }}</span>{% endif %}
+                                {% if field.queryable %}<span class="badge badge-success">{{ 'showcase.fields.flag.queryable'|trans }}</span>{% endif %}
+                                {% if field.multiValue %}<span class="badge badge-neutral">{{ 'showcase.fields.flag.multi'|trans }}</span>{% endif %}
+                            </td>
+                            <td>
+                                <input type="number" name="weight[{{ field.name }}]" value="{{ field.weight }}"
+                                       class="form-control w-20" aria-label="{{ 'showcase.fields.column.weight'|trans }}">
+                            </td>
+                            <td class="text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a href="{{ path('admin_showcase_fields_edit', {machineName: type.machineName, name: field.name}) }}"
+                                       class="btn btn-sm btn-neutral">{{ 'showcase.action.edit'|trans }}</a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
+
+        {% if fields is not empty %}
+            <div class="mt-sp-sm">
+                <button type="submit" class="btn btn-sm btn-primary">{{ 'showcase.fields.reorder_action'|trans }}</button>
+            </div>
+        {% endif %}
+    </form>
+
+    {% if fields is not empty %}
+        <div class="mt-sp-md">
+            <twig:studio:card title="{{ 'showcase.fields.delete_title'|trans }}" variant="danger">
+                <twig:block name="content">
+                    <p class="mb-sp-sm text-fs-sm text-neutral-600">{{ 'showcase.fields.delete_help'|trans }}</p>
+                    <div class="flex flex-wrap gap-2">
+                        {% for field in fields %}
+                            <form method="post" action="{{ path('admin_showcase_fields_delete', {machineName: type.machineName, name: field.name}) }}"
+                                  onsubmit="return confirm({{ 'showcase.fields.delete_confirm'|trans({ name: field.name })|json_encode|raw }});">
+                                <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">{{ field.name }}</button>
+                            </form>
+                        {% endfor %}
+                    </div>
+                </twig:block>
+            </twig:studio:card>
+        </div>
+    {% endif %}
+{% endblock %}

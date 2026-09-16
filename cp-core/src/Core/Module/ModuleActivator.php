@@ -199,7 +199,7 @@ final class ModuleActivator
             $phpBinary = (new PhpExecutableFinder())->find() ?: 'php';
             $consolePath = $this->projectDir.'/cp-core/bin/console';
 
-            $clearResult = $this->runIsolated([$phpBinary, $consolePath, 'cache:clear', '--no-warmup']);
+            $clearResult = $this->runLint([$phpBinary, $consolePath, 'cache:clear', '--no-warmup']);
 
             if (!$clearResult['success']) {
                 return $clearResult;
@@ -209,33 +209,45 @@ final class ModuleActivator
             // !tagged_iterator, so without it this lint reports the core as
             // broken and quarantines every module anyone tries to activate —
             // the failure is in the checker, and it names the module.
-            $yamlResult = $this->runIsolated([$phpBinary, $consolePath, 'lint:yaml', '--parse-tags', 'cp-core/config', 'cp-content/modules']);
+            $yamlResult = $this->runLint([$phpBinary, $consolePath, 'lint:yaml', '--parse-tags', 'cp-core/config', 'cp-content/modules']);
 
             if (!$yamlResult['success']) {
                 return $yamlResult;
             }
 
-            return $this->runIsolated([$phpBinary, $consolePath, 'lint:container']);
+            return $this->runLint([$phpBinary, $consolePath, 'lint:container']);
         } finally {
             $this->fileWriter->replaceAll($originalModules);
         }
     }
 
     /**
+     * Lint in a throwaway cache dir so `cache:clear --no-warmup` never deletes
+     * the live container a request is still requiring (the ContainerXxx/getY.php miss).
+     *
      * @param list<string> $commandLine
      *
      * @return array{success: bool, output: string}
      */
-    private function runIsolated(array $commandLine): array
+    private function runLint(array $commandLine): array
     {
         $process = new Process($commandLine, $this->projectDir);
         $process->setTimeout(120);
+        $env = getenv();
+        $process->setEnv(array_merge(\is_array($env) ? $env : [], [
+            'CPALIUS_CACHE_DIR' => $this->lintCacheDir(),
+        ]));
         $process->run();
 
         return [
             'success' => $process->isSuccessful(),
             'output' => trim($process->getOutput().\PHP_EOL.$process->getErrorOutput()),
         ];
+    }
+
+    private function lintCacheDir(): string
+    {
+        return $this->projectDir.'/cp-core/var/cache/module-lint';
     }
 
     private function summarize(string $output): string
@@ -257,11 +269,19 @@ final class ModuleActivator
 
     private function clearCache(): void
     {
-        $phpBinary = (new PhpExecutableFinder())->find();
+        $phpBinary = (new PhpExecutableFinder())->find() ?: 'php';
         $consolePath = $this->projectDir.'/cp-core/bin/console';
 
-        $process = new Process([$phpBinary ?: 'php', $consolePath, 'cache:clear']);
-        $process->setTimeout(120);
-        $process->run();
+        $clear = new Process([$phpBinary, $consolePath, 'cache:clear'], $this->projectDir);
+        $clear->setTimeout(180);
+        $clear->run();
+
+        if ($clear->isSuccessful()) {
+            return;
+        }
+
+        $warmup = new Process([$phpBinary, $consolePath, 'cache:warmup'], $this->projectDir);
+        $warmup->setTimeout(180);
+        $warmup->run();
     }
 }

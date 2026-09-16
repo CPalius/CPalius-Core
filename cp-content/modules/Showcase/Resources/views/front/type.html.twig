@@ -1,0 +1,51 @@
+{% extends '@ShowcaseModule/front/layout.html.twig' %}
+
+{% block title %}{{ type.label(app.request.locale) }}{% endblock %}
+{% block meta_description %}{{ type.description(app.request.locale) ?: 'showcase.front.meta_description'|trans }}{% endblock %}
+
+{% block showcase_main %}
+    <div class="showcase-page">
+        <header class="showcase-hero">
+            <h1>{{ type.label(app.request.locale) }}</h1>
+            {% if type.description(app.request.locale) %}
+                <p>{{ type.description(app.request.locale) }}</p>
+            {% endif %}
+        </header>
+
+        <div class="showcase-toolbar">
+            {% if canCreate %}
+                <a class="showcase-btn" href="{{ path('showcase_member_create', {type: type.machineName}) }}">
+                    {{ 'showcase.front.submit_to_type'|trans({ type: type.label(app.request.locale) }) }}
+                </a>
+            {% endif %}
+        </div>
+
+        <nav class="showcase-types" aria-label="{{ 'showcase.front.types_label'|trans }}">
+            <a href="{{ path('showcase_index') }}">{{ 'showcase.front.all_types'|trans }}</a>
+            {% for t in types %}
+                <a href="{{ path('showcase_type', {machineName: t.machineName}) }}"
+                   class="{{ t.machineName == type.machineName ? 'is-active' : '' }}">
+                    {{ t.label(app.request.locale) }}
+                </a>
+            {% endfor %}
+        </nav>
+
+        <div class="showcase-layout has-sidebar">
+            {% include '@ShowcaseModule/front/partials/filters.html.twig' %}
+
+            <div>
+                {% if result.isEmpty %}
+                    <p class="showcase-empty">{{ 'showcase.front.empty'|trans }}</p>
+                {% else %}
+                    <div class="showcase-grid{{ layout == 'list' ? ' is-list' : '' }}">
+                        {% for item in result %}
+                            {% include '@ShowcaseModule/front/partials/card.html.twig' with {item: item, layout: layout} only %}
+                        {% endfor %}
+                    </div>
+
+                    {% include '@ShowcaseModule/front/partials/pagination.html.twig' %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

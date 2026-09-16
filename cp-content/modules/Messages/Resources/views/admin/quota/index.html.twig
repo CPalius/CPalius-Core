@@ -1,0 +1,58 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'messages.menu.quota'|trans }}{% endblock %}
+{% block header %}{{ 'messages.menu.quota'|trans }}{% endblock %}
+
+{% block body %}
+    {% include '@MessagesModule/admin/_desk_nav.html.twig' %}
+
+    <twig:studio:card title="{{ 'messages.admin.lookup_user'|trans }}">
+        <twig:block name="content">
+            <form method="get" class="flex flex-wrap gap-2 items-end">
+                <input type="search" name="user" value="{{ query }}" class="form-control" placeholder="{{ 'messages.admin.user_placeholder'|trans }}">
+                <button class="btn btn-sm btn-primary">{{ 'messages.admin.lookup'|trans }}</button>
+            </form>
+
+            {% if subject and quota %}
+                <div class="mt-4 text-fs-sm space-y-1">
+                    <p><strong>{{ subject.publicDisplayName }}</strong> ({{ subject.email }})</p>
+                    <p>{{ 'messages.quota.hourly'|trans({used: quota.hourlySent, limit: quota.hourlyLimit}) }}</p>
+                    <p>{{ 'messages.quota.daily'|trans({used: quota.dailySent, limit: quota.dailyLimit}) }}</p>
+                    <p>{{ 'messages.quota.threads'|trans({used: quota.threadsStartedToday, limit: quota.threadLimit}) }}</p>
+                    {% if restriction and restriction.active %}
+                        <p class="text-danger-600">{{ 'messages.admin.currently_restricted'|trans({reason: restriction.reason}) }}</p>
+                    {% endif %}
+                </div>
+
+                <form method="post" class="mt-4 space-y-2">
+                    <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                    <input type="hidden" name="user" value="{{ subject.username ?: subject.id }}">
+                    <textarea name="reason" class="form-control" rows="2" placeholder="{{ 'messages.admin.restrict_reason'|trans }}"></textarea>
+                    <label class="form-label">{{ 'messages.admin.restrict_hours'|trans }}</label>
+                    <input type="number" name="hours" value="24" min="0" class="form-control">
+                    <p class="form-help">{{ 'messages.admin.restrict_hours_help'|trans }}</p>
+                    <div class="flex gap-2">
+                        <button name="action" value="restrict" class="btn btn-sm btn-outline-danger">{{ 'messages.admin.restrict'|trans }}</button>
+                        <button name="action" value="lift" class="btn btn-sm btn-neutral">{{ 'messages.admin.lift'|trans }}</button>
+                    </div>
+                </form>
+            {% endif %}
+        </twig:block>
+    </twig:studio:card>
+
+    <div class="mt-4">
+        <twig:studio:card title="{{ 'messages.admin.active_restrictions'|trans }}">
+            <twig:block name="content">
+                <ul class="space-y-2 text-fs-sm">
+                    {% for row in activeRestrictions %}
+                        <li>{{ row.user.publicDisplayName }} — {{ row.reason }}
+                            {% if row.expiresAt %}({{ row.expiresAt|date('Y-m-d H:i') }}){% endif %}
+                        </li>
+                    {% else %}
+                        <li class="text-neutral-500">{{ 'messages.admin.no_restrictions'|trans }}</li>
+                    {% endfor %}
+                </ul>
+            </twig:block>
+        </twig:studio:card>
+    </div>
+{% endblock %}

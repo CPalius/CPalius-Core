@@ -1,0 +1,59 @@
+{% extends '@MessagesModule/front/layout.html.twig' %}
+
+{% block title %}{{ 'messages.inbox.title'|trans }}{% endblock %}
+
+{% block messages_main %}
+<div class="messages-page">
+    <h1>{{ heroTitle|default('') ?: 'messages.inbox.heading'|trans }}</h1>
+    <p class="lead">{{ heroDescription|default('') ?: 'messages.inbox.lead'|trans }}</p>
+
+    <nav class="messages-nav">
+        <a href="{{ path('messages_inbox') }}" class="{{ archived ? '' : 'is-active' }}">{{ 'messages.nav.inbox'|trans }}{% if unread > 0 %} ({{ unread }}){% endif %}</a>
+        <a href="{{ path('messages_archived') }}" class="{{ archived ? 'is-active' : '' }}">{{ 'messages.nav.archived'|trans }}</a>
+        <a href="{{ path('messages_compose') }}">{{ 'messages.nav.compose'|trans }}</a>
+        <a href="{{ path('messages_blocked') }}">{{ 'messages.nav.blocked'|trans }}</a>
+    </nav>
+
+    <p class="messages-quota">
+        {% if quota.exempt %}
+            {{ 'messages.quota.exempt'|trans }}
+        {% else %}
+            {{ 'messages.quota.summary'|trans({
+                hourly: quota.hourlyRemaining is null ? '∞' : quota.hourlyRemaining,
+                daily: quota.dailyRemaining is null ? '∞' : quota.dailyRemaining,
+                threads: quota.threadsRemaining is null ? '∞' : quota.threadsRemaining
+            }) }}
+        {% endif %}
+    </p>
+
+    <form method="get" class="messages-form" style="margin-bottom:1rem">
+        <input type="search" name="q" value="{{ search }}" placeholder="{{ 'messages.inbox.search'|trans }}">
+    </form>
+
+    {% if result is empty %}
+        <p class="messages-empty">{{ archived ? 'messages.inbox.empty_archived'|trans : 'messages.inbox.empty'|trans }}</p>
+    {% else %}
+        <ul class="messages-list">
+            {% for thread in result %}
+                {% set me = thread.participantFor(cp_user()) %}
+                {% set other = thread.otherParticipant(cp_user()) %}
+                <li class="{{ me and me.unreadCount > 0 ? 'is-unread' : '' }}">
+                    <a class="row" href="{{ path('messages_thread', {publicId: thread.publicId}) }}">
+                        <strong>{{ other ? other.publicDisplayName : 'messages.thread.unknown'|trans }}</strong>
+                        <span>{{ thread.subject ?: (thread.contextLabel ?: 'messages.thread.no_subject'|trans) }}</span>
+                        <span class="meta">
+                            {{ thread.lastMessageAt|date('d.m.Y H:i') }}
+                            {% if me and me.unreadCount > 0 %} · {{ 'messages.inbox.unread_count'|trans({count: me.unreadCount}) }}{% endif %}
+                            {% if thread.closed %} · {{ 'messages.thread.closed'|trans }}{% endif %}
+                        </span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+        {% include '@MessagesModule/front/partials/pagination.html.twig' with {
+            routeName: archived ? 'messages_archived' : 'messages_inbox',
+            routeParams: {q: search}
+        } %}
+    {% endif %}
+</div>
+{% endblock %}

@@ -21,6 +21,112 @@ final class ModuleInstallContext
     }
 
     /**
+     * Publishes a front-end entry point into a site menu, so activating a module
+     * that adds public pages also makes them reachable.
+     *
+     * Without this, a module can be installed, activated and completely invisible:
+     * its pages exist but nothing links to them, and the operator has to know the
+     * URL and add a menu item by hand before any visitor can arrive.
+     *
+     * Deliberately guarded rather than a hard dependency — the menu tables belong
+     * to the Menu module, so when that module is absent this is a no-op instead of
+     * an activation failure. Core offers the integration point; it does not require
+     * the integration to exist.
+     *
+     * Idempotent on (menu, locale, url): re-activating a module does not stack up
+     * duplicate links, and an operator who renamed the label keeps their label.
+     *
+     * @param string $menuIdentifier e.g. "header", "footer"
+     * @param string $url            absolute path, e.g. "/tr/showcase"
+     *
+     * @return bool true when a row was created
+     */
+    public function ensureMenuLink(string $menuIdentifier, string $label, string $url, string $locale, int $sortOrder = 50): bool
+    {
+        $label = trim($label);
+        $url = trim($url);
+
+        if ($label === '' || $url === '' || !str_starts_with($url, '/')) {
+            return false;
+        }
+
+        try {
+            if (!$this->tableExists('cp_menu_menus') || !$this->tableExists('cp_menu_items')) {
+                return false;
+            }
+
+            $menuId = $this->connection->fetchOne(
+                'SELECT id FROM cp_menu_menus WHERE identifier = :identifier LIMIT 1',
+                ['identifier' => $menuIdentifier],
+            );
+
+            if ($menuId === false || $menuId === null) {
+                return false;
+            }
+
+            $existing = $this->connection->fetchOne(
+                'SELECT id FROM cp_menu_items WHERE menu_id = :menu AND locale = :locale AND url = :url LIMIT 1',
+                ['menu' => (int) $menuId, 'locale' => $locale, 'url' => $url],
+            );
+
+            if ($existing !== false && $existing !== null) {
+                return false;
+            }
+
+            $this->connection->executeStatement(
+                'INSERT INTO cp_menu_items (menu_id, label, locale, url, sort_order, open_in_new_tab)
+                 VALUES (:menu, :label, :locale, :url, :sortOrder, 0)',
+                [
+                    'menu' => (int) $menuId,
+                    'label' => mb_substr($label, 0, 191),
+                    'locale' => $locale,
+                    'url' => mb_substr($url, 0, 255),
+                    'sortOrder' => $sortOrder,
+                ],
+            );
+
+            return true;
+        } catch (\Throwable) {
+            // A missing menu link is a cosmetic loss; activation must not fail over it.
+            return false;
+        }
+    }
+
+    /**
+     * Removes menu links this module published. Matched on URL prefix so every
+     * locale variant of the same entry point goes at once, and so a link the
+     * operator renamed is still recognised as belonging to this module.
+     *
+     * Only ever called from uninstall(); a plain deactivation leaves the site's
+     * navigation alone.
+     */
+    public function removeMenuLinks(string $urlPrefix): int
+    {
+        $urlPrefix = trim($urlPrefix);
+
+        if ($urlPrefix === '' || !str_starts_with($urlPrefix, '/')) {
+            return 0;
+        }
+
+        try {
+            if (!$this->tableExists('cp_menu_items')) {
+                return 0;
+            }
+
+            // LIKE wildcards in the prefix would widen the delete well past this
+            // module's own links, so they are escaped before it is used.
+            $pattern = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $urlPrefix).'%';
+
+            return (int) $this->connection->executeStatement(
+                'DELETE FROM cp_menu_items WHERE url = :exact OR url LIKE :pattern',
+                ['exact' => $urlPrefix, 'pattern' => $pattern],
+            );
+        } catch (\Throwable) {
+            return 0;
+        }
+    }
+
+    /**
      * Deletes every cp_settings row owned by this module.
      * The usual last step of uninstall(); settings have no foreign keys to cascade from.
      */

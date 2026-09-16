@@ -1,0 +1,70 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'messages.dashboard.header'|trans }}{% endblock %}
+{% block header %}{{ 'messages.dashboard.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('messages_inbox', {_locale: app.request.locale}) }}" target="_blank" rel="noopener" class="btn btn-sm btn-neutral">
+        {{ 'messages.dashboard.action.view_inbox'|trans }}
+    </a>
+    <a href="{{ path('admin_messages_settings_index') }}" class="btn btn-sm btn-neutral">{{ 'messages.menu.settings'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    {% include '@MessagesModule/admin/_desk_nav.html.twig' with {deskOpenReports: stats.openReports} %}
+
+    <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <twig:studio:card title="{{ 'messages.dashboard.stat.threads'|trans }}">
+            <twig:block name="content">
+                <p class="text-2xl font-semibold">{{ stats.threads }}</p>
+                <p class="text-fs-xs text-neutral-500">{{ 'messages.dashboard.stat.closed'|trans({count: stats.closed}) }}</p>
+            </twig:block>
+        </twig:studio:card>
+        <twig:studio:card title="{{ 'messages.dashboard.stat.messages'|trans }}">
+            <twig:block name="content">
+                <p class="text-2xl font-semibold">{{ stats.messages }}</p>
+                <p class="text-fs-xs text-neutral-500">{{ 'messages.dashboard.stat.today'|trans({count: stats.today}) }}</p>
+            </twig:block>
+        </twig:studio:card>
+        <twig:studio:card title="{{ 'messages.dashboard.stat.reports'|trans }}" variant="{{ stats.openReports > 0 ? 'danger' : 'default' }}">
+            <twig:block name="content">
+                <p class="text-2xl font-semibold">{{ stats.openReports }}</p>
+                <a href="{{ path('admin_messages_reports_index') }}" class="text-fs-xs text-primary-600">{{ 'messages.dashboard.stat.go_reports'|trans }}</a>
+            </twig:block>
+        </twig:studio:card>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-2">
+        <twig:studio:card title="{{ 'messages.dashboard.top_senders'|trans }}">
+            <twig:block name="content">
+                <ul class="space-y-2">
+                    {% for row in topSenders %}
+                        <li class="flex justify-between text-fs-sm">
+                            <span>{{ row.user.publicDisplayName }}</span>
+                            <strong>{{ row.sent }}</strong>
+                        </li>
+                    {% else %}
+                        <li class="text-fs-sm text-neutral-500">{{ 'messages.dashboard.empty_senders'|trans }}</li>
+                    {% endfor %}
+                </ul>
+            </twig:block>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'messages.dashboard.open_reports'|trans }}">
+            <twig:block name="content">
+                <ul class="space-y-2">
+                    {% for report in openReports %}
+                        <li class="text-fs-sm">
+                            <a href="{{ path('admin_messages_threads_show', {id: report.message.thread.id}) }}">
+                                {{ ('messages.report.reason.' ~ report.reason)|trans }}
+                            </a>
+                            <span class="text-neutral-500">· {{ report.createdAt|date('Y-m-d H:i') }}</span>
+                        </li>
+                    {% else %}
+                        <li class="text-fs-sm text-neutral-500">{{ 'messages.dashboard.queue_clear'|trans }}</li>
+                    {% endfor %}
+                </ul>
+            </twig:block>
+        </twig:studio:card>
+    </div>
+{% endblock %}

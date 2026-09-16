@@ -4,7 +4,7 @@
     "description": "Roadmap, changelog feed and Blog/Forum source aggregation.",
     "author": "CPalius",
     "bundle": "Modules\\Roadmap\\RoadmapModule",
-    "core_version": "^1.0",
+    "core_version": "^2.0",
     "requires": {},
     "conflicts": {},
     "provides": [

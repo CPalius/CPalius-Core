@@ -36,6 +36,7 @@
                 <i class="bi bi-gear"></i> {{ 'account.profile.edit_link'|trans }}
             </a>
         {% endif %}
+        {{ cp_hook('forum.user.actions', { user: profileUser }) }}
     </div>
     <div class="forum-profile-card__stats forum-profile-card__stats--grid">
         <div><strong>{{ stats.topic_count }}</strong><span>{{ 'forum.stat.topic'|trans }}</span></div>

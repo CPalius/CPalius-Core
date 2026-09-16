@@ -44,86 +44,82 @@
 
                 {% set currentUser = cp_user() %}
                 {% if currentUser %}
-                    {% set navUnread = forum_unread_notification_count() %}
-                    {% set navNotifs = forum_recent_notifications(6) %}
-                    <div class="navbar-user" id="navUser">
-                        <button type="button" class="navbar-user__trigger" id="navUserTrigger" aria-expanded="false" aria-controls="navUserDropdown">
-                            {% set navAvatarUrl = forum_user_avatar_url(currentUser) %}
-                            {% if navAvatarUrl %}
-                                <img src="{{ navAvatarUrl }}" alt="" class="navbar-avatar navbar-avatar--image" loading="lazy">
-                            {% else %}
-                                <span class="navbar-avatar">{{ currentUser.fullName|default('?')|trim|first|upper }}</span>
-                            {% endif %}
-                            <span class="navbar-user__name">{{ currentUser.fullName }}</span>
-                            {% if navUnread > 0 %}
-                                <span class="navbar-user__trigger-badge" aria-label="{{ 'forum.notifications.unread'|trans({'count': navUnread}) }}">{{ navUnread }}</span>
-                            {% endif %}
-                            <i class="bi bi-chevron-down navbar-user__caret"></i>
-                        </button>
-                        <div class="navbar-notif-box" id="navNotifBox" role="dialog" aria-label="{{ 'forum.notifications.title'|trans }}">
-                            <div class="navbar-notif-box__head">
-                                <strong>{{ 'forum.notifications.title'|trans }}</strong>
-                                {% if navUnread > 0 %}
-                                    <span>{{ 'forum.notifications.unread'|trans({'count': navUnread}) }}</span>
-                                {% endif %}
-                            </div>
-                            <div class="navbar-notif-box__list">
-                                {% for n in navNotifs %}
-                                    <a href="{{ path('forum_notification_go', {id: n.id}) }}" class="navbar-notif-box__item {{ n.read ? '' : 'is-unread' }}">
-                                        <span class="navbar-notif-box__icon">
-                                            {% if n.type == 'reply' %}<i class="bi bi-reply"></i>
-                                            {% elseif n.type == 'thread_reply' %}<i class="bi bi-chat-dots"></i>
-                                            {% elseif n.type == 'quote' %}<i class="bi bi-chat-quote"></i>
-                                            {% elseif n.type == 'mention' %}<i class="bi bi-at"></i>
-                                            {% elseif n.type == 'reaction' %}<i class="bi bi-heart"></i>
-                                            {% elseif n.type == 'dislike' %}<i class="bi bi-hand-thumbs-down"></i>
-                                            {% elseif n.type == 'watch' %}<i class="bi bi-bell"></i>
-                                            {% else %}<i class="bi bi-award"></i>{% endif %}
-                                        </span>
-                                        <span class="navbar-notif-box__text">
-                                            {% include '@Theme/forum/partials/_notification_message.html.twig' with {n: n} %}
-                                            <time datetime="{{ n.createdAt|date('c') }}">{{ n.createdAt|forum_relative_time }}</time>
-                                        </span>
-                                    </a>
-                                {% else %}
-                                    <p class="navbar-notif-box__empty">{{ 'forum.notifications.empty'|trans }}</p>
-                                {% endfor %}
-                            </div>
-                            <div class="navbar-notif-box__foot">
-                                {% if navUnread > 0 %}
-                                    <form method="post" action="{{ path('forum_notifications_mark_read') }}">
-                                        <input type="hidden" name="_token" value="{{ csrf_token('forum_notifications_mark_read') }}">
-                                        <button type="submit">{{ 'forum.notifications.mark_all_read'|trans }}</button>
-                                    </form>
-                                {% endif %}
-                                <a href="{{ path('forum_notifications') }}">{{ 'forum.notifications.view_all'|trans }}</a>
+                    {% set navUnread = cp_notification_unread_count() %}
+                    {% set navNotifs = cp_recent_notifications(6) %}
+                    {% set navAvatarUrl = cp_current_user_avatar_url() %}
+                    <div class="navbar-inbox" id="navInbox">
+                        <div class="navbar-alert" data-inbox-channel="notifications">
+                            <button type="button" class="navbar-alert__btn" id="navNotifToggle" aria-expanded="false" aria-controls="navNotifBox" aria-label="{{ 'website.nav.notifications'|trans }}">
+                                <i class="bi bi-bell" aria-hidden="true"></i>
+                                <span class="navbar-alert__badge navbar-alert__badge--blue" data-inbox-badge {% if navUnread == 0 %}hidden{% endif %}>{{ navUnread }}</span>
+                            </button>
+                            <div class="navbar-alert__panel" id="navNotifBox" role="dialog" aria-label="{{ 'website.nav.notifications'|trans }}" hidden>
+                                <div class="navbar-notif-box__head">
+                                    <strong>{{ 'website.nav.notifications'|trans }}</strong>
+                                    <span data-inbox-unread-label>{% if navUnread > 0 %}{{ 'notification.inbox.desc'|trans({count: navUnread}) }}{% endif %}</span>
+                                </div>
+                                <div class="navbar-notif-box__list" data-inbox-list>
+                                    {% for n in navNotifs %}
+                                        <a href="{{ n.url }}" class="navbar-notif-box__item {{ n.unread ? 'is-unread' : '' }}" data-inbox-id="{{ n.id }}">
+                                            <span class="navbar-notif-box__icon"><i class="bi bi-{{ n.icon }}"></i></span>
+                                            <span class="navbar-notif-box__text">
+                                                {{ n.text }}
+                                                <time datetime="{{ n.created_at }}">{{ n.created_label }}</time>
+                                            </span>
+                                        </a>
+                                    {% else %}
+                                        <p class="navbar-notif-box__empty">{{ 'notification.inbox.empty'|trans }}</p>
+                                    {% endfor %}
+                                </div>
+                                <div class="navbar-notif-box__foot">
+                                    {% if navUnread > 0 %}
+                                        <form method="post" action="{{ path('account_notifications_mark_all') }}" data-inbox-mark-all>
+                                            <input type="hidden" name="_token" value="{{ csrf_token('account_notifications') }}">
+                                            <button type="submit">{{ 'notification.inbox.mark_all'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                    <a href="{{ path('account_notifications') }}">{{ 'forum.notifications.view_all'|trans }}</a>
+                                </div>
                             </div>
                         </div>
-                        <div class="navbar-user__dropdown" id="navUserDropdown">
-                            <button type="button" class="navbar-user__link navbar-user__link--notif" id="navNotifToggle" aria-expanded="false" aria-controls="navNotifBox">
-                                <i class="bi bi-bell"></i> {{ 'forum.notifications.title'|trans }}
-                                {% if navUnread > 0 %}<span class="navbar-user__badge">{{ navUnread }}</span>{% endif %}
+                        {{ cp_hook('theme.header.alerts', { user: currentUser }) }}
+                        <div class="navbar-user" id="navUser">
+                            <button type="button" class="navbar-user__trigger" id="navUserTrigger" aria-expanded="false" aria-controls="navUserDropdown">
+                                {% if navAvatarUrl %}
+                                    <img src="{{ navAvatarUrl }}" alt="" class="navbar-avatar navbar-avatar--image" loading="lazy">
+                                {% else %}
+                                    <span class="navbar-avatar">{{ currentUser.fullName|default('?')|trim|first|upper }}</span>
+                                {% endif %}
+                                <span class="navbar-user__name">{{ currentUser.fullName }}</span>
+                                <i class="bi bi-chevron-down navbar-user__caret"></i>
                             </button>
-                            <a href="{{ path('forum_profile', {username: currentUser.profileSlug}) }}" class="navbar-user__link">
-                                <i class="bi bi-person-circle"></i> {{ 'website.nav.profile'|trans }}
-                            </a>
-                            <a href="{{ path('account_profile') }}" class="navbar-user__link">
-                                <i class="bi bi-gear"></i> {{ 'website.nav.account_settings'|trans }}
-                            </a>
-                            {% if cp_is_granted('system.aacp.access') %}
-                                <a href="{{ path('admin_forum_dashboard') }}" target="_blank" rel="noopener" class="navbar-user__link">
-                                    <i class="bi bi-grid-1x2"></i> {{ 'website.nav.studio'|trans }}
+                            <div class="navbar-user__dropdown" id="navUserDropdown">
+                                <a href="{{ path('forum_profile', {username: currentUser.profileSlug}) }}" class="navbar-user__link">
+                                    <i class="bi bi-person-circle"></i> {{ 'website.nav.profile'|trans }}
                                 </a>
-                                <a href="{{ path('aacp_dashboard') }}" target="_blank" rel="noopener" class="navbar-user__link">
-                                    <i class="bi bi-shield-lock"></i> {{ 'website.nav.aacp'|trans }}
+                                {{ cp_hook('theme.header.user_menu', { user: currentUser }) }}
+                                <a href="{{ path('account_profile') }}" class="navbar-user__link">
+                                    <i class="bi bi-gear"></i> {{ 'website.nav.account_settings'|trans }}
                                 </a>
-                            {% endif %}
-                            <div class="navbar-user__divider"></div>
-                            <a href="{{ path('admin_logout') }}" class="navbar-user__link navbar-user__link--danger">
-                                <i class="bi bi-box-arrow-right"></i> {{ 'website.nav.logout'|trans }}
-                            </a>
+                                {% if cp_is_granted('system.aacp.access') %}
+                                    <a href="{{ path('admin_forum_dashboard') }}" target="_blank" rel="noopener" class="navbar-user__link">
+                                        <i class="bi bi-grid-1x2"></i> {{ 'website.nav.studio'|trans }}
+                                    </a>
+                                    <a href="{{ path('aacp_dashboard') }}" target="_blank" rel="noopener" class="navbar-user__link">
+                                        <i class="bi bi-shield-lock"></i> {{ 'website.nav.aacp'|trans }}
+                                    </a>
+                                {% endif %}
+                                <div class="navbar-user__divider"></div>
+                                <a href="{{ path('admin_logout') }}" class="navbar-user__link navbar-user__link--danger">
+                                    <i class="bi bi-box-arrow-right"></i> {{ 'website.nav.logout'|trans }}
+                                </a>
+                            </div>
                         </div>
                     </div>
+                    <script type="application/json" id="cp-inbox-pulse">{{ {
+                        url: path('account_inbox_pulse'),
+                        interval: 8000,
+                    }|json_encode|raw }}</script>
                 {% else %}
                     <div class="navbar-auth">
                         <a href="{{ path('account_login') }}" class="navbar-btn navbar-btn--ghost">{{ 'website.nav.login'|trans }}</a>

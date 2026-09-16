@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Core\Notification\NotificationInboxPresenter;
 use App\Core\Notification\Repository\NotificationRepository;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
@@ -50,6 +51,21 @@ final class AccountNotificationController extends AbstractController
         $this->addFlash('success', 'notification.flash.marked_all_read');
 
         return $this->redirectToRoute('account_notifications');
+    }
+
+    #[Route('/hesap/bildirimler/{id}/git', name: 'account_notification_go', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function go(int $id, NotificationInboxPresenter $presenter): RedirectResponse
+    {
+        $user = $this->requireUser();
+        $notification = $this->notifications->find($id);
+        if ($notification === null || $notification->getUser()->getId() !== $user->getId()) {
+            throw $this->createNotFoundException();
+        }
+
+        $notification->markRead();
+        $this->entityManager->flush();
+
+        return $this->redirect($presenter->redirectTarget($notification));
     }
 
     #[Route('/hesap/bildirimler/{id}/okundu', name: 'account_notification_mark_read', methods: ['POST'], requirements: ['id' => '\d+'])]

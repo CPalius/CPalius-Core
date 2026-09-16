@@ -1,0 +1,146 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% set isNew = definition is null %}
+
+{% block title %}{{ (isNew ? 'showcase.fields.create_action' : 'showcase.fields.edit_action')|trans }}{% endblock %}
+{% block header %}{{ (isNew ? 'showcase.fields.create_action' : 'showcase.fields.edit_action')|trans }} — {{ type.label(app.request.locale) }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_showcase_fields_index', {machineName: type.machineName}) }}" class="btn btn-sm btn-neutral">
+        {{ 'showcase.action.back'|trans }}
+    </a>
+{% endblock %}
+
+{% block body %}
+    {% if error %}
+        <div class="mb-sp-sm rounded-lg border border-danger-300 bg-danger-50 px-4 py-3 text-fs-sm text-danger-700">{{ error }}</div>
+    {% endif %}
+
+    {% if isNew %}
+        {# The settings sub-form depends on the chosen type, so the type is picked
+           first and the page reloads with that type's schema. #}
+        <twig:studio:card title="{{ 'showcase.fields.choose_type'|trans }}">
+            <twig:block name="content">
+                <form method="get" class="flex flex-wrap items-end gap-3">
+                    <div>
+                        <label class="form-label" for="type">{{ 'showcase.fields.field.type'|trans }}</label>
+                        <select id="type" name="type" class="form-control">
+                            {% for typeId, typeLabel in typeChoices %}
+                                <option value="{{ typeId }}"{{ fieldType == typeId ? ' selected' : '' }}>{{ typeLabel|trans }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-neutral">{{ 'showcase.fields.apply_type'|trans }}</button>
+                </form>
+            </twig:block>
+        </twig:studio:card>
+    {% endif %}
+
+    <form method="post" action="{{ path('admin_showcase_fields_save', {machineName: type.machineName}) }}" class="mt-sp-md space-y-sp-md">
+        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+        <input type="hidden" name="type" value="{{ fieldType }}">
+
+        <twig:studio:card title="{{ 'showcase.fields.section.basics'|trans }}">
+            <twig:block name="content">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="form-label" for="name">{{ 'showcase.fields.field.name'|trans }}</label>
+                        <input type="text" id="name" name="name" value="{{ definition ? definition.name : '' }}"
+                               class="form-control" required pattern="[a-z][a-z0-9_]{0,62}" maxlength="63"
+                               {{ isNew ? '' : 'readonly' }}>
+                        <p class="form-help">{{ (isNew ? 'showcase.fields.help.name' : 'showcase.fields.help.name_locked')|trans }}</p>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="label">{{ 'showcase.fields.field.label'|trans }}</label>
+                        <input type="text" id="label" name="label" value="{{ definition ? definition.label : '' }}"
+                               class="form-control" maxlength="191">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="form-label" for="help">{{ 'showcase.fields.field.help'|trans }}</label>
+                        <input type="text" id="help" name="help" value="{{ definition ? definition.help : '' }}"
+                               class="form-control" maxlength="500">
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="field_group">{{ 'showcase.fields.field.group'|trans }}</label>
+                        <input type="text" id="field_group" name="field_group" value="{{ definition ? definition.fieldGroup : '' }}"
+                               class="form-control" maxlength="64">
+                        <p class="form-help">{{ 'showcase.fields.help.group'|trans }}</p>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="weight">{{ 'showcase.fields.column.weight'|trans }}</label>
+                        <input type="number" id="weight" name="weight" value="{{ definition ? definition.weight : 0 }}" class="form-control">
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="cardinality">{{ 'showcase.fields.field.cardinality'|trans }}</label>
+                        <input type="text" id="cardinality" name="cardinality"
+                               value="{{ definition ? (definition.cardinality == -1 ? 'unlimited' : definition.cardinality) : 1 }}"
+                               class="form-control">
+                        <p class="form-help">{{ 'showcase.fields.help.cardinality'|trans }}</p>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex flex-wrap gap-4">
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" name="required" value="1"{{ definition and definition.required ? ' checked' : '' }}>
+                        <span class="text-fs-sm">{{ 'showcase.fields.flag.required'|trans }}</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" name="translatable" value="1"{{ definition is null or definition.translatable ? ' checked' : '' }}>
+                        <span class="text-fs-sm">{{ 'showcase.fields.flag.translatable'|trans }}</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" name="queryable" value="1"{{ definition and definition.queryable ? ' checked' : '' }}>
+                        <span class="text-fs-sm">{{ 'showcase.fields.flag.queryable'|trans }}</span>
+                    </label>
+                </div>
+                <p class="form-help">{{ 'showcase.fields.help.queryable'|trans }}</p>
+            </twig:block>
+        </twig:studio:card>
+
+        {% if settingsSchema is not empty %}
+            <twig:studio:card title="{{ 'showcase.fields.section.settings'|trans }}">
+                <twig:block name="content">
+                    {% for setting in settingsSchema %}
+                        {% set current = definition ? definition.getSetting(setting.name, setting.default) : setting.default %}
+                        <div class="mb-4">
+                            <label class="form-label" for="setting_{{ setting.name }}">{{ setting.label|trans }}</label>
+
+                            {% if setting.type == 'textarea' %}
+                                <textarea id="setting_{{ setting.name }}" name="settings[{{ setting.name }}]" rows="5" class="form-control">{{ current }}</textarea>
+                            {% elseif setting.type == 'boolean' %}
+                                <input type="hidden" name="settings[{{ setting.name }}]" value="0">
+                                <input type="checkbox" id="setting_{{ setting.name }}" name="settings[{{ setting.name }}]" value="1"{{ current ? ' checked' : '' }}>
+                            {% elseif setting.type == 'select' %}
+                                <select id="setting_{{ setting.name }}" name="settings[{{ setting.name }}]" class="form-control">
+                                    {% for optionValue, optionLabel in setting.choices|default({}) %}
+                                        <option value="{{ optionValue }}"{{ current == optionValue ? ' selected' : '' }}>{{ optionLabel|trans }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% elseif setting.type == 'number' %}
+                                <input type="number" id="setting_{{ setting.name }}" name="settings[{{ setting.name }}]" value="{{ current }}" class="form-control">
+                            {% else %}
+                                <input type="text" id="setting_{{ setting.name }}" name="settings[{{ setting.name }}]" value="{{ current }}" class="form-control">
+                            {% endif %}
+
+                            {% if setting.help is defined and setting.help %}
+                                <p class="form-help">{{ setting.help|trans }}</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:card>
+        {% endif %}
+
+        <div class="flex items-center gap-2">
+            <button type="submit" class="btn btn-primary">{{ 'showcase.action.save'|trans }}</button>
+            <a href="{{ path('admin_showcase_fields_index', {machineName: type.machineName}) }}" class="btn btn-neutral">
+                {{ 'showcase.action.cancel'|trans }}
+            </a>
+        </div>
+    </form>
+{% endblock %}

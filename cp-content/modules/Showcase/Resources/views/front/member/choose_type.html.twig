@@ -1,0 +1,30 @@
+{% extends '@ShowcaseModule/front/layout.html.twig' %}
+
+{% block title %}{{ 'showcase.member.choose_type.title'|trans }}{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+
+{% block showcase_main %}
+    <div class="showcase-page">
+        <header class="showcase-hero">
+            <h1>{{ 'showcase.member.choose_type.title'|trans }}</h1>
+            <p>{{ 'showcase.member.choose_type.intro'|trans }}</p>
+        </header>
+
+        {% if types is empty %}
+            <p class="showcase-empty">{{ 'showcase.member.choose_type.none'|trans }}</p>
+        {% else %}
+            <div class="showcase-grid">
+                {% for type in types %}
+                    <a class="showcase-card" href="{{ path('showcase_member_create', {type: type.machineName}) }}">
+                        <div class="showcase-card__body">
+                            <h3 class="showcase-card__title">{{ type.label(app.request.locale) }}</h3>
+                            {% if type.description(app.request.locale) %}
+                                <p class="showcase-card__excerpt">{{ type.description(app.request.locale) }}</p>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

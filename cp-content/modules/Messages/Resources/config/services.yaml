@@ -1,0 +1,33 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    _instanceof:
+        App\Core\Inbox\InboxPulseChannelInterface:
+            tags: ['cpalius.inbox_pulse_channel']
+
+    Modules\Messages\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    Modules\Messages\Service\:
+        resource: '../../Service/'
+
+    Modules\Messages\Inbox\:
+        resource: '../../Inbox/'
+
+    Modules\Messages\Repository\:
+        resource: '../../Repository/'
+
+    Modules\Messages\Twig\:
+        resource: '../../Twig/'
+
+    Modules\Messages\Hooks\:
+        resource: '../../Hooks/'
+
+    Modules\Messages\Account\:
+        resource: '../../Account/'
+
+    Modules\Messages\Mail\:
+        resource: '../../Mail/'

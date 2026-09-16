@@ -1,0 +1,50 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'showcase.menu.reviews'|trans }}{% endblock %}
+{% block header %}{{ 'showcase.menu.reviews'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_showcase_items_index') }}" class="btn btn-sm btn-neutral">{{ 'showcase.action.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    {% include '@ShowcaseModule/admin/_desk_nav.html.twig' %}
+
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'showcase.reviews.column.item'|trans,
+            'showcase.reviews.column.author'|trans,
+            'showcase.reviews.column.rating'|trans,
+            'showcase.reviews.column.body'|trans,
+            '',
+        ] }}" empty="{{ result.isEmpty }}" emptyText="{{ 'showcase.reviews.empty'|trans }}">
+            <twig:block name="rows">
+                {% for review in result %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('admin_showcase_items_edit', {id: review.item.id}) }}"
+                               class="font-medium text-neutral-900 hover:text-primary-600">{{ review.item.title }}</a>
+                        </td>
+                        <td class="text-fs-xs text-neutral-500">{{ review.author ? review.author.publicDisplayName : '—' }}</td>
+                        <td class="text-fs-xs text-neutral-500">{{ review.rating }}/5</td>
+                        <td class="text-fs-xs text-neutral-600">{{ review.body ?? '—' }}</td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                {% for action in ['approve', 'reject', 'delete'] %}
+                                    <form method="post" action="{{ path('admin_showcase_reviews_moderate', {id: review.id, action: action}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                        <button type="submit" class="btn btn-sm {{ action == 'approve' ? 'btn-primary' : 'btn-outline-danger' }}">
+                                            {{ ('showcase.reviews.action.' ~ action)|trans }}
+                                        </button>
+                                    </form>
+                                {% endfor %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+
+    <twig:studio:pagination result="{{ result }}" route="admin_showcase_reviews_index" />
+{% endblock %}

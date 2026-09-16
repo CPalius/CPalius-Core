@@ -1,0 +1,217 @@
+{#
+    Self-contained stylesheet for the public showcase.
+
+    It is inlined rather than shipped as an AssetMapper entry on purpose: a module
+    installed from a ZIP in production would otherwise need `asset-map:compile`
+    before its pages looked like anything. The site CSP allows inline styles
+    ('unsafe-inline' on style-src), so this costs nothing in safety, and a theme
+    that styles the showcase itself simply overrides these rules — every selector
+    is namespaced under .showcase-*.
+
+    Colours are CSS custom properties with fallbacks, so a theme can retint the
+    whole module by setting --showcase-accent once.
+#}
+<style>
+    .showcase-page {
+        --showcase-accent: var(--cp-primary, #2563eb);
+        --showcase-border: var(--cp-border, #e5e7eb);
+        --showcase-muted: var(--cp-muted, #6b7280);
+        --showcase-surface: var(--cp-surface, #ffffff);
+        --showcase-radius: 12px;
+
+        max-width: 1200px;
+        margin: 0 auto;
+        /* The site header is position:fixed and themes publish its height as
+           --navbar-h; without this offset the page starts underneath it and the
+           heading is the part that disappears. The 0px fallback matters: with no
+           theme (core base layout) there is no fixed header to clear, and a
+           hard-coded offset would leave dead space at the top instead. */
+        padding: calc(var(--navbar-h, 0px) + 2rem) 1rem 4rem;
+    }
+
+    .showcase-hero { margin-bottom: 2rem; }
+    .showcase-hero h1 { margin: 0 0 .5rem; font-size: clamp(1.6rem, 3vw, 2.4rem); line-height: 1.2; }
+    .showcase-hero p { margin: 0; color: var(--showcase-muted); max-width: 60ch; }
+
+    .showcase-toolbar {
+        display: flex; flex-wrap: wrap; gap: .75rem; align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .showcase-types { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.5rem; }
+    .showcase-types a {
+        display: inline-flex; align-items: center; gap: .35rem;
+        padding: .4rem .85rem; border: 1px solid var(--showcase-border);
+        border-radius: 999px; font-size: .875rem; text-decoration: none; color: inherit;
+    }
+    .showcase-types a.is-active { border-color: var(--showcase-accent); color: var(--showcase-accent); font-weight: 600; }
+
+    .showcase-layout { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .showcase-layout.has-sidebar { grid-template-columns: 260px 1fr; } }
+
+    .showcase-filters {
+        border: 1px solid var(--showcase-border); border-radius: var(--showcase-radius);
+        padding: 1rem; background: var(--showcase-surface); align-self: start;
+    }
+    .showcase-filters h2 { margin: 0 0 .75rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--showcase-muted); }
+    .showcase-filters label { display: block; font-size: .8rem; margin-bottom: .25rem; color: var(--showcase-muted); }
+    .showcase-filters .showcase-filter { margin-bottom: 1rem; }
+    .showcase-filters input, .showcase-filters select {
+        width: 100%; padding: .45rem .6rem; border: 1px solid var(--showcase-border);
+        border-radius: 8px; font: inherit; background: #fff; color: inherit;
+    }
+    .showcase-filter-range { display: flex; gap: .5rem; }
+    .showcase-filters__reset { margin: .75rem 0 0; font-size: .8rem; }
+    .showcase-filters__hint {
+        margin: .75rem 0 0; padding-top: .75rem; font-size: .75rem; line-height: 1.5;
+        color: var(--showcase-muted); border-top: 1px solid var(--showcase-border);
+    }
+
+    .showcase-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+    .showcase-grid.is-list { grid-template-columns: 1fr; }
+
+    .showcase-card {
+        display: flex; flex-direction: column; overflow: hidden;
+        border: 1px solid var(--showcase-border); border-radius: var(--showcase-radius);
+        background: var(--showcase-surface); text-decoration: none; color: inherit;
+        transition: box-shadow .15s ease, transform .15s ease;
+    }
+    .showcase-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.08); transform: translateY(-2px); }
+    .showcase-card.is-list { flex-direction: row; }
+    .showcase-card.is-list .showcase-card__media { width: 220px; flex: 0 0 220px; }
+
+    .showcase-card__media { position: relative; aspect-ratio: 3 / 2; background: #f3f4f6; overflow: hidden; }
+    .showcase-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .showcase-card__placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--showcase-muted); font-size: .8rem; }
+    .showcase-card__badge {
+        position: absolute; top: .5rem; left: .5rem; padding: .15rem .5rem;
+        border-radius: 999px; background: var(--showcase-accent); color: #fff; font-size: .7rem; font-weight: 600;
+    }
+    .showcase-card__body { padding: .9rem 1rem 1rem; display: flex; flex-direction: column; gap: .35rem; flex: 1; }
+    .showcase-card__type { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--showcase-muted); }
+    .showcase-card__title { margin: 0; font-size: 1rem; line-height: 1.35; }
+    .showcase-card__excerpt { margin: 0; font-size: .85rem; color: var(--showcase-muted); }
+    .showcase-card__footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding-top: .5rem; }
+    .showcase-card__price { font-weight: 700; }
+    .showcase-card__rating { font-size: .8rem; color: var(--showcase-muted); }
+
+    .showcase-detail { display: grid; gap: 2rem; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .showcase-detail { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); } }
+
+    .showcase-figure { margin: 0 0 1.5rem; }
+    .showcase-figure img { width: 100%; border-radius: var(--showcase-radius); display: block; }
+
+    /* Slider. The track is a scroll-snap row, so swipe and keyboard scrolling
+       work before any JavaScript loads; the arrows and dots are enhancements
+       and stay hidden until the script marks the slider as enhanced. */
+    .showcase-slider { position: relative; margin-bottom: 1.5rem; }
+    .showcase-slider__track {
+        display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+        scroll-behavior: smooth; border-radius: var(--showcase-radius);
+        scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    }
+    .showcase-slider__track::-webkit-scrollbar { display: none; }
+    .showcase-slider__track:focus-visible { outline: 2px solid var(--showcase-accent); outline-offset: 3px; }
+    .showcase-slider__slide { flex: 0 0 100%; scroll-snap-align: center; margin: 0; position: relative; }
+    .showcase-slider__slide img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; display: block; }
+    .showcase-slider__slide figcaption {
+        position: absolute; inset-inline: 0; bottom: 0; padding: .6rem .9rem;
+        background: linear-gradient(transparent, rgba(0, 0, 0, .65)); color: #fff; font-size: .8rem;
+    }
+
+    .showcase-slider__nav {
+        display: none; position: absolute; top: 50%; transform: translateY(-50%);
+        width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer;
+        background: rgba(255, 255, 255, .9); color: #111; font-size: 1.4rem; line-height: 1;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, .2);
+    }
+    .showcase-slider.is-enhanced .showcase-slider__nav { display: block; }
+    .showcase-slider__nav--prev { left: .75rem; }
+    .showcase-slider__nav--next { right: .75rem; }
+    .showcase-slider__nav:disabled { opacity: .35; cursor: default; }
+
+    .showcase-slider__dots { display: none; justify-content: center; gap: .4rem; margin-top: .6rem; }
+    .showcase-slider.is-enhanced .showcase-slider__dots { display: flex; }
+    .showcase-slider__dot {
+        width: 9px; height: 9px; padding: 0; border-radius: 50%; cursor: pointer;
+        border: 0; background: var(--showcase-border);
+    }
+    .showcase-slider__dot.is-active { background: var(--showcase-accent); }
+
+    .showcase-slider__counter {
+        position: absolute; top: .75rem; right: .75rem; padding: .15rem .55rem;
+        border-radius: 999px; background: rgba(0, 0, 0, .55); color: #fff; font-size: .75rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .showcase-slider__track { scroll-behavior: auto; }
+    }
+
+    .showcase-specs { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .75rem 1.5rem; margin: 0; }
+    .showcase-spec { border-bottom: 1px solid var(--showcase-border); padding-bottom: .5rem; }
+    .showcase-spec__label { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--showcase-muted); }
+    .showcase-spec__value { margin: .15rem 0 0; font-weight: 500; }
+
+    .showcase-aside {
+        border: 1px solid var(--showcase-border); border-radius: var(--showcase-radius);
+        padding: 1.25rem; background: var(--showcase-surface); align-self: start;
+    }
+    .showcase-aside__price { font-size: 1.6rem; font-weight: 700; margin: 0 0 .75rem; }
+
+    .showcase-links { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+    .showcase-links a {
+        display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem;
+        border: 1px solid var(--showcase-border); border-radius: 8px; text-decoration: none; color: inherit; font-size: .875rem;
+    }
+    .showcase-links a:hover { border-color: var(--showcase-accent); color: var(--showcase-accent); }
+    .showcase-links .showcase-links__host { margin-left: auto; font-size: .75rem; color: var(--showcase-muted); }
+
+    .showcase-btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+        padding: .55rem 1.1rem; border-radius: 8px; border: 1px solid var(--showcase-accent);
+        background: var(--showcase-accent); color: #fff; font: inherit; font-weight: 600;
+        text-decoration: none; cursor: pointer;
+    }
+    .showcase-btn--ghost { background: transparent; color: var(--showcase-accent); }
+    .showcase-btn--danger { background: #dc2626; border-color: #dc2626; }
+    .showcase-btn--block { width: 100%; }
+
+    .showcase-form { display: grid; gap: 1.25rem; }
+    .showcase-form fieldset { border: 1px solid var(--showcase-border); border-radius: var(--showcase-radius); padding: 1.25rem; }
+    .showcase-form legend { padding: 0 .5rem; font-weight: 600; }
+    .showcase-form__grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .showcase-field { display: flex; flex-direction: column; gap: .3rem; }
+    .showcase-field__label { font-size: .8rem; font-weight: 600; }
+    .showcase-field__help { margin: 0; font-size: .75rem; color: var(--showcase-muted); }
+    .showcase-field__error { margin: 0; font-size: .75rem; color: #dc2626; }
+    .showcase-field--error .showcase-input { border-color: #dc2626; }
+    .showcase-input {
+        padding: .5rem .7rem; border: 1px solid var(--showcase-border); border-radius: 8px;
+        font: inherit; background: #fff; color: inherit; width: 100%;
+    }
+    .showcase-input--inline { width: auto; margin-top: .4rem; }
+    .showcase-check { display: inline-flex; align-items: center; gap: .4rem; font-size: .875rem; }
+
+    .showcase-status { display: inline-block; padding: .15rem .55rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+    .showcase-status--published { background: #dcfce7; color: #166534; }
+    .showcase-status--pending { background: #fef3c7; color: #92400e; }
+    .showcase-status--rejected { background: #fee2e2; color: #991b1b; }
+    .showcase-status--draft, .showcase-status--archived { background: #f3f4f6; color: #374151; }
+
+    .showcase-empty { padding: 3rem 1rem; text-align: center; color: var(--showcase-muted); }
+    .showcase-pagination { display: flex; gap: .4rem; justify-content: center; margin-top: 2rem; flex-wrap: wrap; }
+    .showcase-pagination a, .showcase-pagination span {
+        padding: .35rem .7rem; border: 1px solid var(--showcase-border); border-radius: 8px;
+        text-decoration: none; color: inherit; font-size: .875rem;
+    }
+    .showcase-pagination .is-current { background: var(--showcase-accent); color: #fff; border-color: var(--showcase-accent); }
+
+    .showcase-reviews { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: 1rem; }
+    .showcase-review { border: 1px solid var(--showcase-border); border-radius: var(--showcase-radius); padding: .9rem 1rem; }
+    .showcase-review__head { display: flex; justify-content: space-between; gap: 1rem; font-size: .8rem; color: var(--showcase-muted); }
+    .showcase-review__body { margin: .4rem 0 0; }
+
+    .showcase-table { width: 100%; border-collapse: collapse; }
+    .showcase-table th, .showcase-table td { padding: .6rem .5rem; border-bottom: 1px solid var(--showcase-border); text-align: left; font-size: .875rem; }
+    .showcase-table th { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--showcase-muted); }
+</style>

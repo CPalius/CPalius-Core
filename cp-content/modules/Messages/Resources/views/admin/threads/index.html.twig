@@ -1,0 +1,56 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'messages.menu.threads'|trans }}{% endblock %}
+{% block header %}{{ 'messages.menu.threads'|trans }}{% endblock %}
+
+{% block body %}
+    {% include '@MessagesModule/admin/_desk_nav.html.twig' %}
+
+    <twig:studio:card>
+        <twig:block name="content">
+            <form method="get" class="flex flex-wrap items-end gap-3">
+                <div>
+                    <label class="form-label" for="q">{{ 'messages.admin.search'|trans }}</label>
+                    <input type="search" id="q" name="q" value="{{ search }}" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label" for="context">{{ 'messages.admin.context'|trans }}</label>
+                    <input type="text" id="context" name="context" value="{{ context }}" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary">{{ 'messages.admin.filter'|trans }}</button>
+            </form>
+        </twig:block>
+    </twig:studio:card>
+
+    <div class="mt-sp-md">
+        <twig:studio:card padded="{{ false }}">
+            <table class="w-full text-fs-sm">
+                <thead>
+                    <tr class="border-b text-left">
+                        <th class="p-3">{{ 'messages.admin.col.subject'|trans }}</th>
+                        <th class="p-3">{{ 'messages.admin.col.context'|trans }}</th>
+                        <th class="p-3">{{ 'messages.admin.col.messages'|trans }}</th>
+                        <th class="p-3">{{ 'messages.admin.col.updated'|trans }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for thread in result %}
+                        <tr class="border-b">
+                            <td class="p-3">
+                                <a href="{{ path('admin_messages_threads_show', {id: thread.id}) }}">
+                                    {{ thread.subject ?: thread.publicId }}
+                                </a>
+                                {% if thread.closed %}<span class="badge badge-warning">{{ 'messages.thread.closed'|trans }}</span>{% endif %}
+                            </td>
+                            <td class="p-3 text-neutral-500">{{ thread.contextType ?: '—' }}</td>
+                            <td class="p-3">{{ thread.messageCount }}</td>
+                            <td class="p-3">{{ thread.lastMessageAt|date('Y-m-d H:i') }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td class="p-3 text-neutral-500" colspan="4">{{ 'messages.admin.empty_threads'|trans }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </twig:studio:card>
+    </div>
+{% endblock %}

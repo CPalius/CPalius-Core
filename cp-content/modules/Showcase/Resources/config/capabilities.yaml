@@ -1,0 +1,29 @@
+# Capabilities this module adds to CapabilityRegistry. The admin role holds "*"
+# and therefore gets all of them; every other role is opt-in, which is why the
+# installer offers to grant the member-level set (see Install/ModuleInstaller).
+#
+# The .own / .any pairs are read by CPaliusVoter: ".own" is checked against
+# ShowcaseItem::getOwnerId() (OwnableInterface), ".any" grants outright. An
+# unscoped "showcase.item.edit" is deliberately NOT registered — it would read as
+# a global grant.
+capabilities:
+    # Structure: who may invent showcase types and their field schemas.
+    - showcase.type.manage
+    - showcase.field.manage
+
+    # Entries.
+    - showcase.item.create
+    - showcase.item.view.own
+    - showcase.item.view.any
+    - showcase.item.edit.own
+    - showcase.item.edit.any
+    - showcase.item.delete.own
+    - showcase.item.delete.any
+    # Skips the approval queue for one's own entries.
+    - showcase.item.publish
+    # Approve, reject and promote anyone's entries.
+    - showcase.item.moderate
+
+    # Ratings.
+    - showcase.review.create
+    - showcase.review.moderate

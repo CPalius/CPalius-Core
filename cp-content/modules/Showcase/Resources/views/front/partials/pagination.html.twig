@@ -1,0 +1,33 @@
+{#
+    Pagination for the public listings.
+
+    The module ships its own rather than reusing twig:studio:pagination: that
+    component is styled for the light admin shell and pulling it into a theme
+    would drag admin CSS onto public pages.
+
+    `preserved` carries the active filters so page 2 of a filtered list is still
+    filtered.
+#}
+{% if result.totalPages > 1 %}
+    <nav class="showcase-pagination" aria-label="{{ 'showcase.pagination.label'|trans }}">
+        {% if result.hasPreviousPage %}
+            <a href="{{ path(routeName, routeParams|merge(preserved)|merge({page: result.currentPage - 1})) }}" rel="prev">
+                ‹ {{ 'showcase.pagination.previous'|trans }}
+            </a>
+        {% endif %}
+
+        {% for pageNumber in max(1, result.currentPage - 2)..min(result.totalPages, result.currentPage + 2) %}
+            {% if pageNumber == result.currentPage %}
+                <span class="is-current" aria-current="page">{{ pageNumber }}</span>
+            {% else %}
+                <a href="{{ path(routeName, routeParams|merge(preserved)|merge({page: pageNumber})) }}">{{ pageNumber }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if result.hasNextPage %}
+            <a href="{{ path(routeName, routeParams|merge(preserved)|merge({page: result.currentPage + 1})) }}" rel="next">
+                {{ 'showcase.pagination.next'|trans }} ›
+            </a>
+        {% endif %}
+    </nav>
+{% endif %}

@@ -1,0 +1,98 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'showcase.types.header'|trans }}{% endblock %}
+{% block header %}{{ 'showcase.types.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_showcase_types_create') }}" class="btn btn-sm btn-primary">
+        {{ 'showcase.types.create_action'|trans }}
+    </a>
+{% endblock %}
+
+{% block body %}
+    {% include '@ShowcaseModule/admin/_desk_nav.html.twig' %}
+
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'showcase.types.column.label'|trans,
+            'showcase.types.column.machine_name'|trans,
+            'showcase.types.column.fields'|trans,
+            'showcase.types.column.items'|trans,
+            'showcase.types.column.state'|trans,
+            '',
+        ] }}" empty="{{ rows is empty }}" emptyText="{{ 'showcase.types.empty'|trans }}">
+            <twig:block name="rows">
+                {% for row in rows %}
+                    {% set type = row.type %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('admin_showcase_types_edit', {machineName: type.machineName}) }}"
+                               class="font-medium text-neutral-900 hover:text-primary-600">
+                                {{ type.label(app.request.locale) }}
+                            </a>
+                            {% if type.description(app.request.locale) %}
+                                <p class="text-fs-xs text-neutral-500">{{ type.description(app.request.locale) }}</p>
+                            {% endif %}
+                        </td>
+                        <td class="text-fs-xs text-neutral-500"><code>{{ type.machineName }}</code></td>
+                        <td class="text-fs-xs text-neutral-500">
+                            <a href="{{ path('admin_showcase_fields_index', {machineName: type.machineName}) }}"
+                               class="text-primary-600 hover:underline">
+                                {{ 'showcase.types.field_count'|trans({ count: row.fieldCount }) }}
+                            </a>
+                        </td>
+                        <td class="text-fs-xs text-neutral-500">{{ row.itemCount }}</td>
+                        <td>
+                            <twig:studio:badge status="{{ type.enabled ? 'published' : 'draft' }}"
+                                               label="{{ (type.enabled ? 'showcase.types.state.enabled' : 'showcase.types.state.disabled')|trans }}" />
+                        </td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ path('admin_showcase_fields_index', {machineName: type.machineName}) }}" class="btn btn-sm btn-neutral">
+                                    {{ 'showcase.types.manage_fields'|trans }}
+                                </a>
+                                <a href="{{ path('admin_showcase_types_edit', {machineName: type.machineName}) }}" class="btn btn-sm btn-neutral">
+                                    {{ 'showcase.action.edit'|trans }}
+                                </a>
+                                {# A type holding entries cannot be deleted; the
+                                   server refuses it too, this only hides the trap. #}
+                                {% if row.itemCount == 0 %}
+                                    <form method="post" action="{{ path('admin_showcase_types_delete', {machineName: type.machineName}) }}"
+                                          onsubmit="return confirm({{ 'showcase.types.delete_confirm'|trans|json_encode|raw }});">
+                                        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'showcase.action.delete'|trans }}</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+
+    <div class="mt-sp-md">
+        <twig:studio:card title="{{ 'showcase.types.presets.title'|trans }}">
+            <twig:block name="content">
+                <p class="mb-sp-sm text-fs-sm text-neutral-600">{{ 'showcase.types.presets.intro'|trans }}</p>
+
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {% for preset in presets %}
+                        <form method="post" action="{{ path('admin_showcase_types_preset', {presetId: preset.id}) }}"
+                              class="rounded-lg border border-neutral-200 p-3">
+                            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                            <div class="mb-2 flex items-center gap-2">
+                                <twig:ux:icon name="{{ preset.icon }}" class="h-5 w-5 text-primary-600" />
+                                <span class="font-medium text-neutral-900">{{ preset.label }}</span>
+                            </div>
+                            <p class="mb-3 text-fs-xs text-neutral-500">{{ preset.description }}</p>
+                            <button type="submit" class="btn btn-sm btn-neutral w-full">
+                                {{ 'showcase.types.presets.apply'|trans({ count: preset.fieldCount }) }}
+                            </button>
+                        </form>
+                    {% endfor %}
+                </div>
+            </twig:block>
+        </twig:studio:card>
+    </div>
+{% endblock %}

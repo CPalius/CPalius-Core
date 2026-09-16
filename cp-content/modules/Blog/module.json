@@ -4,7 +4,7 @@
     "description": "CPalius core blog module.",
     "author": "CPalius",
     "bundle": "Modules\\Blog\\BlogModule",
-    "core_version": "^1.0",
+    "core_version": "^2.0",
     "requires": {
         "Media": "^1.0"
     },

@@ -1,0 +1,60 @@
+{% extends '@ShowcaseModule/front/layout.html.twig' %}
+
+{% block title %}{{ heroTitle ?: 'showcase.front.title'|trans }}{% endblock %}
+{% block meta_description %}{{ heroDescription ?: 'showcase.front.meta_description'|trans }}{% endblock %}
+
+{% block showcase_main %}
+    <div class="showcase-page">
+        <header class="showcase-hero">
+            <h1>{{ heroTitle ?: 'showcase.front.title'|trans }}</h1>
+            <p>{{ heroDescription ?: 'showcase.front.intro'|trans }}</p>
+        </header>
+
+        <div class="showcase-toolbar">
+            {% if canCreate %}
+                <a class="showcase-btn" href="{{ path('showcase_member_create') }}">{{ 'showcase.front.submit_action'|trans }}</a>
+            {% endif %}
+            {% if app.user %}
+                <a class="showcase-btn showcase-btn--ghost" href="{{ path('showcase_member_index') }}">{{ 'showcase.front.my_items'|trans }}</a>
+            {% endif %}
+        </div>
+
+        {% if types|length > 1 %}
+            <nav class="showcase-types" aria-label="{{ 'showcase.front.types_label'|trans }}">
+                <a href="{{ path('showcase_index') }}" class="is-active">{{ 'showcase.front.all_types'|trans }}</a>
+                {% for t in types %}
+                    <a href="{{ path('showcase_type', {machineName: t.machineName}) }}">{{ t.label(app.request.locale) }}</a>
+                {% endfor %}
+            </nav>
+        {% endif %}
+
+        {% if featured is not empty %}
+            <section aria-labelledby="showcase-featured">
+                <h2 id="showcase-featured">{{ 'showcase.front.featured'|trans }}</h2>
+                <div class="showcase-grid" style="margin-bottom:2rem">
+                    {% for item in featured %}
+                        {% include '@ShowcaseModule/front/partials/card.html.twig' with {item: item, layout: 'grid'} only %}
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+        <div class="showcase-layout has-sidebar">
+            {% include '@ShowcaseModule/front/partials/filters.html.twig' %}
+
+            <div>
+                {% if result.isEmpty %}
+                    <p class="showcase-empty">{{ 'showcase.front.empty'|trans }}</p>
+                {% else %}
+                    <div class="showcase-grid{{ layout == 'list' ? ' is-list' : '' }}">
+                        {% for item in result %}
+                            {% include '@ShowcaseModule/front/partials/card.html.twig' with {item: item, layout: layout} only %}
+                        {% endfor %}
+                    </div>
+
+                    {% include '@ShowcaseModule/front/partials/pagination.html.twig' %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

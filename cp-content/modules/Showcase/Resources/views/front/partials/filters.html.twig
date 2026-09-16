@@ -1,0 +1,110 @@
+{#
+    The filter sidebar.
+
+    Nothing here is a fixed list of controls. What renders depends entirely on
+    the listing being filtered:
+
+      - the price range appears only when the type actually prices its entries
+        (a car listing has prices, a free open-source directory does not, and a
+        min/max box on the latter can only ever return nothing);
+      - the category box appears only when the type owns a vocabulary that has
+        terms in this language;
+      - everything below it is generated from that type's queryable field
+        definitions, so this file never learns the word "transmission" or
+        "licence";
+      - the sort list drops price ordering when there are no prices to order by.
+
+    When none of that applies the panel collapses to a search box, which is the
+    honest amount of UI for a listing with nothing to narrow by.
+#}
+<form class="showcase-filters" method="get" action="{{ path(routeName, routeParams) }}">
+    <h2>{{ (hasFilters ? 'showcase.filters.title' : 'showcase.filters.search')|trans }}</h2>
+
+    <div class="showcase-filter">
+        <label for="showcase-q">{{ 'showcase.filters.search'|trans }}</label>
+        <input type="search" id="showcase-q" name="q" value="{{ search }}" maxlength="100"
+               placeholder="{{ 'showcase.filters.search_placeholder'|trans }}">
+    </div>
+
+    {% if categories is not empty %}
+        <div class="showcase-filter">
+            <label for="showcase-category">{{ 'showcase.filters.category'|trans }}</label>
+            <select id="showcase-category" name="category">
+                <option value="">{{ 'showcase.filters.any'|trans }}</option>
+                {% for term in categories %}
+                    <option value="{{ term.id }}"{{ app.request.query.get('category') == term.id ? ' selected' : '' }}>
+                        {{ term.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    {% endif %}
+
+    {% if withPrice %}
+        <div class="showcase-filter">
+            <label>{{ 'showcase.filters.price'|trans }}</label>
+            <div class="showcase-filter-range">
+                <input type="text" inputmode="decimal" name="min_price" value="{{ app.request.query.get('min_price') }}"
+                       placeholder="{{ 'showcase.filters.min'|trans }}" aria-label="{{ 'showcase.filters.min'|trans }}">
+                <input type="text" inputmode="decimal" name="max_price" value="{{ app.request.query.get('max_price') }}"
+                       placeholder="{{ 'showcase.filters.max'|trans }}" aria-label="{{ 'showcase.filters.max'|trans }}">
+            </div>
+        </div>
+    {% endif %}
+
+    {% for facet in facets %}
+        <div class="showcase-filter">
+            <label for="showcase-{{ facet.name }}">{{ facet.label|trans }}</label>
+
+            {% if facet.widget == 'choice' %}
+                {# A generated choice list with nothing in it means no entry has
+                   filled that field yet; a dropdown holding only "Any" is noise. #}
+                {% if facet.choices is not empty %}
+                    <select id="showcase-{{ facet.name }}" name="{{ facet.param }}">
+                        <option value="">{{ 'showcase.filters.any'|trans }}</option>
+                        {% for value, label in facet.choices %}
+                            <option value="{{ value }}"{{ facet.value == value ? ' selected' : '' }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                {% else %}
+                    <input type="text" id="showcase-{{ facet.name }}" name="{{ facet.param }}" value="{{ facet.value }}" maxlength="255">
+                {% endif %}
+
+            {% elseif facet.widget == 'range' %}
+                <div class="showcase-filter-range">
+                    <input type="text" inputmode="decimal" name="{{ facet.param }}_min" value="{{ facet.min }}"
+                           placeholder="{{ 'showcase.filters.min'|trans }}" aria-label="{{ facet.label|trans }} — {{ 'showcase.filters.min'|trans }}">
+                    <input type="text" inputmode="decimal" name="{{ facet.param }}_max" value="{{ facet.max }}"
+                           placeholder="{{ 'showcase.filters.max'|trans }}" aria-label="{{ facet.label|trans }} — {{ 'showcase.filters.max'|trans }}">
+                </div>
+
+            {% else %}
+                <input type="text" id="showcase-{{ facet.name }}" name="{{ facet.param }}" value="{{ facet.value }}" maxlength="255">
+            {% endif %}
+        </div>
+    {% endfor %}
+
+    <div class="showcase-filter">
+        <label for="showcase-sort">{{ 'showcase.filters.sort'|trans }}</label>
+        <select id="showcase-sort" name="sort">
+            {% for sort in sorts %}
+                <option value="{{ sort }}"{{ currentSort == sort ? ' selected' : '' }}>{{ ('showcase.sort.' ~ sort)|trans }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <button type="submit" class="showcase-btn showcase-btn--block">{{ 'showcase.filters.apply'|trans }}</button>
+
+    {% if preserved is not empty %}
+        <p class="showcase-filters__reset">
+            <a href="{{ path(routeName, routeParams) }}">{{ 'showcase.filters.reset'|trans }}</a>
+        </p>
+    {% endif %}
+
+    {% if type is null and types|length > 1 %}
+        {# On the all-types listing the per-type facets cannot be shown, because
+           two types rarely share a field. Pointing at the type pages is more
+           useful than pretending a generic filter set exists. #}
+        <p class="showcase-filters__hint">{{ 'showcase.filters.type_hint'|trans }}</p>
+    {% endif %}
+</form>

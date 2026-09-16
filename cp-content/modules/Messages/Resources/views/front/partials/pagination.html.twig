@@ -1,0 +1,17 @@
+{% if result.totalPages > 1 %}
+    <nav class="messages-pagination" aria-label="{{ 'messages.pagination.label'|trans }}">
+        {% if result.hasPreviousPage %}
+            <a href="{{ path(routeName, routeParams|default({})|merge({page: result.currentPage - 1})) }}" rel="prev">‹</a>
+        {% endif %}
+        {% for pageNumber in max(1, result.currentPage - 2)..min(result.totalPages, result.currentPage + 2) %}
+            {% if pageNumber == result.currentPage %}
+                <span class="is-current" aria-current="page">{{ pageNumber }}</span>
+            {% else %}
+                <a href="{{ path(routeName, routeParams|default({})|merge({page: pageNumber})) }}">{{ pageNumber }}</a>
+            {% endif %}
+        {% endfor %}
+        {% if result.hasNextPage %}
+            <a href="{{ path(routeName, routeParams|default({})|merge({page: result.currentPage + 1})) }}" rel="next">›</a>
+        {% endif %}
+    </nav>
+{% endif %}

@@ -1,0 +1,287 @@
+{% extends '@ShowcaseModule/front/layout.html.twig' %}
+{% import '@ShowcaseModule/_fields.html.twig' as showcaseField %}
+
+{% set isNew = item is null %}
+
+{% block title %}{{ isNew ? 'showcase.member.create_action'|trans : item.title }}{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+
+{% block showcase_main %}
+    <div class="showcase-page">
+        <header class="showcase-hero">
+            <h1>{{ isNew ? 'showcase.member.create_action'|trans : 'showcase.member.edit_title'|trans({ title: item.title }) }}</h1>
+            <p>{{ type.label(app.request.locale) }}{% if type.description(app.request.locale) %} — {{ type.description(app.request.locale) }}{% endif %}</p>
+        </header>
+
+        {% if not isNew %}
+            <div class="showcase-toolbar">
+                <span class="showcase-status showcase-status--{{ item.status }}">{{ ('showcase.status.' ~ item.status)|trans }}</span>
+
+                {% if item.moderationNote %}
+                    <span class="showcase-field__error">{{ item.moderationNote }}</span>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if errors is not empty %}
+            <p class="showcase-field__error">{{ 'showcase.items.error.has_violations'|trans }}</p>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" class="showcase-form"
+              action="{{ isNew ? path('showcase_member_create', {type: type.machineName}) : path('showcase_member_edit', {id: item.id}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+            <input type="hidden" name="type" value="{{ type.machineName }}">
+
+            <fieldset>
+                <legend>{{ 'showcase.items.section.basics'|trans }}</legend>
+                <div class="showcase-form__grid">
+                    <div class="showcase-field" style="grid-column:1/-1">
+                        <label class="showcase-field__label" for="title">{{ 'showcase.items.field.title'|trans }} *</label>
+                        <input type="text" id="title" name="title" class="showcase-input" required maxlength="191"
+                               value="{{ item ? item.title : '' }}">
+                        {% for violation in errors.title|default([]) %}
+                            <p class="showcase-field__error">{{ violation|trans }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="showcase-field" style="grid-column:1/-1">
+                        <label class="showcase-field__label" for="summary">{{ 'showcase.items.field.summary'|trans }}</label>
+                        <textarea id="summary" name="summary" rows="2" class="showcase-input" maxlength="500">{{ item ? item.summary : '' }}</textarea>
+                    </div>
+
+                    {% if type.supports('body') %}
+                        <div class="showcase-field" style="grid-column:1/-1">
+                            <label class="showcase-field__label" for="body">{{ 'showcase.items.field.body'|trans }}</label>
+                            <textarea id="body" name="body" rows="8" class="showcase-input">{{ item ? item.body : '' }}</textarea>
+                            {% if formatChoices|length > 1 %}
+                                <select name="body_format" class="showcase-input showcase-input--inline">
+                                    {% for formatId, formatLabel in formatChoices %}
+                                        <option value="{{ formatId }}"{{ item and item.bodyFormat == formatId ? ' selected' : '' }}>
+                                            {{ formatLabel|trans }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </fieldset>
+
+            {% if type.supports('price') or type.supports('external_url') or type.supports('demo_url') or type.supports('contact') or type.supports('location') %}
+                <fieldset>
+                    <legend>{{ 'showcase.items.section.commerce'|trans }}</legend>
+                    <div class="showcase-form__grid">
+                        {% if type.supports('price') %}
+                            <div class="showcase-field">
+                                <label class="showcase-field__label" for="price_mode">{{ 'showcase.items.field.price_mode'|trans }}</label>
+                                <select id="price_mode" name="price_mode" class="showcase-input">
+                                    {% for mode in priceModes %}
+                                        <option value="{{ mode }}"{{ item and item.priceMode == mode ? ' selected' : '' }}>
+                                            {{ ('showcase.price_mode.' ~ mode)|trans }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="showcase-field">
+                                <label class="showcase-field__label" for="price">{{ 'showcase.items.field.price'|trans }}</label>
+                                <input type="text" inputmode="decimal" id="price" name="price" class="showcase-input"
+                                       value="{{ item ? item.price : '' }}">
+                            </div>
+                            <div class="showcase-field">
+                                <label class="showcase-field__label" for="price_currency">{{ 'showcase.items.field.currency'|trans }}</label>
+                                <input type="text" id="price_currency" name="price_currency" class="showcase-input" maxlength="3"
+                                       value="{{ item ? item.priceCurrency : defaultCurrency }}">
+                            </div>
+                        {% endif %}
+
+                        {% if type.supports('external_url') %}
+                            <div class="showcase-field" style="grid-column:1/-1">
+                                <label class="showcase-field__label" for="external_url">{{ 'showcase.items.field.external_url'|trans }}</label>
+                                <input type="url" id="external_url" name="external_url" class="showcase-input"
+                                       value="{{ item ? item.externalUrl : '' }}" placeholder="https://">
+                            </div>
+                        {% endif %}
+
+                        {% if type.supports('demo_url') %}
+                            <div class="showcase-field" style="grid-column:1/-1">
+                                <label class="showcase-field__label" for="demo_url">{{ 'showcase.items.field.demo_url'|trans }}</label>
+                                <input type="url" id="demo_url" name="demo_url" class="showcase-input"
+                                       value="{{ item ? item.demoUrl : '' }}" placeholder="https://">
+                            </div>
+                        {% endif %}
+
+                        {% if type.supports('contact') %}
+                            <div class="showcase-field">
+                                <label class="showcase-field__label" for="contact_email">{{ 'showcase.items.field.contact_email'|trans }}</label>
+                                <input type="email" id="contact_email" name="contact_email" class="showcase-input"
+                                       value="{{ item ? item.contactEmail : '' }}">
+                            </div>
+                            <div class="showcase-field">
+                                <label class="showcase-field__label" for="contact_phone">{{ 'showcase.items.field.contact_phone'|trans }}</label>
+                                <input type="text" id="contact_phone" name="contact_phone" class="showcase-input"
+                                       value="{{ item ? item.contactPhone : '' }}">
+                            </div>
+                        {% endif %}
+
+                        {% if type.supports('location') %}
+                            <div class="showcase-field">
+                                <label class="showcase-field__label" for="location">{{ 'showcase.items.field.location'|trans }}</label>
+                                <input type="text" id="location" name="location" class="showcase-input"
+                                       value="{{ item ? item.location : '' }}">
+                            </div>
+                        {% endif %}
+                    </div>
+                </fieldset>
+            {% endif %}
+
+            {% if type.supports('categories') and categoryTerms is not empty %}
+                <fieldset>
+                    <legend>{{ 'showcase.items.section.categories'|trans }}</legend>
+                    <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+                        {% for term in categoryTerms %}
+                            <label class="showcase-check" style="border:1px solid var(--showcase-border);border-radius:8px;padding:.35rem .7rem">
+                                <input type="checkbox" name="terms[]" value="{{ term.id }}"{{ term.id in selectedTerms ? ' checked' : '' }}>
+                                <span>{{ term.name }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+            {% endif %}
+
+            {% if isNew and type.supports('gallery') %}
+                {# Images travel with the create form. Without this the first
+                   thing a member meets after filling everything in is an entry
+                   with no picture and a second form to find. #}
+                <fieldset>
+                    <legend>{{ 'showcase.items.section.gallery'|trans }}</legend>
+                    <div class="showcase-field">
+                        <label class="showcase-field__label" for="images">{{ 'showcase.media.upload_action'|trans }}</label>
+                        <input type="file" id="images" name="images[]" multiple accept="image/*" class="showcase-input">
+                        <p class="showcase-field__help">{{ 'showcase.media.create_hint'|trans({ limit: galleryLimit }) }}</p>
+                    </div>
+                </fieldset>
+            {% endif %}
+
+            {% if fields is not empty %}
+                <fieldset>
+                    <legend>{{ 'showcase.items.section.custom_fields'|trans({ type: type.label(app.request.locale) }) }}</legend>
+                    <div class="showcase-form__grid">
+                        {% for field in fields %}
+                            {{ showcaseField.input(field, fieldValues[field.name]|default(null), errors[field.name]|default([]), formatChoices) }}
+                        {% endfor %}
+                    </div>
+                </fieldset>
+            {% endif %}
+
+            <div>
+                <button type="submit" class="showcase-btn">{{ 'showcase.action.save'|trans }}</button>
+                <a class="showcase-btn showcase-btn--ghost" href="{{ path('showcase_member_index') }}">{{ 'showcase.action.cancel'|trans }}</a>
+            </div>
+        </form>
+
+        {% if not isNew %}
+            {% if type.supports('gallery') %}
+                <section style="margin-top:2rem">
+                    <h2>{{ 'showcase.items.section.gallery'|trans }}</h2>
+                    <p class="showcase-field__help">{{ 'showcase.media.limit_hint'|trans({ limit: galleryLimit }) }}</p>
+
+                    <form method="post" enctype="multipart/form-data" action="{{ path('showcase_member_media_add', {id: item.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                        <input type="file" name="images[]" multiple accept="image/*" class="showcase-input">
+                        <button type="submit" class="showcase-btn showcase-btn--ghost" style="margin-top:.5rem">
+                            {{ 'showcase.media.upload_action'|trans }}
+                        </button>
+                    </form>
+
+                    <div class="showcase-gallery__thumbs" style="margin-top:1rem">
+                        {% for media in gallery %}
+                            <div style="text-align:center">
+                                <img src="{{ media.assetId|cp_thumb(168, 120) }}" alt="">
+                                <div style="display:flex;gap:.25rem;justify-content:center;margin-top:.25rem">
+                                    <form method="post" action="{{ path('showcase_member_media_cover', {id: item.id, mediaId: media.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                        <button type="submit" class="showcase-btn showcase-btn--ghost" style="padding:.2rem .5rem;font-size:.7rem"
+                                                {{ item.coverAssetId == media.assetId ? 'disabled' : '' }}>
+                                            {{ 'showcase.media.set_cover'|trans }}
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{{ path('showcase_member_media_delete', {id: item.id, mediaId: media.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                        <button type="submit" class="showcase-btn showcase-btn--danger" style="padding:.2rem .5rem;font-size:.7rem">×</button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% else %}
+                            <p class="showcase-field__help">{{ 'showcase.media.empty'|trans }}</p>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+
+            {% if type.supports('links') %}
+                <section style="margin-top:2rem">
+                    <h2>{{ 'showcase.items.section.links'|trans }}</h2>
+                    <p class="showcase-field__help">{{ 'showcase.links.intro'|trans }}</p>
+
+                    <form method="post" action="{{ path('showcase_member_link_add', {id: item.id}) }}" class="showcase-form">
+                        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                        <div class="showcase-form__grid">
+                            <div class="showcase-field">
+                                <label class="showcase-field__label" for="link_url">{{ 'showcase.links.url_label'|trans }}</label>
+                                <input type="text" id="link_url" name="link_url" class="showcase-input" required
+                                       placeholder="{{ 'showcase.links.url_placeholder'|trans }}">
+                            </div>
+                            <div class="showcase-field">
+                                <label class="showcase-field__label" for="link_label">{{ 'showcase.links.label_label'|trans }}</label>
+                                <input type="text" id="link_label" name="link_label" class="showcase-input" maxlength="191"
+                                       placeholder="{{ 'showcase.links.label_placeholder'|trans }}">
+                            </div>
+                        </div>
+                        <div>
+                            <button type="submit" class="showcase-btn showcase-btn--ghost">{{ 'showcase.links.add_action'|trans }}</button>
+                        </div>
+                    </form>
+
+                    <ul class="showcase-links" style="margin-top:1rem">
+                        {% for link in resolvedLinks %}
+                            <li style="display:flex;align-items:center;gap:.5rem">
+                                <a href="{{ link.url }}"{{ link.internal ? '' : ' target="_blank" rel="noopener nofollow"' }} style="flex:1">
+                                    <span>{{ link.label ?? link.url }}</span>
+                                    {% if link.host %}<span class="showcase-links__host">{{ link.host }}</span>{% endif %}
+                                </a>
+                                <form method="post" action="{{ path('showcase_member_link_delete', {id: item.id, linkId: link.id}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                    <button type="submit" class="showcase-btn showcase-btn--danger" style="padding:.25rem .6rem">×</button>
+                                </form>
+                            </li>
+                        {% else %}
+                            <li class="showcase-field__help">{{ 'showcase.links.empty'|trans }}</li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+
+            <section style="margin-top:2rem;display:flex;gap:.75rem;flex-wrap:wrap">
+                {% if item.status in ['draft', 'rejected'] %}
+                    <form method="post" action="{{ path('showcase_member_submit', {id: item.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                        <button type="submit" class="showcase-btn">{{ 'showcase.member.submit_action'|trans }}</button>
+                    </form>
+                {% endif %}
+
+                {% if item.status == 'published' %}
+                    <form method="post" action="{{ path('showcase_member_archive', {id: item.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                        <button type="submit" class="showcase-btn showcase-btn--ghost">{{ 'showcase.member.archive_action'|trans }}</button>
+                    </form>
+                {% endif %}
+
+                <form method="post" action="{{ path('showcase_member_delete', {id: item.id}) }}"
+                      onsubmit="return confirm({{ 'showcase.member.delete_confirm'|trans|json_encode|raw }});">
+                    <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                    <button type="submit" class="showcase-btn showcase-btn--danger">{{ 'showcase.member.delete_action'|trans }}</button>
+                </form>
+            </section>
+        {% endif %}
+    </div>
+{% endblock %}

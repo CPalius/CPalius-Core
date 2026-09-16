@@ -4,7 +4,7 @@
     "description": "Per-locale SEO: schema.org, Open Graph, sitemaps, robots.txt, and content-type strategies.",
     "author": "CPalius",
     "bundle": "Modules\\Seo\\SeoModule",
-    "core_version": "^1.0",
+    "core_version": "^2.0",
     "requires": {},
     "conflicts": {},
     "provides": [

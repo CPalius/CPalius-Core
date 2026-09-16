@@ -4,7 +4,7 @@
     "description": "Import content from WordPress, XenForo, MyBB, Joomla and Drupal into CPalius through the core Migrate API.",
     "author": "CPalius",
     "bundle": "Modules\\Importer\\ImporterModule",
-    "core_version": "^1.0",
+    "core_version": "^2.0",
     "requires": {
         "Blog": "^1.0",
         "Forum": "^1.0"

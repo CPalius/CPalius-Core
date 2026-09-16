@@ -1,0 +1,29 @@
+<div class="navbar-alert" data-inbox-channel="messages" data-inbox-sound="{{ channel.sound_url|default('') }}">
+    <button type="button" class="navbar-alert__btn" id="navMsgToggle" aria-expanded="false" aria-controls="navMsgBox" aria-label="{{ 'messages.nav.inbox'|trans }}">
+        <i class="bi bi-envelope" aria-hidden="true"></i>
+        <span class="navbar-alert__badge navbar-alert__badge--red" data-inbox-badge {% if channel.unread|default(0) == 0 %}hidden{% endif %}>{{ channel.unread|default(0) }}</span>
+    </button>
+    <div class="navbar-alert__panel" id="navMsgBox" role="dialog" aria-label="{{ 'messages.nav.inbox'|trans }}" hidden>
+        <div class="navbar-notif-box__head">
+            <strong>{{ 'messages.nav.inbox'|trans }}</strong>
+            <span data-inbox-unread-label>{% if channel.unread|default(0) > 0 %}{{ 'messages.inbox.unread_count'|trans({count: channel.unread}) }}{% endif %}</span>
+        </div>
+        <div class="navbar-notif-box__list" data-inbox-list>
+            {% for n in channel.items|default([]) %}
+                <a href="{{ n.url }}" class="navbar-notif-box__item {{ n.unread ? 'is-unread' : '' }}" data-inbox-id="{{ n.id }}">
+                    <span class="navbar-notif-box__icon"><i class="bi bi-{{ n.icon|default('envelope') }}"></i></span>
+                    <span class="navbar-notif-box__text">
+                        {{ n.text }}
+                        <time datetime="{{ n.created_at }}">{{ n.created_label }}</time>
+                    </span>
+                </a>
+            {% else %}
+                <p class="navbar-notif-box__empty">{{ 'messages.inbox.empty'|trans }}</p>
+            {% endfor %}
+        </div>
+        <div class="navbar-notif-box__foot">
+            <a href="{{ channel.inbox_url }}">{{ 'messages.header.view_all'|trans }}</a>
+            <a href="{{ path('messages_compose') }}">{{ 'messages.nav.compose'|trans }}</a>
+        </div>
+    </div>
+</div>

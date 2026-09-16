@@ -1,0 +1,18 @@
+<div class="mb-6">
+    <div class="flex flex-wrap gap-1 border-b border-neutral-200 pb-2" role="tablist">
+        {% for tab in messages_desk_tabs() %}
+            <a href="{{ path(tab.route) }}"
+               role="tab"
+               aria-selected="{{ tab.active ? 'true' : 'false' }}"
+               class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-fs-sm font-medium transition-colors {{ tab.active
+                   ? 'bg-primary-50 text-primary-700'
+                   : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800' }}">
+                <twig:ux:icon name="{{ tab.icon }}" class="h-4 w-4 shrink-0" />
+                {{ tab.label|trans }}
+                {% if tab.id == 'reports' and deskOpenReports|default(0) > 0 %}
+                    <span class="badge badge-warning">{{ deskOpenReports }}</span>
+                {% endif %}
+            </a>
+        {% endfor %}
+    </div>
+</div>

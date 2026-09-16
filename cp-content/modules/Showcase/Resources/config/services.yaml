@@ -1,0 +1,39 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # Controllers get the controller.service_arguments tag so actions can
+    # type-hint services directly.
+    Modules\Showcase\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    Modules\Showcase\Service\:
+        resource: '../../Service/'
+
+    Modules\Showcase\Repository\:
+        resource: '../../Repository/'
+
+    # Command/ #[AsCommand] classes (autoconfigure console.command).
+    # DemoContent is a static text bank, not a service.
+    Modules\Showcase\Command\:
+        resource: '../../Command/'
+        exclude: '../../Command/DemoContent.php'
+
+    # Twig/ holds the extension (autoconfigured twig.extension) and the runtime
+    # (autoconfigured twig.runtime), so cp_showcase_* helpers cost nothing on
+    # pages that never call them.
+    Modules\Showcase\Twig\:
+        resource: '../../Twig/'
+
+    # Hooks/ #[CpHook] listeners — HookRegistrationPass only sees container services.
+    Modules\Showcase\Hooks\:
+        resource: '../../Hooks/'
+
+    # Api/ #[CpApi] endpoints — ApiRegistrationPass only sees container services.
+    Modules\Showcase\Api\:
+        resource: '../../Api/'
+
+    # Settings/ is a pure #[CpSetting] carrier class read at compile time by
+    # SettingsRegistrationPass; it is not instantiated, so it is not registered.

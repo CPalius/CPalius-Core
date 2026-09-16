@@ -1,0 +1,100 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'showcase.menu.settings'|trans }}{% endblock %}
+{% block header %}{{ 'showcase.menu.settings'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_showcase_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'showcase.action.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    {% include '@ShowcaseModule/admin/_desk_nav.html.twig' %}
+
+    <form method="post" action="{{ path('admin_showcase_settings_update') }}" class="space-y-sp-md">
+        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+
+        {% for group, definitions in grouped %}
+            <twig:studio:card title="{{ (groupLabels[group] ?? group)|trans }}">
+                <twig:block name="content">
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        {% for definition in definitions %}
+                            {% set isWide = definition.type == 'textarea' or definition.isTranslatable %}
+
+                            <div class="{{ isWide ? 'sm:col-span-2' : '' }}">
+                                {% if definition.type == 'checkbox' %}
+                                    <label class="flex items-start gap-3 rounded-lg border border-neutral-200 px-3 py-3">
+                                        <input type="checkbox"
+                                               name="settings[{{ definition.key }}]"
+                                               value="1"
+                                               class="mt-0.5"
+                                               {{ values[definition.key] ? 'checked' : '' }}>
+                                        <span>
+                                            <span class="block text-fs-sm font-medium text-neutral-900">{{ definition.label|trans }}</span>
+                                            <span class="block text-fs-xs text-neutral-500"><code>{{ definition.key }}</code></span>
+                                        </span>
+                                    </label>
+
+                                {% elseif definition.isTranslatable %}
+                                    {# One input per language: a hero heading stored as a
+                                       single string would be wrong in every locale but one. #}
+                                    <label class="form-label">{{ definition.label|trans }}</label>
+                                    <div class="grid gap-2 sm:grid-cols-2">
+                                        {% for locale in locales %}
+                                            <div>
+                                                <span class="text-fs-xs uppercase tracking-wide text-neutral-400">{{ locale.nativeName }}</span>
+                                                {% if definition.type == 'textarea' %}
+                                                    <textarea name="settings[{{ definition.key }}][{{ locale.code }}]" rows="3"
+                                                              class="form-control">{{ translated[definition.key][locale.code]|default('') }}</textarea>
+                                                {% else %}
+                                                    <input type="text" name="settings[{{ definition.key }}][{{ locale.code }}]"
+                                                           value="{{ translated[definition.key][locale.code]|default('') }}" class="form-control">
+                                                {% endif %}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                    <p class="form-help"><code>{{ definition.key }}</code></p>
+
+                                {% elseif definition.type == 'select' %}
+                                    <label class="form-label" for="s_{{ definition.key }}">{{ definition.label|trans }}</label>
+                                    <select id="s_{{ definition.key }}" name="settings[{{ definition.key }}]" class="form-control">
+                                        {% for optionValue, optionLabel in definition.variants %}
+                                            <option value="{{ optionValue }}"{{ values[definition.key] == optionValue ? ' selected' : '' }}>
+                                                {{ optionLabel|trans }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <p class="form-help"><code>{{ definition.key }}</code></p>
+
+                                {% elseif definition.type == 'textarea' %}
+                                    <label class="form-label" for="s_{{ definition.key }}">{{ definition.label|trans }}</label>
+                                    <textarea id="s_{{ definition.key }}" name="settings[{{ definition.key }}]" rows="3"
+                                              class="form-control">{{ values[definition.key] }}</textarea>
+                                    <p class="form-help"><code>{{ definition.key }}</code></p>
+
+                                {% elseif definition.type == 'integer' %}
+                                    <label class="form-label" for="s_{{ definition.key }}">{{ definition.label|trans }}</label>
+                                    <input type="number" step="1" id="s_{{ definition.key }}" name="settings[{{ definition.key }}]"
+                                           value="{{ values[definition.key] }}" class="form-control">
+                                    <p class="form-help"><code>{{ definition.key }}</code></p>
+
+                                {% else %}
+                                    <label class="form-label" for="s_{{ definition.key }}">{{ definition.label|trans }}</label>
+                                    <input type="text" id="s_{{ definition.key }}" name="settings[{{ definition.key }}]"
+                                           value="{{ values[definition.key] }}" class="form-control">
+                                    <p class="form-help"><code>{{ definition.key }}</code></p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </twig:block>
+            </twig:studio:card>
+        {% endfor %}
+
+        <div class="flex items-center gap-2">
+            <button type="submit" class="btn btn-primary">{{ 'showcase.action.save'|trans }}</button>
+            <a href="{{ path('admin_showcase_dashboard') }}" class="btn btn-neutral">{{ 'showcase.action.cancel'|trans }}</a>
+        </div>
+
+        <p class="text-fs-xs text-neutral-500">{{ 'showcase.settings.shared_store_note'|trans }}</p>
+    </form>
+{% endblock %}

@@ -33,3 +33,23 @@ role:
         - text_format.basic_html.use
         - text_format.full_html.use
         - text_format.markdown.use
+        # Added by the Showcase module installer.
+        - showcase.item.create
+        - showcase.item.view.own
+        - showcase.item.view.any
+        - showcase.item.edit.own
+        - showcase.item.edit.any
+        - showcase.item.delete.own
+        - showcase.item.delete.any
+        - showcase.item.publish
+        - showcase.item.moderate
+        - showcase.review.create
+        - showcase.review.moderate
+        # Added by the Messages module installer.
+        - messages.send
+        - messages.report
+        - messages.block
+        - messages.moderate
+        - messages.report.moderate
+        - messages.settings.manage
+        - messages.quota.exempt

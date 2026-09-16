@@ -1,0 +1,115 @@
+{% extends '@MessagesModule/front/layout.html.twig' %}
+
+{% block title %}{{ other ? other.publicDisplayName : 'messages.thread.title'|trans }}{% endblock %}
+
+{% block messages_main %}
+<div class="messages-page">
+    <nav class="messages-nav">
+        <a href="{{ path('messages_inbox') }}">{{ 'messages.nav.inbox'|trans }}</a>
+        <span class="is-active">{{ other ? other.publicDisplayName : 'messages.thread.unknown'|trans }}</span>
+    </nav>
+
+    <h1>{{ thread.subject ?: (thread.contextLabel ?: 'messages.thread.no_subject'|trans) }}</h1>
+    {% if thread.contextUrl or thread.contextLabel %}
+        <p class="messages-context">
+            {{ 'messages.thread.about'|trans({label: thread.contextLabel ?: thread.contextType}) }}
+            {% if thread.contextUrl %}<a href="{{ thread.contextUrl }}">{{ 'messages.thread.open_context'|trans }}</a>{% endif %}
+        </p>
+    {% endif %}
+    {% if thread.closed %}
+        <p class="messages-errors">{{ 'messages.thread.closed'|trans }}</p>
+    {% endif %}
+
+    <div class="messages-actions" style="margin-bottom:1rem">
+        <form method="post" action="{{ path('messages_archive', {publicId: thread.publicId}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+            <input type="hidden" name="archived" value="{{ participant and participant.archived ? '0' : '1' }}">
+            <button class="messages-btn messages-btn--ghost">{{ participant and participant.archived ? 'messages.action.unarchive'|trans : 'messages.action.archive'|trans }}</button>
+        </form>
+        <form method="post" action="{{ path('messages_mute', {publicId: thread.publicId}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+            <input type="hidden" name="muted" value="{{ participant and participant.muted ? '0' : '1' }}">
+            <button class="messages-btn messages-btn--ghost">{{ participant and participant.muted ? 'messages.action.unmute'|trans : 'messages.action.mute'|trans }}</button>
+        </form>
+        {% if other and cp_is_granted('messages.block') %}
+            <form method="post" action="{{ path('messages_block', {id: other.id}) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                <button class="messages-btn messages-btn--danger">{{ 'messages.action.block'|trans }}</button>
+            </form>
+        {% endif %}
+        <form method="post" action="{{ path('messages_hide', {publicId: thread.publicId}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+            <button class="messages-btn messages-btn--ghost">{{ 'messages.action.hide'|trans }}</button>
+        </form>
+    </div>
+
+    <div class="messages-thread">
+        {% for message in result %}
+            <article class="messages-bubble {{ message.author and cp_user() and message.author.id == cp_user().id ? 'is-mine' : '' }} {{ message.deleted ? 'is-deleted' : '' }}">
+                <div class="meta">
+                    {{ message.author ? message.author.publicDisplayName : 'messages.thread.unknown'|trans }}
+                    · {{ message.createdAt|date('d.m.Y H:i') }}
+                    {% if message.editedAt %} · {{ 'messages.thread.edited'|trans }}{% endif %}
+                </div>
+                {% if message.deleted %}
+                    <p>{{ 'messages.thread.deleted_body'|trans }}</p>
+                {% else %}
+                    <div>{{ message.body|text_format(message.bodyFormat) }}</div>
+                    <div class="messages-actions" style="margin-top:.5rem">
+                        {% if cp_messages_can_report(message) %}
+                            <form method="post" action="{{ path('messages_report', {publicId: thread.publicId, id: message.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                <select name="reason">
+                                    {% for reason in reportReasons %}
+                                        <option value="{{ reason }}">{{ ('messages.report.reason.' ~ reason)|trans }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" name="details" placeholder="{{ 'messages.report.details'|trans }}" maxlength="1000">
+                                <button class="messages-btn messages-btn--danger">{{ 'messages.action.report'|trans }}</button>
+                            </form>
+                        {% endif %}
+                        {% if (message.author and cp_user() and message.author.id == cp_user().id) or cp_is_granted('messages.moderate') %}
+                            <form method="post" action="{{ path('messages_delete_message', {publicId: thread.publicId, id: message.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                                <button class="messages-btn messages-btn--ghost">{{ 'messages.action.delete'|trans }}</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </article>
+        {% else %}
+            <p class="messages-empty">{{ 'messages.thread.empty'|trans }}</p>
+        {% endfor %}
+    </div>
+
+    {% include '@MessagesModule/front/partials/pagination.html.twig' with {
+        routeName: 'messages_thread',
+        routeParams: {publicId: thread.publicId}
+    } %}
+
+    {% if canReply %}
+        <form method="post" class="messages-form">
+            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+            <textarea name="body" rows="5" required placeholder="{{ 'messages.compose.body'|trans }}"></textarea>
+            {% if formats|length > 1 %}
+                <select name="body_format">
+                    {% for id, label in formats %}
+                        <option value="{{ id }}">{{ label|trans }}</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+            <p class="messages-quota">
+                {% if quota.exempt %}
+                    {{ 'messages.quota.exempt'|trans }}
+                {% else %}
+                    {{ 'messages.quota.remaining_send'|trans({
+                        hourly: quota.hourlyRemaining is null ? '∞' : quota.hourlyRemaining,
+                        daily: quota.dailyRemaining is null ? '∞' : quota.dailyRemaining
+                    }) }}
+                {% endif %}
+            </p>
+            <button type="submit" class="messages-btn">{{ 'messages.action.send'|trans }}</button>
+        </form>
+    {% endif %}
+</div>
+{% endblock %}

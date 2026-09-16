@@ -1,0 +1,345 @@
+{% extends '@ShowcaseModule/front/layout.html.twig' %}
+{% import '@ShowcaseModule/_fields.html.twig' as showcaseField %}
+
+{% block title %}{{ item.title }}{% endblock %}
+{% block meta_description %}{{ excerpt }}{% endblock %}
+
+{% block showcase_main %}
+    <div class="showcase-page">
+        <nav class="showcase-types" aria-label="{{ 'showcase.front.breadcrumb'|trans }}">
+            <a href="{{ path('showcase_index') }}">{{ 'showcase.front.title'|trans }}</a>
+            <a href="{{ path('showcase_type', {machineName: type.machineName}) }}" class="is-active">
+                {{ type.label(app.request.locale) }}
+            </a>
+        </nav>
+
+        <div class="showcase-detail">
+            <article>
+                <h1>{{ item.title }}</h1>
+
+                {% if item.summary %}
+                    <p class="showcase-card__excerpt">{{ item.summary }}</p>
+                {% endif %}
+
+                {% if gallery|length > 1 %}
+                    {# Slider. Built as a horizontally scrolling track with CSS
+                       scroll-snap, so it already swipes on touch and works with
+                       no JavaScript at all — the script below only adds the
+                       arrows, the dots and keyboard control on top. #}
+                    <div class="showcase-slider" data-showcase-slider>
+                        <div class="showcase-slider__track" data-slider-track
+                             tabindex="0" role="group" aria-roledescription="carousel"
+                             aria-label="{{ 'showcase.gallery.aria'|trans({ title: item.title }) }}">
+                            {% for media in gallery %}
+                                <figure class="showcase-slider__slide"
+                                        role="group"
+                                        aria-roledescription="slide"
+                                        aria-label="{{ loop.index }} / {{ gallery|length }}">
+                                    <img src="{{ media.assetId|cp_thumb(1200, 800) }}"
+                                         alt="{{ media.caption ?? item.title }}"
+                                         loading="{{ loop.first ? 'eager' : 'lazy' }}">
+                                    {% if media.caption %}
+                                        <figcaption>{{ media.caption }}</figcaption>
+                                    {% endif %}
+                                </figure>
+                            {% endfor %}
+                        </div>
+
+                        <button type="button" class="showcase-slider__nav showcase-slider__nav--prev"
+                                data-slider-prev aria-label="{{ 'showcase.gallery.previous'|trans }}">‹</button>
+                        <button type="button" class="showcase-slider__nav showcase-slider__nav--next"
+                                data-slider-next aria-label="{{ 'showcase.gallery.next'|trans }}">›</button>
+
+                        <div class="showcase-slider__dots" data-slider-dots>
+                            {% for media in gallery %}
+                                <button type="button" class="showcase-slider__dot{{ loop.first ? ' is-active' : '' }}"
+                                        data-slider-dot="{{ loop.index0 }}"
+                                        aria-label="{{ 'showcase.gallery.go_to'|trans({ index: loop.index }) }}"></button>
+                            {% endfor %}
+                        </div>
+
+                        <span class="showcase-slider__counter" data-slider-counter>1 / {{ gallery|length }}</span>
+                    </div>
+
+                {% elseif gallery|length == 1 or coverAssetId %}
+                    {# One picture is not a carousel; arrows and dots on a single
+                       slide are controls that do nothing. #}
+                    <figure class="showcase-figure">
+                        <img src="{{ (gallery|length == 1 ? gallery[0].assetId : coverAssetId)|cp_thumb(1200, 800) }}"
+                             alt="{{ item.title }}">
+                    </figure>
+                {% endif %}
+
+                {% if item.body %}
+                    <div class="showcase-body">
+                        {{ item.body|text_format(item.bodyFormat) }}
+                    </div>
+                {% endif %}
+
+                {% if fields is not empty %}
+                    <section>
+                        <h2>{{ 'showcase.front.specs'|trans }}</h2>
+
+                        {% if fieldGroups is empty %}
+                            <dl class="showcase-specs">
+                                {% for field in fields %}
+                                    {{ showcaseField.display(item, field) }}
+                                {% endfor %}
+                            </dl>
+                        {% else %}
+                            {# Grouped fields render as separate blocks, so a type
+                               with "Specification" and "Licensing" reads as two
+                               tables rather than one long list. #}
+                            {% for group in fieldGroups %}
+                                {# Group names are free text the operator typed on
+                                   the field screen, so they are shown as-is rather
+                                   than looked up in a catalogue that cannot know them. #}
+                                <h3>{{ group|replace({'_': ' '})|capitalize }}</h3>
+                                <dl class="showcase-specs">
+                                    {% for field in fields|filter(f => f.fieldGroup == group) %}
+                                        {{ showcaseField.display(item, field) }}
+                                    {% endfor %}
+                                </dl>
+                            {% endfor %}
+
+                            {% set ungrouped = fields|filter(f => f.fieldGroup is null) %}
+                            {% if ungrouped is not empty %}
+                                <dl class="showcase-specs">
+                                    {% for field in ungrouped %}
+                                        {{ showcaseField.display(item, field) }}
+                                    {% endfor %}
+                                </dl>
+                            {% endif %}
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                {% if resolvedLinks is not empty %}
+                    <section>
+                        <h2>{{ 'showcase.front.links'|trans }}</h2>
+                        <ul class="showcase-links">
+                            {% for link in resolvedLinks %}
+                                <li>
+                                    <a href="{{ link.url }}"{{ link.internal ? '' : ' target="_blank" rel="noopener nofollow ugc"' }}>
+                                        <span>{{ link.label ?? (link.kindLabel ? link.kindLabel|trans : link.url) }}</span>
+                                        {% if link.host %}<span class="showcase-links__host">{{ link.host }}</span>{% endif %}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                {% endif %}
+
+                {% if reviewsResult is not null %}
+                    <section>
+                        <h2>{{ 'showcase.front.reviews'|trans({ count: item.ratingCount }) }}</h2>
+
+                        {% if item.ratingAverage %}
+                            <p>★ {{ item.ratingAverage }} / 5 — {{ 'showcase.front.rating_count'|trans({ count: item.ratingCount }) }}</p>
+                        {% endif %}
+
+                        {% if canReview %}
+                            <form method="post" action="{{ path('showcase_review', {slug: item.slug}) }}" class="showcase-form">
+                                <input type="hidden" name="_token" value="{{ csrf_token(reviewCsrf) }}">
+                                <div class="showcase-field">
+                                    <label class="showcase-field__label" for="showcase-rating">{{ 'showcase.reviews.field.rating'|trans }}</label>
+                                    <select id="showcase-rating" name="rating" class="showcase-input" required>
+                                        {% for value in 1..5 %}
+                                            <option value="{{ value }}"{{ myReview and myReview.rating == value ? ' selected' : '' }}>{{ value }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="showcase-field">
+                                    <label class="showcase-field__label" for="showcase-review-body">{{ 'showcase.reviews.field.body'|trans }}</label>
+                                    <textarea id="showcase-review-body" name="body" rows="3" class="showcase-input" maxlength="2000">{{ myReview ? myReview.body : '' }}</textarea>
+                                </div>
+                                <div>
+                                    <button type="submit" class="showcase-btn">{{ 'showcase.reviews.submit_action'|trans }}</button>
+                                </div>
+                            </form>
+                        {% endif %}
+
+                        <ul class="showcase-reviews">
+                            {% for review in reviewsResult %}
+                                <li class="showcase-review">
+                                    <div class="showcase-review__head">
+                                        <span>{{ review.author ? review.author.publicDisplayName : 'showcase.reviews.anonymous'|trans }}</span>
+                                        <span>★ {{ review.rating }} · {{ review.createdAt|date('Y-m-d') }}</span>
+                                    </div>
+                                    {% if review.body %}<p class="showcase-review__body">{{ review.body }}</p>{% endif %}
+                                </li>
+                            {% else %}
+                                <li class="showcase-empty">{{ 'showcase.reviews.empty_public'|trans }}</li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                {% endif %}
+            </article>
+
+            <aside class="showcase-aside">
+                {% if price %}
+                    <p class="showcase-aside__price">{{ price }}</p>
+                {% endif %}
+
+                {% if item.externalUrl %}
+                    <a class="showcase-btn showcase-btn--block" href="{{ path('showcase_visit', {slug: item.slug}) }}"
+                       target="_blank" rel="noopener nofollow">
+                        {{ 'showcase.front.visit'|trans }}{% if externalHost %} — {{ externalHost }}{% endif %}
+                    </a>
+                {% endif %}
+
+                {% if item.demoUrl %}
+                    <p style="margin-top:.75rem">
+                        <a class="showcase-btn showcase-btn--ghost showcase-btn--block" href="{{ item.demoUrl }}"
+                           target="_blank" rel="noopener nofollow">{{ 'showcase.front.demo'|trans }}</a>
+                    </p>
+                {% endif %}
+
+                {{ cp_hook('showcase.item.actions', {
+                    owner: item.owner,
+                    user: item.owner,
+                    item_id: item.id,
+                    label: item.title,
+                    url: path('showcase_show', {slug: item.slug})
+                }) }}
+
+                <dl class="showcase-specs" style="grid-template-columns:1fr;margin-top:1.25rem">
+                    {% if item.owner %}
+                        <div class="showcase-spec">
+                            <dt class="showcase-spec__label">{{ 'showcase.front.owner'|trans }}</dt>
+                            <dd class="showcase-spec__value">{{ item.owner.publicDisplayName }}</dd>
+                        </div>
+                    {% endif %}
+
+                    {% if item.location %}
+                        <div class="showcase-spec">
+                            <dt class="showcase-spec__label">{{ 'showcase.items.field.location'|trans }}</dt>
+                            <dd class="showcase-spec__value">{{ item.location }}</dd>
+                        </div>
+                    {% endif %}
+
+                    {% if item.contactEmail %}
+                        <div class="showcase-spec">
+                            <dt class="showcase-spec__label">{{ 'showcase.items.field.contact_email'|trans }}</dt>
+                            <dd class="showcase-spec__value"><a href="mailto:{{ item.contactEmail }}">{{ item.contactEmail }}</a></dd>
+                        </div>
+                    {% endif %}
+
+                    {% if item.contactPhone %}
+                        <div class="showcase-spec">
+                            <dt class="showcase-spec__label">{{ 'showcase.items.field.contact_phone'|trans }}</dt>
+                            <dd class="showcase-spec__value">{{ item.contactPhone }}</dd>
+                        </div>
+                    {% endif %}
+
+                    {% if item.terms is not empty %}
+                        <div class="showcase-spec">
+                            <dt class="showcase-spec__label">{{ 'showcase.filters.category'|trans }}</dt>
+                            <dd class="showcase-spec__value">
+                                {% for term in item.terms %}{{ term.name }}{{ not loop.last ? ', ' : '' }}{% endfor %}
+                            </dd>
+                        </div>
+                    {% endif %}
+
+                    <div class="showcase-spec">
+                        <dt class="showcase-spec__label">{{ 'showcase.front.views'|trans }}</dt>
+                        <dd class="showcase-spec__value">{{ item.viewCount }}</dd>
+                    </div>
+                </dl>
+
+                {% if translations is not empty %}
+                    <p style="margin-top:1rem">
+                        {% for sibling in translations %}
+                            <a href="{{ path('showcase_show', {_locale: sibling.locale, slug: sibling.slug}) }}">{{ sibling.locale|upper }}</a>
+                        {% endfor %}
+                    </p>
+                {% endif %}
+
+                {% if canEdit %}
+                    <p style="margin-top:1rem">
+                        <a class="showcase-btn showcase-btn--ghost showcase-btn--block" href="{{ path('showcase_member_edit', {id: item.id}) }}">
+                            {{ 'showcase.action.edit'|trans }}
+                        </a>
+                    </p>
+                {% endif %}
+            </aside>
+        </div>
+
+        {% if related is not empty %}
+            <section style="margin-top:2.5rem">
+                <h2>{{ 'showcase.front.related'|trans }}</h2>
+                <div class="showcase-grid">
+                    {% for other in related|slice(0, 4) %}
+                        {% include '@ShowcaseModule/front/partials/card.html.twig' with {item: other, layout: 'grid'} only %}
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+    </div>
+
+    {% if gallery|length > 1 %}
+        <script{{ csp_nonce_attr() }}>
+            // Progressive enhancement. The track already scrolls and snaps with
+            // CSS, so everything here is additive: if this never runs the visitor
+            // still swipes or scrolls through every image.
+            document.querySelectorAll('[data-showcase-slider]').forEach(function (slider) {
+                var track = slider.querySelector('[data-slider-track]');
+                if (!track) return;
+
+                var slides = Array.prototype.slice.call(track.children);
+                var dots = Array.prototype.slice.call(slider.querySelectorAll('[data-slider-dot]'));
+                var counter = slider.querySelector('[data-slider-counter]');
+                var prev = slider.querySelector('[data-slider-prev]');
+                var next = slider.querySelector('[data-slider-next]');
+                if (slides.length < 2) return;
+
+                slider.classList.add('is-enhanced');
+
+                function currentIndex() {
+                    // Derived from scroll position rather than tracked in a
+                    // variable, so a swipe and a button press cannot disagree.
+                    return Math.round(track.scrollLeft / track.clientWidth);
+                }
+
+                function goTo(index) {
+                    var target = Math.max(0, Math.min(slides.length - 1, index));
+                    track.scrollTo({ left: target * track.clientWidth, behavior: 'smooth' });
+                }
+
+                function sync() {
+                    var index = currentIndex();
+                    dots.forEach(function (dot, i) {
+                        dot.classList.toggle('is-active', i === index);
+                    });
+                    if (counter) counter.textContent = (index + 1) + ' / ' + slides.length;
+                    if (prev) prev.disabled = index === 0;
+                    if (next) next.disabled = index === slides.length - 1;
+                }
+
+                if (prev) prev.addEventListener('click', function () { goTo(currentIndex() - 1); });
+                if (next) next.addEventListener('click', function () { goTo(currentIndex() + 1); });
+
+                dots.forEach(function (dot) {
+                    dot.addEventListener('click', function () {
+                        goTo(parseInt(dot.getAttribute('data-slider-dot'), 10) || 0);
+                    });
+                });
+
+                track.addEventListener('keydown', function (event) {
+                    if (event.key === 'ArrowLeft') { event.preventDefault(); goTo(currentIndex() - 1); }
+                    if (event.key === 'ArrowRight') { event.preventDefault(); goTo(currentIndex() + 1); }
+                });
+
+                var ticking = false;
+                track.addEventListener('scroll', function () {
+                    if (ticking) return;
+                    ticking = true;
+                    window.requestAnimationFrame(function () { sync(); ticking = false; });
+                });
+
+                window.addEventListener('resize', sync);
+                sync();
+            });
+        </script>
+    {% endif %}
+{% endblock %}

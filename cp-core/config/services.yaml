@@ -60,6 +60,8 @@ services:
             tags: ['cp.text_filter']
         App\Core\Notification\NotificationChannelInterface:
             tags: ['cpalius.notification.channel']
+        App\Core\Inbox\InboxPulseChannelInterface:
+            tags: ['cpalius.inbox_pulse_channel']
 
     # Shared Redis connection for cache.default_redis_provider and session.handler.redis.
     #
@@ -356,6 +358,10 @@ services:
     App\Core\Notification\NotificationDispatcher:
         arguments:
             $channels: !tagged_iterator cpalius.notification.channel
+
+    App\Core\Inbox\InboxPulse:
+        arguments:
+            $channels: !tagged_iterator cpalius.inbox_pulse_channel
 
 
     # CronExecuteController: auth secret for externally triggered /cron/execute.

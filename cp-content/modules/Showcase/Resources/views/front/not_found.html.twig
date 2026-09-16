@@ -1,0 +1,24 @@
+{% extends '@ShowcaseModule/front/layout.html.twig' %}
+
+{% block title %}{{ 'showcase.front.not_found.title'|trans }}{% endblock %}
+{% block meta_robots %}noindex, follow{% endblock %}
+
+{% block showcase_main %}
+    <div class="showcase-page">
+        <div class="showcase-empty">
+            <h1>{{ 'showcase.front.not_found.title'|trans }}</h1>
+            <p>{{ 'showcase.front.not_found.body'|trans({ slug: slug }) }}</p>
+            <p style="margin-top:1.5rem">
+                <a class="showcase-btn" href="{{ path('showcase_index') }}">{{ 'showcase.front.not_found.action'|trans }}</a>
+            </p>
+        </div>
+
+        {% if types is not empty %}
+            <nav class="showcase-types" style="justify-content:center">
+                {% for t in types %}
+                    <a href="{{ path('showcase_type', {machineName: t.machineName}) }}">{{ t.label(app.request.locale) }}</a>
+                {% endfor %}
+            </nav>
+        {% endif %}
+    </div>
+{% endblock %}

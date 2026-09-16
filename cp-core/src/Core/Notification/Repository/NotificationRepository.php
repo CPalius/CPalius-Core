@@ -57,6 +57,52 @@ class NotificationRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
+    public function countUnreadExceptEventPrefix(User $user, string $excludePrefix): int
+    {
+        return (int) $this->createQueryBuilder('n')
+            ->select('COUNT(n.id)')
+            ->andWhere('n.user = :user')
+            ->andWhere('n.readAt IS NULL')
+            ->andWhere('n.eventKey NOT LIKE :prefix')
+            ->setParameter('user', $user)
+            ->setParameter('prefix', $excludePrefix.'%')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * @return list<Notification>
+     */
+    public function findForUserExceptEventPrefix(User $user, string $excludePrefix, int $limit = 50, int $offset = 0): array
+    {
+        /** @var list<Notification> $rows */
+        $rows = $this->createQueryBuilder('n')
+            ->andWhere('n.user = :user')
+            ->andWhere('n.eventKey NOT LIKE :prefix')
+            ->setParameter('user', $user)
+            ->setParameter('prefix', $excludePrefix.'%')
+            ->orderBy('n.createdAt', 'DESC')
+            ->addOrderBy('n.id', 'DESC')
+            ->setFirstResult(max(0, $offset))
+            ->setMaxResults(max(1, min(100, $limit)))
+            ->getQuery()
+            ->getResult();
+
+        return $rows;
+    }
+
+    public function latestIdExceptEventPrefix(User $user, string $excludePrefix): int
+    {
+        return (int) $this->createQueryBuilder('n')
+            ->select('COALESCE(MAX(n.id), 0)')
+            ->andWhere('n.user = :user')
+            ->andWhere('n.eventKey NOT LIKE :prefix')
+            ->setParameter('user', $user)
+            ->setParameter('prefix', $excludePrefix.'%')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     public function countUnreadByEventPrefix(User $user, string $eventPrefix): int
     {
         return (int) $this->createQueryBuilder('n')
