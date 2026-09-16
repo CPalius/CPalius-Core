@@ -143,6 +143,23 @@ final class UpdateRunner
         return $pending;
     }
 
+    /**
+     * The schema step on its own, for the request that has just written the new
+     * files to disk.
+     *
+     * Everything from that moment on renders new code against whatever the
+     * database currently is, and on a release that renames tables that is fatal:
+     * 2.0.0 took sites down with "Table 'cp_users' doesn't exist" before the
+     * operator could reach the button that would have migrated them. Migrations
+     * are the one step safe to run through the old compiled container — they
+     * need the DBAL connection and the migration classes on disk, neither of
+     * which the container rebuild changes — so they run here and the rest waits.
+     */
+    public function migrateOnly(bool $dryRun = false): UpdateStepResult
+    {
+        return $this->runMigrations($dryRun);
+    }
+
     private function runMigrations(bool $dryRun): UpdateStepResult
     {
         try {

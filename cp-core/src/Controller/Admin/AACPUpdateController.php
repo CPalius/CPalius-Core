@@ -210,27 +210,60 @@ final class AACPUpdateController extends AbstractController
 
         try {
             $log = $this->updater->apply();
-
-            // The new files are on disk but this process is still running the
-            // old ones. Migrations and update hooks are the second half of the
-            // job and belong to the code that just landed, so they run on the
-            // next request via the existing apply step rather than here.
         } catch (\Throwable $e) {
             $error = $e->getMessage();
         }
 
-        $results = $this->runner->run(dryRun: true);
+        /*
+         * Schema first, in this request, before anything renders.
+         *
+         * The old shape of this method left migrations to "the next request via
+         * the existing apply step" and then rendered the updates screen. That
+         * screen is served by the code that just landed, against a database that
+         * has not moved yet. It held until 2.0.0, which renames every table:
+         * the render died with "Table 'cp_users' doesn't exist", and because the
+         * panel was what died, the operator could never reach the button that
+         * would have run the migrations. The site was down with no way back in.
+         *
+         * Migrations are the one step that survives the window. They need the
+         * DBAL connection and the migration files on disk; neither depends on
+         * the compiled container that is about to be thrown away. Update hooks,
+         * module upgrades and the cache rebuild still wait for the next request,
+         * because those DO run project services through the old factory.
+         *
+         * A failure here is reported and not retried: the files are already the
+         * new version, so the honest thing is to say the schema did not move and
+         * let the operator run it from the apply step once they know why.
+         */
+        $migrationError = null;
+        if ($error === null) {
+            try {
+                $result = $this->runner->migrateOnly();
+                if ($result->isFailure()) {
+                    $migrationError = $result->summary;
+                }
+            } catch (\Throwable $e) {
+                $migrationError = $e->getMessage();
+            }
+        }
 
-        return $this->render('aacp/updates/index.html.twig', $this->viewData([
-            'results' => $results,
-            'pending' => $this->pendingCount($results),
-            'hasFailure' => $this->hasFailure($results),
-            'applied' => null,
-            'upgradeLog' => $log,
-            'upgradeError' => $error,
-            'patchLog' => null,
-            'patchError' => null,
-        ]));
+        /*
+         * Redirect rather than render, for the same reason patch() does since
+         * 1.1.3: a RedirectResponse needs the router and nothing else, both long
+         * since instantiated, while rendering this screen walks half the service
+         * graph through a container that no longer matches the code on disk.
+         */
+        foreach ((array) $log as $line) {
+            $this->addFlash('upgrade_log', (string) $line);
+        }
+        if ($error !== null) {
+            $this->addFlash('upgrade_error', $error);
+        }
+        if ($migrationError !== null) {
+            $this->addFlash('upgrade_error', $this->translator->trans('aacp.version.upgrade.migration_failed', ['error' => $migrationError]));
+        }
+
+        return $this->redirectToRoute('aacp_updates_index');
     }
 
     /**
