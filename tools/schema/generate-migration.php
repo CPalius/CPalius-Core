@@ -119,6 +119,7 @@ final class Version{$version} extends AbstractMigration
             \$this->renameIfNeeded(\$old, \$new);
         }
 
+        \$this->renameGeneratedIndexes();
         \$this->mergePostVotes();
         \$this->mergeTopicUserState();
         \$this->normaliseCollation();
@@ -133,6 +134,54 @@ final class Version{$version} extends AbstractMigration
         \$this->throwIrreversibleMigrationException(
             'Schema v2 renames can be rolled back, the forum merges cannot. Restore from the pre-upgrade backup instead.'
         );
+    }
+
+    /**
+     * Doctrine names an index it generated after a hash of the table it sits on,
+     * so renaming the table leaves the index answering to the old table's hash
+     * and every doctrine:schema:validate from here on reports drift.
+     *
+     * Only the five indexes whose names Doctrine derived itself are listed. The
+     * ones migrations named by hand (fk_node_cat_term, idx_forum_draft_topic and
+     * friends) were already reported as drift before this migration existed and
+     * are left alone — fixing them is a separate decision, not a side effect of
+     * a rename.
+     *
+     * Each rename is guarded: an installation whose history differs may not have
+     * the old name, and MySQL errors rather than shrugging on a missing index.
+     */
+    private function renameGeneratedIndexes(): void
+    {
+        \$renames = [
+            ['cp_nodes', 'idx_1d3d05fcf675f31b', 'IDX_F1E9E0D9F675F31B'],
+            ['cp_nodes', 'idx_1d3d05fc12469de2', 'IDX_F1E9E0D912469DE2'],
+            ['cp_node_field_index', 'idx_ebdf5a13460d9fd7', 'IDX_504B9FA8460D9FD7'],
+            ['cp_menu_items', 'idx_70b2ca2accd7e912', 'IDX_E079FA58CCD7E912'],
+            ['cp_menu_items', 'idx_70b2ca2a727aca70', 'IDX_E079FA58727ACA70'],
+        ];
+
+        foreach (\$renames as [\$table, \$old, \$new]) {
+            if (!\$this->tableExists(\$table)) {
+                continue;
+            }
+
+            \$has = (int) \$this->connection->fetchOne(
+                'SELECT COUNT(*) FROM information_schema.STATISTICS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?',
+                [\$table, \$old],
+            );
+
+            if (\$has === 0) {
+                continue;
+            }
+
+            \$this->connection->executeStatement(sprintf(
+                'ALTER TABLE `%s` RENAME INDEX `%s` TO `%s`',
+                \$table,
+                \$old,
+                \$new,
+            ));
+        }
     }
 
     private function tableExists(string \$table): bool
