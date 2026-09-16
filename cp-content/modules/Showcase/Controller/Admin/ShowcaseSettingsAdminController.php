@@ -70,8 +70,8 @@ final class ShowcaseSettingsAdminController extends AbstractController
 
             if ($definition->isTranslatable()) {
                 foreach ($locales as $locale) {
-                    $translated[$definition->key][$locale->getCode()] =
-                        $this->settingsRegistry->getForLocale($definition->key, $locale->getCode(), '');
+                    $translated[$definition->key][$locale->code] =
+                        $this->settingsRegistry->getForLocale($definition->key, $locale->code, '');
                 }
             }
         }

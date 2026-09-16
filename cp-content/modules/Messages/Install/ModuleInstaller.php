@@ -16,12 +16,6 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
 {
     private const FALLBACK_LOCALES = ['tr', 'en'];
 
-    /** @var array<string, string> */
-    private const MENU_LABELS = [
-        'tr' => 'Mesajlar',
-        'en' => 'Messages',
-    ];
-
     /**
      * @var array<string, list<string>>
      */
@@ -66,33 +60,32 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
     {
         parent::install($context);
         $this->grantRoleCapabilities($context);
-        $this->publishMenuLinks($context);
+        $this->retractMenuLinks($context);
     }
 
     public function upgrade(ModuleInstallContext $context, string $fromVersion, string $toVersion): void
     {
         parent::upgrade($context, $fromVersion, $toVersion);
         $this->grantRoleCapabilities($context);
-        $this->publishMenuLinks($context);
+        $this->retractMenuLinks($context);
     }
 
     public function uninstall(ModuleInstallContext $context): void
     {
-        foreach ($this->activeLocales($context) as $locale) {
-            $context->removeMenuLinks('/'.$locale.'/messages');
-        }
-
+        $this->retractMenuLinks($context);
         $this->revokeRoleCapabilities($context);
         parent::uninstall($context);
     }
 
-    private function publishMenuLinks(ModuleInstallContext $context): void
+    /**
+     * Navigation is the operator's to compose. An earlier installer published
+     * header/footer links on activate; those are retracted here and never added
+     * again.
+     */
+    private function retractMenuLinks(ModuleInstallContext $context): void
     {
         foreach ($this->activeLocales($context) as $locale) {
-            $label = self::MENU_LABELS[$locale] ?? self::MENU_LABELS['en'];
-            $url = '/'.$locale.'/messages';
-            $context->ensureMenuLink('header', $label, $url, $locale, 11);
-            $context->ensureMenuLink('footer', $label, $url, $locale, 11);
+            $context->removeMenuLinks('/'.$locale.'/messages');
         }
     }
 

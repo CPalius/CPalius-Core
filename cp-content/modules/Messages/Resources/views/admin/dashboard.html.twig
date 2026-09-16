@@ -55,7 +55,7 @@
                 <ul class="space-y-2">
                     {% for report in openReports %}
                         <li class="text-fs-sm">
-                            <a href="{{ path('admin_messages_threads_show', {id: report.message.thread.id}) }}">
+                            <a href="{{ path('admin_messages_reports_index') }}">
                                 {{ ('messages.report.reason.' ~ report.reason)|trans }}
                             </a>
                             <span class="text-neutral-500">· {{ report.createdAt|date('Y-m-d H:i') }}</span>

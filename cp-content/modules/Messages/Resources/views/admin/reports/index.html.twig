@@ -29,9 +29,7 @@
                 {% for report in result %}
                     <tr class="border-b align-top">
                         <td class="p-3">
-                            <a href="{{ path('admin_messages_threads_show', {id: report.message.thread.id}) }}">
-                                {{ ('messages.report.reason.' ~ report.reason)|trans }}
-                            </a>
+                            {{ ('messages.report.reason.' ~ report.reason)|trans }}
                             {% if report.details %}<div class="text-neutral-500">{{ report.details }}</div>{% endif %}
                         </td>
                         <td class="p-3">{{ report.reporter ? report.reporter.publicDisplayName : '—' }}</td>

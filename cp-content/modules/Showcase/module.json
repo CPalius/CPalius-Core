@@ -1,6 +1,6 @@
 {
     "name": "Showcase",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "description": "Multi-purpose showcase: members publish products (software, websites, vehicles, services) under admin-defined types, each type carrying its own custom field schema.",
     "author": "CPalius",
     "bundle": "Modules\\Showcase\\ShowcaseModule",

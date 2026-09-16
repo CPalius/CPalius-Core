@@ -7,7 +7,6 @@ namespace Modules\Messages\Admin;
 final class MessagesDesk
 {
     public const TAB_OVERVIEW = 'overview';
-    public const TAB_THREADS = 'threads';
     public const TAB_REPORTS = 'reports';
     public const TAB_QUOTA = 'quota';
     public const TAB_SETTINGS = 'settings';
@@ -23,13 +22,6 @@ final class MessagesDesk
                 'label' => 'messages.desk.tab.overview',
                 'icon' => 'heroicons:chat-bubble-left-right',
                 'route' => 'admin_messages_dashboard',
-                'capability' => 'messages.moderate',
-            ],
-            [
-                'id' => self::TAB_THREADS,
-                'label' => 'messages.desk.tab.threads',
-                'icon' => 'heroicons:inbox',
-                'route' => 'admin_messages_threads_index',
                 'capability' => 'messages.moderate',
             ],
             [
@@ -59,7 +51,6 @@ final class MessagesDesk
     public static function tabForRoute(string $route): string
     {
         return match (true) {
-            str_starts_with($route, 'admin_messages_threads_') => self::TAB_THREADS,
             str_starts_with($route, 'admin_messages_reports_') => self::TAB_REPORTS,
             str_starts_with($route, 'admin_messages_quota_') => self::TAB_QUOTA,
             str_starts_with($route, 'admin_messages_settings_') => self::TAB_SETTINGS,

@@ -26,17 +26,6 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
     private const FALLBACK_LOCALES = ['tr', 'en'];
 
     /**
-     * Menu labels. Written out rather than translated, because the installer runs
-     * without a container and therefore without a translator.
-     *
-     * @var array<string, string>
-     */
-    private const MENU_LABELS = [
-        'tr' => 'Vitrin',
-        'en' => 'Showcase',
-    ];
-
-    /**
      * @var array<string, array{label: string, description: string}>
      */
     private const DEFAULT_TYPE_LABELS = [
@@ -107,7 +96,7 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
 
         $this->seedDefaultType($context);
         $this->grantRoleCapabilities($context);
-        $this->publishMenuLinks($context);
+        $this->retractMenuLinks($context);
     }
 
     public function upgrade(ModuleInstallContext $context, string $fromVersion, string $toVersion): void
@@ -116,16 +105,12 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
 
         $this->seedDefaultType($context);
         $this->grantRoleCapabilities($context);
-        $this->publishMenuLinks($context);
+        $this->retractMenuLinks($context);
     }
 
     public function uninstall(ModuleInstallContext $context): void
     {
-        // Navigation first: a link pointing at routes that are about to vanish is
-        // worse than no link.
-        foreach ($this->activeLocales($context) as $locale) {
-            $context->removeMenuLinks('/'.$locale.'/showcase');
-        }
+        $this->retractMenuLinks($context);
 
         // Field definitions live in the core cp_field_definitions table, keyed by
         // a "showcase_*" bundle. They belong to this module's types, so purging
@@ -138,21 +123,14 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
     }
 
     /**
-     * Puts "Showcase" in the site's header and footer menus, once per active
-     * locale, so the module is reachable the moment it is activated.
-     *
-     * The label comes from this module's own catalogue rather than a hard-coded
-     * string, so a Turkish site gets "Vitrin" and an English one "Showcase"
-     * without the installer knowing either word.
+     * Navigation is the operator's to compose. An earlier installer published
+     * header/footer links on activate; those are retracted here and never added
+     * again.
      */
-    private function publishMenuLinks(ModuleInstallContext $context): void
+    private function retractMenuLinks(ModuleInstallContext $context): void
     {
         foreach ($this->activeLocales($context) as $locale) {
-            $label = self::MENU_LABELS[$locale] ?? self::MENU_LABELS['en'];
-            $url = '/'.$locale.'/showcase';
-
-            $context->ensureMenuLink('header', $label, $url, $locale, 9);
-            $context->ensureMenuLink('footer', $label, $url, $locale, 9);
+            $context->removeMenuLinks('/'.$locale.'/showcase');
         }
     }
 
