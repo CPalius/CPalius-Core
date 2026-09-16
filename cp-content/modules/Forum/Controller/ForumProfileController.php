@@ -8,12 +8,12 @@ use App\Core\Pagination\Paginator;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Modules\Forum\Entity\ForumPost;
+use Modules\Forum\Entity\ForumPostVote;
 use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\Entity\ForumUserReputation;
 use Modules\Forum\ForumDictionary;
-use Modules\Forum\Repository\ForumPostDislikeRepository;
-use Modules\Forum\Repository\ForumPostLikeRepository;
 use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumPostVoteRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
 use Modules\Forum\Repository\ForumUserReputationRepository;
 use Modules\Forum\Service\ForumProfileStatsService;
@@ -36,8 +36,7 @@ final class ForumProfileController extends AbstractController
         private readonly UserRepository $userRepository,
         private readonly ForumTopicRepository $topicRepository,
         private readonly ForumPostRepository $postRepository,
-        private readonly ForumPostLikeRepository $postLikeRepository,
-        private readonly ForumPostDislikeRepository $postDislikeRepository,
+        private readonly ForumPostVoteRepository $postVoteRepository,
         private readonly ForumUserReputationRepository $reputationRepository,
         private readonly ForumRankService $rankService,
         private readonly ForumProfileStatsService $profileStatsService,
@@ -74,10 +73,10 @@ final class ForumProfileController extends AbstractController
             $qb = $this->topicRepository->createRepliedTopicsByAuthorQueryBuilder($user);
             $items = $this->paginator->paginate($qb, $request->query->getInt('page', 1), ForumDictionary::DEFAULT_TOPICS_PER_PAGE);
         } elseif ($tab === 'liked') {
-            $qb = $this->postLikeRepository->createPublicByUserQueryBuilder($user);
+            $qb = $this->postVoteRepository->createPublicByUserQueryBuilder($user, ForumPostVote::LIKE);
             $items = $this->paginator->paginate($qb, $request->query->getInt('page', 1), ForumDictionary::DEFAULT_TOPICS_PER_PAGE);
         } elseif ($tab === 'disliked') {
-            $qb = $this->postDislikeRepository->createPublicByUserQueryBuilder($user);
+            $qb = $this->postVoteRepository->createPublicByUserQueryBuilder($user, ForumPostVote::DISLIKE);
             $items = $this->paginator->paginate($qb, $request->query->getInt('page', 1), ForumDictionary::DEFAULT_TOPICS_PER_PAGE);
         } elseif ($tab === 'reputation') {
             $qb = $this->reputationRepository->createReceivedQueryBuilder($user);

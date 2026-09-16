@@ -180,7 +180,7 @@ final class MigrateEndToEndTest extends IntegrationTestCase
         // records it recorded are still there.
         $nodeIds = array_map(static fn (Node $n): ?int => $n->getId(), $this->nodes());
         $this->em()->getConnection()->executeStatement(
-            'DELETE FROM nodes WHERE id = ?',
+            'DELETE FROM cp_nodes WHERE id = ?',
             [$nodeIds[0]],
         );
         $this->em()->clear();

@@ -9,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Modules\Forum\Repository\ForumDraftRepository;
 
 #[ORM\Entity(repositoryClass: ForumDraftRepository::class)]
-#[ORM\Table(name: 'forum_drafts')]
+#[ORM\Table(name: 'cp_forum_drafts')]
 #[ORM\Index(columns: ['user_id'], name: 'idx_forum_draft_user')]
 class ForumDraft
 {

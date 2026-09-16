@@ -13,7 +13,7 @@ use Modules\Menu\Repository\MenuRepository;
  * Named menus (header/footer) for {{ cp_menu() }}. Admin CRUD lives in the optional Menu module.
  */
 #[ORM\Entity(repositoryClass: MenuRepository::class)]
-#[ORM\Table(name: 'menus')]
+#[ORM\Table(name: 'cp_menu_menus')]
 #[ORM\UniqueConstraint(name: 'uniq_menu_identifier', columns: ['identifier'])]
 class Menu
 {

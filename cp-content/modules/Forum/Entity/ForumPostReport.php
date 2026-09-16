@@ -12,7 +12,7 @@ use Modules\Forum\Repository\ForumPostReportRepository;
  * Flagged-post report feeding the AACP moderation queue.
  */
 #[ORM\Entity(repositoryClass: ForumPostReportRepository::class)]
-#[ORM\Table(name: 'forum_post_reports')]
+#[ORM\Table(name: 'cp_forum_post_reports')]
 #[ORM\Index(columns: ['status'], name: 'idx_forum_post_report_status')]
 class ForumPostReport
 {

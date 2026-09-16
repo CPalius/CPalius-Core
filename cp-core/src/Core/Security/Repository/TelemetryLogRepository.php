@@ -67,7 +67,7 @@ class TelemetryLogRepository extends ServiceEntityRepository
                            t.severity, t.event_type, t.threat_score, t.details, t.created_at,
                            u.username, u.email
                     FROM cp_system_telemetry_logs t
-                    LEFT JOIN users u ON u.id = t.user_id';
+                    LEFT JOIN cp_users u ON u.id = t.user_id';
             $params = [];
             $where = [];
             if ($afterId !== null && $afterId > 0) {

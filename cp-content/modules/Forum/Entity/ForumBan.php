@@ -13,7 +13,7 @@ use Modules\Forum\Repository\ForumBanRepository;
  * BAN blocks forum routes; MUTE allows read but blocks topic/reply/like.
  */
 #[ORM\Entity(repositoryClass: ForumBanRepository::class)]
-#[ORM\Table(name: 'forum_bans')]
+#[ORM\Table(name: 'cp_forum_bans')]
 #[ORM\Index(columns: ['user_id'], name: 'idx_forum_ban_user')]
 #[ORM\Index(columns: ['ip_address'], name: 'idx_forum_ban_ip')]
 #[ORM\Index(columns: ['email'], name: 'idx_forum_ban_email')]

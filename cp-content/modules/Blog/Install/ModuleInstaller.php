@@ -30,7 +30,9 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
      */
     protected function tables(): array
     {
-        return ['blog_comments'];
+        return [
+            'cp_blog_comments',
+        ];
     }
 
     public function install(ModuleInstallContext $context): void

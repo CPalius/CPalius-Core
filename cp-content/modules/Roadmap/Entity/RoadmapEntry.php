@@ -15,7 +15,7 @@ use Modules\Roadmap\Repository\RoadmapEntryRepository;
  * One row per locale; siblings share translation_group_id (Blog category pattern).
  */
 #[ORM\Entity(repositoryClass: RoadmapEntryRepository::class)]
-#[ORM\Table(name: 'roadmap_entries')]
+#[ORM\Table(name: 'cp_roadmap_entries')]
 #[ORM\Index(columns: ['locale', 'status'], name: 'idx_roadmap_locale_status')]
 #[ORM\Index(columns: ['locale', 'kind'], name: 'idx_roadmap_locale_kind')]
 #[ORM\Index(columns: ['published_at'], name: 'idx_roadmap_published')]

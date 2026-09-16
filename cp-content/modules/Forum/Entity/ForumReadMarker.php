@@ -9,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Modules\Forum\Repository\ForumReadMarkerRepository;
 
 #[ORM\Entity(repositoryClass: ForumReadMarkerRepository::class)]
-#[ORM\Table(name: 'forum_read_markers')]
+#[ORM\Table(name: 'cp_forum_read_markers')]
 #[ORM\Index(columns: ['user_id'], name: 'idx_forum_read_user')]
 class ForumReadMarker
 {

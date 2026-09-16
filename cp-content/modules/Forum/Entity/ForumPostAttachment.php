@@ -9,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Modules\Forum\Repository\ForumPostAttachmentRepository;
 
 #[ORM\Entity(repositoryClass: ForumPostAttachmentRepository::class)]
-#[ORM\Table(name: 'forum_post_attachments')]
+#[ORM\Table(name: 'cp_forum_post_attachments')]
 #[ORM\Index(columns: ['post_id'], name: 'idx_forum_attach_post')]
 class ForumPostAttachment
 {

@@ -11,7 +11,7 @@ use Modules\Forum\Repository\ForumNodePermissionRepository;
  * Node × role permission matrix row (cp_forum_node_permissions).
  */
 #[ORM\Entity(repositoryClass: ForumNodePermissionRepository::class)]
-#[ORM\Table(name: 'forum_node_permissions')]
+#[ORM\Table(name: 'cp_forum_node_permissions')]
 #[ORM\UniqueConstraint(name: 'UNIQ_FNP_SECTION_ROLE_PERM', columns: ['section_id', 'role_key', 'permission_key'])]
 class ForumNodePermission
 {

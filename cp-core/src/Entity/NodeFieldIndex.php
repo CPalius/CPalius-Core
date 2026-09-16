@@ -12,7 +12,7 @@ use Doctrine\ORM\Mapping as ORM;
  * One row per node+fieldName; only one value* column is populated per type.
  */
 #[ORM\Entity(repositoryClass: NodeFieldIndexRepository::class)]
-#[ORM\Table(name: 'node_field_index')]
+#[ORM\Table(name: 'cp_node_field_index')]
 #[ORM\Index(columns: ['field_name', 'value_string'], name: 'idx_nfi_field_string')]
 #[ORM\Index(columns: ['field_name', 'value_int'], name: 'idx_nfi_field_int')]
 #[ORM\Index(columns: ['field_name', 'value_decimal'], name: 'idx_nfi_field_decimal')]

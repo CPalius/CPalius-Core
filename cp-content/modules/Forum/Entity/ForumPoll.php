@@ -10,7 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Modules\Forum\Repository\ForumPollRepository;
 
 #[ORM\Entity(repositoryClass: ForumPollRepository::class)]
-#[ORM\Table(name: 'forum_polls')]
+#[ORM\Table(name: 'cp_forum_polls')]
 #[ORM\UniqueConstraint(name: 'uniq_forum_poll_topic', columns: ['topic_id'])]
 class ForumPoll
 {

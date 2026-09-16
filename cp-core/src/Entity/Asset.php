@@ -12,7 +12,7 @@ use Doctrine\ORM\Mapping as ORM;
  * No direct Node relation here — assets stay independent of content modules.
  */
 #[ORM\Entity(repositoryClass: AssetRepository::class)]
-#[ORM\Table(name: 'assets')]
+#[ORM\Table(name: 'cp_assets')]
 #[ORM\Index(columns: ['hash'], name: 'idx_asset_hash')]
 #[ORM\Index(columns: ['mime_type'], name: 'idx_asset_mime_type')]
 class Asset

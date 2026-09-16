@@ -16,7 +16,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
  * getRoles() returns ROLE_USER for the firewall; CPalius roles live in YAML via RoleConfigManager.
  */
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Table(name: 'users')]
+#[ORM\Table(name: 'cp_users')]
 #[ORM\UniqueConstraint(name: 'uniq_user_email', columns: ['email'])]
 #[ORM\UniqueConstraint(name: 'uniq_user_username', columns: ['username'])]
 #[ORM\Index(columns: ['status'], name: 'idx_user_status')]

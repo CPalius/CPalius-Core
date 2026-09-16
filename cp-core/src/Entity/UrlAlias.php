@@ -12,7 +12,7 @@ use Doctrine\ORM\Mapping as ORM;
  * Target ids are not FKs — deleted targets fail-safe to 404 without breaking aliases.
  */
 #[ORM\Entity(repositoryClass: UrlAliasRepository::class)]
-#[ORM\Table(name: 'url_aliases')]
+#[ORM\Table(name: 'cp_path_aliases')]
 #[ORM\UniqueConstraint(name: 'uniq_url_alias_path_locale', columns: ['alias_path', 'locale'])]
 #[ORM\Index(columns: ['is_active'], name: 'idx_url_alias_active')]
 class UrlAlias

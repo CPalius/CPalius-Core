@@ -10,16 +10,14 @@ use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumPost;
-use Modules\Forum\Entity\ForumPostDislike;
-use Modules\Forum\Entity\ForumPostLike;
+use Modules\Forum\Entity\ForumPostVote;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\Entity\ForumTopicPrefix;
 use Modules\Forum\ForumDictionary;
 use Modules\Forum\ForumDiscussionState;
-use Modules\Forum\Repository\ForumPostDislikeRepository;
-use Modules\Forum\Repository\ForumPostLikeRepository;
 use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumPostVoteRepository;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\String\Slugger\AsciiSlugger;
@@ -33,8 +31,7 @@ final class ForumTopicService
         private readonly EntityManagerInterface $entityManager,
         private readonly ForumPostRepository $postRepository,
         private readonly ForumSectionRepository $sectionRepository,
-        private readonly ForumPostLikeRepository $postLikeRepository,
-        private readonly ForumPostDislikeRepository $postDislikeRepository,
+        private readonly ForumPostVoteRepository $postVoteRepository,
         private readonly ForumStatsService $statsService,
         private readonly RichTextSanitizer $richTextSanitizer,
         private readonly ForumDomainDispatcher $domainDispatcher,
@@ -339,33 +336,7 @@ final class ForumTopicService
      */
     public function toggleLike(ForumPost $post, User $user): bool
     {
-        $this->assertNotOwnPost($post, $user);
-
-        $existing = $this->postLikeRepository->findOneByPostAndUser($post, $user);
-
-        if ($existing !== null) {
-            $this->entityManager->remove($existing);
-            $this->entityManager->flush();
-
-            return false;
-        }
-
-        $dislike = $this->postDislikeRepository->findOneByPostAndUser($post, $user);
-        if ($dislike !== null) {
-            $this->entityManager->remove($dislike);
-        }
-
-        $this->entityManager->persist(new ForumPostLike($post, $user));
-        $this->entityManager->flush();
-
-        $this->dispatchReactionEvent(function () use ($post, $user): void {
-            $postAuthor = $post->getAuthor();
-            if ($postAuthor !== null) {
-                $this->domainDispatcher->dispatchPostLiked($post, $user, $postAuthor);
-            }
-        });
-
-        return true;
+        return $this->toggleVote($post, $user, ForumPostVote::LIKE);
     }
 
     /**
@@ -374,28 +345,47 @@ final class ForumTopicService
      */
     public function toggleDislike(ForumPost $post, User $user): bool
     {
+        return $this->toggleVote($post, $user, ForumPostVote::DISLIKE);
+    }
+
+    /**
+     * The one path both verdicts take, now that they share a table.
+     *
+     * Switching sides used to be a delete plus an insert across two tables with
+     * nothing holding them together; it is an UPDATE of one row here, so a
+     * member cannot end up holding a like and a dislike on the same post even if
+     * two requests race — UNIQUE(post_id, user_id) has the final say.
+     */
+    private function toggleVote(ForumPost $post, User $user, int $vote): bool
+    {
         $this->assertNotOwnPost($post, $user);
 
-        $existing = $this->postDislikeRepository->findOneByPostAndUser($post, $user);
+        $existing = $this->postVoteRepository->findOneByPostAndUser($post, $user);
 
-        if ($existing !== null) {
+        if ($existing !== null && $existing->getVote() === $vote) {
             $this->entityManager->remove($existing);
             $this->entityManager->flush();
 
             return false;
         }
 
-        $like = $this->postLikeRepository->findOneByPostAndUser($post, $user);
-        if ($like !== null) {
-            $this->entityManager->remove($like);
+        if ($existing !== null) {
+            $existing->setVote($vote);
+        } else {
+            $this->entityManager->persist(new ForumPostVote($post, $user, $vote));
         }
 
-        $this->entityManager->persist(new ForumPostDislike($post, $user));
         $this->entityManager->flush();
 
-        $this->dispatchReactionEvent(function () use ($post, $user): void {
+        $this->dispatchReactionEvent(function () use ($post, $user, $vote): void {
             $postAuthor = $post->getAuthor();
-            if ($postAuthor !== null) {
+            if ($postAuthor === null) {
+                return;
+            }
+
+            if ($vote === ForumPostVote::LIKE) {
+                $this->domainDispatcher->dispatchPostLiked($post, $user, $postAuthor);
+            } else {
                 $this->domainDispatcher->dispatchPostDisliked($post, $user, $postAuthor);
             }
         });

@@ -520,7 +520,7 @@ final class SecurityAuditor
         try {
             return $this->userRepository->count([]) > 0
                 ? (int) $this->connection->fetchOne(
-                    "SELECT COUNT(*) FROM users WHERE JSON_SEARCH(roles, 'one', 'admin') IS NOT NULL",
+                    "SELECT COUNT(*) FROM cp_users WHERE JSON_SEARCH(roles, 'one', 'admin') IS NOT NULL",
                 )
                 : 0;
         } catch (\Throwable) {

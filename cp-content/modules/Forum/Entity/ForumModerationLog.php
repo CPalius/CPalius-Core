@@ -9,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Modules\Forum\Repository\ForumModerationLogRepository;
 
 #[ORM\Entity(repositoryClass: ForumModerationLogRepository::class)]
-#[ORM\Table(name: 'forum_moderation_logs')]
+#[ORM\Table(name: 'cp_forum_moderation_logs')]
 #[ORM\Index(columns: ['created_at'], name: 'idx_forum_modlog_created')]
 #[ORM\Index(columns: ['target_type', 'target_id'], name: 'idx_forum_modlog_target')]
 class ForumModerationLog

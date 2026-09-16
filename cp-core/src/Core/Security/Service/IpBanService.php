@@ -248,7 +248,7 @@ final class IpBanService
                 'SELECT b.id, b.ip_address, b.is_range, b.source, b.reason, b.hit_count,
                         b.created_at, b.expires_at, b.last_hit_at, u.email AS banned_by_email
                    FROM cp_banned_ips b
-                   LEFT JOIN users u ON u.id = b.banned_by
+                   LEFT JOIN cp_users u ON u.id = b.banned_by
                   ORDER BY b.created_at DESC
                   LIMIT '.max(1, min(500, $limit)),
             );

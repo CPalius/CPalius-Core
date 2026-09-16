@@ -8,7 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Modules\Forum\Repository\ForumLinkPreviewRepository;
 
 #[ORM\Entity(repositoryClass: ForumLinkPreviewRepository::class)]
-#[ORM\Table(name: 'forum_link_previews')]
+#[ORM\Table(name: 'cp_forum_link_previews')]
 #[ORM\UniqueConstraint(name: 'uniq_forum_link_preview_hash', columns: ['url_hash'])]
 class ForumLinkPreview
 {

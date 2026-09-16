@@ -9,15 +9,14 @@ use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumReadMarker;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
-use Modules\Forum\Entity\ForumTopicView;
 use Modules\Forum\Repository\ForumReadMarkerRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
-use Modules\Forum\Repository\ForumTopicViewRepository;
+use Modules\Forum\Repository\ForumTopicUserStateRepository;
 
 final class ForumUnreadService
 {
     public function __construct(
-        private readonly ForumTopicViewRepository $viewRepository,
+        private readonly ForumTopicUserStateRepository $stateRepository,
         private readonly ForumReadMarkerRepository $markerRepository,
         private readonly ForumTopicRepository $topicRepository,
         private readonly EntityManagerInterface $entityManager,
@@ -26,14 +25,7 @@ final class ForumUnreadService
 
     public function markTopicRead(ForumTopic $topic, User $user): void
     {
-        $view = $this->viewRepository->findOneByTopicAndUser($topic, $user);
-        if ($view === null) {
-            $view = new ForumTopicView($topic, $user);
-            $this->entityManager->persist($view);
-        } else {
-            $view->touch();
-        }
-
+        $this->stateRepository->findOrCreate($topic, $user)->touch();
         $this->entityManager->flush();
     }
 
@@ -78,7 +70,7 @@ final class ForumUnreadService
             }
         }
 
-        $views = $this->viewRepository->lastSeenByTopicIds($user, $ids);
+        $views = $this->stateRepository->lastSeenByTopicIds($user, $ids);
         $global = $this->markerRepository->findGlobal($user)?->getMarkedAt();
         $bySection = $this->markerRepository->markedAtBySection($user);
         $unread = [];

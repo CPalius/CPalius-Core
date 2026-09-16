@@ -19,7 +19,7 @@ use Modules\Forum\Repository\ForumSectionRepository;
  * Three-level hierarchy (Division → Category → Subcategory) via sectionType; nodeType is the node kind.
  */
 #[ORM\Entity(repositoryClass: ForumSectionRepository::class)]
-#[ORM\Table(name: 'forum_sections')]
+#[ORM\Table(name: 'cp_forum_sections')]
 #[ORM\UniqueConstraint(name: 'uniq_forum_section_code_locale', columns: ['code', 'locale'])]
 #[ORM\UniqueConstraint(name: 'uniq_forum_section_slug_locale', columns: ['slug', 'locale'])]
 #[ORM\Index(columns: ['locale'], name: 'idx_forum_section_locale')]

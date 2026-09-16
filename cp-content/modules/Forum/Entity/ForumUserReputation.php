@@ -13,7 +13,7 @@ use Modules\Forum\Repository\ForumUserReputationRepository;
  * Optional reason plus linked topic/post.
  */
 #[ORM\Entity(repositoryClass: ForumUserReputationRepository::class)]
-#[ORM\Table(name: 'forum_user_reputations')]
+#[ORM\Table(name: 'cp_forum_user_reputations')]
 #[ORM\Index(columns: ['to_user_id', 'created_at'], name: 'idx_forum_rep_to')]
 #[ORM\Index(columns: ['from_user_id'], name: 'idx_forum_rep_from')]
 #[ORM\Index(columns: ['topic_id'], name: 'idx_forum_rep_topic')]

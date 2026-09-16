@@ -24,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
  * Uses #[Publishable] without PublishableTrait; SoftDeletableTrait adds trash support.
  */
 #[ORM\Entity(repositoryClass: NodeRepository::class)]
-#[ORM\Table(name: 'nodes')]
+#[ORM\Table(name: 'cp_nodes')]
 #[ORM\Index(columns: ['type'], name: 'idx_node_type')]
 #[ORM\Index(columns: ['status'], name: 'idx_node_status')]
 #[ORM\Index(columns: ['locale'], name: 'idx_node_locale')]
@@ -107,7 +107,7 @@ class Node implements OwnableInterface, TranslatableInterface, FieldableInterfac
      * @var Collection<int, Term>
      */
     #[ORM\ManyToMany(targetEntity: Term::class)]
-    #[ORM\JoinTable(name: 'node_category')]
+    #[ORM\JoinTable(name: 'cp_node_categories')]
     #[ORM\JoinColumn(name: 'node_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     #[ORM\InverseJoinColumn(name: 'category_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     private Collection $categories;
@@ -118,7 +118,7 @@ class Node implements OwnableInterface, TranslatableInterface, FieldableInterfac
      * @var Collection<int, Term>
      */
     #[ORM\ManyToMany(targetEntity: Term::class)]
-    #[ORM\JoinTable(name: 'node_tag')]
+    #[ORM\JoinTable(name: 'cp_node_tags')]
     #[ORM\JoinColumn(name: 'node_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     #[ORM\InverseJoinColumn(name: 'tag_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     private Collection $tags;

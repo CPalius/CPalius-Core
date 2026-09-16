@@ -83,7 +83,7 @@ final class SecurityTestDatabase
                 password_hash VARCHAR(255) NOT NULL,
                 created_at VARCHAR(19) NOT NULL
             )',
-            'CREATE TABLE users (
+            'CREATE TABLE cp_users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 email VARCHAR(180) NOT NULL,
                 username VARCHAR(180) NULL,

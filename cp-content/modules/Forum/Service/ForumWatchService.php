@@ -8,13 +8,12 @@ use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumTopic;
-use Modules\Forum\Entity\ForumTopicWatch;
-use Modules\Forum\Repository\ForumTopicWatchRepository;
+use Modules\Forum\Repository\ForumTopicUserStateRepository;
 
 final class ForumWatchService
 {
     public function __construct(
-        private readonly ForumTopicWatchRepository $watchRepository,
+        private readonly ForumTopicUserStateRepository $stateRepository,
         private readonly SettingsRegistry $settingsRegistry,
         private readonly EntityManagerInterface $entityManager,
     ) {
@@ -27,27 +26,41 @@ final class ForumWatchService
 
     public function isWatching(ForumTopic $topic, User $user): bool
     {
-        return $this->watchRepository->findOneByTopicAndUser($topic, $user) !== null;
+        return $this->stateRepository->findOneByTopicAndUser($topic, $user)?->isWatching() === true;
     }
 
     public function watch(ForumTopic $topic, User $user): void
     {
-        if (!$this->isEnabled() || $this->isWatching($topic, $user)) {
+        if (!$this->isEnabled()) {
             return;
         }
 
-        $this->entityManager->persist(new ForumTopicWatch($topic, $user));
+        $state = $this->stateRepository->findOrCreate($topic, $user);
+        if ($state->isWatching()) {
+            return;
+        }
+
+        $state->startWatching();
         $this->entityManager->flush();
     }
 
+    /**
+     * Clears the watch but keeps the row: the member's read position lives in
+     * the same record now, and unwatching a thread should not mark it unread.
+     */
     public function unwatch(ForumTopic $topic, User $user): void
     {
-        $row = $this->watchRepository->findOneByTopicAndUser($topic, $user);
-        if ($row === null) {
+        $state = $this->stateRepository->findOneByTopicAndUser($topic, $user);
+        if ($state === null || !$state->isWatching()) {
             return;
         }
 
-        $this->entityManager->remove($row);
+        $state->stopWatching();
+
+        if ($state->isEmpty()) {
+            $this->entityManager->remove($state);
+        }
+
         $this->entityManager->flush();
     }
 
@@ -70,8 +83,8 @@ final class ForumWatchService
     public function watchers(ForumTopic $topic): array
     {
         $users = [];
-        foreach ($this->watchRepository->findByTopic($topic) as $watch) {
-            $users[] = $watch->getUser();
+        foreach ($this->stateRepository->findWatchersByTopic($topic) as $state) {
+            $users[] = $state->getUser();
         }
 
         return $users;

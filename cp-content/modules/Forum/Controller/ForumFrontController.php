@@ -10,15 +10,15 @@ use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumPost;
+use Modules\Forum\Entity\ForumPostVote;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\Entity\ForumTopicPrefix;
 use Modules\Forum\ForumDictionary;
 use Modules\Forum\ForumSectionType;
-use Modules\Forum\Repository\ForumPostDislikeRepository;
-use Modules\Forum\Repository\ForumPostLikeRepository;
 use Modules\Forum\Repository\ForumPostReportRepository;
 use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumPostVoteRepository;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicPrefixRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
@@ -59,8 +59,7 @@ final class ForumFrontController extends AbstractController
         private readonly ForumTopicRepository $topicRepository,
         private readonly ForumPostRepository $postRepository,
         private readonly ForumPostReportRepository $postReportRepository,
-        private readonly ForumPostLikeRepository $postLikeRepository,
-        private readonly ForumPostDislikeRepository $postDislikeRepository,
+        private readonly ForumPostVoteRepository $postVoteRepository,
         private readonly ForumTopicPrefixRepository $topicPrefixRepository,
         private readonly ForumUserRankRepository $rankRepository,
         private readonly ForumTopicService $topicService,
@@ -366,6 +365,7 @@ final class ForumFrontController extends AbstractController
         }
 
         $poll = $this->pollService->findForTopic($topic);
+        $voteCounts = $this->postVoteRepository->countBothByPostIds($postIds);
 
         return $this->render('@Theme/forum/posts.html.twig', [
             'topic' => $topic,
@@ -380,10 +380,12 @@ final class ForumFrontController extends AbstractController
             'canDeletePosts' => $inline['canDeletePosts'],
             'canSplit' => $inline['canSplit'],
             'postbitStats' => $this->buildPostbitStats($posts),
-            'likeCounts' => $this->postLikeRepository->countByPostIds($postIds),
-            'likedPostIds' => $viewer instanceof User ? $this->postLikeRepository->findLikedPostIdsForUser($postIds, $viewer) : [],
-            'dislikeCounts' => $this->postDislikeRepository->countByPostIds($postIds),
-            'dislikedPostIds' => $viewer instanceof User ? $this->postDislikeRepository->findDislikedPostIdsForUser($postIds, $viewer) : [],
+            // One grouped query for both tallies now that they share a table,
+            // where this used to be two (Manifesto Law 6.1).
+            'likeCounts' => array_map(static fn (array $t): int => $t['likes'], $voteCounts),
+            'likedPostIds' => $viewer instanceof User ? $this->postVoteRepository->findVotedPostIdsForUser($postIds, $viewer, ForumPostVote::LIKE) : [],
+            'dislikeCounts' => array_map(static fn (array $t): int => $t['dislikes'], $voteCounts),
+            'dislikedPostIds' => $viewer instanceof User ? $this->postVoteRepository->findVotedPostIdsForUser($postIds, $viewer, ForumPostVote::DISLIKE) : [],
             'topicReaders' => $this->engagementService->readers($topic),
             'topicReactors' => $this->engagementService->reactors($topic),
             'moveTargets' => $inline['moveTargets'],
@@ -657,8 +659,8 @@ final class ForumFrontController extends AbstractController
         $this->assertCanReactToPost($post, $user);
 
         $liked = $this->topicService->toggleLike($post, $user);
-        $count = $this->postLikeRepository->countByPost($post);
-        $siblingCount = $this->postDislikeRepository->countByPost($post);
+        $count = $this->postVoteRepository->countByPost($post, ForumPostVote::LIKE);
+        $siblingCount = $this->postVoteRepository->countByPost($post, ForumPostVote::DISLIKE);
 
         if ($this->wantsJson($request)) {
             return $this->json([
@@ -688,8 +690,8 @@ final class ForumFrontController extends AbstractController
         $this->assertCanReactToPost($post, $user);
 
         $disliked = $this->topicService->toggleDislike($post, $user);
-        $count = $this->postDislikeRepository->countByPost($post);
-        $siblingCount = $this->postLikeRepository->countByPost($post);
+        $count = $this->postVoteRepository->countByPost($post, ForumPostVote::DISLIKE);
+        $siblingCount = $this->postVoteRepository->countByPost($post, ForumPostVote::LIKE);
 
         if ($this->wantsJson($request)) {
             return $this->json([

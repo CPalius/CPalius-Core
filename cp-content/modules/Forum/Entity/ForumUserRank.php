@@ -12,7 +12,7 @@ use Modules\Forum\Repository\ForumUserRankRepository;
  * Set $minPosts for auto-award by post count; null means admin-only (stored in User::$data['forum_rank_id']).
  */
 #[ORM\Entity(repositoryClass: ForumUserRankRepository::class)]
-#[ORM\Table(name: 'forum_user_ranks')]
+#[ORM\Table(name: 'cp_forum_user_ranks')]
 class ForumUserRank
 {
     #[ORM\Id]

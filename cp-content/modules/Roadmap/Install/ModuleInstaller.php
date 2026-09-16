@@ -19,7 +19,7 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
     protected function tables(): array
     {
         return [
-            'roadmap_entries',
+            'cp_roadmap_entries',
         ];
     }
 }

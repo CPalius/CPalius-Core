@@ -17,7 +17,7 @@ use Modules\Forum\Repository\ForumTopicRepository;
  * first_post_id, last_post_id, last_post_date.
  */
 #[ORM\Entity(repositoryClass: ForumTopicRepository::class)]
-#[ORM\Table(name: 'forum_topics')]
+#[ORM\Table(name: 'cp_forum_topics')]
 #[ORM\Index(columns: ['updated_at'], name: 'idx_forum_topic_updated')]
 #[ORM\Index(columns: ['state'], name: 'idx_forum_topic_state')]
 #[ORM\Index(columns: ['sticky'], name: 'idx_forum_topic_sticky')]

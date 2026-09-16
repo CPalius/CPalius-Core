@@ -8,7 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Modules\Forum\Repository\ForumCensorWordRepository;
 
 #[ORM\Entity(repositoryClass: ForumCensorWordRepository::class)]
-#[ORM\Table(name: 'forum_censor_words')]
+#[ORM\Table(name: 'cp_forum_censor_words')]
 #[ORM\UniqueConstraint(name: 'uniq_forum_censor_word', columns: ['word'])]
 class ForumCensorWord
 {

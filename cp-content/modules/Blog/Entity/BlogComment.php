@@ -13,7 +13,7 @@ use Modules\Blog\Repository\BlogCommentRepository;
  * Blog post comment. Guests store name/email; members use the shared User profile.
  */
 #[ORM\Entity(repositoryClass: BlogCommentRepository::class)]
-#[ORM\Table(name: 'blog_comments')]
+#[ORM\Table(name: 'cp_blog_comments')]
 #[ORM\Index(columns: ['node_id'], name: 'idx_blog_comment_node')]
 #[ORM\Index(columns: ['status'], name: 'idx_blog_comment_status')]
 #[ORM\Index(columns: ['parent_id'], name: 'idx_blog_comment_parent')]

@@ -19,8 +19,8 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
     protected function tables(): array
     {
         return [
-            'menu_items',
-            'menus',
+            'cp_menu_items',
+            'cp_menu_menus',
         ];
     }
 }

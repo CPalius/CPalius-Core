@@ -8,7 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Modules\Forum\Repository\ForumPollOptionRepository;
 
 #[ORM\Entity(repositoryClass: ForumPollOptionRepository::class)]
-#[ORM\Table(name: 'forum_poll_options')]
+#[ORM\Table(name: 'cp_forum_poll_options')]
 #[ORM\Index(columns: ['poll_id'], name: 'idx_forum_poll_opt_poll')]
 class ForumPollOption
 {

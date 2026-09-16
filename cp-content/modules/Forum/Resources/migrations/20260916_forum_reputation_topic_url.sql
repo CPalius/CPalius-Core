@@ -8,12 +8,12 @@
 SET @cp_rep_col := (
     SELECT COUNT(*) FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'forum_user_reputations'
+      AND TABLE_NAME = 'cp_forum_user_reputations'
       AND COLUMN_NAME = 'topic_url'
 );
 SET @cp_rep_sql := IF(
     @cp_rep_col = 0,
-    'ALTER TABLE forum_user_reputations ADD COLUMN topic_url VARCHAR(500) DEFAULT NULL',
+    'ALTER TABLE cp_forum_user_reputations ADD COLUMN topic_url VARCHAR(500) DEFAULT NULL',
     'DO 0'
 );
 PREPARE cp_rep_add_topic_url FROM @cp_rep_sql;

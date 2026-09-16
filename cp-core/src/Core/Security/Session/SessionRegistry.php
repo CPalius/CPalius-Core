@@ -155,7 +155,7 @@ final class SessionRegistry
                 'SELECT s.id, s.user_id, s.ip_address, s.user_agent, s.created_at, s.last_seen_at,
                         u.email, u.username
                    FROM cp_user_sessions s
-                   LEFT JOIN users u ON u.id = s.user_id
+                   LEFT JOIN cp_users u ON u.id = s.user_id
                   WHERE s.revoked_at IS NULL
                   ORDER BY s.last_seen_at DESC
                   LIMIT '.max(1, min(500, $limit)),

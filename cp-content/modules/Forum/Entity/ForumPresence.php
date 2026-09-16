@@ -12,7 +12,7 @@ use Modules\Forum\Repository\ForumPresenceRepository;
  * Who-is-online presence for forum visitors (members and guests).
  */
 #[ORM\Entity(repositoryClass: ForumPresenceRepository::class)]
-#[ORM\Table(name: 'forum_presence')]
+#[ORM\Table(name: 'cp_forum_presence')]
 #[ORM\UniqueConstraint(name: 'uniq_forum_presence_session', columns: ['session_hash'])]
 #[ORM\Index(columns: ['last_seen_at'], name: 'idx_forum_presence_seen')]
 #[ORM\Index(columns: ['user_id'], name: 'idx_forum_presence_user')]

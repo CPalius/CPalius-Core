@@ -7,7 +7,7 @@ namespace Modules\Forum\Install;
 use Doctrine\DBAL\Connection;
 
 /**
- * Adds forum_user_reputations.topic_url when it is not there yet.
+ * Adds cp_forum_user_reputations.topic_url when it is not there yet.
  *
  * The module's own SQL migration does this too, but that only runs when the
  * module is upgraded — and this feature ships as a file patch, which replaces
@@ -48,7 +48,7 @@ final class ReputationSchema
                  WHERE TABLE_SCHEMA = DATABASE()
                    AND TABLE_NAME = ?
                    AND COLUMN_NAME = ?',
-                ['forum_user_reputations', 'topic_url'],
+                ['cp_forum_user_reputations', 'topic_url'],
             );
 
             if ($exists > 0) {
@@ -56,7 +56,7 @@ final class ReputationSchema
             }
 
             $this->connection->executeStatement(
-                'ALTER TABLE forum_user_reputations ADD COLUMN topic_url VARCHAR(500) DEFAULT NULL',
+                'ALTER TABLE cp_forum_user_reputations ADD COLUMN topic_url VARCHAR(500) DEFAULT NULL',
             );
 
             return true;

@@ -14,7 +14,7 @@ use Modules\Forum\Repository\ForumTopicPrefixRepository;
  * An empty sections collection means the prefix is available in all forums.
  */
 #[ORM\Entity(repositoryClass: ForumTopicPrefixRepository::class)]
-#[ORM\Table(name: 'forum_topic_prefixes')]
+#[ORM\Table(name: 'cp_forum_topic_prefixes')]
 class ForumTopicPrefix
 {
     #[ORM\Id]
@@ -36,7 +36,7 @@ class ForumTopicPrefix
 
     /** @var Collection<int, ForumSection> */
     #[ORM\ManyToMany(targetEntity: ForumSection::class)]
-    #[ORM\JoinTable(name: 'forum_prefix_sections')]
+    #[ORM\JoinTable(name: 'cp_forum_prefix_sections')]
     #[ORM\JoinColumn(name: 'prefix_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     #[ORM\InverseJoinColumn(name: 'section_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     private Collection $sections;

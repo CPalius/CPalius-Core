@@ -6,9 +6,9 @@ namespace Modules\Forum\Service;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
+use Modules\Forum\Entity\ForumPostVote;
 use Modules\Forum\Entity\ForumTopic;
-use Modules\Forum\Repository\ForumPostDislikeRepository;
-use Modules\Forum\Repository\ForumPostLikeRepository;
+use Modules\Forum\Repository\ForumPostVoteRepository;
 
 /**
  * Thread readers and reactors for the topic-detail footer strips.
@@ -19,8 +19,7 @@ final class ForumTopicEngagementService
 
     public function __construct(
         private readonly ForumPresenceService $presenceService,
-        private readonly ForumPostLikeRepository $likeRepository,
-        private readonly ForumPostDislikeRepository $dislikeRepository,
+        private readonly ForumPostVoteRepository $voteRepository,
         private readonly UserRepository $userRepository,
     ) {
     }
@@ -46,8 +45,8 @@ final class ForumTopicEngagementService
      */
     public function reactors(ForumTopic $topic, int $limit = self::LIST_LIMIT): array
     {
-        $likedAt = $this->likeRepository->findUserLastActivityByTopic($topic);
-        $dislikedAt = $this->dislikeRepository->findUserLastActivityByTopic($topic);
+        $likedAt = $this->voteRepository->findUserLastActivityByTopic($topic, ForumPostVote::LIKE);
+        $dislikedAt = $this->voteRepository->findUserLastActivityByTopic($topic, ForumPostVote::DISLIKE);
         $ids = array_values(array_unique([...array_keys($likedAt), ...array_keys($dislikedAt)]));
         if ($ids === []) {
             return ['members' => [], 'total' => 0];

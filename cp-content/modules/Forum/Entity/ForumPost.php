@@ -16,7 +16,7 @@ use Modules\Forum\Repository\ForumPostRepository;
  * edit_count, last_edit_date, ip_address.
  */
 #[ORM\Entity(repositoryClass: ForumPostRepository::class)]
-#[ORM\Table(name: 'forum_posts')]
+#[ORM\Table(name: 'cp_forum_posts')]
 #[ORM\Index(columns: ['created_at'], name: 'idx_forum_post_created')]
 #[ORM\Index(columns: ['topic_id', 'id'], name: 'idx_forum_post_topic')]
 class ForumPost

@@ -16,7 +16,7 @@ use Modules\Menu\Repository\MenuItemRepository;
  * nodeId is a loose reference (not an FK); unresolved nodes are skipped at render time.
  */
 #[ORM\Entity(repositoryClass: MenuItemRepository::class)]
-#[ORM\Table(name: 'menu_items')]
+#[ORM\Table(name: 'cp_menu_items')]
 #[ORM\Index(columns: ['menu_id', 'parent_id'], name: 'idx_menu_item_parent')]
 #[ORM\UniqueConstraint(name: 'uniq_menu_item_translation_group_locale', columns: ['translation_group_id', 'locale'])]
 class MenuItem implements TranslatableInterface

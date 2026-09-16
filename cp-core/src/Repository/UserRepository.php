@@ -44,7 +44,7 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
 
         $conn = $this->getEntityManager()->getConnection();
         $id = $conn->fetchOne(
-            'SELECT id FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(data, \'$.email_verification_token\')) = ? LIMIT 1',
+            'SELECT id FROM cp_users WHERE JSON_UNQUOTE(JSON_EXTRACT(data, \'$.email_verification_token\')) = ? LIMIT 1',
             [$token],
         );
 

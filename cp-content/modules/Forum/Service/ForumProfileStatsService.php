@@ -120,10 +120,12 @@ final class ForumProfileStatsService
     {
         return (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(l.id)')
-            ->from(\Modules\Forum\Entity\ForumPostLike::class, 'l')
+            ->from(\Modules\Forum\Entity\ForumPostVote::class, 'l')
             ->innerJoin('l.post', 'p')
             ->andWhere('p.author = :user')
+            ->andWhere('l.vote = :like')
             ->setParameter('user', $user)
+            ->setParameter('like', \Modules\Forum\Entity\ForumPostVote::LIKE)
             ->getQuery()
             ->getSingleScalarResult();
     }
@@ -137,10 +139,12 @@ final class ForumProfileStatsService
     {
         $rows = $this->entityManager->createQueryBuilder()
             ->select('IDENTITY(p.author) AS userId, COUNT(l.id) AS cnt')
-            ->from(\Modules\Forum\Entity\ForumPostLike::class, 'l')
+            ->from(\Modules\Forum\Entity\ForumPostVote::class, 'l')
             ->innerJoin('l.post', 'p')
             ->andWhere('p.author IN (:ids)')
+            ->andWhere('l.vote = :like')
             ->setParameter('ids', $userIds)
+            ->setParameter('like', \Modules\Forum\Entity\ForumPostVote::LIKE)
             ->groupBy('p.author')
             ->getQuery()
             ->getResult();
