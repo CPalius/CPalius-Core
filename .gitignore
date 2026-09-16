@@ -142,3 +142,17 @@ Thumbs.db
 /phpunit.xml
 /.phpunit.cache/
 ###< phpunit/phpunit ###
+
+# Bakim tarafi: depoda yeri yok, diskte kalir.
+/.github/
+/.githooks/
+/docs/
+/tools/
+/psalm.xml
+/psalm-baseline.xml
+/phpstan.neon.dist
+/phpstan-baseline.neon
+/phpunit.xml.dist
+/compose.yaml
+/compose.override.yaml
+/CPALIUS_YOL_HARITASI.md
