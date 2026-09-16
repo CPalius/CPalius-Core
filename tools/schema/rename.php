@@ -102,6 +102,10 @@ $contexts = [
     'SQL INTO'       => '/(\bINTO\s+`?)({T})(`?\b)/',
     'SQL UPDATE'     => '/(\bUPDATE\s+`?)({T})(`?\b)/',
     'SQL TABLE'      => '/(\bTABLE\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?`?)({T})(`?\b)/',
+    // Foreign keys name the table they point at, and a module SQL file that
+    // still points at `users` after the rename fails on install rather than at
+    // any point a test would notice.
+    'SQL REFERENCES' => '/(\bREFERENCES\s+`?)({T})(`?\b)/',
 ];
 
 $changes = [];
@@ -154,6 +158,13 @@ foreach ($files as $path) {
             '/(protected function tables\(\): array\s*\{\s*return \[)(.*?)(\];)/s',
             static function (array $m) use (&$changes, $rel, $renames, $mergedSources): string {
                 preg_match_all('/[\'"]([a-z0-9_]+)[\'"]/', $m[2], $found);
+
+                // Modules that own no tables return []; reformatting that into
+                // an empty multi-line array is churn in a diff that should only
+                // show table names moving.
+                if ($found[1] === []) {
+                    return $m[0];
+                }
 
                 $out = [];
                 foreach ($found[1] as $table) {

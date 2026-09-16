@@ -49,6 +49,12 @@
 *.dump
 *.bak
 
+# ...ama modüllerin Resources/migrations altındaki .sql dosyaları döküm değil,
+# şemanın kendisidir. Blanket *.sql kuralı bunları da dışarıda bırakıyordu ve
+# üçü hiç depoya girmemişti: Whitepaper'ın iki tablosunu başka hiçbir yer
+# oluşturmadığı için temiz bir klondan kurulan site o modülü çalıştıramıyordu.
+!cp-content/modules/*/Resources/migrations/*.sql
+
 # Yerel ajan/IDE kuralları — projenin bir parçası değil.
 .rules
 ###< CPalius: SEC-05 — Secret carriers ###
