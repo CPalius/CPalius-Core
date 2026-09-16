@@ -52,12 +52,34 @@ final class OriginCacheStore
         return $this->root().\DIRECTORY_SEPARATOR.str_replace('/', \DIRECTORY_SEPARATOR, $relative);
     }
 
+    /**
+     * Turn a request path into a cache-relative path that cannot escape the root.
+     *
+     * The previous one-liner was str_replace(['..', "\0"], '', $rel), which runs the
+     * two passes in order: ".\0./.\0." survived the ".." pass untouched, then the NUL
+     * pass collapsed it into "../.." — the sanitizer minted the traversal it existed
+     * to remove. Dropping "." / ".." as whole segments cannot resynthesize one, and
+     * empty segments falling out replaces the old "#/+#" collapse.
+     */
+    private function safeRelative(string $pathInfo): string
+    {
+        $rel = str_replace("\0", '', trim($pathInfo, '/'));
+
+        $segments = [];
+        foreach (explode('/', $rel) as $segment) {
+            if ($segment === '' || $segment === '.' || $segment === '..') {
+                continue;
+            }
+
+            $segments[] = $segment;
+        }
+
+        return $segments === [] ? '_root' : implode('/', $segments);
+    }
+
     public function relativeHtmlPath(string $pathInfo, string $queryString = '', ?OriginCacheVaryContext $ctx = null): string
     {
-        $trimmed = trim($pathInfo, '/');
-        $rel = $trimmed === '' ? '_root' : $trimmed;
-        $rel = str_replace(['..', "\0"], '', $rel);
-        $rel = preg_replace('#/+#', '/', $rel) ?? $rel;
+        $rel = $this->safeRelative($pathInfo);
 
         if ($ctx !== null) {
             $rel = $ctx->pathPrefix().'/'.$rel;
@@ -172,10 +194,7 @@ final class OriginCacheStore
         $deleted += $this->deleteExactAt($this->htmlPath($pathInfo, ''));
 
         // Every locale × visibility variant under _ctx/.
-        $trimmed = trim($pathInfo, '/');
-        $rel = $trimmed === '' ? '_root' : $trimmed;
-        $rel = str_replace(['..', "\0"], '', $rel);
-        $rel = preg_replace('#/+#', '/', $rel) ?? $rel;
+        $rel = $this->safeRelative($pathInfo);
         $ctxRoot = $this->root().\DIRECTORY_SEPARATOR.'_ctx';
         if (!is_dir($ctxRoot)) {
             return $deleted;

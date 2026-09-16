@@ -28,6 +28,20 @@ final class HttpHeaderProbe
     }
 
     /**
+     * The probe URL is operator-supplied, so the scheme has to be pinned before it
+     * reaches curl. Without this, curl happily speaks file://, dict:// or gopher://,
+     * and gopher:// in particular turns a header probe into "send arbitrary bytes to
+     * any reachable internal port". Probing loopback stays allowed on purpose — that
+     * is what a Varnish/PageSpeed check is for.
+     */
+    public static function isProbeableUrl(string $url): bool
+    {
+        $scheme = \parse_url(\trim($url), \PHP_URL_SCHEME);
+
+        return \is_string($scheme) && \in_array(\strtolower($scheme), ['http', 'https'], true);
+    }
+
+    /**
      * Apply an explicit listen port, replacing any port already present in $url.
      */
     public static function composeUrl(string $url, int|string|null $port = null): string
@@ -82,14 +96,34 @@ final class HttpHeaderProbe
         $timeout = \max(0.5, $timeout);
         $start = \microtime(true);
 
-        if (\function_exists('curl_init')) {
-            return self::fetchWithCurl($url, $timeout, $start);
+        $target = self::probeTarget($url);
+        if ($target === null) {
+            return ['ok' => false, 'headers' => [], 'latencyMs' => self::elapsedMs($start)];
         }
 
-        return self::fetchWithStream($url, $timeout, $start);
+        if (\function_exists('curl_init')) {
+            return self::fetchWithCurl($target, $timeout, $start);
+        }
+
+        return self::fetchWithStream($target, $timeout, $start);
     }
 
     /**
+     * The single point where an operator-supplied URL becomes a probe target, and so
+     * the single point where the scheme is decided. Everything below it may assume
+     * http(s); nothing above it may.
+     *
+     * @psalm-taint-escape ssrf
+     */
+    private static function probeTarget(string $url): ?string
+    {
+        return self::isProbeableUrl($url) ? $url : null;
+    }
+
+    /**
+     * Only ever reached through fetchHeaders(), which rejects any scheme other than
+     * http/https; CURLOPT_PROTOCOLS below pins it a second time.
+     *
      * @return array{ok: bool, headers: list<string>, latencyMs: float}
      */
     private static function fetchWithCurl(string $url, float $timeout, float $start): array
@@ -108,6 +142,10 @@ final class HttpHeaderProbe
             \CURLOPT_RETURNTRANSFER => false,
             \CURLOPT_HEADER => false,
             \CURLOPT_FOLLOWLOCATION => false,
+            // Second gate behind isProbeableUrl(): even a future caller that skips the
+            // scheme check cannot make this handle speak anything but HTTP(S).
+            \CURLOPT_PROTOCOLS => \CURLPROTO_HTTP | \CURLPROTO_HTTPS,
+            \CURLOPT_REDIR_PROTOCOLS => \CURLPROTO_HTTP | \CURLPROTO_HTTPS,
             \CURLOPT_CONNECTTIMEOUT => $seconds,
             \CURLOPT_TIMEOUT => $seconds,
             \CURLOPT_USERAGENT => 'CPalius-CMF-PerformanceProbe',
@@ -140,6 +178,9 @@ final class HttpHeaderProbe
     }
 
     /**
+     * Same guard as fetchWithCurl(): fetchHeaders() has already pinned the scheme to
+     * http/https, which is also all the http:// stream wrapper would honour here.
+     *
      * @return array{ok: bool, headers: list<string>, latencyMs: float}
      */
     private static function fetchWithStream(string $url, float $timeout, float $start): array

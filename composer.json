@@ -48,7 +48,8 @@
         "phpunit/phpunit": "^11.5.56",
         "symfony/browser-kit": "7.4.*",
         "symfony/css-selector": "7.4.*",
-        "symfony/phpunit-bridge": "^7.4.18"
+        "symfony/phpunit-bridge": "^7.4.18",
+        "vimeo/psalm": "^6.17"
     },
     "config": {
         "allow-plugins": {
@@ -101,12 +102,14 @@
             "@php cp-core/bin/console lint:twig cp-core/templates cp-content"
         ],
         "phpstan": "@php cp-includes/vendor/bin/phpstan analyse --memory-limit=1G",
+        "taint": "@php -d memory_limit=2G cp-includes/vendor/bin/psalm --taint-analysis --threads=1",
         "cs-check": "@php cp-includes/vendor/bin/php-cs-fixer fix --dry-run --diff",
         "cs-fix": "@php cp-includes/vendor/bin/php-cs-fixer fix",
         "test": "@php cp-includes/vendor/bin/phpunit",
         "ci": [
             "@lint",
             "@phpstan",
+            "@taint",
             "@test"
         ]
     },
