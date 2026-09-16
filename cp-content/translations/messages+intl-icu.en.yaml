@@ -733,6 +733,8 @@ aacp.cache_rebuild.select_action: "$ Select an action — its output will appear
 aacp.cache_rebuild.opcache: "OPcache"
 aacp.cache_rebuild.log.app_cleared: "Application cache (cache.app) cleared."
 aacp.cache_rebuild.log.app_failed: "cache.app could not be cleared: {error}"
+aacp.cache_rebuild.log.doctrine_cleared: "Doctrine query and result caches cleared."
+aacp.cache_rebuild.log.doctrine_failed: "Doctrine caches could not be cleared: {error}"
 aacp.cache_rebuild.log.origin_cleared: "CPalius origin HTML cache cleared ({count} files)."
 aacp.cache_rebuild.log.origin_failed: "Origin HTML cache could not be cleared: {error}"
 aacp.cache_rebuild.log.opcache_reset: "OPcache reset."

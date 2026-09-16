@@ -10,6 +10,7 @@ use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -44,6 +45,17 @@ final class CacheRebuildManager
         private readonly string $environment,
         #[Autowire(service: 'cache.app')]
         private readonly CacheInterface $appCache,
+        /**
+         * Doctrine's query cache holds the SQL it generated for each DQL query,
+         * not the DQL — so a release that renames a table leaves Redis handing
+         * out statements that select from tables no longer there. These pools
+         * are Redis-backed in every environment (cache.yaml), which means
+         * wiping var/cache does not reach them and neither does cache.app.
+         */
+        #[Autowire(service: 'doctrine.system_cache_pool')]
+        private readonly CacheItemPoolInterface $doctrineSystemCache,
+        #[Autowire(service: 'doctrine.result_cache_pool')]
+        private readonly CacheItemPoolInterface $doctrineResultCache,
         private readonly OriginCachePurger $originCachePurger,
         private readonly TranslatorInterface $translator,
     ) {
@@ -66,6 +78,16 @@ final class CacheRebuildManager
             $log[] = $msg['app_cleared'];
         } catch (\Throwable $e) {
             $log[] = str_replace('__ERROR__', $e->getMessage(), $msg['app_failed']);
+        }
+
+        // Before the origin HTML, because a page rendered from a stale query
+        // plan is exactly what we are trying not to put back into that cache.
+        try {
+            $this->doctrineSystemCache->clear();
+            $this->doctrineResultCache->clear();
+            $log[] = $msg['doctrine_cleared'];
+        } catch (\Throwable $e) {
+            $log[] = str_replace('__ERROR__', $e->getMessage(), $msg['doctrine_failed']);
         }
 
         try {
@@ -343,6 +365,8 @@ final class CacheRebuildManager
         return [
             'app_cleared' => $ok.$t('aacp.cache_rebuild.log.app_cleared'),
             'app_failed' => $err.$t('aacp.cache_rebuild.log.app_failed', ['error' => '__ERROR__']),
+            'doctrine_cleared' => $ok.$t('aacp.cache_rebuild.log.doctrine_cleared'),
+            'doctrine_failed' => $err.$t('aacp.cache_rebuild.log.doctrine_failed', ['error' => '__ERROR__']),
             'origin_cleared' => $ok.$t('aacp.cache_rebuild.log.origin_cleared', ['count' => '__COUNT__']),
             'origin_failed' => $err.$t('aacp.cache_rebuild.log.origin_failed', ['error' => '__ERROR__']),
             'opcache_reset' => $ok.$t('aacp.cache_rebuild.log.opcache_reset'),

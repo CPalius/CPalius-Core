@@ -733,6 +733,8 @@ aacp.cache_rebuild.select_action: "$ Bir işlem seçin — çıktısı burada ca
 aacp.cache_rebuild.opcache: "OPcache"
 aacp.cache_rebuild.log.app_cleared: "Uygulama önbelleği (cache.app) temizlendi."
 aacp.cache_rebuild.log.app_failed: "cache.app temizlenemedi: {error}"
+aacp.cache_rebuild.log.doctrine_cleared: "Doctrine sorgu ve sonuç önbellekleri temizlendi."
+aacp.cache_rebuild.log.doctrine_failed: "Doctrine önbellekleri temizlenemedi: {error}"
 aacp.cache_rebuild.log.origin_cleared: "CPalius origin HTML cache temizlendi ({count} dosya)."
 aacp.cache_rebuild.log.origin_failed: "Origin HTML cache temizlenemedi: {error}"
 aacp.cache_rebuild.log.opcache_reset: "OPcache sıfırlandı."
