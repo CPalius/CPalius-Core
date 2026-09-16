@@ -1,0 +1,65 @@
+{
+    "name": "symfony/ux-icons",
+    "type": "symfony-bundle",
+    "description": "Renders local and remote SVG icons in your Twig templates.",
+    "keywords": [
+        "symfony-ux",
+        "twig",
+        "icons",
+        "svg"
+    ],
+    "homepage": "https://symfony.com",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Kevin Bond",
+            "email": "kevinbond@gmail.com"
+        },
+        {
+            "name": "Simon André",
+            "email": "smn.andre@gmail.com"
+        },
+        {
+            "name": "Symfony Community",
+            "homepage": "https://symfony.com/contributors"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Symfony\\UX\\Icons\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Symfony\\UX\\Icons\\Tests\\": "tests/"
+        }
+    },
+    "require": {
+        "php": ">=8.4",
+        "symfony/framework-bundle": "^7.4|^8.0",
+        "symfony/twig-bundle": "^7.4|^8.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.1|^12.0",
+        "symfony/asset-mapper": "^7.4|^8.0",
+        "symfony/console": "^7.4|^8.0",
+        "symfony/http-client": "^7.4|^8.0",
+        "symfony/ux-twig-component": "^2.14|^3.0",
+        "zenstruck/console-test": "^1.5",
+        "psr/log": "^2|^3"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "conflict": {
+        "symfony/flex": "<1.13",
+        "symfony/ux-twig-component": "<2.21"
+    },
+    "extra": {
+        "thanks": {
+            "name": "symfony/ux",
+            "url": "https://github.com/symfony/ux"
+        }
+    },
+    "minimum-stability": "dev"
+}

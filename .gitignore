@@ -1,7 +1,6 @@
 ###> symfony/framework-bundle ###
 /cp-core/config/secrets/prod/prod.decrypt.private.php
 /cp-core/var/
-/cp-includes/vendor/
 /public/bundles/
 ###< symfony/framework-bundle ###
 
@@ -54,6 +53,13 @@
 # üçü hiç depoya girmemişti: Whitepaper'ın iki tablosunu başka hiçbir yer
 # oluşturmadığı için temiz bir klondan kurulan site o modülü çalıştıramıyordu.
 !cp-content/modules/*/Resources/migrations/*.sql
+
+# Composer vendor is shipped so a clone or ZIP install boots without a Composer
+# binary on the host. Result caches stay out.
+!/cp-includes/vendor/
+!/cp-includes/vendor/**
+/cp-includes/vendor/bin/.phpunit.result.cache
+/cp-includes/vendor/**/.phpunit.result.cache
 
 # Yerel ajan/IDE kuralları — projenin bir parçası değil.
 .rules
