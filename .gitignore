@@ -156,3 +156,6 @@ Thumbs.db
 /compose.yaml
 /compose.override.yaml
 /CPALIUS_YOL_HARITASI.md
+
+# Tek kullanimlik 2.0.0 sema kurtarma betigi (kullandiktan sonra sil)
+/public/cp-2.0.0-recover.php
