@@ -17,6 +17,7 @@ use Modules\Forum\Repository\ForumPresenceRepository;
 #[ORM\Index(columns: ['last_seen_at'], name: 'idx_forum_presence_seen')]
 #[ORM\Index(columns: ['user_id'], name: 'idx_forum_presence_user')]
 #[ORM\Index(columns: ['topic_id'], name: 'idx_forum_presence_topic')]
+#[ORM\Index(columns: ['kind'], name: 'idx_forum_presence_kind')]
 class ForumPresence
 {
     #[ORM\Id]
@@ -38,10 +39,21 @@ class ForumPresence
     #[ORM\Column(name: 'last_seen_at', type: 'datetime_immutable')]
     private \DateTimeImmutable $lastSeenAt;
 
-    public function __construct(string $sessionHash, ?User $user = null)
+    /**
+     * member | guest | spider | bot, as classified by ForumVisitorKind.
+     *
+     * Stored rather than derived at read time because the User-Agent is only
+     * available on the request that wrote the row, and the who-is-online panel
+     * runs long after those requests are gone.
+     */
+    #[ORM\Column(name: 'kind', type: 'string', length: 10, options: ['default' => 'guest'])]
+    private string $kind = 'guest';
+
+    public function __construct(string $sessionHash, ?User $user = null, string $kind = 'guest')
     {
         $this->sessionHash = $sessionHash;
         $this->user = $user;
+        $this->kind = $kind;
         $this->lastSeenAt = new \DateTimeImmutable();
     }
 
@@ -78,6 +90,16 @@ class ForumPresence
     public function getLastSeenAt(): \DateTimeImmutable
     {
         return $this->lastSeenAt;
+    }
+
+    public function getKind(): string
+    {
+        return $this->kind;
+    }
+
+    public function setKind(string $kind): void
+    {
+        $this->kind = $kind;
     }
 
     public function touch(): void

@@ -13,6 +13,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Modules\Messages\Entity\Message;
 use Modules\Messages\Entity\MessageParticipant;
 use Modules\Messages\Entity\MessageThread;
+use Modules\Messages\Repository\MessageParticipantRepository;
 use Modules\Messages\Repository\MessageThreadRepository;
 
 /**
@@ -25,6 +26,7 @@ final class MessagesThreadManager
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly MessageThreadRepository $threads,
+        private readonly MessageParticipantRepository $participantRepository,
         private readonly MessagesAccess $access,
         private readonly MessagesQuota $quota,
         private readonly MessagesConfig $config,
@@ -145,6 +147,32 @@ final class MessagesThreadManager
 
         $participant->markRead();
         $this->entityManager->flush();
+    }
+
+    /**
+     * Clears every unread conversation for one member.
+     *
+     * Opening each thread one by one was the only way to get the red badge
+     * down, which is not a reasonable ask of somebody who has been away for a
+     * week. Hidden conversations are skipped: they are already out of the
+     * member's inbox and do not contribute to the badge.
+     *
+     * @return int how many conversations were marked read
+     */
+    public function markAllRead(User $user): int
+    {
+        $cleared = 0;
+
+        foreach ($this->participantRepository->findUnreadFor($user) as $participant) {
+            $participant->markRead();
+            ++$cleared;
+        }
+
+        if ($cleared > 0) {
+            $this->entityManager->flush();
+        }
+
+        return $cleared;
     }
 
     public function archive(MessageThread $thread, User $user, bool $archived): void

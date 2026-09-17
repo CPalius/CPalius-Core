@@ -19,10 +19,30 @@
     <div class="forum-header__top">
         <div>
             <h1 class="section-title">{{ 'stats.online.page_title'|trans({}, 'forums') }}</h1>
-            <p class="forum-header__desc">{{ 'stats.online.tooltip'|trans({'members': online.memberCount|number_format(0, ',', '.'), 'guests': online.guestCount|number_format(0, ',', '.')}, 'forums') }}</p>
+            <p class="forum-header__desc">{{ 'stats.online.total'|trans({'count': online.total|default(0)}) }}</p>
         </div>
     </div>
 </div>
+
+{# The four counts first: on a quiet board the member list is empty and the
+   page used to say nothing at all, even with a dozen crawlers on it. #}
+<div class="forum-online-summary fade-in">
+    {% for kind in ['member', 'guest', 'spider', 'bot'] %}
+        {% set count = kind == 'member' ? online.memberCount
+            : (kind == 'guest' ? online.guestCount
+            : (kind == 'spider' ? online.spiderCount|default(0) : online.botCount|default(0))) %}
+        {% set icon = kind == 'member' ? 'person-fill'
+            : (kind == 'guest' ? 'person'
+            : (kind == 'spider' ? 'search' : 'robot')) %}
+        <div class="forum-online-summary__item forum-online-kind--{{ kind }}">
+            <i class="bi bi-{{ icon }}" aria-hidden="true"></i>
+            <strong>{{ count|number_format(0, ',', '.') }}</strong>
+            <span>{{ ('stats.online.kind.' ~ kind)|trans }}</span>
+        </div>
+    {% endfor %}
+</div>
+
+<h2 class="forum-online-heading">{{ 'stats.online.kind.member'|trans }}</h2>
 
 {% if online.members is not empty %}
     <ul class="forum-online-list fade-in">
@@ -41,4 +61,8 @@
         {{ 'stats.online.page_empty'|trans({}, 'forums') }}
     </div>
 {% endif %}
+
+{# Guests, spiders and bots are counted, never listed: an anonymous row is an
+   IP and a user-agent hash, which is not something to publish on a page. #}
+<p class="forum-online-note">{{ 'stats.online.anonymous_note'|trans }}</p>
 {% endblock %}

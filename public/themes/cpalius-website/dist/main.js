@@ -17,6 +17,7 @@
     initNavbarUserMenu();
     initNavbarAlerts();
     initInboxPulse();
+    initInboxMarkAll();
     initLocaleSwitcher();
     initCounterAnimation();
     initActiveNavLink();
@@ -253,6 +254,73 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeNavbarAlerts();
     });
+  }
+
+  // ---- "Mark all read" inside the header flyouts ----
+  //
+  // These were plain form posts, so clearing a badge cost a full page load and
+  // dropped you back at the top of whatever you were reading. Submitting them
+  // in place keeps the menu open and zeroes the counts immediately; the form
+  // still works normally if this never runs.
+  function initInboxMarkAll() {
+    document.addEventListener('submit', function (e) {
+      var form = e.target.closest('[data-inbox-mark-all]');
+      if (!form) return;
+
+      e.preventDefault();
+
+      var channel = form.closest('[data-inbox-channel]');
+      var name = channel ? channel.getAttribute('data-inbox-channel') : '';
+
+      fetch(form.getAttribute('action'), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+        body: new FormData(form)
+      }).then(function (res) {
+        if (!res.ok) throw new Error('mark-all');
+        return res;
+      }).then(function () {
+        clearChannel(channel, name);
+      }).catch(function () {
+        // Network or server refused: fall back to the ordinary post so the
+        // action still happens rather than silently doing nothing.
+        form.removeAttribute('data-inbox-mark-all');
+        form.submit();
+      });
+    });
+  }
+
+  function clearChannel(channel, name) {
+    if (channel) {
+      channel.querySelectorAll('[data-inbox-badge]').forEach(function (badge) {
+        badge.textContent = '0';
+        badge.setAttribute('hidden', '');
+      });
+      var label = channel.querySelector('[data-inbox-unread-label]');
+      if (label) label.textContent = '';
+      channel.querySelectorAll('.navbar-notif-box__item.is-unread').forEach(function (item) {
+        item.classList.remove('is-unread');
+      });
+      var form = channel.querySelector('[data-inbox-mark-all]');
+      if (form) form.setAttribute('hidden', 'hidden');
+    }
+
+    if (name) {
+      document.querySelectorAll('[data-inbox-count="' + name + '"]').forEach(function (el) {
+        el.textContent = '0';
+        el.setAttribute('hidden', '');
+      });
+    }
+
+    // The tab title carries the combined count; recompute it from what is left
+    // on screen rather than waiting for the next heartbeat.
+    var total = 0;
+    document.querySelectorAll('[data-inbox-count]').forEach(function (el) {
+      if (!el.hasAttribute('hidden')) total += parseInt(el.textContent, 10) || 0;
+    });
+    var base = document.title.replace(/^\(\d+\)\s/, '');
+    document.title = total > 0 ? '(' + total + ') ' + base : base;
   }
 
   function initInboxPulse() {

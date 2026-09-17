@@ -31,4 +31,9 @@
         <div class="forum-empty">{{ 'forum.my_topics.empty'|trans }}</div>
     {% endfor %}
 </div>
+
+{% include '@Theme/forum/partials/pagination.html.twig' with {
+    result: topics,
+    route: 'forum_my_topics',
+} %}
 {% endblock %}

@@ -1,17 +1,38 @@
 {% set forumStats = forum_board_stats() %}
 {% set online = forum_online_presence() %}
 {% set newest = forum_newest_member() %}
-{% set onlineTotal = online.memberCount + online.guestCount %}
 <aside class="forum-stats fade-in" aria-label="{{ 'stats.bar.title'|trans({}, 'forums') }}">
     <div class="forum-stats__inner">
         <div class="forum-stats__left">
             <div class="forum-stats__online">
                 <span class="forum-stats__count">
-                    <span><i class="bi bi-heart"></i></span>
-                    <span title="{{ 'stats.online.tooltip'|trans({'members': online.memberCount|number_format(0, ',', '.'), 'guests': online.guestCount|number_format(0, ',', '.')}, 'forums') }}">
+                    <span><i class="bi bi-broadcast"></i></span>
+                    <span>
                         {{ 'stats.online.now'|trans({}, 'forums') }}<br>
-                        <b>{{ 'stats.online.active'|trans({'count': onlineTotal|number_format(0, ',', '.')}, 'forums') }}</b>
-                        <i class="bi bi-info-circle"></i>
+                        {# One icon per kind instead of a single total: "84 online"
+                           tells an operator nothing when most of it is crawlers. #}
+                        <span class="forum-online-kinds">
+                            <span class="forum-online-kind forum-online-kind--member" title="{{ 'stats.online.kind.member'|trans }}">
+                                <i class="bi bi-person-fill" aria-hidden="true"></i>
+                                <b>{{ online.memberCount|number_format(0, ',', '.') }}</b>
+                                <span class="forum-online-kind__label">{{ 'stats.online.kind.member'|trans }}</span>
+                            </span>
+                            <span class="forum-online-kind forum-online-kind--guest" title="{{ 'stats.online.kind.guest'|trans }}">
+                                <i class="bi bi-person" aria-hidden="true"></i>
+                                <b>{{ online.guestCount|number_format(0, ',', '.') }}</b>
+                                <span class="forum-online-kind__label">{{ 'stats.online.kind.guest'|trans }}</span>
+                            </span>
+                            <span class="forum-online-kind forum-online-kind--spider" title="{{ 'stats.online.kind.spider'|trans }}">
+                                <i class="bi bi-search" aria-hidden="true"></i>
+                                <b>{{ online.spiderCount|default(0)|number_format(0, ',', '.') }}</b>
+                                <span class="forum-online-kind__label">{{ 'stats.online.kind.spider'|trans }}</span>
+                            </span>
+                            <span class="forum-online-kind forum-online-kind--bot" title="{{ 'stats.online.kind.bot'|trans }}">
+                                <i class="bi bi-robot" aria-hidden="true"></i>
+                                <b>{{ online.botCount|default(0)|number_format(0, ',', '.') }}</b>
+                                <span class="forum-online-kind__label">{{ 'stats.online.kind.bot'|trans }}</span>
+                            </span>
+                        </span>
                     </span>
                 </span>
                 <span class="forum-stats__link">

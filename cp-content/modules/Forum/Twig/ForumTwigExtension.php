@@ -129,6 +129,9 @@ final class ForumTwigExtension extends AbstractExtension
             'members' => [],
             'memberCount' => 0,
             'guestCount' => 0,
+            'spiderCount' => 0,
+            'botCount' => 0,
+            'total' => 0,
         ];
     }
 

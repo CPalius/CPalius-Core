@@ -28,6 +28,14 @@
             {% endfor %}
         </div>
         <div class="navbar-notif-box__foot">
+            {% if channel.unread|default(0) > 0 %}
+                {# Same shape as the notifications flyout, so one handler in the
+                   theme drives both and the badge drops without a page load. #}
+                <form method="post" action="{{ path('messages_mark_all_read') }}" data-inbox-mark-all>
+                    <input type="hidden" name="_token" value="{{ csrf_token('messages') }}">
+                    <button type="submit">{{ 'messages.inbox.mark_all'|trans }}</button>
+                </form>
+            {% endif %}
             <a href="{{ channel.inbox_url }}">{{ 'messages.header.view_all'|trans }}</a>
             <a href="{{ path('messages_compose') }}">{{ 'messages.nav.compose'|trans }}</a>
         </div>

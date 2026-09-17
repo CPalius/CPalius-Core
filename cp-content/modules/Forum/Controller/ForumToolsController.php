@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Forum\Controller;
 
 use App\Core\Settings\SettingsRegistry;
+use App\Core\Pagination\Paginator;
 use App\Entity\User;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
@@ -41,6 +42,7 @@ final class ForumToolsController extends AbstractController
         private readonly ForumModerationLogService $moderationLog,
         private readonly ForumInlineModerationService $inlineModeration,
         private readonly SettingsRegistry $settingsRegistry,
+        private readonly Paginator $paginator,
         private readonly TranslatorInterface $translator,
     ) {
     }
@@ -234,19 +236,31 @@ final class ForumToolsController extends AbstractController
 
     #[Route('/forums/konularim', name: 'forum_my_topics', methods: ['GET'], priority: 4)]
     #[IsGranted('IS_AUTHENTICATED')]
-    public function myTopics(): Response
+    public function myTopics(Request $request): Response
     {
         /** @var User $user */
         $user = $this->getUser();
 
+        // Was a hard cap of 50 with no way to reach topic 51. Paginated on the
+        // same per-page setting the board list uses, so one number in Studio
+        // governs every topic list.
+        $qb = $this->topicRepository->createPublicByAuthorQueryBuilder($user)
+            ->leftJoin('t.section', 's')->addSelect('s');
+
         return $this->render('@Theme/forum/my_topics.html.twig', [
-            'topics' => $this->topicRepository->createPublicByAuthorQueryBuilder($user)
-                ->leftJoin('t.section', 's')->addSelect('s')
-                ->setMaxResults(50)
-                ->getQuery()
-                ->getResult(),
+            'topics' => $this->paginator->paginate($qb, $request->query->getInt('page', 1), $this->topicsPerPage()),
             'forumHome' => ['title' => (string) $this->settingsRegistry->get('forum.home_title', 'Forum')],
         ]);
+    }
+
+    /**
+     * Topics per page, from Studio -> Forum -> Settings.
+     */
+    private function topicsPerPage(): int
+    {
+        $perPage = (int) $this->settingsRegistry->get('forum.threads_per_page', 30);
+
+        return max(1, $perPage);
     }
 
     #[Route('/forums/drafts/save', name: 'forum_draft_save', methods: ['POST'], priority: 4)]
@@ -289,7 +303,10 @@ final class ForumToolsController extends AbstractController
         $user = $this->getUser();
 
         return $this->render('@Theme/forum/unread.html.twig', [
-            'topics' => $this->unreadService->unreadTopics($user),
+            // Not paginated: the list is built by scanning the newest topics for
+            // ones this member has not read, so "page 2" would mean a different
+            // query, not an offset. The size follows the same Studio setting.
+            'topics' => $this->unreadService->unreadTopics($user, $this->topicsPerPage()),
             'forumHome' => ['title' => (string) $this->settingsRegistry->get('forum.home_title', 'Forum')],
         ]);
     }

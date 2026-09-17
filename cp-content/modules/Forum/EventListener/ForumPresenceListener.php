@@ -6,6 +6,7 @@ namespace Modules\Forum\EventListener;
 
 use App\Entity\User;
 use Modules\Forum\Service\ForumPresenceService;
+use Modules\Forum\Service\ForumVisitorKind;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -43,6 +44,10 @@ final class ForumPresenceListener implements EventSubscriberInterface
 
         $user = $this->security->getUser();
         $topicId = $request->attributes->get('topicId');
+        $kind = ForumVisitorKind::classify(
+            $user instanceof User,
+            (string) $request->headers->get('User-Agent', ''),
+        );
 
         if ($user instanceof User) {
             if (!$request->hasSession()) {
@@ -67,6 +72,7 @@ final class ForumPresenceListener implements EventSubscriberInterface
             $hash,
             $user instanceof User ? $user : null,
             is_numeric($topicId) ? (int) $topicId : null,
+            $kind,
         );
     }
 }

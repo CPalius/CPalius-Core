@@ -54,6 +54,35 @@ final class ForumPresenceRepository extends ServiceEntityRepository
     }
 
     /**
+     * Anonymous visitors grouped by what they are: guest, spider or bot.
+     *
+     * One query rather than three counts, and members are excluded because
+     * they are already listed by name — counting them here as well would make
+     * the four numbers add up to more than the people on the board.
+     *
+     * @return array<string, int> kind => count, only for kinds actually present
+     */
+    public function countActiveByKind(\DateTimeImmutable $since): array
+    {
+        /** @var list<array{kind: string, total: int|string}> $rows */
+        $rows = $this->createQueryBuilder('p')
+            ->select('p.kind AS kind, COUNT(p.id) AS total')
+            ->andWhere('p.user IS NULL')
+            ->andWhere('p.lastSeenAt >= :since')
+            ->setParameter('since', $since)
+            ->groupBy('p.kind')
+            ->getQuery()
+            ->getResult();
+
+        $counts = [];
+        foreach ($rows as $row) {
+            $counts[(string) $row['kind']] = (int) $row['total'];
+        }
+
+        return $counts;
+    }
+
+    /**
      * Presence rows currently on this thread (members + guests).
      *
      * @return list<ForumPresence>

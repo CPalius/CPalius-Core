@@ -9,6 +9,7 @@ use App\Core\Notification\Repository\NotificationRepository;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -38,7 +39,7 @@ final class AccountNotificationController extends AbstractController
     }
 
     #[Route('/hesap/bildirimler/hepsini-okundu', name: 'account_notifications_mark_all', methods: ['POST'])]
-    public function markAll(Request $request): RedirectResponse
+    public function markAll(Request $request): Response
     {
         $user = $this->requireUser();
         if (!$this->isCsrfTokenValid('account_notifications', (string) $request->request->get('_token'))) {
@@ -47,6 +48,13 @@ final class AccountNotificationController extends AbstractController
 
         $this->notifications->markAllRead($user);
         $this->entityManager->flush();
+
+        // The header flyout posts this in place. Answering JSON there saves
+        // fetching a whole page just to drop a badge to zero — and saves the
+        // flash message, which nobody would ever see on that path.
+        if ($request->isXmlHttpRequest()) {
+            return new JsonResponse(['ok' => true, 'unread' => 0]);
+        }
 
         $this->addFlash('success', 'notification.flash.marked_all_read');
 

@@ -156,6 +156,32 @@ final class MessagesFrontController extends AbstractController
         return new JsonResponse(['unread' => $this->participants->unreadTotal($this->member())]);
     }
 
+    /**
+     * Clears the unread badge in one go.
+     *
+     * Declared before the {publicId} route so "hepsini-okundu" is never taken
+     * for a thread id, and POST-only because it changes state.
+     */
+    #[Route('/hepsini-okundu', name: 'mark_all_read', methods: ['POST'], priority: 10)]
+    public function markAllRead(Request $request): Response
+    {
+        $actor = $this->member();
+
+        if (!$this->isCsrfTokenValid(self::CSRF, (string) $request->request->get('_token'))) {
+            throw new BadRequestHttpException($this->translator->trans('messages.error.invalid_csrf'));
+        }
+
+        $cleared = $this->manager->markAllRead($actor);
+
+        // The header flyout posts this with fetch(); answering JSON there saves
+        // a full page load just to drop a badge to zero.
+        if ($request->isXmlHttpRequest()) {
+            return new JsonResponse(['ok' => true, 'cleared' => $cleared, 'unread' => 0]);
+        }
+
+        return $this->redirectToRoute('messages_inbox');
+    }
+
     #[Route('/notify.mp3', name: 'notify_sound', methods: ['GET'], priority: 20)]
     public function notifySound(): Response
     {

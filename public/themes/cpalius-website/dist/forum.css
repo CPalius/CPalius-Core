@@ -3346,6 +3346,37 @@ blockquote.cp-quote-post-0,
 
 /* ---- Mentions, post references, selection quote, hover cards ---- */
 
+/* The @ autocomplete flyout.
+   Constrained here rather than only in the editor's injected stylesheet for two
+   reasons: a patch can ship this file but not the compiled asset bundle, and
+   CKEditor's own list styles load after that injected block. An avatar with no
+   width renders at its natural size, which is a profile photo filling the
+   screen. */
+.cp-mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ck .cp-mention-item__avatar,
+.cp-mention-item__avatar {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  max-width: 22px;
+  max-height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+.cp-mention-item__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* A mention is a name, not a link in a sentence: underlining every one of them
    turns a busy thread into a field of blue. The chip shape carries it instead. */
 .forum-mention {
@@ -3545,3 +3576,87 @@ blockquote.cp-quote-post-0,
 .forum-post__body h2 { font-size: 1.45em; }
 .forum-post__body h3 { font-size: 1.25em; }
 .forum-post__body h4 { font-size: 1.1em; }
+
+
+/* ---- Who is online, by kind ---- */
+
+.forum-online-kinds {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.forum-online-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.forum-online-kind i {
+  opacity: 0.75;
+}
+
+.forum-online-kind b {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The word is dropped on narrow screens; the icon and the title attribute
+   still say which number is which. */
+.forum-online-kind__label {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+@media (max-width: 720px) {
+  .forum-online-kind__label {
+    display: none;
+  }
+}
+
+.forum-online-kind--member i { color: #30a46c; }
+.forum-online-kind--guest i { color: #8b93a7; }
+.forum-online-kind--spider i { color: #3b82f6; }
+.forum-online-kind--bot i { color: #f5a524; }
+
+.forum-online-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: var(--sp-md, 20px);
+}
+
+.forum-online-summary__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.forum-online-summary__item i {
+  font-size: 20px;
+}
+
+.forum-online-summary__item strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.forum-online-summary__item span {
+  opacity: 0.7;
+}
+
+.forum-online-heading {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+
+.forum-online-note {
+  margin-top: var(--sp-md, 20px);
+  font-size: 0.85rem;
+  opacity: 0.6;
+}

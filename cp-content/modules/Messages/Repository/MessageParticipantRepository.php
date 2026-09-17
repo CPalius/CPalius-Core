@@ -30,6 +30,28 @@ final class MessageParticipantRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
+    /**
+     * The member's conversations that still carry unread messages.
+     *
+     * Same `hidden = false` condition as unreadTotal(), so "mark all read"
+     * clears exactly what the badge was counting — no more, no less.
+     *
+     * @return list<MessageParticipant>
+     */
+    public function findUnreadFor(User $user): array
+    {
+        /** @var list<MessageParticipant> $rows */
+        $rows = $this->createQueryBuilder('p')
+            ->andWhere('p.user = :user')
+            ->andWhere('p.hidden = false')
+            ->andWhere('p.unreadCount > 0')
+            ->setParameter('user', $user)
+            ->getQuery()
+            ->getResult();
+
+        return $rows;
+    }
+
     public function sharesThread(User $a, User $b): bool
     {
         $count = (int) $this->createQueryBuilder('p')
