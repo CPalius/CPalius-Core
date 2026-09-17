@@ -58,6 +58,7 @@ final class BlogSettingsAdminController extends AbstractController
                 'blog_hero' => 'studio.blog.settings.group.hero',
                 'blog_showcase' => 'studio.blog.settings.group.showcase',
                 'blog_comments' => 'studio.blog.settings.group.comments',
+                'blog_related' => 'studio.blog.settings.group.related',
             ],
             'captchaStatus' => $this->captchaService->describeReadyProvider(),
         ]);

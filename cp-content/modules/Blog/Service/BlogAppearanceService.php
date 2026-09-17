@@ -20,6 +20,10 @@ final class BlogAppearanceService
 {
     private const NODE_TYPE = 'post';
     private const DEFAULT_FEATURED_LIMIT = 8;
+    private const DEFAULT_RELATED_LIMIT = 3;
+
+    /** Must match the variants of blog.related_source. */
+    private const RELATED_STRATEGIES = ['same_category', 'same_tags', 'fixed_category', 'latest'];
 
     public function __construct(
         private readonly SettingsRegistry $settingsRegistry,
@@ -168,5 +172,52 @@ final class BlogAppearanceService
         $perPage = (int) $this->settingsRegistry->get('blog.default_posts_per_page');
 
         return $perPage > 0 ? $perPage : 10;
+    }
+
+    /**
+     * Related-posts block for one post: the heading, and the posts themselves.
+     *
+     * Resolved here rather than in the template so the controller hands the
+     * theme a finished block — a theme that wants to move or restyle it should
+     * not have to know which setting decides where the posts come from.
+     *
+     * @return array{enabled: bool, title: string, posts: list<Node>}
+     */
+    public function resolveRelatedPosts(Node $post): array
+    {
+        $empty = ['enabled' => false, 'title' => '', 'posts' => []];
+
+        if (!(bool) $this->settingsRegistry->get('blog.related_enabled')) {
+            return $empty;
+        }
+
+        $limit = (int) $this->settingsRegistry->get('blog.related_limit');
+        if ($limit <= 0) {
+            $limit = self::DEFAULT_RELATED_LIMIT;
+        }
+
+        $strategy = (string) $this->settingsRegistry->get('blog.related_source');
+        if (!\in_array($strategy, self::RELATED_STRATEGIES, true)) {
+            $strategy = 'same_category';
+        }
+
+        $categoryId = trim((string) $this->settingsRegistry->get('blog.related_category'));
+
+        $posts = $this->nodeRepository->findRelatedPosts(
+            $post,
+            $limit,
+            $strategy,
+            $categoryId !== '' && ctype_digit($categoryId) ? (int) $categoryId : null,
+        );
+
+        if ($posts === []) {
+            return $empty;
+        }
+
+        return [
+            'enabled' => true,
+            'title' => trim((string) $this->settingsRegistry->get('blog.related_title')),
+            'posts' => $posts,
+        ];
     }
 }

@@ -11,6 +11,7 @@ final class ForumDesk
     public const TAB_MODERATION = 'moderasyon';
     public const TAB_MEMBERS = 'uyeler';
     public const TAB_ENGINE = 'motor';
+    public const TAB_POSTBIT = 'postbit';
 
     /**
      * @return list<array{id: string, label: string, icon: string, route: string}>
@@ -23,6 +24,7 @@ final class ForumDesk
             ['id' => self::TAB_MODERATION, 'label' => 'studio.forum.desk.tab.moderation', 'icon' => 'heroicons:shield-check', 'route' => 'admin_forum_moderation_index'],
             ['id' => self::TAB_MEMBERS, 'label' => 'studio.forum.desk.tab.members', 'icon' => 'heroicons:users', 'route' => 'admin_forum_members_index'],
             ['id' => self::TAB_ENGINE, 'label' => 'studio.forum.desk.tab.engine', 'icon' => 'heroicons:cog-6-tooth', 'route' => 'admin_forum_settings_index'],
+            ['id' => self::TAB_POSTBIT, 'label' => 'studio.forum.desk.tab.postbit', 'icon' => 'heroicons:identification', 'route' => 'admin_forum_postbit_index'],
         ];
     }
 
@@ -36,6 +38,7 @@ final class ForumDesk
             str_starts_with($route, 'admin_forum_members_'),
             str_starts_with($route, 'admin_forum_ranks_') => self::TAB_MEMBERS,
             str_starts_with($route, 'admin_forum_settings_') => self::TAB_ENGINE,
+            str_starts_with($route, 'admin_forum_postbit_') => self::TAB_POSTBIT,
             default => self::TAB_OVERVIEW,
         };
     }

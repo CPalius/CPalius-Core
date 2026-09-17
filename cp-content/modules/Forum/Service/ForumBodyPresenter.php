@@ -5,22 +5,50 @@ declare(strict_types=1);
 namespace Modules\Forum\Service;
 
 use App\Core\Settings\SettingsRegistry;
+use App\Entity\User;
+use App\Repository\UserRepository;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Render-time rewrite of post HTML: lightbox-ready images, media embeds, unfurl cards.
+ * Render-time rewrite of post HTML: lightbox-ready images, media embeds, unfurl
+ * cards, @mention links and #N post references.
+ *
+ * Mentions and post references are resolved at render time rather than at save
+ * time so that a post written before this feature existed, or typed by hand
+ * without the composer's autocomplete, still comes out linked.
  */
 final class ForumBodyPresenter
 {
+    /** Same shape ForumMentionParser recognises, so notifying and linking agree. */
+    private const MENTION_PATTERN = '/@([a-zA-Z0-9_\-.]{2,32})/u';
+
+    /** "#12" — a post's position in the topic, which is the number readers see. */
+    private const POST_REF_PATTERN = '/(?<![\w#])#(\d{1,4})(?!\w)/u';
+
+    /** Text in here carries no new links: code is code, and anchors cannot nest. */
+    private const OPAQUE_TAGS = ['a', 'pre', 'code', 'script', 'style'];
+
+    /** @var array<string, User|false> Per-request memo; one body may name someone many times. */
+    private array $userMemo = [];
+
     public function __construct(
         private readonly ForumMediaEmbedder $mediaEmbedder,
         private readonly ForumLinkUnfurlService $unfurlService,
         private readonly SettingsRegistry $settingsRegistry,
         private readonly TranslatorInterface $translator,
+        private readonly UserRepository $userRepository,
+        private readonly UrlGeneratorInterface $urlGenerator,
     ) {
     }
 
-    public function present(string $html): string
+    /**
+     * @param int|null $topicId topic the post belongs to; without it "#3" stays
+     *                          plain text, because a reference with no
+     *                          conversation to resolve against would point at
+     *                          some unrelated post
+     */
+    public function present(string $html, ?int $topicId = null): string
     {
         $html = trim($html);
         if ($html === '') {
@@ -40,6 +68,7 @@ final class ForumBodyPresenter
         }
 
         $this->prepareImages($root);
+        $this->linkifyTextNodes($dom, $root, $topicId);
         if ($this->embedsEnabled() || $this->unfurlEnabled()) {
             $this->replaceStandaloneLinks($dom, $root);
         }
@@ -50,6 +79,117 @@ final class ForumBodyPresenter
         }
 
         return $out;
+    }
+
+    /**
+     * Turns "@name" and "#12" inside ordinary text into links.
+     *
+     * Text nodes only, and never inside an anchor or a code block — replacing
+     * on the raw HTML string instead would happily rewrite an href, a class
+     * name or the contents of a code sample, which is exactly the bug this
+     * whole DOM-walking presenter exists to avoid.
+     */
+    private function linkifyTextNodes(\DOMDocument $dom, \DOMElement $root, ?int $topicId): void
+    {
+        $xpath = new \DOMXPath($dom);
+        $nodes = $xpath->query('.//text()', $root);
+
+        if (!$nodes instanceof \DOMNodeList) {
+            return;
+        }
+
+        // Materialised first: replacing a node while iterating a live list
+        // makes the iterator skip siblings.
+        $targets = [];
+        foreach ($nodes as $node) {
+            if ($node instanceof \DOMText && !$this->isInside($node, self::OPAQUE_TAGS)) {
+                $targets[] = $node;
+            }
+        }
+
+        foreach ($targets as $node) {
+            $html = $this->linkifyText($node->textContent, $topicId);
+
+            if ($html === null) {
+                continue;
+            }
+
+            $fragment = $this->fragment($dom, $html);
+            if ($fragment instanceof \DOMDocumentFragment && $node->parentNode instanceof \DOMNode) {
+                $node->parentNode->replaceChild($fragment, $node);
+            }
+        }
+    }
+
+    /**
+     * @return string|null HTML for the rewritten text, or null when nothing matched
+     */
+    private function linkifyText(string $text, ?int $topicId): ?string
+    {
+        if (!str_contains($text, '@') && !($topicId !== null && str_contains($text, '#'))) {
+            return null;
+        }
+
+        $changed = false;
+
+        $html = preg_replace_callback(
+            self::MENTION_PATTERN,
+            function (array $m) use (&$changed): string {
+                $user = $this->resolveUser($m[1]);
+
+                if (!$user instanceof User) {
+                    // An unknown name is not a mention, it is just text that
+                    // happens to start with @ — leave it alone.
+                    return $this->e($m[0]);
+                }
+
+                $changed = true;
+
+                return '<a class="forum-mention" href="'.$this->e($this->profileUrl($user)).'"'
+                    .' data-mention="'.$this->e($user->getProfileSlug()).'">@'.$this->e($m[1]).'</a>';
+            },
+            $this->e($text),
+        ) ?? $this->e($text);
+
+        if ($topicId !== null) {
+            $html = preg_replace_callback(
+                self::POST_REF_PATTERN,
+                function (array $m) use (&$changed, $topicId): string {
+                    $changed = true;
+
+                    return '<a class="forum-postref" href="#postnum-'.$this->e($m[1]).'"'
+                        .' data-post-ref="'.$this->e($m[1]).'"'
+                        .' data-topic-ref="'.$topicId.'">#'.$this->e($m[1]).'</a>';
+                },
+                $html,
+            ) ?? $html;
+        }
+
+        return $changed ? $html : null;
+    }
+
+    private function resolveUser(string $username): ?User
+    {
+        $key = mb_strtolower($username);
+
+        if (!\array_key_exists($key, $this->userMemo)) {
+            $this->userMemo[$key] = $this->userRepository->findOneByUsername($username) ?? false;
+        }
+
+        $user = $this->userMemo[$key];
+
+        return $user instanceof User ? $user : null;
+    }
+
+    private function profileUrl(User $user): string
+    {
+        try {
+            return $this->urlGenerator->generate('forum_profile', ['username' => $user->getProfileSlug()]);
+        } catch (\Throwable) {
+            // Forum routes gone (module disabled mid-render) — a mention that
+            // cannot link is still a name worth showing.
+            return '#';
+        }
     }
 
     private function embedsEnabled(): bool

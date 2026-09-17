@@ -26,6 +26,12 @@ services:
     Modules\Blog\Service\:
         resource: '../../Service/'
 
+    # Settings/ holds the #[CpSetting] carrier (not a service) and the runtime
+    # variant provider, which is one — the carrier is skipped as it has no
+    # constructor dependencies and nothing ever fetches it.
+    Modules\Blog\Settings\:
+        resource: '../../Settings/'
+
     Modules\Blog\Repository\:
         resource: '../../Repository/'
 

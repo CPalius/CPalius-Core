@@ -1,6 +1,12 @@
+{#
+    Messages tab inside the user dropdown. Renders as a sibling of the core
+    notifications block, so the two share the tab row and the pane beneath it —
+    the theme lays them out, this only has to keep the same shape.
+#}
 <div class="navbar-alert" data-inbox-channel="messages" data-inbox-sound="{{ channel.sound_url|default('') }}">
     <button type="button" class="navbar-alert__btn" id="navMsgToggle" aria-expanded="false" aria-controls="navMsgBox" aria-label="{{ 'messages.nav.inbox'|trans }}">
         <i class="bi bi-envelope" aria-hidden="true"></i>
+        <span class="navbar-alert__label">{{ 'messages.nav.inbox'|trans }}</span>
         <span class="navbar-alert__badge navbar-alert__badge--red" data-inbox-badge {% if channel.unread|default(0) == 0 %}hidden{% endif %}>{{ channel.unread|default(0) }}</span>
     </button>
     <div class="navbar-alert__panel" id="navMsgBox" role="dialog" aria-label="{{ 'messages.nav.inbox'|trans }}" hidden>

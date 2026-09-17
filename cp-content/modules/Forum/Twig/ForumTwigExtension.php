@@ -11,6 +11,7 @@ use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Notification\ForumInboxItem;
 use Modules\Forum\Service\ForumBodyPresenter;
 use Modules\Forum\Service\ForumNotificationService;
+use Modules\Forum\Service\ForumPostbitLayout;
 use Modules\Forum\Service\ForumPresenceService;
 use Modules\Forum\Service\ForumReputationService;
 use Modules\Forum\Service\ForumSectionHierarchyService;
@@ -30,6 +31,7 @@ final class ForumTwigExtension extends AbstractExtension
 {
     public function __construct(
         private readonly ForumBodyPresenter $bodyPresenter,
+        private readonly ForumPostbitLayout $postbitLayout,
         private readonly ForumNotificationService $notificationService,
         private readonly ForumReputationService $reputationService,
         private readonly ForumSectionHierarchyService $hierarchyService,
@@ -56,7 +58,28 @@ final class ForumTwigExtension extends AbstractExtension
             new TwigFunction('forum_section_children', [$this, 'sectionChildren']),
             new TwigFunction('forum_user_avatar_url', [$this, 'userAvatarUrl']),
             new TwigFunction('forum_studio_desk_tabs', [$this, 'studioDeskTabs']),
+            new TwigFunction('forum_postbit_elements', [$this, 'postbitElements']),
+            new TwigFunction('forum_postbit_css', [$this, 'postbitCss']),
         ];
+    }
+
+    /**
+     * Postbit blocks to render, in the order Studio arranged them.
+     *
+     * @return list<string>
+     */
+    public function postbitElements(): array
+    {
+        return $this->postbitLayout->visibleElements();
+    }
+
+    /**
+     * Operator CSS for the postbit, already stripped of anything that could
+     * escape the <style> block it goes into.
+     */
+    public function postbitCss(): string
+    {
+        return $this->postbitLayout->css();
     }
 
     public function getFilters(): array
@@ -180,9 +203,14 @@ final class ForumTwigExtension extends AbstractExtension
         return $tabs;
     }
 
-    public function presentBody(?string $html): string
+    /**
+     * @param int|null $topicId the post's topic, so "#3" can resolve to the
+     *                          third post of this conversation; omit it and
+     *                          post references stay plain text
+     */
+    public function presentBody(?string $html, ?int $topicId = null): string
     {
-        return $this->bodyPresenter->present((string) $html);
+        return $this->bodyPresenter->present((string) $html, $topicId);
     }
 
     public function relativeTime(?\DateTimeInterface $date): string

@@ -1,12 +1,15 @@
 {% extends 'aacp/layout.html.twig' %}
 
-{% block header %}{{ definition.labelKey|trans }}{% endblock %}
+{% block header %}{{ definition.custom ? definition.labelKey : definition.labelKey|trans }}{% endblock %}
 
 {% block body %}
     <div class="space-y-sp-md">
         <div class="flex flex-wrap items-center justify-between gap-sp-sm">
-            <p class="text-fs-sm !text-slate-500">{{ definition.descriptionKey|trans }}</p>
-            <a href="{{ path('aacp_mail_templates') }}" class="btn btn-sm btn-outline">{{ 'aacp.mail_templates.back'|trans }}</a>
+            <p class="text-fs-sm !text-slate-500">{{ definition.custom ? definition.descriptionKey : definition.descriptionKey|trans }}</p>
+            <div class="flex items-center gap-2">
+                <a href="{{ path('aacp_mail_templates_send', {key: definition.key}) }}" class="btn btn-sm btn-outline">{{ 'aacp.mail_templates.send.action'|trans }}</a>
+                <a href="{{ path('aacp_mail_templates') }}" class="btn btn-sm btn-outline">{{ 'aacp.mail_templates.back'|trans }}</a>
+            </div>
         </div>
 
         <twig:cp:card title="{{ 'aacp.mail_templates.placeholders.heading'|trans }}">
@@ -96,10 +99,18 @@
 
         <twig:cp:card title="{{ 'aacp.mail_templates.maintenance.heading'|trans }}">
             <div class="flex flex-wrap items-center gap-sp-sm">
-                <form method="post" action="{{ path('aacp_mail_templates_reset', {key: definition.key}) }}">
-                    <input type="hidden" name="_token" value="{{ csrf_token('aacp_mail_template_reset') }}">
-                    <button type="submit" class="btn btn-sm btn-outline">{{ 'aacp.mail_templates.reset_action'|trans }}</button>
-                </form>
+                {% if definition.custom %}
+                    <form method="post" action="{{ path('aacp_mail_templates_delete', {key: definition.key}) }}"
+                          onsubmit="return confirm({{ 'aacp.mail_templates.custom.delete_confirm'|trans|json_encode|raw }});">
+                        <input type="hidden" name="_token" value="{{ csrf_token('aacp_mail_template_delete') }}">
+                        <button type="submit" class="btn btn-sm btn-outline !text-danger-300">{{ 'aacp.mail_templates.custom.delete'|trans }}</button>
+                    </form>
+                {% else %}
+                    <form method="post" action="{{ path('aacp_mail_templates_reset', {key: definition.key}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('aacp_mail_template_reset') }}">
+                        <button type="submit" class="btn btn-sm btn-outline">{{ 'aacp.mail_templates.reset_action'|trans }}</button>
+                    </form>
+                {% endif %}
 
                 {% if mailConfigured %}
                     <form method="post" action="{{ path('aacp_mail_templates_preview', {key: definition.key}) }}" class="flex items-center gap-2">

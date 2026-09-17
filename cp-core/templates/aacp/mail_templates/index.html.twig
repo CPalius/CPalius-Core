@@ -22,8 +22,13 @@
                     {% for row in rows %}
                         <tr>
                             <td>
-                                <p class="font-medium !text-slate-200">{{ row.definition.labelKey|trans }}</p>
-                                <p class="text-fs-xs !text-slate-500">{{ row.definition.descriptionKey|trans }}</p>
+                                <p class="font-medium !text-slate-200">
+                                    {{ row.definition.custom ? row.definition.labelKey : row.definition.labelKey|trans }}
+                                    {% if row.definition.custom %}
+                                        <span class="badge badge-info">{{ 'aacp.mail_templates.custom.badge'|trans }}</span>
+                                    {% endif %}
+                                </p>
+                                <p class="text-fs-xs !text-slate-500">{{ row.definition.custom ? row.definition.descriptionKey : row.definition.descriptionKey|trans }}</p>
                                 <p class="mt-1 font-mono text-fs-xs !text-slate-600">{{ row.definition.key }}</p>
                             </td>
                             <td>
@@ -42,13 +47,43 @@
                                 </div>
                             </td>
                             <td class="text-right">
-                                <a href="{{ path('aacp_mail_templates_edit', {key: row.definition.key}) }}"
-                                   class="btn btn-sm btn-outline">{{ 'aacp.mail_templates.edit_action'|trans }}</a>
+                                <div class="flex items-center justify-end gap-2">
+                                    <a href="{{ path('aacp_mail_templates_send', {key: row.definition.key}) }}"
+                                       class="btn btn-sm btn-outline">{{ 'aacp.mail_templates.send.action'|trans }}</a>
+                                    <a href="{{ path('aacp_mail_templates_edit', {key: row.definition.key}) }}"
+                                       class="btn btn-sm btn-outline">{{ 'aacp.mail_templates.edit_action'|trans }}</a>
+                                </div>
                             </td>
                         </tr>
                     {% endfor %}
                 </twig:block>
             </twig:cp:table>
+        </twig:cp:card>
+
+        <twig:cp:card title="{{ 'aacp.mail_templates.custom.heading'|trans }}">
+            <p class="text-fs-sm !text-slate-400">{{ 'aacp.mail_templates.custom.intro'|trans }}</p>
+
+            <form method="post" action="{{ path('aacp_mail_templates_create') }}" class="mt-sp-sm space-y-sp-sm">
+                <input type="hidden" name="_token" value="{{ csrf_token('aacp_mail_template_create') }}">
+
+                <div>
+                    <label for="customLabel" class="mb-1 block text-fs-xs font-semibold uppercase tracking-wide !text-slate-500">
+                        {{ 'aacp.mail_templates.custom.label_field'|trans }}
+                    </label>
+                    <input type="text" id="customLabel" name="label" required maxlength="190"
+                           class="w-full rounded-lg bg-dark-1 px-sp-sm py-2 text-fs-sm !text-slate-200">
+                </div>
+
+                <div>
+                    <label for="customDescription" class="mb-1 block text-fs-xs font-semibold uppercase tracking-wide !text-slate-500">
+                        {{ 'aacp.mail_templates.custom.description_field'|trans }}
+                    </label>
+                    <input type="text" id="customDescription" name="description" maxlength="500"
+                           class="w-full rounded-lg bg-dark-1 px-sp-sm py-2 text-fs-sm !text-slate-200">
+                </div>
+
+                <button type="submit" class="btn btn-primary">{{ 'aacp.mail_templates.custom.create'|trans }}</button>
+            </form>
         </twig:cp:card>
 
         <p class="text-fs-xs !text-slate-600">{{ 'aacp.mail_templates.legend'|trans }}</p>

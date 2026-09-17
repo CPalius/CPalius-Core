@@ -107,6 +107,44 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
     }
 
     /**
+     * Username suggestions for an @mention composer, best prefix match first.
+     *
+     * Prefix before substring, because somebody typing "@al" is far more often
+     * reaching for "ali" than for "kemal". Active accounts only: offering a
+     * banned member as a mention target suggests they are still around.
+     *
+     * @return list<User>
+     */
+    public function findForMentionAutocomplete(string $query, int $limit = 8): array
+    {
+        $query = trim($query);
+
+        if ($query === '') {
+            return [];
+        }
+
+        $escaped = addcslashes($query, '%_\\');
+
+        /** @var list<User> $users */
+        $users = $this->createQueryBuilder('u')
+            ->andWhere('u.username LIKE :contains')
+            ->andWhere('u.status = :status')
+            ->setParameter('contains', '%'.$escaped.'%')
+            ->setParameter('status', User::STATUS_ACTIVE)
+            // CASE, not two queries: one round trip, and the ordering stays
+            // stable when a name matches both ways.
+            ->addSelect('CASE WHEN u.username LIKE :prefix THEN 0 ELSE 1 END AS HIDDEN matchRank')
+            ->setParameter('prefix', $escaped.'%')
+            ->orderBy('matchRank', 'ASC')
+            ->addOrderBy('u.username', 'ASC')
+            ->setMaxResults(max(1, $limit))
+            ->getQuery()
+            ->getResult();
+
+        return $users;
+    }
+
+    /**
      * Users with the given role id; filtered in PHP for reliable JSON role matching.
      *
      * @return list<User>

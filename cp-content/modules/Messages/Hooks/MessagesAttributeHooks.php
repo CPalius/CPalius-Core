@@ -86,16 +86,34 @@ final class MessagesAttributeHooks
     #[CpHook('theme.header.alerts', priority: 40)]
     public function onHeaderAlerts(HookContext $context): HookContext
     {
+        return $this->appendPulseFragment($context, '@MessagesModule/front/partials/header_alert.html.twig');
+    }
+
+    /**
+     * The unread count on the avatar. Separate from the tab because the two sit
+     * in different places in the markup: the badge is on the closed trigger,
+     * the tab only exists once the menu is open.
+     */
+    #[CpHook('theme.header.user_badge', priority: 40)]
+    public function onHeaderUserBadge(HookContext $context): HookContext
+    {
+        return $this->appendPulseFragment($context, '@MessagesModule/front/partials/header_badge.html.twig');
+    }
+
+    private function appendPulseFragment(HookContext $context, string $template): HookContext
+    {
         $viewer = $this->security->getUser();
         if (!$this->config->enabled() || !$viewer instanceof User || !$this->security->isGranted('messages.send')) {
             return $context;
         }
 
         try {
-            $html = $this->twig->render('@MessagesModule/front/partials/header_alert.html.twig', [
+            $html = $this->twig->render($template, [
                 'channel' => $this->pulse->pulse($viewer),
             ]);
         } catch (\Throwable) {
+            // A header that renders without the messages badge beats a header
+            // that does not render at all.
             return $context;
         }
 

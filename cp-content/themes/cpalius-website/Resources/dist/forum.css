@@ -3342,3 +3342,206 @@ blockquote.cp-quote-post-0,
 
 
 
+
+
+/* ---- Mentions, post references, selection quote, hover cards ---- */
+
+/* A mention is a name, not a link in a sentence: underlining every one of them
+   turns a busy thread into a field of blue. The chip shape carries it instead. */
+.forum-mention {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--cp-accent, #3b82f6) 16%, transparent);
+  color: var(--cp-accent, #3b82f6);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.forum-mention:hover,
+.forum-mention:focus-visible {
+  background: color-mix(in srgb, var(--cp-accent, #3b82f6) 28%, transparent);
+  text-decoration: none;
+}
+
+/* The postbit name reuses .forum-mention so it gets the same hover card, but
+   not the chip: a pill around every author name would fight the postbit. */
+.forum-postbit__name .forum-mention {
+  display: inline;
+  padding: 0;
+  background: none;
+  font-weight: inherit;
+  color: inherit;
+}
+
+.forum-postbit__name .forum-mention:hover {
+  background: none;
+  text-decoration: underline;
+}
+
+.forum-postref {
+  font-weight: 600;
+  color: var(--cp-accent, #3b82f6);
+  text-decoration: none;
+  border-bottom: 1px dashed currentColor;
+}
+
+.forum-postref:hover,
+.forum-postref:focus-visible {
+  border-bottom-style: solid;
+}
+
+/* Floating bar over a text selection inside a post body. */
+.forum-selection-quote {
+  position: absolute;
+  z-index: 1300;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 6px;
+  background: #11151c;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.forum-selection-quote[hidden] {
+  display: none;
+}
+
+.forum-selection-quote button {
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #e8ebef;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.forum-selection-quote button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.forum-hovercard {
+  position: absolute;
+  z-index: 1300;
+  width: 280px;
+  max-width: calc(100vw - 24px);
+  padding: 12px;
+  border-radius: 8px;
+  background: #11151c;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  color: #e8ebef;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.forum-hovercard[hidden] {
+  display: none;
+}
+
+.forum-hovercard__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.forum-hovercard__avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.forum-hovercard__avatar--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cp-accent, #3b82f6);
+  color: #fff;
+  font-weight: 700;
+}
+
+.forum-hovercard__title {
+  display: block;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.forum-hovercard__excerpt {
+  margin: 0 0 8px;
+  /* A teaser, not the post: four lines is enough to recognise what was said. */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.forum-hovercard__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.forum-hovercard__cta {
+  display: block;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  background: var(--cp-accent, #3b82f6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+/* ---- Editor formatting classes ----
+   Written by the composer as classes, never inline style, because the
+   sanitizer drops `style` on save (Law 5.3). Values live here so the theme
+   keeps control of the scale and of contrast against the forum background. */
+.forum-post__body .cp-fs-xs { font-size: 0.75em; }
+.forum-post__body .cp-fs-sm { font-size: 0.875em; }
+.forum-post__body .cp-fs-lg { font-size: 1.25em; }
+.forum-post__body .cp-fs-xl { font-size: 1.6em; }
+
+.forum-post__body mark.cp-pen-red,
+.forum-post__body mark.cp-pen-orange,
+.forum-post__body mark.cp-pen-green,
+.forum-post__body mark.cp-pen-blue,
+.forum-post__body mark.cp-pen-purple,
+.forum-post__body mark.cp-pen-muted {
+  background: none;
+}
+
+.forum-post__body mark.cp-pen-red { color: #e5484d; }
+.forum-post__body mark.cp-pen-orange { color: #f5a524; }
+.forum-post__body mark.cp-pen-green { color: #30a46c; }
+.forum-post__body mark.cp-pen-blue { color: #3b82f6; }
+.forum-post__body mark.cp-pen-purple { color: #a855f7; }
+.forum-post__body mark.cp-pen-muted { color: #94a3b8; }
+
+/* Markers set their own dark text: the highlight colours are light, and
+   inheriting a light-on-light body colour would make the words vanish. */
+.forum-post__body mark.cp-mark-yellow { background: #fde047; color: #1f2430; }
+.forum-post__body mark.cp-mark-green { background: #86efac; color: #1f2430; }
+.forum-post__body mark.cp-mark-blue { background: #93c5fd; color: #1f2430; }
+.forum-post__body mark.cp-mark-pink { background: #f9a8d4; color: #1f2430; }
+
+.forum-post__body h2,
+.forum-post__body h3,
+.forum-post__body h4 {
+  margin: 1.1em 0 0.5em;
+  line-height: 1.3;
+}
+
+.forum-post__body h2 { font-size: 1.45em; }
+.forum-post__body h3 { font-size: 1.25em; }
+.forum-post__body h4 { font-size: 1.1em; }

@@ -48,41 +48,6 @@
                     {% set navNotifs = cp_recent_notifications(6) %}
                     {% set navAvatarUrl = cp_current_user_avatar_url() %}
                     <div class="navbar-inbox" id="navInbox">
-                        <div class="navbar-alert" data-inbox-channel="notifications">
-                            <button type="button" class="navbar-alert__btn" id="navNotifToggle" aria-expanded="false" aria-controls="navNotifBox" aria-label="{{ 'website.nav.notifications'|trans }}">
-                                <i class="bi bi-bell" aria-hidden="true"></i>
-                                <span class="navbar-alert__badge navbar-alert__badge--blue" data-inbox-badge {% if navUnread == 0 %}hidden{% endif %}>{{ navUnread }}</span>
-                            </button>
-                            <div class="navbar-alert__panel" id="navNotifBox" role="dialog" aria-label="{{ 'website.nav.notifications'|trans }}" hidden>
-                                <div class="navbar-notif-box__head">
-                                    <strong>{{ 'website.nav.notifications'|trans }}</strong>
-                                    <span data-inbox-unread-label>{% if navUnread > 0 %}{{ 'notification.inbox.desc'|trans({count: navUnread}) }}{% endif %}</span>
-                                </div>
-                                <div class="navbar-notif-box__list" data-inbox-list>
-                                    {% for n in navNotifs %}
-                                        <a href="{{ n.url }}" class="navbar-notif-box__item {{ n.unread ? 'is-unread' : '' }}" data-inbox-id="{{ n.id }}">
-                                            <span class="navbar-notif-box__icon"><i class="bi bi-{{ n.icon }}"></i></span>
-                                            <span class="navbar-notif-box__text">
-                                                {{ n.text }}
-                                                <time datetime="{{ n.created_at }}">{{ n.created_label }}</time>
-                                            </span>
-                                        </a>
-                                    {% else %}
-                                        <p class="navbar-notif-box__empty">{{ 'notification.inbox.empty'|trans }}</p>
-                                    {% endfor %}
-                                </div>
-                                <div class="navbar-notif-box__foot">
-                                    {% if navUnread > 0 %}
-                                        <form method="post" action="{{ path('account_notifications_mark_all') }}" data-inbox-mark-all>
-                                            <input type="hidden" name="_token" value="{{ csrf_token('account_notifications') }}">
-                                            <button type="submit">{{ 'notification.inbox.mark_all'|trans }}</button>
-                                        </form>
-                                    {% endif %}
-                                    <a href="{{ path('account_notifications') }}">{{ 'forum.notifications.view_all'|trans }}</a>
-                                </div>
-                            </div>
-                        </div>
-                        {{ cp_hook('theme.header.alerts', { user: currentUser }) }}
                         <div class="navbar-user" id="navUser">
                             <button type="button" class="navbar-user__trigger" id="navUserTrigger" aria-expanded="false" aria-controls="navUserDropdown">
                                 {% if navAvatarUrl %}
@@ -92,8 +57,60 @@
                                 {% endif %}
                                 <span class="navbar-user__name">{{ currentUser.fullName }}</span>
                                 <i class="bi bi-chevron-down navbar-user__caret"></i>
+
+                                {# Counts sit on the trigger so an unopened menu still says there is
+                                   something in it. Blue is notifications, red is messages; the
+                                   messages one is a hook because Messages is a module that may be off. #}
+                                <span class="navbar-user__counts">
+                                    <span class="navbar-user__count navbar-user__count--blue"
+                                          data-inbox-count="notifications"
+                                          {% if navUnread == 0 %}hidden{% endif %}>{{ navUnread }}</span>
+                                    {{ cp_hook('theme.header.user_badge', { user: currentUser }) }}
+                                </span>
                             </button>
+
                             <div class="navbar-user__dropdown" id="navUserDropdown">
+                                <div class="navbar-user__inbox">
+                                    <div class="navbar-alert is-open" data-inbox-channel="notifications">
+                                        <button type="button" class="navbar-alert__btn" id="navNotifToggle" aria-expanded="true" aria-controls="navNotifBox" aria-label="{{ 'website.nav.notifications'|trans }}">
+                                            <i class="bi bi-bell" aria-hidden="true"></i>
+                                            <span class="navbar-alert__label">{{ 'website.nav.notifications'|trans }}</span>
+                                            <span class="navbar-alert__badge navbar-alert__badge--blue" data-inbox-badge {% if navUnread == 0 %}hidden{% endif %}>{{ navUnread }}</span>
+                                        </button>
+                                        <div class="navbar-alert__panel" id="navNotifBox" role="dialog" aria-label="{{ 'website.nav.notifications'|trans }}">
+                                            <div class="navbar-notif-box__head">
+                                                <strong>{{ 'website.nav.notifications'|trans }}</strong>
+                                                <span data-inbox-unread-label>{% if navUnread > 0 %}{{ 'notification.inbox.desc'|trans({count: navUnread}) }}{% endif %}</span>
+                                            </div>
+                                            <div class="navbar-notif-box__list" data-inbox-list>
+                                                {% for n in navNotifs %}
+                                                    <a href="{{ n.url }}" class="navbar-notif-box__item {{ n.unread ? 'is-unread' : '' }}" data-inbox-id="{{ n.id }}">
+                                                        <span class="navbar-notif-box__icon"><i class="bi bi-{{ n.icon }}"></i></span>
+                                                        <span class="navbar-notif-box__text">
+                                                            {{ n.text }}
+                                                            <time datetime="{{ n.created_at }}">{{ n.created_label }}</time>
+                                                        </span>
+                                                    </a>
+                                                {% else %}
+                                                    <p class="navbar-notif-box__empty">{{ 'notification.inbox.empty'|trans }}</p>
+                                                {% endfor %}
+                                            </div>
+                                            <div class="navbar-notif-box__foot">
+                                                {% if navUnread > 0 %}
+                                                    <form method="post" action="{{ path('account_notifications_mark_all') }}" data-inbox-mark-all>
+                                                        <input type="hidden" name="_token" value="{{ csrf_token('account_notifications') }}">
+                                                        <button type="submit">{{ 'notification.inbox.mark_all'|trans }}</button>
+                                                    </form>
+                                                {% endif %}
+                                                <a href="{{ path('account_notifications') }}">{{ 'forum.notifications.view_all'|trans }}</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{ cp_hook('theme.header.alerts', { user: currentUser }) }}
+                                </div>
+
+                                <div class="navbar-user__divider"></div>
+
                                 <a href="{{ path('forum_profile', {username: currentUser.profileSlug}) }}" class="navbar-user__link">
                                     <i class="bi bi-person-circle"></i> {{ 'website.nav.profile'|trans }}
                                 </a>

@@ -122,70 +122,17 @@
             {% endif %}
 
             <aside class="forum-postbit">
-                <div class="forum-postbit__avatar">
-                    {% if post.author %}
-                        <a href="{{ path('forum_profile', {username: post.author.profileSlug}) }}" class="forum-postbit__avatar-link">
-                            {% include '@Theme/forum/partials/_avatar.html.twig' with {name: post.posterName, user: post.author, size: 'xl', square: true, online: true} %}
-                        </a>
-                    {% else %}
-                        {% include '@Theme/forum/partials/_avatar.html.twig' with {name: post.posterName, size: 'xl', square: true} %}
-                    {% endif %}
-                    {% if postNum == 1 %}<span class="forum-postbit__op-ring" title="{{ 'forum.op_ring_title'|trans }}"></span>{% endif %}
-                </div>
-
-                <div class="forum-postbit__name">
-                    {% if post.author %}
-                        <a href="{{ path('forum_profile', {username: post.author.profileSlug}) }}">{{ post.posterName }}</a>
-                    {% else %}
-                        {{ post.posterName }}
-                    {% endif %}
-                </div>
-
-                {% if post.author and post.author.customTitle %}
-                    {% include '@Theme/forum/partials/_custom_title.html.twig' with {user: post.author} %}
-                {% endif %}
-
-                {% if postNum == 1 %}
-                    <span class="forum-postbit__badge forum-postbit__badge--op">{{ 'forum.op_badge'|trans }}</span>
-                {% endif %}
-
-                {% if authorStats and authorStats.rank %}
-                    <span class="forum-postbit__badge" style="--badge-color: {{ authorStats.rank.color }};">
-                        {% if authorStats.rank.icon %}<i class="bi {{ authorStats.rank.icon }}"></i>{% endif %}
-                        {{ authorStats.rank.label }}
-                    </span>
-                {% endif %}
-
-                {% if authorStats %}
-                    <div class="forum-postbit__stats">
-                        <div class="forum-postbit__stat">
-                            <strong>{{ authorStats.postCount }}</strong>
-                            <span>{{ 'forum.stat.post'|trans }}</span>
-                        </div>
-                        <div class="forum-postbit__stat">
-                            <strong>{{ authorStats.topicCount }}</strong>
-                            <span>{{ 'forum.stat.topic'|trans }}</span>
-                        </div>
-                        <div class="forum-postbit__stat">
-                            <strong>{{ authorStats.likesReceived|default(0) }}</strong>
-                            <span>{{ 'forum.stat.like'|trans }}</span>
-                        </div>
-                        {% if reputationEnabled|default(false) %}
-                            <div class="forum-postbit__stat">
-                                <strong>{{ authorStats.reputationNet|default(0) }}</strong>
-                                <span>{{ 'forum.stat.reputation'|trans }}</span>
-                            </div>
-                            <div class="forum-postbit__stat">
-                                <strong>{{ authorStats.popularity|default(0) }}</strong>
-                                <span title="{{ 'forum.stat.popularity_hint'|trans }}">{{ 'forum.stat.popularity'|trans }}</span>
-                            </div>
-                        {% endif %}
-                    </div>
-                    <div class="forum-postbit__joined">
-                        <i class="bi bi-calendar3"></i> {{ 'post.joined'|trans({}, 'forums') }} {{ post.author.createdAt|date('d.m.Y') }}
-                    </div>
-                    {{ cp_hook('forum.post.author.actions', { user: post.author, author: post.author }) }}
-                {% endif %}
+                {# Blocks, order and visibility come from Studio -> Forum -> Postbit.
+                   The arrangement is a site's decision, so the template renders
+                   whatever the layout returns instead of a fixed run of markup. #}
+                {% for element in forum_postbit_elements() %}
+                    {% include '@Theme/forum/partials/postbit/_' ~ element ~ '.html.twig' ignore missing with {
+                        post: post,
+                        postNum: postNum,
+                        authorStats: authorStats,
+                        reputationEnabled: reputationEnabled|default(false),
+                    } only %}
+                {% endfor %}
             </aside>
 
             <div class="forum-post__main">
@@ -219,7 +166,8 @@
                     </div>
                 </header>
 
-                <div class="forum-post__body">{{ post.body|forum_body }}</div>
+                {# id="postnum-N" is what a "#N" reference in another post links to. #}
+                <div class="forum-post__body" id="postnum-{{ postNum }}" data-post-num="{{ postNum }}">{{ post.body|forum_body(topic.id) }}</div>
                 {% if post.moderated %}<div class="forum-thread-notice forum-thread-notice--private">{{ 'notice.moderated'|trans({}, 'forums') }}</div>{% endif %}
                 {% set postAttachments = attachmentsByPost[post.id]|default([]) %}
                 {% if postAttachments is not empty %}

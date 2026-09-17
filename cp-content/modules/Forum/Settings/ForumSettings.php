@@ -145,6 +145,39 @@ use App\Core\Annotation\CpSetting;
     module: 'forum',
     group: 'forum.engine',
 )]
+/*
+ * Postbit layout. Declared here so the values live in cp_settings like every
+ * other forum preference, but edited on their own screen: an ordered list and a
+ * stylesheet are not things a generic key/value form can express.
+ *
+ * module: 'forum_postbit' is a pseudo-module in SettingDefinition::HIDDEN_MODULES,
+ * the project's existing way of saying "this key has its own screen". Without it
+ * the generic tabs would render the raw comma-separated order as a text box.
+ */
+#[CpSetting(
+    key: 'forum.postbit_order',
+    label: 'forum.settings.postbit_order',
+    type: 'text',
+    default: '',
+    module: 'forum_postbit',
+    group: 'forum.postbit',
+)]
+#[CpSetting(
+    key: 'forum.postbit_hidden',
+    label: 'forum.settings.postbit_hidden',
+    type: 'text',
+    default: '',
+    module: 'forum_postbit',
+    group: 'forum.postbit',
+)]
+#[CpSetting(
+    key: 'forum.postbit_css',
+    label: 'forum.settings.postbit_css',
+    type: 'textarea',
+    default: '',
+    module: 'forum_postbit',
+    group: 'forum.postbit',
+)]
 final class ForumSettings
 {
 }

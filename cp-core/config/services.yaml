@@ -191,6 +191,7 @@ services:
     App\Core\Settings\SettingsRegistry:
         arguments:
             $cache: '@cache.app'
+            $variantProviders: !tagged_iterator cpalius.setting_variant_provider
 
     App\Core\Taxonomy\VocabularyRegistry:
         arguments:
@@ -315,6 +316,13 @@ services:
         arguments:
             $providers: !tagged_iterator cpalius.mail.template_provider
 
+    # Operator-created templates are declared last on purpose: the registry keeps
+    # the first declaration of a key, so a custom row can never take over a
+    # shipped account mail by reusing its key.
+    App\Core\Mail\Template\CustomMailTemplateProvider:
+        tags:
+            - { name: 'cpalius.mail.template_provider', priority: -100 }
+
     App\Core\TextFormat\TextFormatProcessor:
         arguments:
             $filters: !tagged_iterator cp.text_filter
@@ -367,6 +375,12 @@ services:
     # CronExecuteController: auth secret for externally triggered /cron/execute.
     # Same pattern as AACP_RECOVERY_TOKEN but a separate env var (recovery vs cron).
     App\Controller\CronExecuteController:
+        arguments:
+            $cronToken: '%env(CRON_TOKEN)%'
+
+    # The same secret, read-only, so /aacp/cron can print the URL a host has to
+    # call. Without it the endpoint exists and nobody knows its address.
+    App\Controller\Admin\AACPCronController:
         arguments:
             $cronToken: '%env(CRON_TOKEN)%'
 

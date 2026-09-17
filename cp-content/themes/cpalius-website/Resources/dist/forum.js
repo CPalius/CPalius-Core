@@ -31,6 +31,8 @@
     initLightbox();
     initUnfurl();
     initMediaEmbeds();
+    initSelectionQuote();
+    initHoverCards();
   });
 
   // ---- Confirmation for delete/dangerous actions ----
@@ -78,7 +80,9 @@
     if (!applyBtn || !replyBody) return;
 
     function refreshButton() {
-      var any = document.querySelector('[data-multi-quote]:checked');
+      // Selection snippets count too: a reader who only picked sentences and
+      // ticked no checkbox still has something waiting to be inserted.
+      var any = document.querySelector('[data-multi-quote]:checked') || pendingSnippets.length > 0;
       if (any) {
         applyBtn.removeAttribute('hidden');
       } else {
@@ -91,7 +95,11 @@
     });
 
     applyBtn.addEventListener('click', function () {
-      var blocks = [];
+      // Snippets first: they were picked deliberately, so they read better at
+      // the top of the reply than after a run of whole-post quotes.
+      var blocks = pendingSnippets.slice();
+      pendingSnippets.length = 0;
+
       document.querySelectorAll('[data-multi-quote]:checked').forEach(function (cb) {
         var author = cb.getAttribute('data-quote-author') || '';
         var text = (cb.getAttribute('data-quote-body') || '').trim();
@@ -182,6 +190,13 @@
     var div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  // textContent escapes < > &, but not the quotes that would end an attribute.
+  function escapeAttr(value) {
+    return escapeHtml(String(value == null ? '' : value))
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   // ---- Reputation modal (profile + postbit) ----
@@ -638,4 +653,248 @@
       if (e.key === 'ArrowRight') step(1);
     });
   }
+
+  // ---- Quote just the part you selected ----
+  //
+  // The per-post Quote button takes the whole message, which in a long post
+  // buries the sentence actually being answered. Selecting text and quoting
+  // only that is what people already try to do; this makes it work.
+  var pendingSnippets = [];
+
+  function initSelectionQuote() {
+    var replyBody = document.getElementById('forum-reply-body');
+    if (!replyBody) return;
+
+    var bar = document.createElement('div');
+    bar.className = 'forum-selection-quote';
+    bar.setAttribute('hidden', 'hidden');
+    bar.innerHTML =
+      '<button type="button" data-sel-quote>' + escapeHtml(forumI18n('sel-quote', 'Alintiyla yanitla')) + '</button>' +
+      '<button type="button" data-sel-multi>' + escapeHtml(forumI18n('sel-multi', 'Coklu alintiya ekle')) + '</button>';
+    document.body.appendChild(bar);
+
+    var current = null;
+
+    function hide() {
+      bar.setAttribute('hidden', 'hidden');
+      current = null;
+    }
+
+    function closestBody(node) {
+      var el = node && node.nodeType === 1 ? node : (node ? node.parentElement : null);
+      return el ? el.closest('.forum-post__body') : null;
+    }
+
+    function capture() {
+      var selection = window.getSelection();
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0) return null;
+
+      var text = selection.toString().trim();
+      if (text.length < 2) return null;
+
+      var range = selection.getRangeAt(0);
+      // Both ends must sit in the same post body, or the "quote" would splice
+      // two people's words into one block attributed to one of them.
+      var startBody = closestBody(range.startContainer);
+      if (!startBody || startBody !== closestBody(range.endContainer)) return null;
+
+      var article = startBody.closest('.forum-post');
+      if (!article) return null;
+
+      var nameEl = article.querySelector('.forum-postbit__name');
+
+      return {
+        text: text,
+        postId: article.getAttribute('data-post-id') || '',
+        author: nameEl ? nameEl.textContent.trim() : '',
+        rect: range.getBoundingClientRect()
+      };
+    }
+
+    function reposition(rect) {
+      bar.removeAttribute('hidden');
+      var top = window.scrollY + rect.top - bar.offsetHeight - 8;
+      // Flip below the selection when there is no room above it.
+      if (top < window.scrollY + 4) top = window.scrollY + rect.bottom + 8;
+      var left = window.scrollX + rect.left + (rect.width / 2) - (bar.offsetWidth / 2);
+      var maxLeft = window.scrollX + document.documentElement.clientWidth - bar.offsetWidth - 8;
+      bar.style.top = top + 'px';
+      bar.style.left = Math.max(window.scrollX + 8, Math.min(left, maxLeft)) + 'px';
+    }
+
+    function sync() {
+      current = capture();
+      if (current) reposition(current.rect); else hide();
+    }
+
+    document.addEventListener('mouseup', function (e) {
+      if (bar.contains(e.target)) return;
+      // Deferred: on mouseup the selection is not settled in every browser.
+      window.setTimeout(sync, 0);
+    });
+
+    document.addEventListener('keyup', function (e) {
+      if (e.key === 'Shift' || e.key.indexOf('Arrow') === 0) sync();
+    });
+
+    document.addEventListener('scroll', hide, { passive: true });
+
+    // Keeps the selection alive while the button is pressed.
+    bar.addEventListener('mousedown', function (e) { e.preventDefault(); });
+
+    bar.addEventListener('click', function (e) {
+      var quote = e.target.closest('[data-sel-quote]');
+      var multi = e.target.closest('[data-sel-multi]');
+      if (!current || (!quote && !multi)) return;
+
+      var html = buildQuoteHtml(current.author, current.text, current.postId);
+
+      if (quote) {
+        appendToEditor(replyBody, html);
+        scrollToReply(replyBody);
+      } else {
+        pendingSnippets.push(html);
+        refreshSnippetButton();
+      }
+
+      var sel = window.getSelection();
+      if (sel) sel.removeAllRanges();
+      hide();
+    });
+  }
+
+  function refreshSnippetButton() {
+    var applyBtn = document.querySelector('[data-multi-quote-apply]');
+    if (!applyBtn) return;
+    if (pendingSnippets.length > 0 || document.querySelector('[data-multi-quote]:checked')) {
+      applyBtn.removeAttribute('hidden');
+    }
+  }
+
+  // ---- Hover cards for @mentions and #N post references ----
+  //
+  // The point of a "#3" reference is to save the reader a trip to page 1;
+  // making them click it would only move the trip, not remove it.
+  function initHoverCards() {
+    var card = document.createElement('div');
+    card.className = 'forum-hovercard';
+    card.setAttribute('hidden', 'hidden');
+    document.body.appendChild(card);
+
+    var cache = {};
+    var hideTimer = null;
+    var activeKey = null;
+
+    function scheduleHide() {
+      window.clearTimeout(hideTimer);
+      // Long enough for the pointer to travel from the link onto the card.
+      hideTimer = window.setTimeout(function () {
+        card.setAttribute('hidden', 'hidden');
+        activeKey = null;
+      }, 220);
+    }
+
+    card.addEventListener('mouseenter', function () { window.clearTimeout(hideTimer); });
+    card.addEventListener('mouseleave', scheduleHide);
+
+    function show(anchor, html, key) {
+      if (activeKey !== key) return;
+      card.innerHTML = html;
+      card.removeAttribute('hidden');
+
+      var rect = anchor.getBoundingClientRect();
+      var top = window.scrollY + rect.bottom + 8;
+      if (top + card.offsetHeight > window.scrollY + document.documentElement.clientHeight) {
+        top = window.scrollY + rect.top - card.offsetHeight - 8;
+      }
+      var left = window.scrollX + rect.left;
+      var maxLeft = window.scrollX + document.documentElement.clientWidth - card.offsetWidth - 12;
+      card.style.top = Math.max(window.scrollY + 8, top) + 'px';
+      card.style.left = Math.max(window.scrollX + 8, Math.min(left, maxLeft)) + 'px';
+    }
+
+    function load(anchor, key, url, render) {
+      activeKey = key;
+      window.clearTimeout(hideTimer);
+
+      if (cache[key]) {
+        show(anchor, cache[key], key);
+        return;
+      }
+
+      fetch(url, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+      }).then(function (res) {
+        if (!res.ok) throw new Error('hovercard');
+        return res.json();
+      }).then(function (data) {
+        if (!data || data.ok === false) return;
+        cache[key] = render(data);
+        show(anchor, cache[key], key);
+      }).catch(function () {
+        // A card that cannot load is simply not shown; the link still works.
+      });
+    }
+
+    function memberCard(data) {
+      var initial = (data.name || '?').charAt(0).toUpperCase();
+      var avatar = data.avatar
+        ? '<img class="forum-hovercard__avatar" src="' + escapeAttr(data.avatar) + '" alt="">'
+        : '<span class="forum-hovercard__avatar forum-hovercard__avatar--empty">' + escapeHtml(initial) + '</span>';
+
+      return '<div class="forum-hovercard__head">' + avatar +
+        '<div><strong>' + escapeHtml(data.name || '') + '</strong>' +
+        (data.title ? '<span class="forum-hovercard__title">' + escapeHtml(data.title) + '</span>' : '') +
+        '</div></div>' +
+        '<div class="forum-hovercard__meta">' +
+        '<span>' + escapeHtml(String(data.postCount || 0)) + ' ' + escapeHtml(forumI18n('stat-posts', 'mesaj')) + '</span>' +
+        '<span>' + escapeHtml(forumI18n('stat-joined', 'Katilim')) + ': ' + escapeHtml(data.joined || '') + '</span>' +
+        '</div>' +
+        '<a class="forum-hovercard__cta" href="' + escapeAttr(data.url || '#') + '">' +
+        escapeHtml(forumI18n('view-profile', 'Profili gor')) + '</a>';
+    }
+
+    function postCard(data) {
+      return '<div class="forum-hovercard__head">' +
+        '<strong>#' + escapeHtml(String(data.number)) + ' — ' + escapeHtml(data.author || '') + '</strong>' +
+        '</div>' +
+        '<p class="forum-hovercard__excerpt">' + escapeHtml(data.excerpt || '') + '</p>' +
+        '<div class="forum-hovercard__meta"><span>' + escapeHtml(data.date || '') + '</span></div>';
+    }
+
+    // Routes carry a locale prefix, so the URLs are generated by the router
+    // into data attributes and only filled in here.
+    var forumRoot = document.getElementById('forum') || document.querySelector('.forum-page');
+    var memberCardUrl = forumRoot ? forumRoot.getAttribute('data-member-card-url') || '' : '';
+    var postPreviewUrl = forumRoot ? forumRoot.getAttribute('data-post-preview-url') || '' : '';
+
+    document.addEventListener('mouseover', function (e) {
+      var mention = e.target.closest('a.forum-mention[data-mention]');
+      if (mention && memberCardUrl) {
+        var slug = mention.getAttribute('data-mention');
+        load(mention, 'u:' + slug, memberCardUrl.replace('__SLUG__', encodeURIComponent(slug)), memberCard);
+        return;
+      }
+
+      var ref = e.target.closest('a.forum-postref[data-post-ref]');
+      if (ref && postPreviewUrl) {
+        var num = ref.getAttribute('data-post-ref');
+        var topicId = ref.getAttribute('data-topic-ref');
+        // The template was generated with topicId=0 and number=0; swapping the
+        // last two path segments keeps the locale prefix intact.
+        var url = postPreviewUrl
+          .replace('/topic/0/', '/topic/' + encodeURIComponent(topicId) + '/')
+          .replace('/post/0/', '/post/' + encodeURIComponent(num) + '/');
+        load(ref, 'p:' + topicId + ':' + num, url, postCard);
+      }
+    });
+
+    document.addEventListener('mouseout', function (e) {
+      if (e.target.closest('a.forum-mention[data-mention], a.forum-postref[data-post-ref]')) {
+        scheduleHide();
+      }
+    });
+  }
+
 })();

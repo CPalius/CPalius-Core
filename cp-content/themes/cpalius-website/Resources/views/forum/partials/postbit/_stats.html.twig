@@ -1,0 +1,27 @@
+{# Postbit block: counters. Expects authorStats, reputationEnabled. #}
+{% if authorStats %}
+    <div class="forum-postbit__stats">
+        <div class="forum-postbit__stat">
+            <strong>{{ authorStats.postCount }}</strong>
+            <span>{{ 'forum.stat.post'|trans }}</span>
+        </div>
+        <div class="forum-postbit__stat">
+            <strong>{{ authorStats.topicCount }}</strong>
+            <span>{{ 'forum.stat.topic'|trans }}</span>
+        </div>
+        <div class="forum-postbit__stat">
+            <strong>{{ authorStats.likesReceived|default(0) }}</strong>
+            <span>{{ 'forum.stat.like'|trans }}</span>
+        </div>
+        {% if reputationEnabled|default(false) %}
+            <div class="forum-postbit__stat">
+                <strong>{{ authorStats.reputationNet|default(0) }}</strong>
+                <span>{{ 'forum.stat.reputation'|trans }}</span>
+            </div>
+            <div class="forum-postbit__stat">
+                <strong>{{ authorStats.popularity|default(0) }}</strong>
+                <span title="{{ 'forum.stat.popularity_hint'|trans }}">{{ 'forum.stat.popularity'|trans }}</span>
+            </div>
+        {% endif %}
+    </div>
+{% endif %}

@@ -1,5 +1,5 @@
 {#
-    Project show — full-bleed toolbar + project meta sidebar. Expects: post, postBody, typeFields, relatedPosts.
+    Project show — full-bleed toolbar + project meta sidebar. Expects: post, postBody, typeFields.
 #}
 {% if (typeFields.repo_url is defined and typeFields.repo_url) or (typeFields.demo_url is defined and typeFields.demo_url) %}
 <section class="project-toolbar" aria-label="{{ 'blog.card.type.project'|trans }}">
@@ -77,27 +77,6 @@
                 {% include '@Theme/blog/partials/search_widget.html.twig' %}
                 {% include '@Theme/blog/partials/widget_sidebar.html.twig' %}
                 {% include '@Theme/blog/partials/archive_sidebar.html.twig' %}
-
-                {% if relatedPosts is not empty %}
-                    <div class="blog-sidebar-widget">
-                        <h5>{{ 'blog.show.related_title'|trans }}</h5>
-                        <ul class="slw-related-list">
-                            {% for relatedPost in relatedPosts %}
-                                <li class="slw-related-list__item">
-                                    <a href="{{ path('blog_show', {_locale: relatedPost.locale, slug: relatedPost.slug}) }}">
-                                        <span class="slw-related-thumb"><i class="bi bi-kanban"></i></span>
-                                        <span>
-                                            <span class="slw-related-list__title">{{ relatedPost.title }}</span>
-                                            {% if relatedPost.publishedAt %}
-                                                <time datetime="{{ relatedPost.publishedAt|date('c') }}">{{ relatedPost.publishedAt|date('d.m.Y') }}</time>
-                                            {% endif %}
-                                        </span>
-                                    </a>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                {% endif %}
             </aside>
         </div>
     </div>

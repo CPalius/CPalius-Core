@@ -12,6 +12,8 @@ final class VirtualCronJob
 {
     /**
      * @param 'attribute'|'flat-file' $sourceType
+     * @param string                  $cronExpression the schedule actually used — the operator's override when there is one
+     * @param string                  $declaredExpression the schedule the code ships, kept so AACP can offer "reset to default"
      */
     public function __construct(
         private readonly string $jobName,
@@ -20,6 +22,8 @@ final class VirtualCronJob
         private readonly string $sourceType,
         private readonly string $sourceDetail,
         private readonly ?\DateTimeImmutable $lastRunAt = null,
+        private readonly string $declaredExpression = '',
+        private readonly bool $active = true,
     ) {
     }
 
@@ -73,13 +77,33 @@ final class VirtualCronJob
             $this->sourceType,
             $this->sourceDetail,
             $lastRunAt,
+            $this->declaredExpression,
+            $this->active,
         );
+    }
+
+    /**
+     * The schedule written in the attribute or flat file, before any override.
+     */
+    public function getDeclaredExpression(): string
+    {
+        return $this->declaredExpression !== '' ? $this->declaredExpression : $this->cronExpression;
+    }
+
+    /**
+     * True when an operator has chosen a different schedule than the code ships.
+     */
+    public function isRescheduled(): bool
+    {
+        return $this->declaredExpression !== '' && $this->declaredExpression !== $this->cronExpression;
     }
 
     public function isActive(): bool
     {
-        // Code jobs are always on; disable by removing the attribute/file (Law 3.1).
-        return true;
+        // Was hard-coded true: disabling a code task meant deleting its
+        // attribute, which an update puts straight back. The override row
+        // carries the operator's answer instead.
+        return $this->active;
     }
 
     public function isCodeBased(): bool

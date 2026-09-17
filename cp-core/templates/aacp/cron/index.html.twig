@@ -4,6 +4,58 @@
 
 {% block body %}
     <div class="space-y-sp-md">
+        {% if app.request.query.get('errors') %}
+            <div class="rounded-lg border border-danger-500/40 bg-danger-500/10 p-sp-sm text-fs-sm !text-danger-200">
+                {{ app.request.query.get('errors') }}
+            </div>
+        {% endif %}
+        {% if app.request.query.get('schedule_saved') or app.request.query.get('schedule_reset') %}
+            <div class="rounded-lg border border-success-500/40 bg-success-500/10 p-sp-sm text-fs-sm !text-success-200">
+                {{ 'aacp.cron.schedule_saved'|trans }}
+            </div>
+        {% endif %}
+
+        <twig:cp:card title="{{ 'aacp.cron.endpoint.heading'|trans }}">
+            <p class="text-fs-sm !text-slate-400">{{ 'aacp.cron.endpoint.intro'|trans }}</p>
+
+            {% if endpoint.configured %}
+                <div class="mt-sp-sm space-y-sp-sm">
+                    <div>
+                        <label class="mb-1 block text-fs-xs font-semibold uppercase tracking-wide !text-slate-500">
+                            {{ 'aacp.cron.endpoint.url_label'|trans }}
+                        </label>
+                        <div class="flex gap-2">
+                            <input type="text" readonly value="{{ endpoint.url }}"
+                                   class="w-full rounded-lg bg-dark-1 px-sp-sm py-2 font-mono text-fs-xs !text-slate-300"
+                                   data-cron-copy-source>
+                            <button type="button" class="btn btn-secondary shrink-0" data-cron-copy>
+                                {{ 'aacp.cron.endpoint.copy'|trans }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-fs-xs font-semibold uppercase tracking-wide !text-slate-500">
+                            {{ 'aacp.cron.endpoint.crontab_label'|trans }}
+                        </label>
+                        <pre class="overflow-auto rounded-lg bg-dark-1 p-sp-sm font-mono text-fs-xs !text-slate-300">{{ endpoint.crontab }}</pre>
+                        <p class="mt-1 text-fs-xs !text-slate-500">{{ 'aacp.cron.endpoint.crontab_hint'|trans }}</p>
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-fs-xs font-semibold uppercase tracking-wide !text-slate-500">
+                            {{ 'aacp.cron.endpoint.cli_label'|trans }}
+                        </label>
+                        <pre class="overflow-auto rounded-lg bg-dark-1 p-sp-sm font-mono text-fs-xs !text-slate-300">{{ endpoint.cli }}</pre>
+                    </div>
+                </div>
+            {% else %}
+                <div class="mt-sp-sm rounded-lg border border-warning-500/40 bg-warning-500/10 p-sp-sm text-fs-sm !text-warning-200">
+                    {{ 'aacp.cron.endpoint.token_missing'|trans }}
+                </div>
+            {% endif %}
+        </twig:cp:card>
+
         <div class="flex justify-end">
             <a href="{{ path('aacp_cron_new') }}" class="btn btn-primary">
                 {{ 'aacp.cron.new_job'|trans }}
@@ -47,7 +99,35 @@
                                     {{ task.commandName }}
                                 {% endif %}
                             </td>
-                            <td class="font-mono text-fs-xs !text-slate-400">{{ task.cronExpression }}</td>
+                            <td class="font-mono text-fs-xs !text-slate-400">
+                                {% if task.codeBased %}
+                                    {# The command stays in code; when it runs is the operator's call. #}
+                                    <form method="post" action="{{ path('aacp_cron_code_schedule', {jobName: task.jobName}) }}"
+                                          class="flex flex-wrap items-center gap-2">
+                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                        <input type="text" name="cron_expression" value="{{ task.cronExpression }}"
+                                               placeholder="{{ task.declaredExpression }}"
+                                               class="w-28 rounded bg-dark-1 px-2 py-1 font-mono text-fs-xs !text-slate-200">
+                                        <label class="flex items-center gap-1 text-fs-xs !text-slate-400">
+                                            <input type="checkbox" name="active" value="1" {{ task.active ? 'checked' : '' }}>
+                                            {{ 'aacp.cron.active'|trans }}
+                                        </label>
+                                        <button type="submit" class="text-fs-xs font-medium !text-primary-400 hover:!text-success-300">
+                                            {{ 'aacp.cron.save_schedule'|trans }}
+                                        </button>
+                                    </form>
+                                    {% if task.rescheduled %}
+                                        <form method="post" action="{{ path('aacp_cron_code_reset', {jobName: task.jobName}) }}" class="mt-1">
+                                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                            <button type="submit" class="text-fs-xs !text-slate-500 hover:!text-slate-300">
+                                                {{ 'aacp.cron.reset_schedule'|trans({'default': task.declaredExpression}) }}
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                {% else %}
+                                    {{ task.cronExpression }}
+                                {% endif %}
+                            </td>
                             <td class="text-fs-xs !text-slate-500" data-cron-last-run>
                                 {% if task.codeBased %}
                                     {{ 'aacp.cron.not_tracked'|trans }}
@@ -56,11 +136,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if task.codeBased %}
-                                    <twig:cp:badge status="active" />
-                                {% else %}
-                                    <twig:cp:badge status="{{ task.active ? 'active' : 'inactive' }}" />
-                                {% endif %}
+                                <twig:cp:badge status="{{ task.active ? 'active' : 'inactive' }}" />
                             </td>
                             <td class="text-right">
                                 <div class="flex items-center justify-end gap-3">
@@ -99,6 +175,25 @@
 
     <script{{ csp_nonce_attr() }}>
         (function () {
+            const copyButton = document.querySelector('[data-cron-copy]');
+            const copySource = document.querySelector('[data-cron-copy-source]');
+            if (copyButton && copySource) {
+                const copiedLabel = {{ 'aacp.cron.endpoint.copied'|trans|json_encode|raw }};
+                copyButton.addEventListener('click', function () {
+                    copySource.select();
+                    // execCommand is the fallback: navigator.clipboard needs a
+                    // secure context, and plenty of these panels run on plain http.
+                    const done = navigator.clipboard
+                        ? navigator.clipboard.writeText(copySource.value)
+                        : Promise.resolve(document.execCommand('copy'));
+                    Promise.resolve(done).then(function () {
+                        const original = copyButton.textContent;
+                        copyButton.textContent = copiedLabel;
+                        setTimeout(function () { copyButton.textContent = original; }, 1500);
+                    });
+                });
+            }
+
             const csrfToken = {{ csrf_token|json_encode|raw }};
             const consoleEl = document.getElementById('cp-cron-console');
             const runningLabel = {{ 'aacp.cron.js.running'|trans|json_encode|raw }};

@@ -9,6 +9,7 @@ use App\Core\Cron\CronCommandProcessFactory;
 use App\Core\Cron\CronCommandWhitelist;
 use App\Core\Cron\CronExpressionEvaluator;
 use App\Core\Cron\CronManager;
+use App\Core\Cron\CronOverrideStore;
 use App\Entity\CronJob;
 use App\Entity\CronJobRun;
 use App\Repository\CronJobRepository;
@@ -21,6 +22,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -30,9 +32,16 @@ use Twig\Environment;
 /**
  * Unified cron admin: DB [MANUAL] and code [CODE] tasks in one table.
  * CRUD applies to DB jobs only; Run Now works for both via CronCommandProcessFactory.
+ *
+ * Code tasks are not editable as such — their command lives in the source — but
+ * their schedule and on/off state are an operator decision, stored as overrides
+ * (see CronOverrideStore) so an update cannot quietly undo them.
  */
 final class AACPCronController
 {
+    /** Job names come from #[CpCronJob], e.g. "security.maintenance". */
+    private const JOB_NAME_PATTERN = '[A-Za-z0-9._-]+';
+
     public function __construct(
         private readonly Environment $twig,
         private readonly CsrfTokenManagerInterface $csrfTokenManager,
@@ -42,8 +51,11 @@ final class AACPCronController
         private readonly CronExpressionEvaluator $cronExpressionEvaluator,
         private readonly CronCommandProcessFactory $cronCommandProcessFactory,
         private readonly CronManager $cronManager,
+        private readonly CronOverrideStore $cronOverrideStore,
         private readonly EntityManagerInterface $entityManager,
         private readonly TranslatorInterface $translator,
+        private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly string $cronToken,
     ) {
     }
 
@@ -54,10 +66,83 @@ final class AACPCronController
     {
         $html = $this->twig->render('aacp/cron/index.html.twig', [
             'tasks' => $this->cronManager->getTasks(),
+            'endpoint' => $this->buildEndpointInfo(),
             'csrf_token' => $this->csrfTokenManager->getToken('aacp_cron')->getValue(),
         ]);
 
         return new Response($html);
+    }
+
+    /**
+     * Saves the schedule and on/off state an operator chose for a code task.
+     */
+    #[Route('/aacp/cron/code/{jobName}/schedule', name: 'aacp_cron_code_schedule', methods: ['POST'], requirements: ['jobName' => self::JOB_NAME_PATTERN])]
+    #[IsGranted('system.cron.manage')]
+    public function saveCodeSchedule(string $jobName, Request $request): RedirectResponse
+    {
+        $this->assertValidCsrfToken($request);
+
+        if ($this->cronManager->findDefinitionByJobName($jobName) === null) {
+            throw new NotFoundHttpException($this->translator->trans('aacp.cron.virtual_job_not_found', ['jobName' => $jobName]));
+        }
+
+        $expression = trim((string) $request->request->get('cron_expression'));
+        $active = $request->request->get('active') !== null;
+
+        // An empty box means "use the shipped schedule", so only a value that
+        // was actually typed has to parse.
+        if ($expression !== '' && !$this->cronExpressionEvaluator->isValidExpression($expression)) {
+            return new RedirectResponse('/aacp/cron?'.http_build_query([
+                'errors' => $this->translator->trans('aacp.cron.validation.invalid_expression'),
+            ]));
+        }
+
+        $this->cronOverrideStore->save($jobName, $expression !== '' ? $expression : null, $active);
+
+        return new RedirectResponse('/aacp/cron?schedule_saved=1');
+    }
+
+    /**
+     * Drops the override so the task goes back to the schedule its code declares.
+     */
+    #[Route('/aacp/cron/code/{jobName}/reset', name: 'aacp_cron_code_reset', methods: ['POST'], requirements: ['jobName' => self::JOB_NAME_PATTERN])]
+    #[IsGranted('system.cron.manage')]
+    public function resetCodeSchedule(string $jobName, Request $request): RedirectResponse
+    {
+        $this->assertValidCsrfToken($request);
+
+        $this->cronOverrideStore->forget($jobName);
+
+        return new RedirectResponse('/aacp/cron?schedule_reset=1');
+    }
+
+    /**
+     * Everything the operator needs to wire cron up at their host.
+     *
+     * The endpoint has existed since the beginning but the panel never showed
+     * it, so the usual outcome was an installation where nothing scheduled ever
+     * ran and nobody could see why. An empty CRON_TOKEN disables the endpoint
+     * outright, which the screen has to say rather than print a URL that 401s.
+     *
+     * @return array{configured: bool, url: string, token: string, crontab: string, cli: string}
+     */
+    private function buildEndpointInfo(): array
+    {
+        $base = $this->urlGenerator->generate('cp_cron_execute', [], UrlGeneratorInterface::ABSOLUTE_URL);
+        $configured = $this->cronToken !== '';
+        $url = $configured ? $base.'?token='.rawurlencode($this->cronToken) : $base;
+
+        return [
+            'configured' => $configured,
+            'url' => $url,
+            'token' => $this->cronToken,
+            // Every five minutes: fine-grained enough for the shipped tasks,
+            // coarse enough that a shared host will not complain. Quoted with a
+            // literal single quote rather than escapeshellarg(), which would
+            // follow *this* machine's shell — the line is pasted on the server.
+            'crontab' => sprintf("*/5 * * * * curl -fsS '%s' > /dev/null 2>&1", $url),
+            'cli' => 'php cp-core/bin/console cp:cron:run',
+        ];
     }
 
     #[Route('/aacp/cron/new', name: 'aacp_cron_new', methods: ['GET'])]

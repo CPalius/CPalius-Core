@@ -38,7 +38,9 @@ final class CronDispatcher
         $dueTasks = array_filter(
             $this->cronManager->getTasks(),
             function (CronJob|VirtualCronJob $task) use ($now): bool {
-                if ($task instanceof CronJob && !$task->isActive()) {
+                // Both tracks answer isActive() now: a code job switched off in
+                // AACP must stay off here too, or the panel would be lying.
+                if (!$task->isActive()) {
                     return false;
                 }
 

@@ -1,0 +1,7 @@
+{# Postbit block: earned or assigned rank. Expects authorStats. #}
+{% if authorStats and authorStats.rank %}
+    <span class="forum-postbit__badge" style="--badge-color: {{ authorStats.rank.color }};">
+        {% if authorStats.rank.icon %}<i class="bi {{ authorStats.rank.icon }}"></i>{% endif %}
+        {{ authorStats.rank.label }}
+    </span>
+{% endif %}

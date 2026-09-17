@@ -219,7 +219,7 @@ final class PostFrontController extends AbstractController
 
         return $this->render('@Theme/blog/show.html.twig', [
             'post' => $node,
-            'relatedPosts' => $this->nodeRepository->findRelatedPosts($node),
+            'related' => $this->appearanceService->resolveRelatedPosts($node),
             'featuredImageUrl' => $this->presentationService->resolveFeaturedImageUrl($node),
             'commentContext' => $this->commentService->buildShowContext(
                 $node,

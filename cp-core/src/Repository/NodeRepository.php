@@ -383,33 +383,87 @@ class NodeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Related published posts by primary category (excludes self; empty if uncategorized).
+     * Related published posts, by one of the strategies the blog settings offer.
+     *
+     * Always same type, same locale, published, not this post — those four are
+     * what makes a suggestion usable at all, so no strategy may opt out of them.
+     * What varies is only how the candidates are narrowed.
+     *
+     * @param 'same_category'|'same_tags'|'fixed_category'|'latest' $strategy
+     * @param int|null                                             $categoryId the fixed category, for the 'fixed_category' strategy
      *
      * @return list<Node>
      */
-    public function findRelatedPosts(Node $post, int $limit = 3): array
-    {
-        $category = $post->getCategory();
-        if ($category === null) {
+    public function findRelatedPosts(
+        Node $post,
+        int $limit = 3,
+        string $strategy = 'same_category',
+        ?int $categoryId = null,
+    ): array {
+        if ($limit < 1) {
             return [];
         }
 
-        return $this->createQueryBuilder('n')
+        $qb = $this->createQueryBuilder('n')
             ->andWhere('n.type = :type')
             ->andWhere('n.locale = :locale')
             ->andWhere('n.status = :status')
             ->andWhere('n.deletedAt IS NULL')
-            ->andWhere('n.category = :categoryId')
             ->andWhere('n.id != :excludeId')
             ->setParameter('type', $post->getType())
             ->setParameter('locale', $post->getLocale())
             ->setParameter('status', Node::STATUS_PUBLISHED)
-            ->setParameter('categoryId', $category->getId())
             ->setParameter('excludeId', $post->getId())
             ->orderBy('n.publishedAt', 'DESC')
-            ->setMaxResults($limit)
-            ->getQuery()
-            ->getResult();
+            ->setMaxResults($limit);
+
+        switch ($strategy) {
+            case 'latest':
+                break;
+
+            case 'fixed_category':
+                if ($categoryId === null) {
+                    // "Pick a category" with none picked must show nothing, not
+                    // quietly fall back to the whole blog.
+                    return [];
+                }
+
+                $qb->andWhere('n.category = :categoryId')->setParameter('categoryId', $categoryId);
+                break;
+
+            case 'same_tags':
+                $tagIds = [];
+                foreach ($post->getTags() as $tag) {
+                    $id = $tag->getId();
+                    if ($id !== null) {
+                        $tagIds[] = $id;
+                    }
+                }
+
+                if ($tagIds === []) {
+                    return [];
+                }
+
+                // DISTINCT because a post sharing three tags would otherwise be
+                // returned three times and eat the whole limit by itself.
+                $qb->distinct()
+                    ->innerJoin('n.tags', 'relTag')
+                    ->andWhere('relTag.id IN (:tagIds)')
+                    ->setParameter('tagIds', $tagIds);
+                break;
+
+            case 'same_category':
+            default:
+                $category = $post->getCategory();
+                if ($category === null) {
+                    return [];
+                }
+
+                $qb->andWhere('n.category = :categoryId')->setParameter('categoryId', $category->getId());
+                break;
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     /**

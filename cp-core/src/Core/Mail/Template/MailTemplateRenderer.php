@@ -91,6 +91,25 @@ final class MailTemplateRenderer
             );
         }
 
+        if ($definition->custom) {
+            // No catalogue stands behind an operator's own template, and its
+            // text must not reach the ICU formatter — a stray "{" in a subject
+            // the operator typed would throw instead of mailing. Reaching here
+            // at all means every language was left blank, so the honest result
+            // is the template's name and an empty body, which the send screen
+            // refuses before it can become a real mail.
+            $subject = $this->substitute($definition->subjectKey, $stringParams);
+            $html = $this->substitute($definition->htmlKey, $stringParams);
+
+            return new RenderedMail(
+                subject: $this->tokens($subject, $tokenContext, escape: true),
+                html: $this->tokens($html, $tokenContext, escape: true),
+                text: $this->tokens(self::htmlToText($html), $tokenContext, escape: false),
+                locale: $requested,
+                customised: false,
+            );
+        }
+
         $subject = $this->translate($definition->subjectKey, $stringParams, $requested);
         $html = $this->translate($definition->htmlKey, $stringParams, $requested);
         $text = $definition->textKey !== null
@@ -114,6 +133,12 @@ final class MailTemplateRenderer
      */
     public function shippedDefaults(MailTemplateDefinition $definition, string $locale): array
     {
+        if ($definition->custom) {
+            // Nothing shipped with a template the operator invented, so the
+            // editor opens on an empty body rather than on its own name.
+            return ['subject' => $definition->subjectKey, 'html' => '', 'text' => ''];
+        }
+
         $placeholders = [];
 
         foreach ($definition->parameters as $parameter) {

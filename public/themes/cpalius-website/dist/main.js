@@ -189,7 +189,8 @@
 
     trigger.addEventListener('click', function (e) {
       e.stopPropagation();
-      closeNavbarAlerts();
+      // The alert panels are inside this dropdown now, so closing them here
+      // would throw away the tab the visitor last had open.
       var isOpen = wrapper.classList.toggle('open');
       trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     });
@@ -230,10 +231,6 @@
       btn.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        var user = document.getElementById('navUser');
-        var userTrigger = document.getElementById('navUserTrigger');
-        if (user) user.classList.remove('open');
-        if (userTrigger) userTrigger.setAttribute('aria-expanded', 'false');
 
         var willOpen = !alert.classList.contains('is-open');
         closeNavbarAlerts(willOpen ? alert : null);
@@ -247,7 +244,9 @@
       });
     });
 
-    document.addEventListener('click', function () {
+    document.addEventListener('click', function (e) {
+      var user = document.getElementById('navUser');
+      if (user && user.contains(e.target)) return;
       closeNavbarAlerts();
     });
 
@@ -298,13 +297,26 @@
       } catch (err) {}
     }
 
+    function paintCount(el, count) {
+      var n = Math.max(0, parseInt(count, 10) || 0);
+      el.textContent = n > 99 ? '99+' : String(n);
+      if (n > 0) el.removeAttribute('hidden');
+      else el.setAttribute('hidden', '');
+    }
+
     function setBadge(root, count) {
       var badge = root.querySelector('[data-inbox-badge]');
       if (!badge) return;
-      var n = Math.max(0, parseInt(count, 10) || 0);
-      badge.textContent = n > 99 ? '99+' : String(n);
-      if (n > 0) badge.removeAttribute('hidden');
-      else badge.setAttribute('hidden', '');
+      paintCount(badge, count);
+    }
+
+    // The counts on the avatar live outside the channel container — the trigger
+    // is visible while the dropdown that holds the tabs is not — so they are
+    // found by channel name rather than by walking down from the panel.
+    function setTriggerCounts(name, count) {
+      document.querySelectorAll('[data-inbox-count="' + name + '"]').forEach(function (el) {
+        paintCount(el, count);
+      });
     }
 
     function setLabel(root, unread) {
@@ -367,6 +379,7 @@
           setLabel(root, data.unread);
           renderItems(root, data.items);
         }
+        setTriggerCounts(name, data.unread);
         var latest = parseInt(data.latest_id, 10) || 0;
         var unread = parseInt(data.unread, 10) || 0;
         var prev = seen[name];

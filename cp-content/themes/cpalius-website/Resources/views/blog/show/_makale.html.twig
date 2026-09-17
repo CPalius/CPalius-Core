@@ -1,5 +1,5 @@
 {#
-    Article show — golden-ratio editorial layout. Expects: post, postBody, typeFields, relatedPosts.
+    Article show — golden-ratio editorial layout. Expects: post, postBody, typeFields.
 #}
 <section class="section post-show post-show--makale" id="post-detail">
     <div class="container">
@@ -33,27 +33,6 @@
                 {% include '@Theme/blog/partials/search_widget.html.twig' %}
                 {% include '@Theme/blog/partials/widget_sidebar.html.twig' %}
                 {% include '@Theme/blog/partials/archive_sidebar.html.twig' %}
-
-                {% if relatedPosts is not empty %}
-                    <div class="blog-sidebar-widget">
-                        <h5>{{ 'blog.show.related_title'|trans }}</h5>
-                        <ul class="slw-related-list">
-                            {% for relatedPost in relatedPosts %}
-                                <li class="slw-related-list__item">
-                                    <a href="{{ path('blog_show', {_locale: relatedPost.locale, slug: relatedPost.slug}) }}">
-                                        <span class="slw-related-thumb"><i class="bi bi-journal-code"></i></span>
-                                        <span>
-                                            <span class="slw-related-list__title">{{ relatedPost.title }}</span>
-                                            {% if relatedPost.publishedAt %}
-                                                <time datetime="{{ relatedPost.publishedAt|date('c') }}">{{ relatedPost.publishedAt|date('d.m.Y') }}</time>
-                                            {% endif %}
-                                        </span>
-                                    </a>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                {% endif %}
             </aside>
         </div>
     </div>

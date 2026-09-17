@@ -16,6 +16,13 @@ use App\Core\Annotation\CpSetting;
 #[CpSetting(key: 'core.site_description', label: 'settings.core.site_description', type: 'textarea', default: '', group: 'genel', translatable: true)]
 #[CpSetting(key: 'core.hero_title', label: 'settings.core.hero_title', type: 'text', default: '', group: 'genel', translatable: true)]
 #[CpSetting(key: 'core.maintenance_mode', label: 'settings.core.maintenance_mode', type: 'checkbox', default: false, group: 'genel')]
+/*
+ * Read by MaintenanceModeListener. Empty on purpose: a blank field falls back to
+ * the shipped translation, so a fresh installation is already multilingual and
+ * only the operator who wants their own wording has to type anything.
+ */
+#[CpSetting(key: 'core.maintenance_title', label: 'settings.core.maintenance_title', type: 'text', default: '', group: 'genel', translatable: true)]
+#[CpSetting(key: 'core.maintenance_message', label: 'settings.core.maintenance_message', type: 'textarea', default: '', group: 'genel', translatable: true)]
 #[CpSetting(key: 'core.default_locale', label: 'settings.core.default_locale', type: 'select', default: 'tr', group: 'genel')]
 #[CpSetting(key: 'core.timezone', label: 'settings.core.timezone', type: 'select', default: 'Europe/Istanbul', variants: [
     'Europe/Istanbul' => 'settings.timezone.europe_istanbul',

@@ -304,6 +304,67 @@ use Modules\Blog\PostSubType;
     group: 'blog_comments',
     scope: CpSetting::SCOPE_MODULE,
 )]
+/*
+ * Related posts. Used to be three same-category posts wedged into the sidebar
+ * with nothing to turn off and nothing to tune; the block now sits under the
+ * comments and reads its source from here.
+ */
+#[CpSetting(
+    key: 'blog.related_enabled',
+    label: 'blog.settings.related_enabled',
+    type: 'checkbox',
+    default: true,
+    module: 'blog',
+    group: 'blog_related',
+    scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    key: 'blog.related_title',
+    label: 'blog.settings.related_title',
+    type: 'text',
+    // Empty falls back to the shipped translation, so the heading is already
+    // correct in every active language without anyone typing it twice.
+    default: '',
+    module: 'blog',
+    group: 'blog_related',
+    scope: CpSetting::SCOPE_MODULE,
+    translatable: true,
+)]
+#[CpSetting(
+    key: 'blog.related_source',
+    label: 'blog.settings.related_source',
+    type: 'select',
+    default: 'same_category',
+    variants: [
+        'same_category' => 'blog.settings.related_source.same_category',
+        'same_tags' => 'blog.settings.related_source.same_tags',
+        'fixed_category' => 'blog.settings.related_source.fixed_category',
+        'latest' => 'blog.settings.related_source.latest',
+    ],
+    module: 'blog',
+    group: 'blog_related',
+    scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    // Options are filled at runtime by BlogCategoryVariantProvider: the
+    // categories a site has cannot be compiled into the container.
+    key: 'blog.related_category',
+    label: 'blog.settings.related_category',
+    type: 'select',
+    default: '',
+    module: 'blog',
+    group: 'blog_related',
+    scope: CpSetting::SCOPE_MODULE,
+)]
+#[CpSetting(
+    key: 'blog.related_limit',
+    label: 'blog.settings.related_limit',
+    type: 'integer',
+    default: 3,
+    module: 'blog',
+    group: 'blog_related',
+    scope: CpSetting::SCOPE_MODULE,
+)]
 #[CpSetting(
     key: 'blog.comments_closed_notice',
     label: 'blog.settings.comments_closed_notice',

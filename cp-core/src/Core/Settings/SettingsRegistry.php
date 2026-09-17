@@ -38,6 +38,9 @@ class SettingsRegistry
     /** @var array<string, true> Setting keys read this request (origin-cache config tags). */
     private array $touchedKeys = [];
 
+    /**
+     * @param iterable<SettingVariantProviderInterface> $variantProviders runtime select options (see the interface)
+     */
     public function __construct(
         private readonly SettingRepository $repository,
         private readonly LocaleProvider $localeProvider,
@@ -46,6 +49,7 @@ class SettingsRegistry
         private readonly ModuleContributionCatalog $contributions = new ModuleContributionCatalog(),
         private readonly ?SettingSecretCodec $secretCodec = null,
         private readonly ?OriginCachePurger $originCachePurger = null,
+        private readonly iterable $variantProviders = [],
     ) {
     }
 
@@ -329,6 +333,25 @@ class SettingsRegistry
             }
 
             return $definition->withVariants($variants);
+        }
+
+        foreach ($this->variantProviders as $provider) {
+            try {
+                if (!$provider->supports($definition->key)) {
+                    continue;
+                }
+
+                $variants = $provider->variants($definition->key);
+            } catch (\Throwable) {
+                // These read the database. A settings screen that 500s because
+                // one dropdown could not be filled is worse than one dropdown
+                // falling back to its compiled options.
+                continue;
+            }
+
+            if ($variants !== []) {
+                return $definition->withVariants($variants);
+            }
         }
 
         return $definition;

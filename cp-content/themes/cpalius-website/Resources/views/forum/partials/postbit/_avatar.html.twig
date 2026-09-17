@@ -1,0 +1,11 @@
+{# Postbit block: avatar. Expects post, postNum. #}
+<div class="forum-postbit__avatar">
+    {% if post.author %}
+        <a href="{{ path('forum_profile', {username: post.author.profileSlug}) }}" class="forum-postbit__avatar-link">
+            {% include '@Theme/forum/partials/_avatar.html.twig' with {name: post.posterName, user: post.author, size: 'xl', square: true, online: true} %}
+        </a>
+    {% else %}
+        {% include '@Theme/forum/partials/_avatar.html.twig' with {name: post.posterName, size: 'xl', square: true} %}
+    {% endif %}
+    {% if postNum == 1 %}<span class="forum-postbit__op-ring" title="{{ 'forum.op_ring_title'|trans }}"></span>{% endif %}
+</div>

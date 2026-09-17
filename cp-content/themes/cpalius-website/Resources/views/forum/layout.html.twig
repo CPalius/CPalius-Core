@@ -2,10 +2,17 @@
 
 {% block stylesheets %}
     <link rel="stylesheet" href="/themes/cpalius-website/dist/forum.css">
+    {# Operator CSS from Studio -> Forum -> Postbit. Last, so it wins over the
+       theme without anyone having to write !important. ForumPostbitLayout::css()
+       has already removed anything that could close this tag. #}
+    {% set postbitCss = forum_postbit_css() %}
+    {% if postbitCss %}
+        <style{{ csp_nonce_attr() }}>{{ postbitCss|raw }}</style>
+    {% endif %}
 {% endblock %}
 
 {% block content %}
-<section class="section forum-page forum" id="forum" data-unfurl-endpoint="{{ path('forum_unfurl') }}" data-unfurl-token="{{ csrf_token('forum_unfurl') }}" data-i18n-report-prompt="{{ 'forum.js.report_prompt'|trans({}, 'forums') }}" data-i18n-link-copied="{{ 'forum.js.link_copied'|trans({}, 'forums') }}" data-i18n-close="{{ 'forum.js.close'|trans({}, 'forums') }}" data-i18n-prev="{{ 'forum.js.prev'|trans({}, 'forums') }}" data-i18n-next="{{ 'forum.js.next'|trans({}, 'forums') }}">
+<section class="section forum-page forum" id="forum" data-unfurl-endpoint="{{ path('forum_unfurl') }}" data-unfurl-token="{{ csrf_token('forum_unfurl') }}" data-i18n-report-prompt="{{ 'forum.js.report_prompt'|trans({}, 'forums') }}" data-i18n-link-copied="{{ 'forum.js.link_copied'|trans({}, 'forums') }}" data-i18n-close="{{ 'forum.js.close'|trans({}, 'forums') }}" data-i18n-prev="{{ 'forum.js.prev'|trans({}, 'forums') }}" data-i18n-next="{{ 'forum.js.next'|trans({}, 'forums') }}" data-i18n-sel-quote="{{ 'forum.js.selection_quote'|trans }}" data-i18n-sel-multi="{{ 'forum.js.selection_multi_quote'|trans }}" data-i18n-view-profile="{{ 'forum.js.view_profile'|trans }}" data-i18n-stat-posts="{{ 'forum.stat.post'|trans }}" data-i18n-stat-joined="{{ 'forum.js.joined_label'|trans }}" data-member-card-url="{{ path('forum_api_member_card', {username: '__SLUG__'}) }}" data-post-preview-url="{{ path('forum_api_post_preview', {topicId: 0, number: 0}) }}">
     <div class="container">
         {% block forum_breadcrumbs %}{% endblock %}
 

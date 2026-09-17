@@ -35,12 +35,14 @@ class LogEntryRepository extends ServiceEntityRepository
         array $extra,
         \DateTimeImmutable $createdAt,
     ): void {
+        // Log payloads carry request data verbatim, so invalid UTF-8 reaches here from
+        // scanner traffic. Substituting keeps the row; throwing used to lose the batch.
         $this->connection->insert('cp_log_entries', [
-            'level' => mb_substr($level, 0, 16),
-            'channel' => mb_substr($channel, 0, 64),
-            'message' => $message,
-            'context' => json_encode($context, \JSON_THROW_ON_ERROR),
-            'extra' => json_encode($extra, \JSON_THROW_ON_ERROR),
+            'level' => mb_substr(mb_scrub($level, 'UTF-8'), 0, 16),
+            'channel' => mb_substr(mb_scrub($channel, 'UTF-8'), 0, 64),
+            'message' => mb_scrub($message, 'UTF-8'),
+            'context' => json_encode($context, \JSON_THROW_ON_ERROR | \JSON_INVALID_UTF8_SUBSTITUTE),
+            'extra' => json_encode($extra, \JSON_THROW_ON_ERROR | \JSON_INVALID_UTF8_SUBSTITUTE),
             'created_at' => $createdAt,
         ], [
             'created_at' => Types::DATETIME_IMMUTABLE,

@@ -59,7 +59,13 @@
     post: post,
     postBody: postBody,
     typeFields: typeFields,
-    relatedPosts: relatedPosts,
     commentContext: commentContext|default({enabled: false, canSubmit: false, threads: [], approvedCount: 0}),
 } %}
+
+{# Outside the sub-type include on purpose: every sub-type ends with its
+   comments, so one section here lands after them for all four, and a new
+   sub-type gets related posts without having to remember to add them. #}
+{% include '@Theme/blog/partials/related_posts.html.twig' with {
+    related: related|default({enabled: false, title: '', posts: []}),
+} only %}
 {% endblock %}

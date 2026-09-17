@@ -1,0 +1,107 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.postbit.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.dashboard.action.dashboard'|default('studio.forum.postbit.action.dashboard')|trans }}</a>
+    <a href="{{ path('admin_forum_settings_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.postbit.action.settings'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+
+    <p class="text-fs-sm text-neutral-500" style="margin-bottom:1rem;">{{ 'studio.forum.postbit.intro'|trans }}</p>
+
+    <form method="post" action="{{ path('admin_forum_postbit_update') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+
+        <twig:studio:card title="{{ 'studio.forum.postbit.blocks.heading'|trans }}">
+            <p class="text-fs-xs text-neutral-500">{{ 'studio.forum.postbit.blocks.hint'|trans }}</p>
+
+            {# Each row carries its own hidden order field. Reordering rewrites
+               those values, so the form posts a real order even with no JS. #}
+            <ul class="cp-postbit-list" data-postbit-list>
+                {% for row in rows %}
+                    <li class="cp-postbit-row" data-postbit-row>
+                        <input type="hidden" name="order[]" value="{{ row.id }}" data-postbit-order>
+
+                        <span class="cp-postbit-row__grip" aria-hidden="true"><i class="bi bi-grip-vertical"></i></span>
+
+                        <label class="cp-postbit-row__label">
+                            <input type="checkbox" name="visible[]" value="{{ row.id }}" {{ row.visible ? 'checked' : '' }}>
+                            <span>{{ ('studio.forum.postbit.block.' ~ row.id)|trans }}</span>
+                        </label>
+
+                        <span class="cp-postbit-row__actions">
+                            <button type="button" class="btn btn-sm btn-neutral" data-postbit-up
+                                    title="{{ 'studio.forum.postbit.move_up'|trans }}">&uarr;</button>
+                            <button type="button" class="btn btn-sm btn-neutral" data-postbit-down
+                                    title="{{ 'studio.forum.postbit.move_down'|trans }}">&darr;</button>
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+
+            <p class="text-fs-xs text-neutral-500" style="margin-top:.75rem;">{{ 'studio.forum.postbit.identity_note'|trans }}</p>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'studio.forum.postbit.css.heading'|trans }}">
+            <p class="text-fs-xs text-neutral-500">{{ 'studio.forum.postbit.css.hint'|trans }}</p>
+            <textarea name="css" rows="14" maxlength="{{ maxCssLength }}" spellcheck="false"
+                      class="form-control"
+                      style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px;"
+                      placeholder=".forum-postbit__name a { text-transform: uppercase; }">{{ css }}</textarea>
+            <p class="text-fs-xs text-neutral-500" style="margin-top:.5rem;">{{ 'studio.forum.postbit.css.scope'|trans }}</p>
+        </twig:studio:card>
+
+        <div style="display:flex; gap:.5rem; align-items:center; margin-top:1rem;">
+            <button type="submit" class="btn btn-primary">{{ 'studio.forum.postbit.save'|trans }}</button>
+        </div>
+    </form>
+
+    <form method="post" action="{{ path('admin_forum_postbit_reset') }}" style="margin-top:.75rem;"
+          onsubmit="return confirm({{ 'studio.forum.postbit.reset_confirm'|trans|json_encode|raw }});">
+        <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+        <button type="submit" class="btn btn-sm btn-neutral">{{ 'studio.forum.postbit.reset'|trans }}</button>
+    </form>
+
+    <style{{ csp_nonce_attr() }}>
+        .cp-postbit-list { list-style: none; margin: .75rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+        .cp-postbit-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; }
+        .cp-postbit-row__grip { opacity: .45; cursor: grab; }
+        .cp-postbit-row__label { display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer; }
+        .cp-postbit-row__actions { display: flex; gap: 4px; }
+    </style>
+
+    <script{{ csp_nonce_attr() }}>
+        (function () {
+            var list = document.querySelector('[data-postbit-list]');
+            if (!list) return;
+
+            // Buttons rather than drag-only: reordering has to work on a phone
+            // and with a keyboard, and the arrows are the thing that does.
+            function move(row, delta) {
+                var rows = Array.prototype.slice.call(list.querySelectorAll('[data-postbit-row]'));
+                var index = rows.indexOf(row);
+                var target = index + delta;
+                if (index < 0 || target < 0 || target >= rows.length) return;
+
+                if (delta < 0) {
+                    list.insertBefore(row, rows[target]);
+                } else {
+                    list.insertBefore(rows[target], row);
+                }
+            }
+
+            list.addEventListener('click', function (event) {
+                var up = event.target.closest('[data-postbit-up]');
+                var down = event.target.closest('[data-postbit-down]');
+                if (!up && !down) return;
+
+                event.preventDefault();
+                var row = (up || down).closest('[data-postbit-row]');
+                if (row) move(row, up ? -1 : 1);
+            });
+        })();
+    </script>
+{% endblock %}

@@ -16,7 +16,7 @@ final class SettingDefinition
     private const TRANSLATABLE_TYPES = ['text', 'textarea'];
 
     /** Settings owned by these pseudo-modules are managed on their own screens. */
-    public const HIDDEN_MODULES = ['studio_homepage', 'theme_manager', 'module_lifecycle', 'storage'];
+    public const HIDDEN_MODULES = ['studio_homepage', 'theme_manager', 'module_lifecycle', 'storage', 'forum_postbit'];
 
     /**
      * @param array<string, string> $variants

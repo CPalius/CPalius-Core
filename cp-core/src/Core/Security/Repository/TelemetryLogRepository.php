@@ -18,6 +18,12 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class TelemetryLogRepository extends ServiceEntityRepository
 {
+    /** Per-value cap inside the details JSON, so one padded payload cannot bloat the row. */
+    private const DETAIL_VALUE_LIMIT = 1000;
+
+    /** Keys come from attacker-controlled parameter names; keep them short too. */
+    private const DETAIL_KEY_LIMIT = 190;
+
     public function __construct(
         ManagerRegistry $registry,
         private readonly Connection $connection,
@@ -40,21 +46,58 @@ class TelemetryLogRepository extends ServiceEntityRepository
         array $details,
     ): void {
         $this->connection->insert('cp_system_telemetry_logs', [
-            'ip_address' => mb_substr($ipAddress, 0, 45),
+            'ip_address' => self::cleanText($ipAddress, 45),
             'user_id' => $userId,
-            'request_method' => mb_substr(strtoupper($requestMethod), 0, 10),
-            'request_uri' => mb_substr($requestUri, 0, 1000),
-            'user_agent' => mb_substr($userAgent, 0, 500),
+            'request_method' => self::cleanText(strtoupper($requestMethod), 10),
+            'request_uri' => self::cleanText($requestUri, 1000),
+            'user_agent' => self::cleanText($userAgent, 500),
             'severity' => $severity,
             'event_type' => $eventType,
             'threat_score' => max(0, min(100, $threatScore)),
-            'details' => $details,
+            'details' => self::cleanJson($details),
             'created_at' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
         ], [
             'user_id' => Types::BIGINT,
             'threat_score' => Types::INTEGER,
             'details' => Types::JSON,
         ]);
+    }
+
+    /**
+     * Telemetry records exactly the traffic that is least likely to be well formed:
+     * scanners send raw bytes, over-long encodings and NUL padding. Those break both
+     * json_encode() on the details column and the utf8mb4 text columns, and the whole
+     * row was lost. Scrub at the write boundary so a malformed request still gets logged.
+     */
+    private static function cleanText(string $value, int $limit): string
+    {
+        $value = str_replace("\0", '', mb_scrub($value, 'UTF-8'));
+
+        return mb_substr($value, 0, $limit, 'UTF-8');
+    }
+
+    /**
+     * @param array<array-key, mixed> $details
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function cleanJson(array $details): array
+    {
+        $clean = [];
+
+        foreach ($details as $key => $value) {
+            $key = \is_string($key) ? self::cleanText($key, self::DETAIL_KEY_LIMIT) : $key;
+
+            $clean[$key] = match (true) {
+                \is_array($value) => self::cleanJson($value),
+                \is_string($value) => self::cleanText($value, self::DETAIL_VALUE_LIMIT),
+                \is_float($value) => is_finite($value) ? $value : null,
+                $value === null, \is_scalar($value) => $value,
+                default => null,
+            };
+        }
+
+        return $clean;
     }
 
     /**

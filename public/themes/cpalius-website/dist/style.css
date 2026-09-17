@@ -752,6 +752,7 @@ p {
 }
 
 .navbar-user__trigger {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -830,7 +831,8 @@ p {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  min-width: 200px;
+  min-width: 320px;
+  max-width: min(360px, calc(100vw - 24px));
   background: var(--cp-darker);
   border: 1px solid rgba(255,255,255,0.08);
   box-shadow: 0 12px 28px rgba(0,0,0,0.4);
@@ -960,6 +962,90 @@ p {
 
 .navbar-alert.is-open .navbar-alert__panel {
   display: flex;
+}
+
+/* ---- Inbox inside the user dropdown ----
+   The bell and the envelope used to be two buttons sitting next to the avatar.
+   They are now the two tabs at the top of the user menu; what the dropdown gets
+   is the same .navbar-alert markup, re-laid-out. display:contents lets the
+   button and the panel become direct children of the flex row, so the two tabs
+   share line one and whichever panel is open takes line two by itself. */
+.navbar-user__inbox {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px;
+}
+
+.navbar-user__dropdown .navbar-alert {
+  display: contents;
+}
+
+.navbar-user__dropdown .navbar-alert__btn {
+  flex: 1 1 0;
+  width: auto;
+  height: 32px;
+  gap: 6px;
+  padding: 0 8px;
+  justify-content: flex-start;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.navbar-alert__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navbar-user__dropdown .navbar-alert__badge {
+  position: static;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.navbar-user__dropdown .navbar-alert__panel {
+  position: static;
+  order: 2;
+  flex: 1 0 100%;
+  width: auto;
+  max-width: none;
+  max-height: min(340px, calc(100vh - var(--navbar-h, 64px) - 120px));
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  box-shadow: none;
+}
+
+/* Unread counts pinned to the top-right of the avatar/name trigger. */
+.navbar-user__counts {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  display: flex;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.navbar-user__count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  border: 1px solid var(--cp-dark, #0f1216);
+}
+
+.navbar-user__count--blue {
+  background: #2563eb;
+}
+
+.navbar-user__count--red {
+  background: #dc2626;
 }
 
 .navbar-notif-box__head {
@@ -3919,6 +4005,22 @@ a.slw-sidebar-profile__name:hover {
 
 .post-show--not .post-tags {
   margin-top: var(--sp-md);
+}
+
+/* Related posts: a full-width section under the comments, not a sidebar list.
+   The rule above the heading is what tells the reader the article is over. */
+.post-related {
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.post-related .blog-post-grid {
+  margin-top: var(--sp-md);
+}
+
+@media (max-width: 900px) {
+  .post-related .blog-post-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (min-width: 720px) {

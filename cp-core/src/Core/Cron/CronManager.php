@@ -26,6 +26,7 @@ final class CronManager
         private readonly LoggerInterface $logger,
         private readonly string $projectDir,
         private readonly array $cronDefinitions,
+        private readonly CronOverrideStore $overrides,
     ) {
     }
 
@@ -42,15 +43,21 @@ final class CronManager
             $tasks[] = $cronJob;
         }
 
+        $overrides = $this->overrides->all();
+
         foreach ($this->cronDefinitions as $definition) {
+            $override = $overrides[$definition['jobName']] ?? null;
+
             $tasks[] = new VirtualCronJob(
                 jobName: $definition['jobName'],
                 description: $definition['description'],
-                cronExpression: $definition['schedule'],
+                cronExpression: $override['schedule'] ?? $definition['schedule'],
                 sourceType: $definition['sourceType'],
                 sourceDetail: $definition['sourceType'] === 'attribute'
                     ? sprintf('%s::%s()', $definition['serviceId'], $definition['method'])
                     : (string) $definition['file'],
+                declaredExpression: $definition['schedule'],
+                active: $override['active'] ?? true,
             );
         }
 
