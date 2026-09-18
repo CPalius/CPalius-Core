@@ -33,26 +33,43 @@
   --cp-success: #27AE60;
   --cp-danger: #C0392B;
 
-  /* Golden Ratio Typography Scale */
+  /*
+    Golden Ratio Typography Scale — fluid above --fs-md.
+
+    These were fixed pixels, which is what actually broke the site on a phone:
+    a 72px hero and a 46px section title do not fit 360px however many media
+    queries the components carry, and every page reaching for a token inherited
+    the problem at once.
+
+    Each clamp() is built so its vw term reaches the old value at a 1200px
+    viewport — the container maximum. At desktop width the rendering is
+    unchanged to the pixel; only narrower viewports scale down, and the floor
+    stops them before the text gets small enough to hurt.
+
+    Body sizes (xs/sm/base/md) stay fixed on purpose: 15px body text is already
+    right on a phone, and scaling it with the viewport would make it worse.
+  */
   --fs-xs: 11px;
   --fs-sm: 13px;
   --fs-base: 15px;
   --fs-md: 17px;
-  --fs-lg: 22px;
-  --fs-xl: 28px;
-  --fs-2xl: 36px;
-  --fs-3xl: 46px;
-  --fs-4xl: 58px;
-  --fs-hero: 72px;
+  --fs-lg: clamp(18px, 1.84vw, 22px);
+  --fs-xl: clamp(21px, 2.34vw, 28px);
+  --fs-2xl: clamp(25px, 3vw, 36px);
+  --fs-3xl: clamp(29px, 3.84vw, 46px);
+  --fs-4xl: clamp(33px, 4.84vw, 58px);
+  --fs-hero: clamp(38px, 6vw, 72px);
 
-  /* Golden Ratio Spacing */
+  /* Golden Ratio Spacing — same rule: identical at 1200px, fluid below it.
+     The small steps stay fixed; they are gaps inside components, not page
+     rhythm, and shrinking them further only makes things touch. */
   --sp-xs: 10px;
   --sp-sm: 16px;
-  --sp-md: 26px;
-  --sp-lg: 42px;
-  --sp-xl: 68px;
-  --sp-2xl: 110px;
-  --sp-3xl: 178px;
+  --sp-md: clamp(18px, 2.17vw, 26px);
+  --sp-lg: clamp(26px, 3.5vw, 42px);
+  --sp-xl: clamp(38px, 5.67vw, 68px);
+  --sp-2xl: clamp(54px, 9.17vw, 110px);
+  --sp-3xl: clamp(72px, 14.84vw, 178px);
 
   /* Layout */
   --container-max: 1200px;
@@ -7003,5 +7020,147 @@ code.code-inline,
 @media (max-width: 640px) {
   .blog-comments__replies {
     margin-left: 1.25rem;
+  }
+}
+
+
+/* ================================================================
+   MOBILE HARDENING
+   ----------------------------------------------------------------
+   Kept as one block at the end of the file on purpose: these are the
+   cross-cutting rules, and they have to win over the per-component
+   rules above without anybody having to raise specificity.
+
+   Why this instead of Bootstrap: the components in this theme already
+   carry their own breakpoints. What they did not have was a type and
+   spacing scale that shrinks (see the clamp() tokens at the top of
+   this file) and a floor under the things that overflow no matter how
+   a component is laid out — long URLs, wide tables, code blocks and
+   embeds. A grid framework does not supply either of those.
+
+   Breakpoints used across this theme, largest first. New rules should
+   pick from this list rather than inventing another width:
+     1100px  wide-desktop shelves collapse
+      900px  tablet: side rails and multi-column rows stack
+      720px  small tablet / large phone
+      600px  phone: single column
+      420px  narrow phone: drop optional chrome
+   ================================================================ */
+
+/* ---- 1. Overflow floor --------------------------------------
+   A flex or grid child defaults to min-width:auto, so one long word
+   or one wide table pushes the whole track past the viewport. The
+   symptom on a phone is a page that scrolls sideways, or — because
+   body has overflow-x:hidden — content quietly cut off at the edge. */
+.grid-golden-major,
+.grid-golden-minor {
+  min-width: 0;
+}
+
+/* ---- 2. Unbreakable strings in written content ---------------
+   A pasted link with no spaces in it is the single most common cause
+   of a blown-out mobile layout on a forum or a blog. anywhere (not
+   break-word) so the break can also happen mid-URL. */
+.post-body,
+.forum-post__body,
+.blog-comment__body,
+.whitepaper-body,
+.whitepaper-article,
+.roadmap-detail-body,
+.manifesto-content,
+.arch-card-content,
+.slw-feed-card__body,
+.forum-search-post__body,
+.forum-notif-item__body {
+  overflow-wrap: anywhere;
+}
+
+/* ---- 3. Tables inside written content ------------------------
+   An author's table has no idea how wide the screen is. Scroll it
+   instead of letting it decide the page width. Layout tables in the
+   theme's own markup are untouched: this only reaches content areas. */
+.post-body table,
+.forum-post__body table,
+.whitepaper-body table,
+.roadmap-detail-body table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---- 4. Code ------------------------------------------------- */
+.post-body pre,
+.forum-post__body pre,
+.whitepaper-body pre,
+.roadmap-detail-body pre {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.post-body code,
+.forum-post__body code,
+.whitepaper-body code,
+.roadmap-detail-body code {
+  overflow-wrap: anywhere;
+}
+
+/* ---- 5. Embeds ------------------------------------------------
+   img already has max-width:100% near the top of this file; iframes
+   and the rest do not inherit that. */
+iframe,
+video,
+embed,
+object {
+  max-width: 100%;
+}
+
+.post-body iframe,
+.forum-post__body iframe,
+.whitepaper-body iframe,
+.roadmap-detail-body iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+}
+
+/* ---- 6. Touch targets ----------------------------------------
+   Only where the pointer is actually coarse, so a mouse user does not
+   get phone-sized buttons. 40px is the practical floor for a thumb. */
+@media (pointer: coarse) {
+  .btn,
+  .navbar-toggle,
+  .forum-tool-btn,
+  .forum-filters__item,
+  .pagination a,
+  .pagination span {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ---- 7. Phone ------------------------------------------------- */
+@media (max-width: 600px) {
+  /* Headings set in the display face run long; let them break rather
+     than reach past the gutter. */
+  h1, h2, h3,
+  .section-title,
+  .hero-title {
+    overflow-wrap: break-word;
+  }
+
+  /* Anything the theme lays out as side-by-side halves. */
+  .grid-golden {
+    flex-direction: column;
+  }
+
+  .grid-golden-major,
+  .grid-golden-minor {
+    flex: 1 1 auto;
+    max-width: 100%;
   }
 }

@@ -18,8 +18,10 @@
 {% block forum_content %}
 <div class="forum-header fade-in" style="text-align:center; max-width: 520px; margin: 0 auto var(--sp-lg);">
     <span class="section-label">{{ 'account.two_factor.label'|trans }}</span>
-    <h1 class="section-title">{{ 'account.two_factor.setup_heading'|trans }}</h1>
-    <p class="forum-header__desc" style="margin: 0 auto;">{{ 'account.two_factor.setup_desc'|trans }}</p>
+    <h1 class="section-title">{{ 'account.two_factor.setup_email_heading'|trans }}</h1>
+    <p class="forum-header__desc" style="margin: 0 auto;">
+        {{ 'account.two_factor.setup_email_desc'|trans({'email': maskedEmail, 'minutes': minutes}) }}
+    </p>
 </div>
 
 {% if mandatory %}
@@ -28,25 +30,15 @@
     </div>
 {% endif %}
 
+{% if notice is defined and notice is not null %}
+    <div class="forum-flash forum-flash--success" style="max-width: 520px; margin: 0 auto var(--sp-md);">{{ notice }}</div>
+{% endif %}
+
 {% if error is not null %}
     <div class="forum-flash forum-flash--error" style="max-width: 520px; margin: 0 auto var(--sp-md);">{{ error }}</div>
 {% endif %}
 
 <div class="forum-form fade-in" style="max-width: 520px; margin: 0 auto;">
-    <ol style="padding-left: var(--sp-md); font-size: var(--fs-sm); color: var(--slw-text-muted); line-height: 1.8;">
-        <li>{{ 'account.two_factor.step_install'|trans }}</li>
-        <li>{{ 'account.two_factor.step_scan'|trans }}</li>
-        <li>{{ 'account.two_factor.step_confirm'|trans }}</li>
-    </ol>
-
-    <div style="margin: var(--sp-md) 0; padding: var(--sp-sm); border: 1px solid var(--slw-border); border-radius: 8px;">
-        <p style="margin: 0 0 var(--sp-xs); font-size: var(--fs-sm); font-weight: 600;">{{ 'account.two_factor.manual_entry'|trans }}</p>
-        <code style="display:block; word-break: break-all; font-size: var(--fs-md); letter-spacing: 0.08em;">{{ secret }}</code>
-        <p style="margin: var(--sp-xs) 0 0; font-size: var(--fs-sm); color: var(--slw-text-muted);">
-            <a href="{{ provisioningUri }}" style="color: var(--cp-accent); text-decoration: underline;">{{ 'account.two_factor.open_in_app'|trans }}</a>
-        </p>
-    </div>
-
     <form method="post" action="{{ path('account_two_factor_setup') }}">
         <div class="forum-field">
             <label for="two-factor-setup-code">{{ 'account.two_factor.code_label'|trans }}</label>
@@ -62,7 +54,19 @@
         </div>
     </form>
 
-    {% if canSwitch|default(false) %}
+    <form method="post" action="{{ path('account_two_factor_setup') }}" style="margin-top: var(--sp-sm);">
+        <input type="hidden" name="_token" value="{{ csrf_token('account_two_factor_setup') }}">
+        <input type="hidden" name="action" value="resend">
+        <button type="submit" class="btn btn-sm btn-ghost" {{ resendWait > 0 ? 'disabled' : '' }}>
+            {% if resendWait > 0 %}
+                {{ 'account.two_factor.resend_wait'|trans({'seconds': resendWait}) }}
+            {% else %}
+                {{ 'account.two_factor.resend'|trans }}
+            {% endif %}
+        </button>
+    </form>
+
+    {% if canSwitch %}
         <form method="post" action="{{ path('account_two_factor_setup') }}" style="margin-top: var(--sp-sm);">
             <input type="hidden" name="_token" value="{{ csrf_token('account_two_factor_setup') }}">
             <input type="hidden" name="action" value="restart">

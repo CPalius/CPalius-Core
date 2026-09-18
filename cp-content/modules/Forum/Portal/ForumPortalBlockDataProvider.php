@@ -9,6 +9,7 @@ use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
+use Modules\Forum\Service\ForumWordFilterService;
 
 /**
  * Homepage forum portal blocks — extracted from ThemeController.
@@ -28,6 +29,7 @@ final class ForumPortalBlockDataProvider implements PortalBlockDataProviderInter
         private readonly ForumTopicRepository $forumTopicRepository,
         private readonly ForumPostRepository $forumPostRepository,
         private readonly ForumSectionRepository $forumSectionRepository,
+        private readonly ForumWordFilterService $wordFilterService,
     ) {
     }
 
@@ -39,10 +41,13 @@ final class ForumPortalBlockDataProvider implements PortalBlockDataProviderInter
     public function provide(string $blockId, array $block, string $locale): ?array
     {
         $limit = (int) ($block['limit'] ?? 5);
+        // Portal blocks render for whoever is looking, so they honour that
+        // reader's word filter like every other topic list.
+        $filtered = $this->wordFilterService->termsForViewer();
 
         return match ($blockId) {
-            'latest_forum_topics' => $this->wrapItems($this->forumTopicRepository->findLatest($limit, 0, $locale)),
-            'popular_forum_topics' => $this->wrapItems($this->forumTopicRepository->findPopular($limit, $locale)),
+            'latest_forum_topics' => $this->wrapItems($this->forumTopicRepository->findLatest($limit, 0, $locale, $filtered)),
+            'popular_forum_topics' => $this->wrapItems($this->forumTopicRepository->findPopular($limit, $locale, $filtered)),
             'latest_forum_posts' => $this->wrapItems($this->forumPostRepository->findLatest($limit, $locale)),
             'forum_boards' => $this->wrapItems($this->loadForumBoards($locale, $limit)),
             'forum_stats' => $this->aggregateForumStats($locale),

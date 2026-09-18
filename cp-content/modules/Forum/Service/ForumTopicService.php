@@ -39,6 +39,7 @@ final class ForumTopicService
         private readonly OriginCachePurger $originCachePurger,
         private readonly ForumCensorService $censorService,
         private readonly ForumPostHoldService $holdService,
+        private readonly ForumAntiBumpService $antiBumpService,
     ) {
     }
 
@@ -100,12 +101,24 @@ final class ForumTopicService
         return $topic;
     }
 
-    public function addReply(ForumTopic $topic, User $author, string $body, Request $request): ForumPost
+    public function addReply(ForumTopic $topic, User $author, string $body, Request $request): ForumReplyResult
     {
-        $post = new ForumPost($topic, $topic->getSection(), $this->posterLabel($author), $this->sanitizeBody($body));
+        $sanitized = $this->sanitizeBody($body);
+        $held = $this->holdService->shouldHold($author);
+
+        // Anti-bump runs before anything is persisted: a folded reply must never
+        // exist as a row, or the post count and the "last post" pointer would
+        // move for the instant it took to merge it away again.
+        $mergeTarget = $this->antiBumpService->mergeTarget($topic, $author, $held);
+        if ($mergeTarget !== null) {
+            return ForumReplyResult::mergedInto(
+                $this->antiBumpService->appendTo($mergeTarget, $sanitized, $topic),
+            );
+        }
+
+        $post = new ForumPost($topic, $topic->getSection(), $this->posterLabel($author), $sanitized);
         $post->setAuthor($author);
         $post->setPosterIp($request->getClientIp());
-        $held = $this->holdService->shouldHold($author);
         if ($held) {
             $post->setDiscussionState(ForumDiscussionState::Moderated);
         }
@@ -131,7 +144,7 @@ final class ForumTopicService
             $this->invalidatePublicCache();
         }
 
-        return $post;
+        return ForumReplyResult::created($post);
     }
 
     public function publishHeldPost(ForumPost $post): void
@@ -304,14 +317,36 @@ final class ForumTopicService
             return false;
         }
 
-        $minutes = (int) $this->settingsRegistry->get(
-            'forum.edit_time_limit',
-            $this->settingsRegistry->get('forum.edit_timeout_minutes', ForumDictionary::DEFAULT_EDIT_TIMEOUT_MINUTES),
-        );
-        $timeout = max(0, $minutes) * 60;
+        $timeout = $this->editWindowMinutes($post) * 60;
         $elapsed = time() - $post->getCreatedAt()->getTimestamp();
 
         return $elapsed <= $timeout;
+    }
+
+    /**
+     * How long the author may keep editing this post.
+     *
+     * The opening post gets its own, longer allowance: it carries the title and
+     * the question everybody else is answering, so a typo in it costs the whole
+     * thread, while a typo in reply #40 costs one line. A reply is also the half
+     * an author is tempted to rewrite after being argued with, which is exactly
+     * what a short window is for.
+     */
+    public function editWindowMinutes(ForumPost $post): int
+    {
+        $replyDefault = (int) $this->settingsRegistry->get(
+            'forum.edit_time_limit',
+            $this->settingsRegistry->get('forum.edit_timeout_minutes', ForumDictionary::DEFAULT_EDIT_TIMEOUT_MINUTES),
+        );
+
+        if ($post->getTopic()->getFirstPostId() !== $post->getId()) {
+            return max(0, $replyDefault);
+        }
+
+        return max(0, (int) $this->settingsRegistry->get(
+            'forum.edit_time_limit_topic',
+            ForumDictionary::DEFAULT_TOPIC_EDIT_TIMEOUT_MINUTES,
+        ));
     }
 
     public function updatePost(ForumPost $post, User $editor, string $body, ?string $topicTitle = null): void

@@ -310,6 +310,7 @@ final class SystemSettingsService
                 ['module' => 'core', 'group' => 'security.flood'],
                 ['module' => 'core', 'group' => 'security.password'],
                 ['module' => 'core', 'group' => 'security.twofactor'],
+                ['module' => 'core', 'group' => 'security.aacp'],
                 ['module' => 'core', 'group' => 'security.session'],
             ],
             // Kept for BC redirects from the old Security Center POST route.
@@ -319,6 +320,7 @@ final class SystemSettingsService
                 ['module' => 'core', 'group' => 'security.flood'],
                 ['module' => 'core', 'group' => 'security.password'],
                 ['module' => 'core', 'group' => 'security.twofactor'],
+                ['module' => 'core', 'group' => 'security.aacp'],
                 ['module' => 'core', 'group' => 'security.session'],
             ],
             'telemetry' => [['module' => 'core', 'group' => 'telemetry']],

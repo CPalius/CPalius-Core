@@ -19,8 +19,18 @@
 <div class="forum-header fade-in" style="text-align:center; max-width: 420px; margin: 0 auto var(--sp-lg);">
     <span class="section-label">{{ 'account.two_factor.label'|trans }}</span>
     <h1 class="section-title">{{ 'account.two_factor.challenge_heading'|trans }}</h1>
-    <p class="forum-header__desc" style="margin: 0 auto;">{{ 'account.two_factor.challenge_desc'|trans }}</p>
+    <p class="forum-header__desc" style="margin: 0 auto;">
+        {% if usesEmail|default(false) %}
+            {{ 'account.two_factor.challenge_desc_email'|trans({'email': maskedEmail|default('')}) }}
+        {% else %}
+            {{ 'account.two_factor.challenge_desc'|trans }}
+        {% endif %}
+    </p>
 </div>
+
+{% if notice is defined and notice is not null %}
+    <div class="forum-flash forum-flash--success" style="max-width: 420px; margin: 0 auto var(--sp-md);">{{ notice }}</div>
+{% endif %}
 
 {% if error is not null %}
     <div class="forum-flash forum-flash--error" style="max-width: 420px; margin: 0 auto var(--sp-md);">{{ error }}</div>
@@ -33,16 +43,31 @@
             <input type="text" id="two-factor-code" name="code" required autofocus autocomplete="one-time-code"
                    inputmode="numeric" pattern="[0-9A-Za-z-]*" maxlength="16" spellcheck="false">
             <p style="margin-top: var(--sp-xs); font-size: var(--fs-sm); color: var(--slw-text-muted);">
-                {{ 'account.two_factor.code_hint'|trans }}
+                {{ usesEmail|default(false) ? 'account.two_factor.code_hint_email'|trans : 'account.two_factor.code_hint'|trans }}
             </p>
         </div>
 
         <input type="hidden" name="_token" value="{{ csrf_token('account_two_factor') }}">
+        <input type="hidden" name="action" value="verify">
 
         <div class="forum-form__actions">
             <button type="submit" class="btn btn-primary btn-sm">{{ 'account.two_factor.verify'|trans }}</button>
         </div>
     </form>
+
+    {% if usesEmail|default(false) %}
+        <form method="post" action="{{ path('account_two_factor_challenge') }}" style="margin-top: var(--sp-sm);">
+            <input type="hidden" name="_token" value="{{ csrf_token('account_two_factor') }}">
+            <input type="hidden" name="action" value="resend">
+            <button type="submit" class="btn btn-sm btn-ghost" {{ resendWait|default(0) > 0 ? 'disabled' : '' }}>
+                {% if resendWait|default(0) > 0 %}
+                    {{ 'account.two_factor.resend_wait'|trans({'seconds': resendWait}) }}
+                {% else %}
+                    {{ 'account.two_factor.resend'|trans }}
+                {% endif %}
+            </button>
+        </form>
+    {% endif %}
 
     <p style="margin-top: var(--sp-md); text-align:center; font-size: var(--fs-sm); color: var(--slw-text-muted);">
         {{ 'account.two_factor.recovery_remaining'|trans({'count': recoveryRemaining}) }}

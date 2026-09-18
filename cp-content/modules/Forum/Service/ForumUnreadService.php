@@ -20,6 +20,7 @@ final class ForumUnreadService
         private readonly ForumReadMarkerRepository $markerRepository,
         private readonly ForumTopicRepository $topicRepository,
         private readonly EntityManagerInterface $entityManager,
+        private readonly ForumWordFilterService $wordFilterService,
     ) {
     }
 
@@ -103,7 +104,7 @@ final class ForumUnreadService
     /** @return list<ForumTopic> */
     public function unreadTopics(User $user, int $limit = 40): array
     {
-        $topics = $this->topicRepository->findLatest($limit * 3);
+        $topics = $this->topicRepository->findLatest($limit * 3, 0, null, $this->wordFilterService->termsFor($user));
         $unread = $this->unreadTopicIdMap($user, $topics);
         $out = [];
         foreach ($topics as $topic) {

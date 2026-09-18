@@ -26,6 +26,7 @@ final class ForumActivityService
         private readonly ForumTopicRepository $topicRepository,
         private readonly ForumPostRepository $postRepository,
         private readonly UserRepository $userRepository,
+        private readonly ForumWordFilterService $wordFilterService,
     ) {
     }
 
@@ -123,12 +124,12 @@ final class ForumActivityService
         // Fetch one extra row to know whether hasMore is true.
         $rows = match ($tab) {
             self::TAB_LATEST_TOPICS => $this->mapTopics(
-                $this->topicRepository->findNewestOpened($limit + 1, $offset, $contentLocale),
+                $this->topicRepository->findNewestOpened($limit + 1, $offset, $contentLocale, $this->wordFilterService->termsForViewer()),
                 self::TAB_LATEST_TOPICS,
                 useCreatedAt: true
             ),
             self::TAB_LATEST_POSTS => $this->mapTopics(
-                $this->topicRepository->findLatestReplied($limit + 1, $offset, $contentLocale),
+                $this->topicRepository->findLatestReplied($limit + 1, $offset, $contentLocale, $this->wordFilterService->termsForViewer()),
                 self::TAB_LATEST_POSTS,
                 useCreatedAt: false
             ),

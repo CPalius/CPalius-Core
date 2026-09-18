@@ -33,6 +33,12 @@
   color: color-mix(in srgb, var(--cp-success) 70%, var(--cp-text));
 }
 
+.forum-flash--info {
+  background: color-mix(in srgb, var(--cp-accent) 8%, white);
+  border-color: color-mix(in srgb, var(--cp-accent) 30%, var(--slw-border));
+  color: color-mix(in srgb, var(--cp-accent) 70%, var(--cp-text));
+}
+
 .forum-flash--error,
 .forum-flash--warning {
   background: color-mix(in srgb, var(--cp-danger) 8%, white);
@@ -569,6 +575,31 @@
 .forum-topic:hover {
   background: var(--slw-surface);
 }
+
+/*
+  Single-column topic rows: "my topics", unread and drafts.
+
+  Those lists carry one content block, not the board's five columns, and without
+  this they inherited the board grid and dropped that block into the 40px icon
+  track — every title crushed against the left edge. The side slot collapses to
+  nothing when a page has no stats to put there, so drafts can share the class.
+*/
+.forum-topic--simple {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.forum-topic__main {
+  min-width: 0;
+}
+
+.forum-topic__side {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+/* The narrow-screen overrides for these rows live in the responsive section
+   further down, after the board rules that would otherwise win on cascade order. */
 
 .forum-topic--sticky {
   border-left-color: var(--cp-gold);
@@ -1254,10 +1285,14 @@
   color: var(--cp-danger, #c0392b);
 }
 
-/* ---- CKEditor 5 (forum-editor-init.js) — --cp-*/--slw-* tema uyumu ----
-   CKEditor kendi --ck-color-*/--ck-border-radius değişkenlerini kullanır;
-   burada bunları forumun marka tokenlarına eşliyoruz, forkl amaya gerek
-   kalmadan görsel dile %100 uyum sağlanır. */
+/* ---- CKEditor 5 (forum-editor-init.js) — cp / slw token uyumu ----
+   CKEditor kendi ck-color ve ck-border-radius değişkenlerini kullanır; burada
+   bunları forumun marka tokenlarına eşliyoruz, fork etmeye gerek kalmadan
+   görsel dile uyum sağlanır.
+
+   NOT: bu yorumdaki yıldız-eğik çizgi dizileri kaldırıldı. "--cp-*" ve
+   "--ck-color-*" yazarken oluşan dizi yorumu erkenden kapatıyor, kalan metin
+   CSS olarak ayrıştırılıyor ve hemen altındaki kural bloğu düşüyordu. */
 .forum .ck.ck-editor {
   --ck-border-radius: 4px;
   --ck-color-base-border: var(--slw-border);
@@ -1623,9 +1658,19 @@
   .forum-topic {
     grid-template-columns: 34px 1fr;
   }
+  /* Restated here because the board rule above would otherwise put the icon
+     track back on rows that have no icon. */
+  .forum-topic--simple {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
   .forum-topic__stat,
   .forum-topic__activity {
     display: none;
+  }
+  /* The side stats are the only thing these rows have to the right, so they
+     stay while the board's own stat columns go — in their normal stacked form. */
+  .forum-topic__side .forum-topic__stat {
+    display: block;
   }
 
   .forum-post {
@@ -1685,6 +1730,28 @@
   .forum-search-post__topic {
     margin-left: 0;
     width: 100%;
+  }
+
+  /* Phone width: the reply/view counters move under the title instead of
+     competing with it for a line that is barely wide enough for one. */
+  .forum-topic--simple {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .forum-topic__side {
+    gap: var(--sp-sm);
+  }
+
+  /* On its own row under the title, number and label read better side by
+     side than stacked. */
+  .forum-topic__side .forum-topic__stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  .forum-topic__side .forum-topic__stat strong {
+    display: inline;
   }
 }
 
@@ -2252,6 +2319,52 @@
   font-size: var(--fs-xs);
   color: var(--slw-text-muted);
   font-style: italic;
+  white-space: pre-line;
+}
+
+/* Word filter: why this list may be shorter than the reader expects. */
+.forum-word-filter-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 var(--sp-sm);
+  padding: 8px 14px;
+  border: 1px dashed var(--slw-border);
+  border-radius: var(--forum-radius);
+  font-size: var(--fs-xs);
+  color: var(--slw-text-muted);
+}
+
+.forum-word-filter-note a {
+  color: var(--cp-accent);
+  text-decoration: underline;
+}
+
+/* Anti-bump: the divider between a post and the self-reply folded into it. */
+.forum-post__bump {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 14px;
+  font-size: var(--fs-xs);
+  color: var(--slw-text-muted);
+}
+
+.forum-post__bump::before,
+.forum-post__bump::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--slw-border);
+}
+
+.forum-post__bump-note {
+  flex: 0 0 auto;
+  padding: 2px 10px;
+  border: 1px solid var(--slw-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--slw-border) 25%, transparent);
+  white-space: nowrap;
 }
 .forum-thread-notice--deleted {
   background: color-mix(in srgb, var(--cp-danger, #c0392b) 10%, white);
@@ -2391,6 +2504,8 @@ blockquote.cp-quote-post-0,
   display: block;
 }
 
+/* 220px avatar rail + content. Below 900px the rail sits above the form
+   instead of eating two thirds of a phone; see the override further down. */
 .forum-profile-settings {
   display: grid;
   gap: var(--sp-lg);
@@ -3578,42 +3693,13 @@ blockquote.cp-quote-post-0,
 .forum-post__body h4 { font-size: 1.1em; }
 
 
-/* ---- Who is online, by kind ---- */
+/* ---- Who is online ---- */
 
-.forum-online-kinds {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 2px;
-}
-
-.forum-online-kind {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.forum-online-kind i {
-  opacity: 0.75;
-}
-
-.forum-online-kind b {
+/* The stats bar shows one total; the per-kind colours below are still used by
+   the online list, which is where the breakdown lives now. */
+.forum-online-total {
   font-variant-numeric: tabular-nums;
-}
-
-/* The word is dropped on narrow screens; the icon and the title attribute
-   still say which number is which. */
-.forum-online-kind__label {
-  font-size: 0.85em;
-  opacity: 0.7;
-}
-
-@media (max-width: 720px) {
-  .forum-online-kind__label {
-    display: none;
-  }
+  font-size: 1.15em;
 }
 
 .forum-online-kind--member i { color: #30a46c; }
@@ -3660,3 +3746,28 @@ blockquote.cp-quote-post-0,
   font-size: 0.85rem;
   opacity: 0.6;
 }
+
+
+/* ================================================================
+   FORUM — MOBILE HARDENING
+   Last block in the file so it wins over the component rules above
+   without raising specificity. Breakpoints match the list documented
+   at the bottom of style.css.
+   ================================================================ */
+
+@media (max-width: 900px) {
+  /* The account/profile screen was the one two-column grid in this file
+     with no narrow-screen rule: a 220px avatar rail against a form on a
+     360px phone left the form about 100px wide. */
+  .forum-profile-settings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Poll result rows: label, bar and count stop competing for one line. */
+  .forum-poll__results li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+/* The stats footer is deliberately not touched here: it already stacks in the
+   900px block above, and re-stating it at 600px only fought with it. */

@@ -155,7 +155,7 @@
             {% set groups = tabGroups[activeTab]|default({}) %}
             {% set values = tabValues[activeTab]|default({}) %}
             {% set isSecuritySections = tabs[activeTab].securitySections|default(false) %}
-            {% set securitySectionOrder = ['security', 'security.headers', 'security.waf', 'security.flood', 'security.password', 'security.twofactor', 'security.session'] %}
+            {% set securitySectionOrder = ['security', 'security.headers', 'security.waf', 'security.flood', 'security.password', 'security.twofactor', 'security.aacp', 'security.session'] %}
 
             {% if groups is empty %}
                 <twig:cp:card>
@@ -217,7 +217,14 @@
                         {% endfor %}
                     {% else %}
                         {% for groupName, settingDefs in groups %}
-                            <twig:cp:card title="{{ groupName|capitalize }}">
+                            {# A module may name its group card by declaring
+                               settings.group.<group>; Twig hands back the key when
+                               there is no such string, which is the fallback. #}
+                            {% set groupLabel = ('settings.group.' ~ groupName)|trans %}
+                            {% if groupLabel == 'settings.group.' ~ groupName %}
+                                {% set groupLabel = groupName|capitalize %}
+                            {% endif %}
+                            <twig:cp:card title="{{ groupLabel }}">
                                 <div class="space-y-sp-sm">
                                     {% for setting in settingDefs %}
                                         {% include 'aacp/partials/_system_setting_field.html.twig' with {

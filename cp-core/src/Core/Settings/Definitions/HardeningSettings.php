@@ -288,10 +288,99 @@ use App\Core\Annotation\CpSetting;
     group: 'security.twofactor',
 )]
 #[CpSetting(
+    key: 'security.twofactor_methods',
+    label: 'aacp.security.twofactor_methods',
+    type: 'select',
+    default: 'both',
+    variants: [
+        'both' => 'aacp.security.twofactor_methods_both',
+        'app' => 'aacp.security.twofactor_methods_app',
+        'email' => 'aacp.security.twofactor_methods_email',
+    ],
+    group: 'security.twofactor',
+)]
+#[CpSetting(
+    key: 'security.twofactor_email_ttl_minutes',
+    label: 'aacp.security.twofactor_email_ttl_minutes',
+    type: 'integer',
+    default: 10,
+    group: 'security.twofactor',
+)]
+#[CpSetting(
+    key: 'security.twofactor_email_resend_seconds',
+    label: 'aacp.security.twofactor_email_resend_seconds',
+    type: 'integer',
+    default: 60,
+    group: 'security.twofactor',
+)]
+#[CpSetting(
+    key: 'security.aacp_gate_enabled',
+    label: 'aacp.security.aacp_gate_enabled',
+    type: 'checkbox',
+    default: false,
+    group: 'security.aacp',
+)]
+#[CpSetting(
+    key: 'security.aacp_gate_question',
+    label: 'aacp.security.aacp_gate_question',
+    type: 'text',
+    default: '',
+    group: 'security.aacp',
+)]
+#[CpSetting(
+    key: 'security.aacp_gate_answer',
+    label: 'aacp.security.aacp_gate_answer',
+    type: 'password',
+    default: '',
+    group: 'security.aacp',
+)]
+#[CpSetting(
+    key: 'security.aacp_gate_ttl_minutes',
+    label: 'aacp.security.aacp_gate_ttl_minutes',
+    type: 'integer',
+    default: 120,
+    group: 'security.aacp',
+)]
+#[CpSetting(
+    key: 'security.aacp_gate_attempts',
+    label: 'aacp.security.aacp_gate_attempts',
+    type: 'integer',
+    default: 3,
+    group: 'security.aacp',
+)]
+#[CpSetting(
+    key: 'security.aacp_gate_lockout_minutes',
+    label: 'aacp.security.aacp_gate_lockout_minutes',
+    type: 'integer',
+    default: 15,
+    group: 'security.aacp',
+)]
+#[CpSetting(
     key: 'security.session_idle_minutes',
     label: 'aacp.security.session_idle_minutes',
     type: 'integer',
-    default: 0,
+    default: 60,
+    group: 'security.session',
+)]
+#[CpSetting(
+    key: 'security.session_admin_idle_minutes',
+    label: 'aacp.security.session_admin_idle_minutes',
+    type: 'integer',
+    default: 20,
+    group: 'security.session',
+)]
+#[CpSetting(
+    key: 'security.session_sweep_enabled',
+    label: 'aacp.security.session_sweep_enabled',
+    type: 'checkbox',
+    default: true,
+    group: 'security.session',
+)]
+#[CpSetting(
+    key: 'security.session_purge_days',
+    label: 'aacp.security.session_purge_days',
+    type: 'integer',
+    default: 30,
     group: 'security.session',
 )]
 #[CpSetting(

@@ -21,6 +21,7 @@ final class ForumSearchService
         private readonly ForumPostRepository $postRepository,
         private readonly ForumSectionRepository $sectionRepository,
         private readonly EntityManagerInterface $em,
+        private readonly ForumWordFilterService $wordFilterService,
     ) {
     }
 
@@ -127,8 +128,17 @@ final class ForumSearchService
         ];
     }
 
+    /**
+     * Every one of the four search queries — topics, posts, and the two counts —
+     * passes through here with the topic alias, which makes it the one place the
+     * reader's word filter has to be applied for search to agree with the boards.
+     * A post inside a filtered topic is filtered too: hiding the thread but
+     * surfacing its replies would defeat the point.
+     */
     private function constrainBoard(QueryBuilder $qb, string $topicAlias, ?int $sectionId, ?string $locale): void
     {
+        $this->wordFilterService->applyToQuery($qb, $this->wordFilterService->termsForViewer(), $topicAlias);
+
         if ($locale !== null && $locale !== '') {
             $qb->andWhere($topicAlias.'.locale = :contentLocale')
                 ->setParameter('contentLocale', $locale);

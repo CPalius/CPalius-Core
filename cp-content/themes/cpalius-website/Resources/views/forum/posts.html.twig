@@ -184,7 +184,9 @@
                     </ul>
                 {% endif %}
 
-                {% if post.author and post.author.signature %}
+                {# Escaped on purpose: a signature is plain text, so a member cannot
+                   turn the space under every one of their posts into a link farm. #}
+                {% if signaturesEnabled|default(true) and post.author and post.author.signature %}
                     <div class="forum-post__signature">{{ post.author.signature }}</div>
                 {% endif %}
 

@@ -347,6 +347,12 @@ services:
         arguments:
             $appSecret: '%kernel.secret%'
 
+    # E-mailed one-time codes are HMAC'd with the same secret, for the same
+    # reason: a database read alone must not yield a usable six-digit code.
+    App\Core\Security\TwoFactor\EmailOtpService:
+        arguments:
+            $appSecret: '%kernel.secret%'
+
     # The audit reports on the running kernel, so it has to be told which kernel.
     App\Core\Security\Audit\SecurityAuditor:
         arguments:

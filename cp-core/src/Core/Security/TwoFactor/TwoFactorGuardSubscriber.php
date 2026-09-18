@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
 
 /**
  * Holds an authenticated-but-unverified session at the second-factor challenge,
@@ -52,7 +53,27 @@ final class TwoFactorGuardSubscriber implements EventSubscriberInterface
         return [
             // Firewall listener sits at 8; this must see the resolved token.
             KernelEvents::REQUEST => ['onKernelRequest', 6],
+            LoginSuccessEvent::class => 'onLoginSuccess',
         ];
+    }
+
+    /**
+     * Every sign-in asks for the second factor again.
+     *
+     * The session id is migrated on login but its attributes are not dropped, so
+     * a "verified" mark left by an earlier sign-in in the same browser would
+     * otherwise be honoured for the new one.
+     */
+    public function onLoginSuccess(LoginSuccessEvent $event): void
+    {
+        try {
+            $request = $event->getRequest();
+            if ($request->hasSession() && $request->getSession()->isStarted()) {
+                $this->twoFactorSession->clear($request->getSession());
+            }
+        } catch (\Throwable) {
+            // The guard re-checks on the next request either way.
+        }
     }
 
     public function onKernelRequest(RequestEvent $event): void

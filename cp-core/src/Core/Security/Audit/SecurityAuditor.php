@@ -428,7 +428,62 @@ final class SecurityAuditor
                 'aacp.security.audit.session_idle_off',
             );
 
+        // An idle limit nothing enforces on a schedule only closes a session when
+        // its owner comes back — which is not when it matters.
+        $sweep = (bool) $this->settings->get('security.session_sweep_enabled', true);
+        if ($idle > 0 && !$sweep) {
+            $findings[] = new SecurityFinding(
+                'session.sweep',
+                SecurityFinding::SEVERITY_MEDIUM,
+                'aacp.security.audit.session_sweep',
+                'aacp.security.audit.session_sweep_off',
+            );
+        } elseif ($sweep) {
+            $findings[] = SecurityFinding::pass(
+                'session.sweep',
+                'aacp.security.audit.session_sweep',
+                'aacp.security.audit.session_sweep_on',
+            );
+        }
+
+        $findings[] = $this->auditAacpGate();
+
         return $findings;
+    }
+
+    /**
+     * The panel gate is only worth reporting on as three states: doing its job,
+     * switched on but never filled in (the dangerous one, because the operator
+     * believes it is protecting them), and deliberately off.
+     */
+    private function auditAacpGate(): SecurityFinding
+    {
+        if (!(bool) $this->settings->get('security.aacp_gate_enabled', false)) {
+            return new SecurityFinding(
+                'aacp.gate',
+                SecurityFinding::SEVERITY_LOW,
+                'aacp.security.audit.aacp_gate',
+                'aacp.security.audit.aacp_gate_off',
+            );
+        }
+
+        $question = trim((string) $this->settings->get('security.aacp_gate_question', ''));
+        $answer = trim((string) $this->settings->get('security.aacp_gate_answer', ''));
+
+        if ($question === '' || $answer === '') {
+            return new SecurityFinding(
+                'aacp.gate',
+                SecurityFinding::SEVERITY_MEDIUM,
+                'aacp.security.audit.aacp_gate',
+                'aacp.security.audit.aacp_gate_unconfigured',
+            );
+        }
+
+        return SecurityFinding::pass(
+            'aacp.gate',
+            'aacp.security.audit.aacp_gate',
+            'aacp.security.audit.aacp_gate_on',
+        );
     }
 
     /**

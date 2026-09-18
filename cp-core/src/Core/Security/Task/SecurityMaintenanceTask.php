@@ -6,7 +6,7 @@ namespace App\Core\Security\Task;
 
 use App\Core\Cron\Attribute\CpCronJob;
 use App\Core\Security\Service\IpBanService;
-use App\Core\Security\Session\SessionRegistry;
+use App\Core\Security\Session\IdleSessionSweeper;
 
 /**
  * Housekeeping for the hardening tables.
@@ -17,11 +17,9 @@ use App\Core\Security\Session\SessionRegistry;
  */
 final class SecurityMaintenanceTask
 {
-    private const STALE_SESSION_DAYS = 30;
-
     public function __construct(
         private readonly IpBanService $ipBanService,
-        private readonly SessionRegistry $sessionRegistry,
+        private readonly IdleSessionSweeper $sessionSweeper,
     ) {
     }
 
@@ -29,8 +27,29 @@ final class SecurityMaintenanceTask
     public function execute(): string
     {
         $bans = $this->ipBanService->purgeExpired();
-        $sessions = $this->sessionRegistry->purgeStale(self::STALE_SESSION_DAYS);
+        $revoked = $this->sessionSweeper->revokeIdle();
+        $purged = $this->sessionSweeper->purge();
 
-        return sprintf('Purged %d expired IP ban(s) and %d stale session record(s).', $bans, $sessions);
+        return sprintf(
+            'Purged %d expired IP ban(s), revoked %d idle session(s) and removed %d stale session record(s).',
+            $bans,
+            $revoked,
+            $purged,
+        );
+    }
+
+    /**
+     * Idle sessions have to close on the clock, not once a day: a session left
+     * open at 03:16 would otherwise stay usable for almost 24 hours whatever the
+     * idle limit says.
+     */
+    #[CpCronJob(schedule: '*/5 * * * *', name: 'security.session_sweep', description: 'Revoke sessions idle past the configured limit')]
+    public function sweepSessions(): string
+    {
+        if (!$this->sessionSweeper->isEnabled()) {
+            return 'Idle session sweep is disabled.';
+        }
+
+        return sprintf('Revoked %d idle session(s).', $this->sessionSweeper->revokeIdle());
     }
 }

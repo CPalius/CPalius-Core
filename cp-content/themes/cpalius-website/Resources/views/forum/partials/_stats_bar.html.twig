@@ -9,30 +9,16 @@
                     <span><i class="bi bi-broadcast"></i></span>
                     <span>
                         {{ 'stats.online.now'|trans({}, 'forums') }}<br>
-                        {# One icon per kind instead of a single total: "84 online"
-                           tells an operator nothing when most of it is crawlers. #}
-                        <span class="forum-online-kinds">
-                            <span class="forum-online-kind forum-online-kind--member" title="{{ 'stats.online.kind.member'|trans }}">
-                                <i class="bi bi-person-fill" aria-hidden="true"></i>
-                                <b>{{ online.memberCount|number_format(0, ',', '.') }}</b>
-                                <span class="forum-online-kind__label">{{ 'stats.online.kind.member'|trans }}</span>
-                            </span>
-                            <span class="forum-online-kind forum-online-kind--guest" title="{{ 'stats.online.kind.guest'|trans }}">
-                                <i class="bi bi-person" aria-hidden="true"></i>
-                                <b>{{ online.guestCount|number_format(0, ',', '.') }}</b>
-                                <span class="forum-online-kind__label">{{ 'stats.online.kind.guest'|trans }}</span>
-                            </span>
-                            <span class="forum-online-kind forum-online-kind--spider" title="{{ 'stats.online.kind.spider'|trans }}">
-                                <i class="bi bi-search" aria-hidden="true"></i>
-                                <b>{{ online.spiderCount|default(0)|number_format(0, ',', '.') }}</b>
-                                <span class="forum-online-kind__label">{{ 'stats.online.kind.spider'|trans }}</span>
-                            </span>
-                            <span class="forum-online-kind forum-online-kind--bot" title="{{ 'stats.online.kind.bot'|trans }}">
-                                <i class="bi bi-robot" aria-hidden="true"></i>
-                                <b>{{ online.botCount|default(0)|number_format(0, ',', '.') }}</b>
-                                <span class="forum-online-kind__label">{{ 'stats.online.kind.bot'|trans }}</span>
-                            </span>
-                        </span>
+                        {# One number: members + guests + spiders + bots. The
+                           per-kind breakdown moved to the online list behind the
+                           link below, which is where somebody asking "who is that"
+                           is going anyway — four labelled counters were four rows
+                           of chrome in the footer of every page. The title
+                           attribute keeps the split one hover away. #}
+                        <b class="forum-online-total"
+                           title="{{ 'stats.online.kind.member'|trans }}: {{ online.memberCount|number_format(0, ',', '.') }} · {{ 'stats.online.kind.guest'|trans }}: {{ online.guestCount|number_format(0, ',', '.') }} · {{ 'stats.online.kind.spider'|trans }}: {{ online.spiderCount|default(0)|number_format(0, ',', '.') }} · {{ 'stats.online.kind.bot'|trans }}: {{ online.botCount|default(0)|number_format(0, ',', '.') }}">
+                            {{ online.total|default(0)|number_format(0, ',', '.') }}
+                        </b>
                     </span>
                 </span>
                 <span class="forum-stats__link">

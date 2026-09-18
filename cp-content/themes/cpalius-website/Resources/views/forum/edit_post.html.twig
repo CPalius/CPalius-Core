@@ -40,7 +40,13 @@
                 section: section,
                 attachmentsEnabled: attachmentsEnabled|default(false),
             } only %}
-            <p class="forum-field-hint">{{ 'forum.edit_post.time_limit_hint'|trans }}</p>
+            {# "May be limited" is only useful before you have lost anything. Once
+               the window is known, say how much of it is left. #}
+            {% if editMinutesLeft|default(0) > 0 %}
+                <p class="forum-field-hint">{{ 'forum.edit_post.time_limit_left'|trans({'minutes': editMinutesLeft}) }}</p>
+            {% else %}
+                <p class="forum-field-hint">{{ 'forum.edit_post.time_limit_hint'|trans }}</p>
+            {% endif %}
         </div>
 
         <div class="forum-form__actions">

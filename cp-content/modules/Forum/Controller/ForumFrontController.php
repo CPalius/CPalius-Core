@@ -38,6 +38,7 @@ use Modules\Forum\Service\ForumTopicEngagementService;
 use Modules\Forum\Service\ForumTopicService;
 use Modules\Forum\Service\ForumUnreadService;
 use Modules\Forum\Service\ForumWatchService;
+use Modules\Forum\Service\ForumWordFilterService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
@@ -77,6 +78,7 @@ final class ForumFrontController extends AbstractController
         private readonly ForumPollService $pollService,
         private readonly ForumUnreadService $unreadService,
         private readonly ForumWatchService $watchService,
+        private readonly ForumWordFilterService $wordFilterService,
         private readonly LocaleProvider $localeProvider,
         private readonly Paginator $paginator,
         private readonly SettingsRegistry $settingsRegistry,
@@ -178,6 +180,8 @@ final class ForumFrontController extends AbstractController
         $groupIds = $this->sectionRepository->findGroupSectionIds($section);
         $contentLocale = $contentLang === 'all' ? null : $contentLang;
 
+        $wordFilterTerms = $this->wordFilterService->termsFor($viewerEntity);
+
         $qb = $this->topicRepository->createSectionTopicsQueryBuilder(
             $section,
             $viewerEntity,
@@ -187,6 +191,7 @@ final class ForumFrontController extends AbstractController
             null,
             $groupIds,
             $contentLocale,
+            $wordFilterTerms,
         );
         $perPage = (int) $this->settingsRegistry->get(
             'forum.threads_per_page',
@@ -208,6 +213,7 @@ final class ForumFrontController extends AbstractController
             'contentLangParams' => $this->contentLangQueryParams($contentLang, $request->getLocale()),
             'otherLanguageCounts' => $this->otherLanguageCounts($groupIds, $contentLang),
             'canCreateThread' => $this->canCreateThread($section),
+            'wordFilterActive' => $wordFilterTerms !== [] && $filter !== 'mine',
             'hotThreshold' => (int) $this->settingsRegistry->get('forum.hot_topic_threshold', ForumDictionary::HOT_TOPIC_POST_THRESHOLD),
             'postsPerPage' => (int) $this->settingsRegistry->get('forum.posts_per_page', ForumDictionary::DEFAULT_POSTS_PER_PAGE),
             'lastVisitAt' => $this->resolveLastVisit($request),
@@ -401,6 +407,7 @@ final class ForumFrontController extends AbstractController
             'draftsEnabled' => $this->draftService->isEnabled(),
             'pollsEnabled' => $this->pollService->isEnabled(),
             'attachmentsEnabled' => $this->composerUploadEnabled($topic->getSection()),
+            'signaturesEnabled' => (bool) $this->settingsRegistry->get('forum.signatures_enabled', true),
         ]);
     }
 
@@ -492,15 +499,22 @@ final class ForumFrontController extends AbstractController
             return $this->redirectToRoute('forum_topic', $this->topicRouteParams($topic));
         }
 
-        $post = $this->topicService->addReply($topic, $user, $body, $request);
+        $result = $this->topicService->addReply($topic, $user, $body, $request);
+        $post = $result->post;
         $this->attachmentService->attachUploaded($post, $user, $this->uploadedFiles($request));
         $this->draftService->discardReply($user, $topic);
         if ($this->watchService->isEnabled() && (bool) $this->settingsRegistry->get('forum.watch_auto_on_reply', true)) {
             $this->watchService->watch($topic, $user);
         }
-        $this->addFlash('success', $this->translator->trans(
-            $post->isModerated() ? 'forum.reply.held' : 'site.forum.reply.added',
-        ));
+
+        // A folded reply is not a failure, but it is not "your reply was added"
+        // either — the member has to be told why the thread did not move.
+        $flashKey = match (true) {
+            $result->merged => 'forum.antibump.merged_notice',
+            $post->isModerated() => 'forum.reply.held',
+            default => 'site.forum.reply.added',
+        };
+        $this->addFlash($result->merged ? 'info' : 'success', $this->translator->trans($flashKey));
 
         $perPage = (int) $this->settingsRegistry->get('forum.posts_per_page', ForumDictionary::DEFAULT_POSTS_PER_PAGE);
         $lastPage = (int) ceil($topic->getPostCount() / max(1, $perPage));
@@ -888,6 +902,8 @@ final class ForumFrontController extends AbstractController
     private function editPostViewData(ForumPost $post, bool $isFirstPost, array $formValues): array
     {
         $section = $post->getSection();
+        $windowMinutes = $this->topicService->editWindowMinutes($post);
+        $deadline = $post->getCreatedAt()->getTimestamp() + ($windowMinutes * 60);
 
         return [
             'post' => $post,
@@ -896,6 +912,11 @@ final class ForumFrontController extends AbstractController
             'isFirstPost' => $isFirstPost,
             'formValues' => $formValues,
             'attachmentsEnabled' => $this->composerUploadEnabled($section),
+            // A window nobody can see is a window that gets discovered by losing
+            // work to it. Moderators edit outside it, so the countdown is only
+            // meaningful for the author.
+            'editWindowMinutes' => $windowMinutes,
+            'editMinutesLeft' => max(0, (int) ceil(($deadline - time()) / 60)),
         ];
     }
 

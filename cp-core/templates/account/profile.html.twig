@@ -85,6 +85,10 @@
             </fieldset>
 
             {% for section in form.vars.profile_sections|default([]) %}
+                {# A module whose fields are all switched off contributes an empty
+                   list; rendering its legend would advertise settings that are
+                   not there. #}
+                {% if section.fields is not empty %}
                 <fieldset class="forum-form__section">
                     <legend>{{ section.legendKey|trans }}</legend>
                     {% if section.hintKey %}
@@ -94,12 +98,18 @@
                         {{ form_row(attribute(form, name)) }}
                     {% endfor %}
                 </fieldset>
+                {% endif %}
             {% endfor %}
 
             <div class="forum-form__actions">
                 <button type="submit" class="btn btn-primary">{{ 'account.profile.save'|trans }}</button>
             </div>
         {{ form_end(form) }}
+
+        <p class="forum-profile-settings__hint" style="margin-top: var(--sp-md);">
+            {{ 'account.profile.security_link_hint'|trans }}
+            <a href="{{ path('account_security') }}" style="color: var(--cp-accent); text-decoration: underline;">{{ 'account.security.title'|trans }}</a>
+        </p>
 
         {% if identityPending is defined and identityPending %}
             {# Its own form: nested forms are invalid HTML, and withdrawing a

@@ -33,6 +33,7 @@ class SystemTelemetryLog
     public const EVENT_IP_AUTOBAN = 'ip_autoban';
     public const EVENT_FLOOD_BLOCKED = 'flood_blocked';
     public const EVENT_TWOFACTOR_FAILED = 'twofactor_failed';
+    public const EVENT_AACP_GATE_FAILED = 'aacp_gate_failed';
     public const EVENT_SESSION_REVOKED = 'session_revoked';
 
     #[ORM\Id]

@@ -22,6 +22,16 @@
     <p class="forum-header__desc" style="margin: 0 auto;">{{ 'account.login.desc'|trans }}</p>
 </div>
 
+{# The session is already gone by the time this renders, so the reason travels in
+   the query string rather than in a flash. Only the reasons the session guard
+   actually emits are honoured, so the query cannot pick the message. #}
+{% set sessionExpired = app.request.query.get('session_expired') %}
+{% if sessionExpired in ['idle_timeout', 'absolute_timeout', 'revoked', 'user_agent_changed', 'ip_changed'] %}
+    <div class="forum-flash forum-flash--warning" style="max-width: 420px; margin: 0 auto var(--sp-md);">
+        {{ ('account.login.session_expired.' ~ sessionExpired)|trans }}
+    </div>
+{% endif %}
+
 {% if error is not null %}
     <div class="forum-flash forum-flash--error" style="max-width: 420px; margin: 0 auto var(--sp-md);">{{ error.messageKey|trans(error.messageData, 'security')|default('account.login.error_default'|trans) }}</div>
 {% endif %}

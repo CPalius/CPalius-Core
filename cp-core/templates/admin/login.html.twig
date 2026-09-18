@@ -11,6 +11,19 @@
              style="background-image: linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px); background-size: 40px 40px;"></div>
 
         <div class="relative w-full max-w-sm">
+            {# The session is gone by the time this renders, so the reason arrives
+               in the query string. Only the guard's own reasons are honoured. #}
+            {% set sessionExpired = app.request.query.get('session_expired') %}
+            {% if sessionExpired in ['idle_timeout', 'absolute_timeout', 'revoked', 'user_agent_changed', 'ip_changed'] %}
+                <div
+                    role="status"
+                    class="mb-sp-sm flex items-start gap-3 rounded-lg border border-warning-500/40 bg-warning-500/10 px-4 py-3 text-fs-sm !text-warning-200"
+                >
+                    <twig:ux:icon name="heroicons:clock" class="mt-0.5 h-4 w-4 shrink-0 text-warning-400" />
+                    <p>{{ ('account.login.session_expired.' ~ sessionExpired)|trans }}</p>
+                </div>
+            {% endif %}
+
             {% if error is not null %}
                 <div
                     role="alert"

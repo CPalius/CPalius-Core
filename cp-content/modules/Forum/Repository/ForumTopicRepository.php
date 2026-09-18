@@ -23,7 +23,8 @@ final class ForumTopicRepository extends ServiceEntityRepository
     }
 
     /**
-     * @param list<int>|null $sectionIds Translation-group board ids. Defaults to this section only.
+     * @param list<int>|null $sectionIds        Translation-group board ids. Defaults to this section only.
+     * @param list<string>   $excludeTitleTerms reader's own word filter; see ForumWordFilterService
      */
     public function createSectionTopicsQueryBuilder(
         ForumSection $section,
@@ -34,6 +35,7 @@ final class ForumTopicRepository extends ServiceEntityRepository
         ?string $sortOverride = null,
         ?array $sectionIds = null,
         ?string $contentLocale = null,
+        array $excludeTitleTerms = [],
     ): QueryBuilder {
         $ids = $sectionIds ?? [$section->getId() ?? 0];
         $ids = array_values(array_filter(
@@ -80,6 +82,12 @@ final class ForumTopicRepository extends ServiceEntityRepository
         if ($filter === 'mine' && $viewer !== null) {
             $qb->andWhere('t.firstPoster = :mineViewer')
                 ->setParameter('mineViewer', $viewer);
+
+            // "My topics" is the one list a word filter must not touch: hiding a
+            // member's own thread from them because its title contains a term
+            // they muted would read as data loss, not as a filter.
+        } else {
+            $this->excludeTitleTerms($qb, $excludeTitleTerms);
         }
 
         $sort = $sortOverride ?? $section->getDefaultTopicSort();
@@ -172,11 +180,13 @@ final class ForumTopicRepository extends ServiceEntityRepository
     }
 
     /**
+     * @param list<string> $excludeTitleTerms reader word filter; see ForumWordFilterService
+     *
      * @return list<ForumTopic>
      */
-    public function findLatest(int $limit = 10, int $offset = 0, ?string $contentLocale = null): array
+    public function findLatest(int $limit = 10, int $offset = 0, ?string $contentLocale = null, array $excludeTitleTerms = []): array
     {
-        return $this->createPublicTopicListQuery($contentLocale)
+        return $this->createPublicTopicListQuery($contentLocale, $excludeTitleTerms)
             ->orderBy('t.updatedAt', 'DESC')
             ->setFirstResult(max(0, $offset))
             ->setMaxResults($limit)
@@ -185,11 +195,13 @@ final class ForumTopicRepository extends ServiceEntityRepository
     }
 
     /**
+     * @param list<string> $excludeTitleTerms reader word filter; see ForumWordFilterService
+     *
      * @return list<ForumTopic>
      */
-    public function findNewestOpened(int $limit = 10, int $offset = 0, ?string $contentLocale = null): array
+    public function findNewestOpened(int $limit = 10, int $offset = 0, ?string $contentLocale = null, array $excludeTitleTerms = []): array
     {
-        return $this->createPublicTopicListQuery($contentLocale)
+        return $this->createPublicTopicListQuery($contentLocale, $excludeTitleTerms)
             ->orderBy('t.createdAt', 'DESC')
             ->addOrderBy('t.id', 'DESC')
             ->setFirstResult(max(0, $offset))
@@ -199,11 +211,13 @@ final class ForumTopicRepository extends ServiceEntityRepository
     }
 
     /**
+     * @param list<string> $excludeTitleTerms reader word filter; see ForumWordFilterService
+     *
      * @return list<ForumTopic>
      */
-    public function findLatestReplied(int $limit = 10, int $offset = 0, ?string $contentLocale = null): array
+    public function findLatestReplied(int $limit = 10, int $offset = 0, ?string $contentLocale = null, array $excludeTitleTerms = []): array
     {
-        return $this->createPublicTopicListQuery($contentLocale)
+        return $this->createPublicTopicListQuery($contentLocale, $excludeTitleTerms)
             ->andWhere('t.postCount > 1')
             ->orderBy('t.lastPostDate', 'DESC')
             ->addOrderBy('t.updatedAt', 'DESC')
@@ -280,7 +294,10 @@ final class ForumTopicRepository extends ServiceEntityRepository
         return $qb;
     }
 
-    private function createPublicTopicListQuery(?string $contentLocale = null): QueryBuilder
+    /**
+     * @param list<string> $excludeTitleTerms reader's word filter; see ForumWordFilterService
+     */
+    private function createPublicTopicListQuery(?string $contentLocale = null, array $excludeTitleTerms = []): QueryBuilder
     {
         $qb = $this->createQueryBuilder('t')
             ->leftJoin('t.section', 's')->addSelect('s')
@@ -297,15 +314,43 @@ final class ForumTopicRepository extends ServiceEntityRepository
                 ->setParameter('contentLocale', $contentLocale);
         }
 
+        $this->excludeTitleTerms($qb, $excludeTitleTerms);
+
         return $qb;
     }
 
     /**
+     * Per-reader title blocklist, applied in SQL so pagination still counts what
+     * the reader can actually see.
+     *
+     * No LOWER() on the column: the tables are utf8mb4_unicode_ci so LIKE is
+     * already case-insensitive, and LOWER() would import the Turkish dotted-I
+     * problem into a comparison that does not have it.
+     *
+     * @param list<string> $terms
+     */
+    private function excludeTitleTerms(QueryBuilder $qb, array $terms, string $alias = 't'): void
+    {
+        $index = 0;
+
+        foreach ($terms as $term) {
+            // Counted, not keyed: the parameter names have to be unique and
+            // sequential whatever the caller's array looks like.
+            $parameter = 'cpWordFilter'.$index++;
+
+            $qb->andWhere(sprintf('%s.title NOT LIKE :%s', $alias, $parameter))
+                ->setParameter($parameter, '%'.addcslashes($term, '%_').'%');
+        }
+    }
+
+    /**
+     * @param list<string> $excludeTitleTerms reader word filter; see ForumWordFilterService
+     *
      * @return list<ForumTopic>
      */
-    public function findPopular(int $limit = 10, ?string $contentLocale = null): array
+    public function findPopular(int $limit = 10, ?string $contentLocale = null, array $excludeTitleTerms = []): array
     {
-        return $this->createPublicTopicListQuery($contentLocale)
+        return $this->createPublicTopicListQuery($contentLocale, $excludeTitleTerms)
             ->orderBy('t.viewCount', 'DESC')
             ->addOrderBy('t.postCount', 'DESC')
             ->addOrderBy('t.updatedAt', 'DESC')

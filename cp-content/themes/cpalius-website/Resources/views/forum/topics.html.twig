@@ -56,6 +56,16 @@
     {% endif %}
 </div>
 
+{# A list that silently drops rows is indistinguishable from a quiet board, so
+   say when the reader's own filter is the reason. #}
+{% if wordFilterActive|default(false) %}
+    <p class="forum-word-filter-note fade-in">
+        <i class="bi bi-funnel"></i>
+        {{ 'forum.word_filter.active_notice'|trans }}
+        <a href="{{ path('account_profile') }}">{{ 'forum.word_filter.manage_link'|trans }}</a>
+    </p>
+{% endif %}
+
 {% if otherLanguageCounts|default([]) is not empty %}
     {% for row in otherLanguageCounts %}
         <div class="forum-lang-banner fade-in">

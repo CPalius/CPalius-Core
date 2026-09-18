@@ -22,6 +22,7 @@ final class CoreMailTemplates implements MailTemplateProviderInterface
     public const IDENTITY_SUBMITTED = 'account.identity_change.submitted';
     public const IDENTITY_APPROVED = 'account.identity_change.approved';
     public const IDENTITY_REJECTED = 'account.identity_change.rejected';
+    public const ACCOUNT_TWO_FACTOR_CODE = 'account.two_factor_code';
     public const NOTIFICATION_INSTANT = 'notification.instant';
     public const NOTIFICATION_DIGEST = 'notification.digest';
 
@@ -89,6 +90,15 @@ final class CoreMailTemplates implements MailTemplateProviderInterface
                 htmlKey: 'account.mail.identity_rejected.body_html',
                 textKey: 'account.mail.identity_rejected.body_text',
                 parameters: ['reason'],
+            ),
+            new MailTemplateDefinition(
+                key: self::ACCOUNT_TWO_FACTOR_CODE,
+                labelKey: 'aacp.mail_templates.tpl.two_factor_code.label',
+                descriptionKey: 'aacp.mail_templates.tpl.two_factor_code.description',
+                subjectKey: 'account.two_factor.mail.subject',
+                htmlKey: 'account.two_factor.mail.body_html',
+                textKey: 'account.two_factor.mail.body_text',
+                parameters: ['code', 'minutes', 'ip'],
             ),
             new MailTemplateDefinition(
                 key: self::NOTIFICATION_INSTANT,

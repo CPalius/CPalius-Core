@@ -13,5 +13,6 @@ return [
   Modules\Pages\PagesModule::class,
   Modules\Importer\ImporterModule::class,
   Modules\Whitepaper\WhitepaperModule::class,
+  Modules\Showcase\ShowcaseModule::class,
   Modules\Messages\MessagesModule::class,
 ];

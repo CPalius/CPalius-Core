@@ -18,6 +18,8 @@ final class FloodService
     public const EVENT_REGISTER = 'register';
     public const EVENT_PASSWORD_RESET = 'password_reset';
     public const EVENT_TWOFACTOR = 'twofactor';
+    public const EVENT_TWOFACTOR_EMAIL = 'twofactor_email';
+    public const EVENT_AACP_GATE = 'aacp_gate';
     public const EVENT_CSP_REPORT = 'csp_report';
 
     private const PREFIX = 'cp_flood_';

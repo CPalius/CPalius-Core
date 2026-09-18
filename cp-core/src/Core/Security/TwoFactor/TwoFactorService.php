@@ -12,9 +12,15 @@ use App\Core\Security\Service\SecurityEventRecorder;
 use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
- * TOTP second factor. State lives in User::$data; the shared secret is sealed with SecretBox.
+ * Second factor, in two flavours the account owner picks between: a TOTP
+ * authenticator app, or a one-time code e-mailed at sign-in.
+ *
+ * State lives in User::$data; the TOTP shared secret is sealed with SecretBox and
+ * the e-mailed code is held by EmailOtpService. Recovery codes are shared by both
+ * methods, so switching method never strands a printed code list.
  */
 final class TwoFactorService
 {
@@ -23,10 +29,16 @@ final class TwoFactorService
 
     public const RECOVERY_CODE_COUNT = 8;
 
+    /** Authenticator app (RFC 6238). The default, and the only method before 2.0.6. */
+    public const METHOD_TOTP = 'totp';
+    /** One-time code delivered to the account's e-mail address. */
+    public const METHOD_EMAIL = 'email';
+
     private const KEY_SECRET = 'two_factor_secret';
     private const KEY_CONFIRMED = 'two_factor_confirmed_at';
     private const KEY_RECOVERY = 'two_factor_recovery';
     private const KEY_LAST_COUNTER = 'two_factor_last_counter';
+    private const KEY_METHOD = 'two_factor_method';
 
     private const VERIFY_LIMIT = 10;
     private const VERIFY_WINDOW = 900;
@@ -40,6 +52,9 @@ final class TwoFactorService
         private readonly FloodService $flood,
         private readonly SecurityEventRecorder $recorder,
         private readonly string $appSecret,
+        // Optional so a container built without the mail stack — and the unit
+        // tests that construct this by hand — still resolve the TOTP path.
+        private readonly ?EmailOtpService $emailOtp = null,
     ) {
     }
 
@@ -48,8 +63,32 @@ final class TwoFactorService
         return (bool) $this->settings->get('security.twofactor_enabled', true);
     }
 
+    /**
+     * The method this account enrolled with. Accounts that enrolled before
+     * e-mail codes existed have no stored method and a sealed secret, so TOTP is
+     * the right answer for them and the right default for everybody else.
+     */
+    public function method(User $user): string
+    {
+        $stored = $user->getDataValue(self::KEY_METHOD);
+
+        return $stored === self::METHOD_EMAIL ? self::METHOD_EMAIL : self::METHOD_TOTP;
+    }
+
+    public function usesEmail(User $user): bool
+    {
+        return $this->method($user) === self::METHOD_EMAIL;
+    }
+
     public function isEnrolled(User $user): bool
     {
+        if ($this->usesEmail($user)) {
+            // Deliberately not conditioned on SMTP being reachable right now: an
+            // outage must not silently drop the second factor off an account.
+            // A visitor stuck behind a dead mailer uses a recovery code.
+            return $this->hasConfirmation($user);
+        }
+
         return $this->secretOf($user) !== null && $this->hasConfirmation($user);
     }
 
@@ -58,11 +97,46 @@ final class TwoFactorService
      */
     public function isEnrollmentBroken(User $user): bool
     {
+        if ($this->usesEmail($user)) {
+            return false;
+        }
+
         $sealed = $user->getDataValue(self::KEY_SECRET);
 
         return \is_string($sealed) && $sealed !== ''
             && $this->hasConfirmation($user)
             && $this->secretOf($user) === null;
+    }
+
+    /**
+     * Methods an account may pick from right now: the operator's choice, minus
+     * e-mail when the site cannot send mail.
+     *
+     * @return list<string>
+     */
+    public function availableMethods(): array
+    {
+        $configured = (string) $this->settings->get('security.twofactor_methods', 'both');
+        $emailUsable = $this->emailOtp !== null && $this->emailOtp->isAvailable();
+
+        $methods = [];
+
+        if ($configured !== 'email') {
+            $methods[] = self::METHOD_TOTP;
+        }
+
+        if ($configured !== 'app' && $emailUsable) {
+            $methods[] = self::METHOD_EMAIL;
+        }
+
+        // Never return an empty list: "e-mail only" plus a broken mailer would
+        // otherwise leave a mandatory-2FA account with nothing to enroll in.
+        return $methods === [] ? [self::METHOD_TOTP] : $methods;
+    }
+
+    public function isMethodAllowed(string $method): bool
+    {
+        return \in_array($method, $this->availableMethods(), true);
     }
 
     private function hasConfirmation(User $user): bool
@@ -106,9 +180,66 @@ final class TwoFactorService
         $user->setDataValue(self::KEY_CONFIRMED, null);
         $user->setDataValue(self::KEY_RECOVERY, []);
         $user->setDataValue(self::KEY_LAST_COUNTER, null);
+        $user->setDataValue(self::KEY_METHOD, self::METHOD_TOTP);
         $this->entityManager->flush();
 
         return $secret;
+    }
+
+    /**
+     * Starts e-mail enrollment and sends the first code.
+     *
+     * Like beginEnrollment(), starting again wipes the previous state entirely:
+     * an account enrolled on e-mail must not keep a dormant authenticator secret
+     * that would still open the door. The mailer is checked BEFORE anything is
+     * wiped, so the common failure — e-mail never configured — costs nothing.
+     *
+     * @return bool false when no code was sent; the account is then unenrolled
+     *              and the setup screen offers the other method
+     */
+    public function beginEmailEnrollment(User $user, ?Request $request = null): bool
+    {
+        if ($this->emailOtp === null || !$this->emailOtp->isAvailable()) {
+            return false;
+        }
+
+        $user->setDataValue(self::KEY_SECRET, null);
+        $user->setDataValue(self::KEY_CONFIRMED, null);
+        $user->setDataValue(self::KEY_RECOVERY, []);
+        $user->setDataValue(self::KEY_LAST_COUNTER, null);
+        $user->setDataValue(self::KEY_METHOD, self::METHOD_EMAIL);
+        $this->entityManager->flush();
+
+        return $this->emailOtp->issue($user, $request);
+    }
+
+    /**
+     * Sends a fresh e-mail code for an account already on the e-mail method,
+     * for the challenge screen and its resend button.
+     */
+    public function issueEmailCode(User $user, ?Request $request = null): bool
+    {
+        if ($this->emailOtp === null || !$this->usesEmail($user)) {
+            return false;
+        }
+
+        return $this->emailOtp->issue($user, $request);
+    }
+
+    /** Seconds left on the resend cooldown, so the button can say why it is inert. */
+    public function emailResendWait(User $user): int
+    {
+        return $this->emailOtp?->secondsUntilResend($user) ?? 0;
+    }
+
+    public function emailCodeMinutes(): int
+    {
+        return $this->emailOtp?->ttlMinutes() ?? 0;
+    }
+
+    public function hasPendingEmailCode(User $user): bool
+    {
+        return $this->emailOtp?->hasPendingCode($user) ?? false;
     }
 
     public function provisioningUri(User $user, string $secret, string $issuer): string
@@ -122,6 +253,14 @@ final class TwoFactorService
      */
     public function confirmEnrollment(User $user, string $code): ?array
     {
+        if ($this->usesEmail($user)) {
+            if ($this->emailOtp === null || !$this->emailOtp->verify($user, $code)) {
+                return null;
+            }
+
+            return $this->completeEnrollment($user, null);
+        }
+
         $secret = $this->secretOf($user);
         if ($secret === null) {
             return null;
@@ -132,6 +271,14 @@ final class TwoFactorService
             return null;
         }
 
+        return $this->completeEnrollment($user, $counter);
+    }
+
+    /**
+     * @return list<string> the plain recovery codes, shown exactly once
+     */
+    private function completeEnrollment(User $user, ?int $counter): array
+    {
         $codes = $this->generateRecoveryCodes();
 
         $user->setDataValue(self::KEY_CONFIRMED, (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM));
@@ -150,6 +297,26 @@ final class TwoFactorService
         $identifier = (string) $user->getId();
 
         if (!$this->flood->isAllowed(FloodService::EVENT_TWOFACTOR, $identifier, self::VERIFY_LIMIT, self::VERIFY_WINDOW, failOpen: true)) {
+            return false;
+        }
+
+        if ($this->usesEmail($user)) {
+            if ($this->emailOtp !== null && $this->emailOtp->verify($user, $code)) {
+                $this->flood->clear(FloodService::EVENT_TWOFACTOR, $identifier);
+
+                return true;
+            }
+
+            // A recovery code is the way back in when the mailbox is unreachable,
+            // so it stays accepted on this path too.
+            if ($this->consumeRecoveryCode($user, $code)) {
+                $this->flood->clear(FloodService::EVENT_TWOFACTOR, $identifier);
+
+                return true;
+            }
+
+            $this->registerFailure($user, 'email_mismatch');
+
             return false;
         }
 
@@ -194,7 +361,12 @@ final class TwoFactorService
         $user->setDataValue(self::KEY_CONFIRMED, null);
         $user->setDataValue(self::KEY_RECOVERY, []);
         $user->setDataValue(self::KEY_LAST_COUNTER, null);
+        $user->setDataValue(self::KEY_METHOD, null);
         $this->entityManager->flush();
+
+        // A pending code left behind would still be verifiable if the account
+        // re-enrolled on e-mail before it expired.
+        $this->emailOtp?->clear($user);
     }
 
     /**

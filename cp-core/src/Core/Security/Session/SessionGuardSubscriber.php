@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Core\Security\Session;
 
 use App\Core\Security\Entity\SystemTelemetryLog;
+use App\Core\Security\RoleConfigManager;
 use App\Core\Security\Service\SecurityEventRecorder;
+use App\Core\Security\TwoFactor\TwoFactorService;
 use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -38,6 +40,7 @@ final class SessionGuardSubscriber implements EventSubscriberInterface
         private readonly SessionRegistry $registry,
         private readonly SettingsRegistry $settings,
         private readonly SecurityEventRecorder $recorder,
+        private readonly RoleConfigManager $roleConfigManager,
     ) {
     }
 
@@ -86,10 +89,10 @@ final class SessionGuardSubscriber implements EventSubscriberInterface
                 return;
             }
 
-            $reason = $this->violation($session, $request);
+            $reason = $this->violation($session, $request, $user);
             if ($reason !== null) {
                 $this->terminate($session, $request, $user, $reason);
-                $event->setResponse(new RedirectResponse('/hesap/giris'));
+                $event->setResponse(new RedirectResponse($this->loginPath($request).'?session_expired='.$reason));
 
                 return;
             }
@@ -100,7 +103,7 @@ final class SessionGuardSubscriber implements EventSubscriberInterface
         }
     }
 
-    private function violation(SessionInterface $session, Request $request): ?string
+    private function violation(SessionInterface $session, Request $request, User $user): ?string
     {
         if ($this->registry->isRevoked($session->getId())) {
             return 'revoked';
@@ -108,7 +111,7 @@ final class SessionGuardSubscriber implements EventSubscriberInterface
 
         $now = time();
 
-        $idleLimit = $this->minutes('security.session_idle_minutes');
+        $idleLimit = $this->idleLimitFor($user);
         $lastSeen = $session->get(self::KEY_SEEN);
         if ($idleLimit > 0 && \is_int($lastSeen) && $now - $lastSeen > $idleLimit) {
             return 'idle_timeout';
@@ -189,6 +192,43 @@ final class SessionGuardSubscriber implements EventSubscriberInterface
         }
 
         return false;
+    }
+
+    /**
+     * Panel accounts get the shorter of the two limits. An open /aacp tab in an
+     * unattended office is worth more to an attacker than an open profile page,
+     * so it should not be allowed to sit idle for as long.
+     */
+    private function idleLimitFor(User $user): int
+    {
+        $general = $this->minutes('security.session_idle_minutes');
+        $admin = $this->minutes('security.session_admin_idle_minutes');
+
+        if ($admin <= 0 || !$this->isPrivileged($user)) {
+            return $general;
+        }
+
+        return $general > 0 ? min($general, $admin) : $admin;
+    }
+
+    private function isPrivileged(User $user): bool
+    {
+        $capabilities = $this->roleConfigManager->getCapabilitiesForRoles($user->getCpaliusRoles());
+
+        return \in_array(TwoFactorService::PRIVILEGED_CAPABILITY, $capabilities, true)
+            || \in_array('*', $capabilities, true);
+    }
+
+    /**
+     * Send people back to the door they came in by: an operator bounced out of
+     * /aacp onto the public member login has to work out for themselves where
+     * the panel login lives.
+     */
+    private function loginPath(Request $request): string
+    {
+        $path = $request->getPathInfo();
+
+        return str_starts_with($path, '/aacp') || str_starts_with($path, '/admin') ? '/login' : '/hesap/giris';
     }
 
     private function minutes(string $key): int

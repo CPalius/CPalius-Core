@@ -17,14 +17,27 @@
 <div class="forum-header fade-in">
     <h1 class="section-title">{{ 'forum.my_topics.title'|trans }}</h1>
 </div>
+{# forum-topic--simple, not the board row: the board grid is five columns wide
+   and this list fills one of them, which left every title squeezed into the
+   40px icon slot. #}
 <div class="forum-topics fade-in">
     {% for topic in topics %}
-        <div class="forum-topic">
-            <div>
+        <div class="forum-topic forum-topic--simple">
+            <div class="forum-topic__main">
                 <div class="forum-topic__title">
                     <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}">{{ topic.title }}</a>
                 </div>
                 <div class="forum-topic__meta">{{ topic.section.title }} · {{ (topic.lastPostDate ?? topic.updatedAt)|forum_relative_time }}</div>
+            </div>
+            <div class="forum-topic__side">
+                <span class="forum-topic__stat">
+                    <strong>{{ max(0, topic.postCount - 1)|number_format(0, ',', '.') }}</strong>
+                    <span>{{ 'stat.reply'|trans({}, 'forums') }}</span>
+                </span>
+                <span class="forum-topic__stat">
+                    <strong>{{ topic.viewCount|number_format(0, ',', '.') }}</strong>
+                    <span>{{ 'stat.view'|trans({}, 'forums') }}</span>
+                </span>
             </div>
         </div>
     {% else %}

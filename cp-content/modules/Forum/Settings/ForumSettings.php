@@ -50,6 +50,66 @@ use App\Core\Annotation\CpSetting;
     group: 'forum.engine',
 )]
 #[CpSetting(
+    key: 'forum.edit_time_limit_topic',
+    label: 'forum.settings.edit_time_limit_topic',
+    type: 'integer',
+    default: 120,
+    module: 'forum',
+    group: 'forum.engine',
+)]
+#[CpSetting(
+    key: 'forum.antibump_enabled',
+    label: 'forum.settings.antibump_enabled',
+    type: 'checkbox',
+    default: true,
+    module: 'forum',
+    group: 'forum.antibump',
+)]
+#[CpSetting(
+    key: 'forum.antibump_scope',
+    label: 'forum.settings.antibump_scope',
+    type: 'select',
+    default: 'topic_author',
+    variants: [
+        'topic_author' => 'forum.settings.antibump_scope_topic_author',
+        'everyone' => 'forum.settings.antibump_scope_everyone',
+    ],
+    module: 'forum',
+    group: 'forum.antibump',
+)]
+#[CpSetting(
+    key: 'forum.antibump_window_minutes',
+    label: 'forum.settings.antibump_window_minutes',
+    type: 'integer',
+    default: 0,
+    module: 'forum',
+    group: 'forum.antibump',
+)]
+#[CpSetting(
+    key: 'forum.signatures_enabled',
+    label: 'forum.settings.signatures_enabled',
+    type: 'checkbox',
+    default: true,
+    module: 'forum',
+    group: 'forum.member',
+)]
+#[CpSetting(
+    key: 'forum.signature_max_length',
+    label: 'forum.settings.signature_max_length',
+    type: 'integer',
+    default: 300,
+    module: 'forum',
+    group: 'forum.member',
+)]
+#[CpSetting(
+    key: 'forum.word_filter_enabled',
+    label: 'forum.settings.word_filter_enabled',
+    type: 'checkbox',
+    default: true,
+    module: 'forum',
+    group: 'forum.member',
+)]
+#[CpSetting(
     key: 'forum.attachments_enabled',
     label: 'forum.settings.attachments_enabled',
     type: 'checkbox',

@@ -1,0 +1,129 @@
+{% extends '@Theme/account/layout.html.twig' %}
+
+{% block title %}{{ 'account.security.title'|trans }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-crumb fade-in" aria-label="{{ 'account.nav_aria'|trans }}">
+        <ol class="forum-crumb__list">
+            <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+            <li><a href="{{ path('account_profile') }}">{{ 'account.profile.title'|trans }}</a></li>
+            <li class="is-active">{{ 'account.security.title'|trans }}</li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in">
+    <h1 class="section-title" style="font-size: var(--fs-2xl);">{{ 'account.security.title'|trans }}</h1>
+    <p class="forum-header__desc">{{ 'account.security.desc'|trans }}</p>
+</div>
+
+<div class="forum-form fade-in" style="margin-bottom: var(--sp-lg);">
+    <h2 class="forum-profile-settings__heading">{{ 'account.security.two_factor_heading'|trans }}</h2>
+
+    {% if not twoFactorEnabled %}
+        <p class="forum-profile-settings__hint">{{ 'account.two_factor.disabled_site_wide'|trans }}</p>
+    {% elseif enrolled %}
+        <p style="font-size: var(--fs-sm);">
+            {{ ('account.security.state_on.' ~ method)|trans }}
+            {% if confirmedAt %}
+                <span style="color: var(--slw-text-muted);">({{ confirmedAt|date('d.m.Y') }})</span>
+            {% endif %}
+        </p>
+        <p class="forum-profile-settings__hint">
+            {{ 'account.security.recovery_remaining'|trans({'count': recoveryRemaining}) }}
+        </p>
+
+        {% if not verified %}
+            <p class="forum-profile-settings__hint">{{ 'account.security.verify_first'|trans }}</p>
+            <a href="{{ path('account_two_factor_challenge') }}" class="btn btn-sm btn-primary">{{ 'account.security.verify_now'|trans }}</a>
+        {% else %}
+            <div style="display:flex; flex-wrap: wrap; gap: var(--sp-xs); margin-top: var(--sp-sm);">
+                <a href="{{ path('account_two_factor_setup') }}" class="btn btn-sm btn-outline">{{ 'account.security.change_method'|trans }}</a>
+
+                <form method="post" action="{{ path('account_two_factor_recovery_codes') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('account_two_factor_recovery') }}">
+                    <button type="submit" class="btn btn-sm btn-outline">{{ 'account.security.regenerate_recovery'|trans }}</button>
+                </form>
+
+                {% if not mandatory %}
+                    <form method="post" action="{{ path('account_two_factor_disable') }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('account_two_factor_disable') }}">
+                        <button type="submit" class="btn btn-sm btn-ghost">{{ 'account.security.disable'|trans }}</button>
+                    </form>
+                {% endif %}
+            </div>
+            {% if mandatory %}
+                <p class="forum-profile-settings__hint">{{ 'account.two_factor.mandatory_cannot_disable'|trans }}</p>
+            {% endif %}
+        {% endif %}
+    {% else %}
+        <p style="font-size: var(--fs-sm);">{{ 'account.security.state_off'|trans }}</p>
+        <p class="forum-profile-settings__hint">{{ 'account.security.state_off_hint'|trans }}</p>
+        <a href="{{ path('account_two_factor_setup') }}" class="btn btn-sm btn-primary">{{ 'account.security.enable'|trans }}</a>
+    {% endif %}
+</div>
+
+<div class="forum-form fade-in">
+    <h2 class="forum-profile-settings__heading">{{ 'account.security.sessions_heading'|trans }}</h2>
+    <p class="forum-profile-settings__hint">
+        {% if idleMinutes > 0 %}
+            {{ 'account.security.sessions_desc_idle'|trans({'minutes': idleMinutes}) }}
+        {% else %}
+            {{ 'account.security.sessions_desc'|trans }}
+        {% endif %}
+    </p>
+
+    {% if sessions is empty %}
+        <p style="font-size: var(--fs-sm); color: var(--slw-text-muted);">{{ 'account.security.sessions_none'|trans }}</p>
+    {% else %}
+        <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse: collapse; font-size: var(--fs-sm);">
+                <thead>
+                    <tr style="text-align:left; color: var(--slw-text-muted);">
+                        <th style="padding: var(--sp-xs);">{{ 'account.security.column.device'|trans }}</th>
+                        <th style="padding: var(--sp-xs);">{{ 'account.security.column.ip'|trans }}</th>
+                        <th style="padding: var(--sp-xs);">{{ 'account.security.column.last_seen'|trans }}</th>
+                        <th style="padding: var(--sp-xs);"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in sessions %}
+                        <tr style="border-top: 1px solid var(--slw-border);">
+                            <td style="padding: var(--sp-xs);" title="{{ row.user_agent|default('') }}">
+                                {# Local slice, not |u.truncate(): twig/string-extra is not installed here. #}
+                                {% set agent = row.user_agent|default('-') %}
+                                {{ agent|length > 60 ? agent|slice(0, 60) ~ '…' : agent }}
+                                {% if currentSessionId is not null and row.id == currentSessionId %}
+                                    <span style="color: var(--cp-accent);">· {{ 'account.security.this_device'|trans }}</span>
+                                {% endif %}
+                            </td>
+                            <td style="padding: var(--sp-xs);">{{ row.ip_address|default('-') }}</td>
+                            <td style="padding: var(--sp-xs);">{{ row.last_seen_at|default('-') }}</td>
+                            <td style="padding: var(--sp-xs); text-align:right;">
+                                {% if row.revoked_at is not null %}
+                                    <span style="color: var(--slw-text-muted);">{{ 'account.security.revoked'|trans }}</span>
+                                {% else %}
+                                    <form method="post" action="{{ path('account_session_revoke', {id: row.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('account_sessions') }}">
+                                        <button type="submit" class="btn btn-sm btn-ghost">
+                                            {{ currentSessionId is not null and row.id == currentSessionId
+                                                ? 'account.security.sign_out'|trans
+                                                : 'account.security.revoke'|trans }}
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <form method="post" action="{{ path('account_sessions_revoke_all') }}" style="margin-top: var(--sp-sm);">
+            <input type="hidden" name="_token" value="{{ csrf_token('account_sessions') }}">
+            <button type="submit" class="btn btn-sm btn-outline">{{ 'account.security.revoke_all'|trans }}</button>
+        </form>
+    {% endif %}
+</div>
+{% endblock %}

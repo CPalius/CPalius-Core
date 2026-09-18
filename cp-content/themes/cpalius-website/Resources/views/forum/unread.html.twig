@@ -25,12 +25,18 @@
 </div>
 <div class="forum-topics fade-in">
     {% for topic in topics %}
-        <div class="forum-topic forum-topic--unread">
-            <div>
+        <div class="forum-topic forum-topic--simple forum-topic--unread">
+            <div class="forum-topic__main">
                 <div class="forum-topic__title">
                     <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}">{{ topic.title }}</a>
                 </div>
                 <div class="forum-topic__meta">{{ topic.section.title }} · {{ (topic.lastPostDate ?? topic.updatedAt)|forum_relative_time }}</div>
+            </div>
+            <div class="forum-topic__side">
+                <span class="forum-topic__stat">
+                    <strong>{{ max(0, topic.postCount - 1)|number_format(0, ',', '.') }}</strong>
+                    <span>{{ 'stat.reply'|trans({}, 'forums') }}</span>
+                </span>
             </div>
         </div>
     {% else %}

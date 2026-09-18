@@ -19,8 +19,8 @@
 </div>
 <div class="forum-topics fade-in">
     {% for draft in drafts %}
-        <div class="forum-topic">
-            <div>
+        <div class="forum-topic forum-topic--simple">
+            <div class="forum-topic__main">
                 <div class="forum-topic__title">
                     {% if draft.topic %}
                         <a href="{{ path('forum_topic', {topicId: draft.topic.id, slug: draft.topic.slug}) }}#reply">{{ draft.topic.title }}</a>
