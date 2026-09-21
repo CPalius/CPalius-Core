@@ -67,4 +67,9 @@ class ForumPollOption
     {
         ++$this->voteCount;
     }
+
+    public function decrementVoteCount(): void
+    {
+        $this->voteCount = max(0, $this->voteCount - 1);
+    }
 }

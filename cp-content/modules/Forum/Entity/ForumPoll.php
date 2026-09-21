@@ -32,6 +32,15 @@ class ForumPoll
     #[ORM\Column(name: 'hide_until_close', type: 'boolean')]
     private bool $hideUntilClose = false;
 
+    #[ORM\Column(name: 'is_closed', type: 'boolean', options: ['default' => false])]
+    private bool $closed = false;
+
+    #[ORM\Column(name: 'is_public', type: 'boolean', options: ['default' => false])]
+    private bool $publicVotes = false;
+
+    #[ORM\Column(name: 'allow_change', type: 'boolean', options: ['default' => false])]
+    private bool $allowChange = false;
+
     #[ORM\Column(name: 'closes_at', type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $closesAt = null;
 
@@ -104,7 +113,42 @@ class ForumPoll
 
     public function isClosed(): bool
     {
+        if ($this->closed) {
+            return true;
+        }
+
         return $this->closesAt !== null && $this->closesAt <= new \DateTimeImmutable();
+    }
+
+    public function setClosed(bool $closed): static
+    {
+        $this->closed = $closed;
+
+        return $this;
+    }
+
+    public function isPublic(): bool
+    {
+        return $this->publicVotes;
+    }
+
+    public function setPublic(bool $publicVotes): static
+    {
+        $this->publicVotes = $publicVotes;
+
+        return $this;
+    }
+
+    public function allowsChange(): bool
+    {
+        return $this->allowChange;
+    }
+
+    public function setAllowChange(bool $allowChange): static
+    {
+        $this->allowChange = $allowChange;
+
+        return $this;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

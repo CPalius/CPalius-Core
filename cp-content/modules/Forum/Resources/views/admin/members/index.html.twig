@@ -12,11 +12,11 @@
         <form method="post" action="{{ path('admin_forum_members_target_ban') }}" class="flex flex-wrap gap-2 items-end">
             <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_member') }}">
             <div>
-                <label class="form-label">IP</label>
+                <label class="form-label">{{ 'studio.forum.members.ip'|trans }}</label>
                 <input type="text" name="ip_address" class="form-control" placeholder="203.0.113.10">
             </div>
             <div>
-                <label class="form-label">E-posta</label>
+                <label class="form-label">{{ 'studio.forum.members.email'|trans }}</label>
                 <input type="email" name="email" class="form-control" placeholder="spam@example.com">
             </div>
             <div>
@@ -106,6 +106,75 @@
             </twig:block>
         </twig:studio:table>
     </twig:studio:card>
+
+    <div class="mt-8 grid gap-4 lg:grid-cols-2">
+        <twig:studio:card title="{{ 'studio.forum.members.ban.form_header'|trans }}">
+            <form method="post" action="{{ path('admin_forum_members_ban_user') }}" class="grid gap-3">
+                <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_member') }}">
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.ban.user_id'|trans }}</label>
+                    <input type="number" name="user_id" class="form-control" required min="1">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.ban.type'|trans }}</label>
+                    <select name="type" class="form-select">
+                        <option value="mute">{{ 'studio.forum.members.type.mute_hint'|trans }}</option>
+                        <option value="ban">{{ 'studio.forum.members.type.ban_hint'|trans }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.duration_placeholder'|trans }}</label>
+                    <input type="number" name="duration_days" class="form-control" min="0">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.members.reason_placeholder'|trans }}</label>
+                    <textarea name="reason" class="form-control" rows="2" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">{{ 'studio.forum.members.action.apply'|trans }}</button>
+            </form>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'studio.forum.members.ban.active_header'|trans }}" padded="{{ false }}">
+            <twig:studio:table headers="{{ [
+                'studio.forum.members.column.member'|trans,
+                'studio.forum.members.column.status'|trans,
+                'studio.forum.members.reason_placeholder'|trans,
+                '',
+            ] }}" empty="{{ activeBans is empty }}" emptyText="{{ 'studio.forum.members.ban.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for ban in activeBans %}
+                        <tr>
+                            <td>
+                                {% if ban.user %}
+                                    {{ ban.user.fullName }} <span class="text-fs-xs text-neutral-500">#{{ ban.user.id }}</span>
+                                {% elseif ban.ipAddress %}
+                                    {{ 'studio.forum.members.ip'|trans }} {{ ban.ipAddress }}
+                                {% elseif ban.email %}
+                                    {{ ban.email }}
+                                {% else %}
+                                    {{ 'studio.forum.members.ban.unknown'|trans }}
+                                {% endif %}
+                            </td>
+                            <td class="text-fs-xs">
+                                {% if ban.ban %}
+                                    {{ 'studio.forum.members.status.banned'|trans }}
+                                {% else %}
+                                    {{ 'studio.forum.members.status.muted'|trans }}
+                                {% endif %}
+                            </td>
+                            <td class="text-fs-sm">{{ ban.reason }}</td>
+                            <td class="text-right">
+                                <form method="post" action="{{ path('admin_forum_members_revoke', {banId: ban.id}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_member') }}">
+                                    <button type="submit" class="btn btn-sm btn-neutral">{{ 'studio.forum.members.action.remove'|trans }}</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:studio:table>
+        </twig:studio:card>
+    </div>
 
     {% if totalPages > 1 %}
         <nav class="flex items-center justify-center gap-4 mt-4">

@@ -16,7 +16,7 @@ final class ForumSplitService
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly ForumPostRepository $postRepository,
-        private readonly ForumStatsService $statsService,
+        private readonly ForumCounterService $counterService,
     ) {
     }
 
@@ -72,12 +72,8 @@ final class ForumSplitService
         $source->touch();
 
         $this->entityManager->flush();
-        $this->statsService->syncTopic($source);
-        $this->statsService->syncTopic($newTopic);
-        $this->statsService->syncSection($source->getSection());
-        if ($section->getId() !== $source->getSection()->getId()) {
-            $this->statsService->syncSection($section);
-        }
+        $this->counterService->splitPosts($source, $newTopic, $movable);
+        $this->entityManager->flush();
 
         return $newTopic;
     }

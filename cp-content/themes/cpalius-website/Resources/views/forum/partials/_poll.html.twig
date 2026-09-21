@@ -1,21 +1,25 @@
 {% set voted = pollVotedIds|default([]) %}
+{% set voters = pollVoters|default({}) %}
 {% set showResults = poll.isClosed or voted is not empty or not poll.hideUntilClose %}
+{% set canChange = poll.allowsChange and voted is not empty and not poll.isClosed and cp_user() %}
 <div class="forum-poll fade-in">
     <h2 class="forum-poll__title"><i class="bi bi-bar-chart"></i> {{ poll.question }}</h2>
-    {% if not poll.isClosed and cp_user() and voted is empty %}
+    {% if not poll.isClosed and cp_user() and (voted is empty or canChange) %}
         <form method="post" action="{{ path('forum_poll_vote', {topicId: topic.id}) }}" class="forum-poll__form">
             <input type="hidden" name="_token" value="{{ csrf_token('forum_poll_vote') }}">
             {% for option in poll.options %}
                 <label class="forum-poll__option">
                     {% if poll.maxChoices > 1 %}
-                        <input type="checkbox" name="option_ids[]" value="{{ option.id }}">
+                        <input type="checkbox" name="option_ids[]" value="{{ option.id }}" {{ option.id in voted ? 'checked' : '' }}>
                     {% else %}
-                        <input type="radio" name="option_id" value="{{ option.id }}" required>
+                        <input type="radio" name="option_id" value="{{ option.id }}" {{ option.id in voted ? 'checked' : '' }} {{ voted is empty ? 'required' : '' }}>
                     {% endif %}
                     {{ option.label }}
                 </label>
             {% endfor %}
-            <button type="submit" class="btn btn-sm btn-primary">{{ 'forum.poll.vote'|trans }}</button>
+            <button type="submit" class="btn btn-sm btn-primary">
+                {{ canChange ? 'forum.poll.change'|trans : 'forum.poll.vote'|trans }}
+            </button>
         </form>
     {% endif %}
     {% if showResults %}
@@ -27,6 +31,16 @@
                     <span>{{ option.label }}</span>
                     <span class="forum-poll__bar" style="--pct: {{ pct }}%;"></span>
                     <strong>{{ option.voteCount }} ({{ pct }}%)</strong>
+                    {% if poll.public and voters[option.id]|default([]) is not empty %}
+                        <ul class="forum-poll__voters">
+                            {% for voter in voters[option.id] %}
+                                <li>
+                                    {% include '@Theme/forum/partials/_avatar.html.twig' with {name: voter.publicDisplayName, user: voter, size: 'xs'} %}
+                                    <span>{{ voter.publicDisplayName }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
                 </li>
             {% endfor %}
         </ul>

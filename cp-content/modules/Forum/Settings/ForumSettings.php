@@ -158,6 +158,26 @@ use App\Core\Annotation\CpSetting;
     group: 'forum.engine',
 )]
 #[CpSetting(
+    key: 'forum.warning_auto_threshold',
+    label: 'forum.settings.warning_auto_threshold',
+    type: 'integer',
+    default: 10,
+    module: 'forum',
+    group: 'forum.engine',
+)]
+#[CpSetting(
+    key: 'forum.warning_auto_action',
+    label: 'forum.settings.warning_auto_action',
+    type: 'select',
+    default: 'mute',
+    variants: [
+        'mute' => 'forum.settings.warning_auto_action_mute',
+        'ban' => 'forum.settings.warning_auto_action_ban',
+    ],
+    module: 'forum',
+    group: 'forum.engine',
+)]
+#[CpSetting(
     key: 'forum.drafts_enabled',
     label: 'forum.settings.drafts_enabled',
     type: 'checkbox',

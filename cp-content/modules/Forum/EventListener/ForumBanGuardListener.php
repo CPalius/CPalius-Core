@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace Modules\Forum\EventListener;
 
 use App\Entity\User;
+use Modules\Forum\Service\ForumAccessService;
 use Modules\Forum\Service\ForumBanService;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Contracts\Translation\TranslatorInterface;
+use Twig\Environment;
 
 /**
  * Blocks forum-banned users from all front controllers by namespace.
@@ -21,8 +22,9 @@ final class ForumBanGuardListener implements EventSubscriberInterface
 {
     public function __construct(
         private readonly ForumBanService $banService,
+        private readonly ForumAccessService $accessService,
         private readonly Security $security,
-        private readonly TranslatorInterface $translator,
+        private readonly Environment $twig,
     ) {
     }
 
@@ -64,9 +66,32 @@ final class ForumBanGuardListener implements EventSubscriberInterface
         }
 
         if ($ban === null) {
+            $actor = $user instanceof User ? $user : null;
+            $filter = $this->accessService->matchingFilterForUser($actor, $ip);
+            if ($filter !== null) {
+                $event->setController(fn (): Response => $this->bannedResponse(
+                    $filter->getReason() ?? '',
+                    null,
+                    'filter',
+                ));
+            }
+
             return;
         }
 
-        throw new AccessDeniedHttpException($this->translator->trans('forum.ban.denied', ['reason' => $ban->getReason()]));
+        $event->setController(fn (): Response => $this->bannedResponse(
+            $ban->getReason(),
+            $ban->getExpiresAt(),
+            'ban',
+        ));
+    }
+
+    private function bannedResponse(string $reason, ?\DateTimeImmutable $expiresAt, string $source): Response
+    {
+        return new Response($this->twig->render('@Theme/forum/banned.html.twig', [
+            'reason' => $reason,
+            'expiresAt' => $expiresAt,
+            'source' => $source,
+        ]), Response::HTTP_FORBIDDEN);
     }
 }

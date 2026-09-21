@@ -123,6 +123,22 @@
                         {{ 'studio.forum.sections.form.is_locked'|trans({}, 'forums') }}
                     </label>
                 </div>
+                <div class="md:col-span-2">
+                    <label class="form-label" for="rules_html">{{ 'studio.forum.sections.form.rules_html'|trans }}</label>
+                    <textarea name="rules_html" id="rules_html" rows="5" class="form-control">{{ formValues.rulesHtml|default('') }}</textarea>
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.forum.sections.form.rules_html_hint'|trans }}</p>
+                </div>
+                <div>
+                    <label class="form-label" for="access_secret">{{ 'studio.forum.sections.form.access_secret'|trans }}</label>
+                    <input type="password" name="access_secret" id="access_secret" class="form-control" autocomplete="new-password" placeholder="{{ formValues.hasAccessSecret|default(false) ? 'studio.forum.sections.form.access_secret_keep'|trans : 'studio.forum.sections.form.access_secret_placeholder'|trans }}">
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.forum.sections.form.access_secret_hint'|trans }}</p>
+                </div>
+                <div class="flex items-end">
+                    <label class="inline-flex items-center gap-2 text-fs-sm">
+                        <input type="checkbox" name="clear_access_secret" value="1">
+                        {{ 'studio.forum.sections.form.clear_access_secret'|trans }}
+                    </label>
+                </div>
             </div>
 
             <div class="mt-6 flex gap-2">

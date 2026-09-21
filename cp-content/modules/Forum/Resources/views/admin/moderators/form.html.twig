@@ -1,0 +1,89 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ moderator ? 'studio.forum.moderators.form.edit_header'|trans : 'studio.forum.moderators.form.create_header'|trans }}{% endblock %}
+
+{% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+    <twig:studio:card>
+        <form method="post">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_moderator') }}">
+
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="form-label" for="section_id">{{ 'studio.forum.moderators.form.section'|trans }}</label>
+                    <select name="section_id" id="section_id" class="form-select" {{ moderator ? 'disabled' : 'required' }}>
+                        <option value="">{{ 'studio.forum.moderators.form.section_none'|trans }}</option>
+                        {% for row in tree %}
+                            <option value="{{ row.section.id }}" {{ formValues.sectionId == row.section.id ? 'selected' : '' }}>
+                                {% if row.depth > 0 %}{% for i in 1..row.depth %}— {% endfor %}{% endif %}{{ row.section.title }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if moderator %}
+                        <input type="hidden" name="section_id" value="{{ formValues.sectionId }}">
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="form-label" for="subject_type">{{ 'studio.forum.moderators.form.subject_type'|trans }}</label>
+                    <select name="subject_type" id="subject_type" class="form-select" {{ moderator ? 'disabled' : '' }}>
+                        <option value="user" {{ formValues.subjectType == 'user' ? 'selected' : '' }}>{{ 'studio.forum.moderators.type.user'|trans }}</option>
+                        <option value="group" {{ formValues.subjectType == 'group' ? 'selected' : '' }}>{{ 'studio.forum.moderators.type.group'|trans }}</option>
+                    </select>
+                </div>
+                <div id="user-field">
+                    <label class="form-label" for="user_lookup">{{ 'studio.forum.moderators.form.user'|trans }}</label>
+                    <input type="text" name="user_lookup" id="user_lookup" value="{{ formValues.userLookup }}" class="form-control" {{ moderator ? 'readonly' : '' }} placeholder="{{ 'studio.forum.moderators.form.user_placeholder'|trans }}">
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.forum.moderators.form.user_hint'|trans }}</p>
+                </div>
+                <div id="group-field">
+                    <label class="form-label" for="group_key">{{ 'studio.forum.moderators.form.group'|trans }}</label>
+                    <select name="group_key" id="group_key" class="form-select" {{ moderator ? 'disabled' : '' }}>
+                        <option value="">{{ 'studio.forum.moderators.form.group_none'|trans }}</option>
+                        {% for group in groups %}
+                            <option value="{{ group.id }}" {{ formValues.groupKey == group.id ? 'selected' : '' }}>{{ group.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <label class="inline-flex items-center gap-2 text-fs-sm">
+                        <input type="checkbox" name="inherit_children" value="1" {{ formValues.inheritChildren ? 'checked' : '' }}>
+                        {{ 'studio.forum.moderators.form.inherit_children'|trans }}
+                    </label>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <h3 class="text-fs-md font-semibold mb-2">{{ 'studio.forum.moderators.form.grants_header'|trans }}</h3>
+                <p class="text-fs-xs text-neutral-500 mb-3">{{ 'studio.forum.moderators.form.grants_hint'|trans }}</p>
+                <div class="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                    {% for grant in grantOptions %}
+                        <label class="inline-flex items-center gap-2 text-fs-sm">
+                            <input type="checkbox" name="grant_keys[]" value="{{ grant }}" {{ grant in formValues.grantKeys ? 'checked' : '' }}>
+                            {{ ('studio.forum.permissions.perm.' ~ grant)|trans({}, 'forums') }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="mt-6 flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ 'studio.forum.moderators.form.save'|trans }}</button>
+                <a href="{{ path('admin_forum_moderators_index') }}" class="btn btn-neutral">{{ 'studio.forum.moderators.form.cancel'|trans }}</a>
+            </div>
+        </form>
+    </twig:studio:card>
+
+    <script{{ csp_nonce_attr() }}>
+        (function () {
+            const typeSelect = document.getElementById('subject_type');
+            const userField = document.getElementById('user-field');
+            const groupField = document.getElementById('group-field');
+            function sync() {
+                const isGroup = typeSelect.value === 'group';
+                userField.classList.toggle('hidden', isGroup);
+                groupField.classList.toggle('hidden', !isGroup);
+            }
+            typeSelect.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
+{% endblock %}

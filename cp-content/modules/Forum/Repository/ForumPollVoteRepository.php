@@ -44,4 +44,46 @@ final class ForumPollVoteRepository extends ServiceEntityRepository
             ->getQuery()
             ->getSingleScalarResult();
     }
+
+    /**
+     * @return array<int, list<User>>
+     */
+    public function votersGroupedByOption(ForumPoll $poll): array
+    {
+        $rows = $this->createQueryBuilder('v')
+            ->addSelect('u', 'o')
+            ->innerJoin('v.user', 'u')
+            ->innerJoin('v.option', 'o')
+            ->andWhere('v.poll = :poll')
+            ->setParameter('poll', $poll)
+            ->getQuery()
+            ->getResult();
+
+        $map = [];
+        foreach ($rows as $vote) {
+            $optionId = $vote->getOption()->getId();
+            if ($optionId === null) {
+                continue;
+            }
+            $map[$optionId][] = $vote->getUser();
+        }
+
+        return $map;
+    }
+
+    /**
+     * @return list<ForumPollVote>
+     */
+    public function findByPollAndUser(ForumPoll $poll, User $user): array
+    {
+        return $this->createQueryBuilder('v')
+            ->addSelect('o')
+            ->innerJoin('v.option', 'o')
+            ->andWhere('v.poll = :poll')
+            ->andWhere('v.user = :user')
+            ->setParameter('poll', $poll)
+            ->setParameter('user', $user)
+            ->getQuery()
+            ->getResult();
+    }
 }

@@ -17,11 +17,15 @@ use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\ForumNodeType;
 use Modules\Forum\ForumSectionType;
+use Modules\Forum\Navigation\ForumNavigation;
+use Modules\Forum\Repository\ForumBanRepository;
+use Modules\Forum\Repository\ForumBoardStatsRepository;
 use Modules\Forum\Repository\ForumPostReportRepository;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicPrefixRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
+use Modules\Forum\Service\ForumAccessService;
 use Modules\Forum\Service\ForumModerationLogService;
 use Modules\Forum\Service\ForumModerationService;
 use Modules\Forum\Service\ForumPermissionService;
@@ -49,6 +53,8 @@ final class ForumAdminController extends AbstractController
         private readonly ForumPostRepository $postRepository,
         private readonly ForumTopicPrefixRepository $topicPrefixRepository,
         private readonly ForumPostReportRepository $postReportRepository,
+        private readonly ForumBoardStatsRepository $boardStatsRepository,
+        private readonly ForumBanRepository $banRepository,
         private readonly UserRepository $userRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly ForumStatsService $statsService,
@@ -57,6 +63,7 @@ final class ForumAdminController extends AbstractController
         private readonly ForumTopicService $topicService,
         private readonly ForumModerationService $moderationService,
         private readonly ForumPermissionService $permissionService,
+        private readonly ForumAccessService $accessService,
         private readonly TranslationGroupResolver $translationGroupResolver,
         private readonly OriginCachePurger $originCachePurger,
         private readonly Paginator $paginator,
@@ -66,51 +73,28 @@ final class ForumAdminController extends AbstractController
     }
 
     #[Route('', name: 'dashboard', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.forums', icon: 'heroicons:chat-bubble-left-right', panel: 'studio', priority: 26, capability: 'forum.section.manage', group: 'studio.group.content')]
+    #[CpAdminMenu(label: 'aacp.menu.forums', icon: 'heroicons:chat-bubble-left-right', panel: 'studio', priority: ForumNavigation::OVERVIEW, capability: 'forum.section.manage', group: 'studio.group.content')]
     #[IsGranted('forum.section.manage')]
     public function dashboard(): Response
     {
         $sections = $this->hierarchyService->getAllSections($this->localeProvider->getDefaultCode());
-        $latestTopics = $this->topicRepository->findLatest(10);
-
-        $totalTopics = (int) $this->entityManager->createQueryBuilder()
-            ->select('COUNT(t.id)')
-            ->from('Modules\Forum\Entity\ForumTopic', 't')
-            ->getQuery()
-            ->getSingleScalarResult();
-
-        $totalPosts = (int) $this->entityManager->createQueryBuilder()
-            ->select('COUNT(p.id)')
-            ->from('Modules\Forum\Entity\ForumPost', 'p')
-            ->getQuery()
-            ->getSingleScalarResult();
-
-        // Chart: top 6 non-container sections by post count.
-        $chartSections = array_values(array_filter($sections, static fn (ForumSection $s) => !$s->isContainer()));
-        usort($chartSections, static fn (ForumSection $a, ForumSection $b) => $b->getPostCount() <=> $a->getPostCount());
-        $chartSections = \array_slice($chartSections, 0, 6);
-
-        $openReportCount = $this->postReportRepository->countOpen();
-        $totalReportCount = $this->postReportRepository->countTotal();
+        $boardStats = $this->boardStatsRepository->findOneByLocale($this->localeProvider->getDefaultCode());
+        $heldCount = ($boardStats?->getTopicCountHeld() ?? 0) + ($boardStats?->getPostCountHeld() ?? 0);
 
         return $this->render('@ForumModule/admin/dashboard.html.twig', [
-            'sections' => $sections,
-            'latestTopics' => $latestTopics,
-            'totalTopics' => $totalTopics,
-            'totalPosts' => $totalPosts,
-            'totalMembers' => $this->postRepository->countDistinctAuthors(),
-            'latestPosts' => $this->postRepository->findLatest(8),
-            'latestMembers' => $this->userRepository->createAdminListQueryBuilder()->setMaxResults(8)->getQuery()->getResult(),
-            'openReportCount' => $openReportCount,
-            'totalReportCount' => $totalReportCount,
-            'chartSectionLabels' => array_map(static fn (ForumSection $s) => $s->getTitle(), $chartSections),
-            'chartSectionPostCounts' => array_map(static fn (ForumSection $s) => $s->getPostCount(), $chartSections),
-            'chartSectionTopicCounts' => array_map(static fn (ForumSection $s) => $s->getTopicCount(), $chartSections),
+            'sectionCount' => \count($sections),
+            'topicCount' => $boardStats?->getTopicCount() ?? 0,
+            'postCount' => $boardStats?->getPostCount() ?? 0,
+            'heldCount' => $heldCount,
+            'lastPosterName' => $boardStats?->getLastPosterName(),
+            'lastPostAt' => $boardStats?->getLastPostAt(),
+            'openReportCount' => $this->postReportRepository->countOpen(),
+            'activeBanCount' => \count($this->banRepository->findActiveAll(80)),
         ]);
     }
 
     #[Route('/moderation', name: 'moderation_index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.forums_moderation', icon: 'heroicons:shield-check', panel: 'studio', priority: 28, capability: 'forum.moderation.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
+    #[CpAdminMenu(label: 'studio.forum.menu.moderation', icon: 'heroicons:shield-check', panel: 'studio', priority: ForumNavigation::MODERATION, capability: 'forum.moderation.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
     #[IsGranted('forum.moderation.manage')]
     public function moderationIndex(): Response
     {
@@ -289,7 +273,7 @@ final class ForumAdminController extends AbstractController
     }
 
     #[Route('/sections', name: 'sections_index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.forums_nodes', icon: 'heroicons:rectangle-group', panel: 'studio', priority: 26, capability: 'forum.nodes.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
+    #[CpAdminMenu(label: 'studio.forum.menu.structure', icon: 'heroicons:rectangle-group', panel: 'studio', priority: ForumNavigation::STRUCTURE, capability: 'forum.nodes.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
     #[IsGranted('forum.nodes.manage')]
     public function sectionsIndex(Request $request): Response
     {
@@ -333,6 +317,8 @@ final class ForumAdminController extends AbstractController
             }
 
             $this->entityManager->flush();
+            $this->rebuildPathTree($section);
+            $this->entityManager->flush();
 
             if ($source instanceof ForumSection && $source->getLocale() !== $locale) {
                 $this->permissionService->copyToSection($source, $section);
@@ -370,6 +356,8 @@ final class ForumAdminController extends AbstractController
             $this->applyRequestToSection($section, $request);
             $section->touch();
             $this->entityManager->flush();
+            $this->rebuildPathTree($section);
+            $this->entityManager->flush();
             $this->originCachePurger->purgeAreas('forums', 'home');
 
             $this->addFlash('success', $this->translator->trans('studio.forum.sections.updated', ['title' => $section->getTitle()]));
@@ -391,6 +379,8 @@ final class ForumAdminController extends AbstractController
             'requiredCapability' => $section->getRequiredCapability() ?? '',
             'locked' => $section->isLocked(),
             'defaultTopicSort' => $section->getDefaultTopicSort(),
+            'rulesHtml' => $section->getRulesHtml() ?? '',
+            'hasAccessSecret' => $section->isPassworded(),
         ], $locale);
     }
 
@@ -511,7 +501,6 @@ final class ForumAdminController extends AbstractController
     }
 
     #[Route('/topics', name: 'topics_index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'studio.forum.dashboard.action.topics', icon: 'heroicons:chat-bubble-left-right', panel: 'studio', priority: 26, capability: 'forum.topic.moderate', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
     #[IsGranted('forum.topic.moderate')]
     public function topicsIndex(Request $request): Response
     {
@@ -574,6 +563,8 @@ final class ForumAdminController extends AbstractController
             $section->setLocked($source->isLocked());
             $section->setDefaultTopicSort($source->getDefaultTopicSort());
             $section->setSortOrder($source->getSortOrder());
+            $section->setRulesHtml($source->getRulesHtml());
+            $section->setAccessSecretHash($source->getAccessSecretHash());
         }
         $this->applyRequestToSection($section, $request);
 
@@ -614,6 +605,16 @@ final class ForumAdminController extends AbstractController
         $section->setLocked($request->request->getBoolean('is_locked'));
         $section->setDefaultTopicSort((string) $request->request->get('default_topic_sort', 'latest'));
         $section->setSlug($this->resolveSectionSlug($section, $request));
+        $section->setRulesHtml(trim((string) $request->request->get('rules_html')));
+
+        if ($request->request->getBoolean('clear_access_secret')) {
+            $section->setAccessSecretHash(null);
+        } else {
+            $plain = (string) $request->request->get('access_secret', '');
+            if (trim($plain) !== '') {
+                $section->setAccessSecretHash($this->accessService->hashSectionSecret($plain));
+            }
+        }
     }
 
     private function resolveSectionSlug(ForumSection $section, Request $request): string
@@ -661,6 +662,8 @@ final class ForumAdminController extends AbstractController
             'requiredCapability' => $source->getRequiredCapability() ?? '',
             'locked' => $source->isLocked(),
             'defaultTopicSort' => $source->getDefaultTopicSort(),
+            'rulesHtml' => $source->getRulesHtml() ?? '',
+            'hasAccessSecret' => $source->isPassworded(),
         ];
     }
 
@@ -698,6 +701,8 @@ final class ForumAdminController extends AbstractController
             'requiredCapability' => '',
             'locked' => false,
             'defaultTopicSort' => 'latest',
+            'rulesHtml' => '',
+            'hasAccessSecret' => false,
         ];
     }
 
@@ -717,6 +722,34 @@ final class ForumAdminController extends AbstractController
                 : ($source instanceof ForumSection ? $this->translationGroupResolver->tabsFor($source) : []),
             'tabsSourceId' => $section?->getId() ?? $source?->getId(),
         ]);
+    }
+
+    private function rebuildPathTree(ForumSection $section): void
+    {
+        $this->syncSectionParentPath($section);
+        foreach ($section->getChildren() as $child) {
+            $this->rebuildPathTree($child);
+        }
+    }
+
+    private function syncSectionParentPath(ForumSection $section): void
+    {
+        $id = $section->getId();
+        if ($id === null) {
+            return;
+        }
+
+        $parent = $section->getParent();
+        if ($parent instanceof ForumSection) {
+            $base = $parent->getParentPath() !== ''
+                ? rtrim($parent->getParentPath(), '/').'/'
+                : '/'.($parent->getId() ?? 0).'/';
+            $section->setParentPath($base.$id.'/');
+
+            return;
+        }
+
+        $section->setParentPath('/'.$id.'/');
     }
 
     private function findTranslationSource(mixed $rawId): ?ForumSection

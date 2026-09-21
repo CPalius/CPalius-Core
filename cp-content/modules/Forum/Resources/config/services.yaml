@@ -1,3 +1,6 @@
+parameters:
+    forum.settings_cards: []
+
 services:
     _defaults:
         autowire: true
@@ -43,6 +46,9 @@ services:
 
     Modules\Forum\Security\:
         resource: '../../Security/'
+
+    Modules\Forum\Command\:
+        resource: '../../Command/'
 
     Modules\Forum\Studio\:
         resource: '../../Studio/'

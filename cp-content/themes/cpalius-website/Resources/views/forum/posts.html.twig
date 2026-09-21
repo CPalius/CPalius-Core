@@ -163,10 +163,23 @@
                                 <button type="button" data-report-btn class="forum-tool-btn forum-tool-btn--danger" title="{{ 'forum.action.report'|trans }}"><i class="bi bi-flag"></i></button>
                             </form>
                         {% endif %}
+                        {% if viewer and post.author and post.author.id != viewer.id %}
+                            {% set authorIgnored = post.author.id in blockedAuthorIds|default([]) %}
+                            <form method="post" action="{{ path('forum_block_user', {userId: post.author.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('forum_block') }}">
+                                {% if authorIgnored %}
+                                    <input type="hidden" name="unblock" value="1">
+                                    <button type="submit" class="forum-tool-btn" title="{{ 'forum.ignore.unblock'|trans }}"><i class="bi bi-eye"></i></button>
+                                {% else %}
+                                    <button type="submit" class="forum-tool-btn" title="{{ 'forum.ignore.block'|trans }}"><i class="bi bi-eye-slash"></i></button>
+                                {% endif %}
+                            </form>
+                        {% endif %}
                     </div>
                 </header>
 
                 {# id="postnum-N" is what a "#N" reference in another post links to. #}
+                {% set authorIgnored = viewer and post.author and post.author.id in blockedAuthorIds|default([]) %}
                 {% if forum_guest_hide_content() %}
                     <div class="forum-post__body forum-post__body--guest" id="postnum-{{ postNum }}" data-post-num="{{ postNum }}">
                         <div class="forum-guest-content">
@@ -175,6 +188,11 @@
                             <a href="{{ path('account_login') }}" class="btn btn-primary btn-sm">{{ 'forum.guest.login_to_read'|trans }}</a>
                         </div>
                     </div>
+                {% elseif authorIgnored %}
+                    <details class="forum-post__ignored" id="postnum-{{ postNum }}" data-post-num="{{ postNum }}">
+                        <summary>{{ 'forum.ignore.hidden'|trans }} — {{ 'forum.ignore.reveal'|trans }}</summary>
+                        <div class="forum-post__body">{{ post.body|forum_body(topic.id, post) }}</div>
+                    </details>
                 {% else %}
                     <div class="forum-post__body" id="postnum-{{ postNum }}" data-post-num="{{ postNum }}">{{ post.body|forum_body(topic.id, post) }}</div>
                     {% if post.moderated %}<div class="forum-thread-notice forum-thread-notice--private">{{ 'notice.moderated'|trans({}, 'forums') }}</div>{% endif %}

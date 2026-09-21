@@ -1,0 +1,51 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.announcements.index.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.announcements.action.dashboard'|trans }}</a>
+    <a href="{{ path('admin_forum_announcements_create') }}" class="btn btn-sm btn-primary">{{ 'studio.forum.announcements.index.action.new'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'studio.forum.announcements.index.column.scope'|trans,
+            'studio.forum.announcements.index.column.body'|trans,
+            'studio.forum.announcements.index.column.window'|trans,
+            'studio.forum.announcements.index.column.status'|trans,
+            '',
+        ] }}" empty="{{ announcements is empty }}" emptyText="{{ 'studio.forum.announcements.index.empty'|trans }}">
+            <twig:block name="rows">
+                {% for row in announcements %}
+                    <tr>
+                        <td>
+                            {% if row.section %}
+                                {{ row.section.title }}
+                            {% else %}
+                                {{ 'studio.forum.announcements.scope.global'|trans }}
+                            {% endif %}
+                        </td>
+                        <td class="max-w-md truncate">{{ row.body|striptags|slice(0, 80) }}</td>
+                        <td class="text-fs-xs text-neutral-600">
+                            {{ row.startsAt ? row.startsAt|date('Y-m-d H:i') : '—' }}
+                            —
+                            {{ row.endsAt ? row.endsAt|date('Y-m-d H:i') : '—' }}
+                        </td>
+                        <td>{{ row.active ? 'studio.forum.announcements.status.active'|trans : 'studio.forum.announcements.status.inactive'|trans }}</td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ path('admin_forum_announcements_edit', {id: row.id}) }}" class="btn btn-sm btn-neutral">{{ 'aacp.users.edit_action'|trans }}</a>
+                                <form method="post" action="{{ path('admin_forum_announcements_delete', {id: row.id}) }}" onsubmit="return confirm({{ 'studio.forum.announcements.index.delete_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_announcement') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+{% endblock %}

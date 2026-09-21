@@ -19,6 +19,8 @@ use Modules\Forum\Repository\ForumPostRepository;
 #[ORM\Table(name: 'cp_forum_posts')]
 #[ORM\Index(columns: ['created_at'], name: 'idx_forum_post_created')]
 #[ORM\Index(columns: ['topic_id', 'id'], name: 'idx_forum_post_topic')]
+#[ORM\Index(columns: ['deleted_by_id'], name: 'idx_forum_post_deleted_by')]
+#[ORM\Index(columns: ['edited_by_id'], name: 'idx_forum_post_edited_by')]
 class ForumPost
 {
     #[ORM\Id]
@@ -67,6 +69,26 @@ class ForumPost
 
     #[ORM\Column(name: 'discussion_state', type: 'string', length: 16, enumType: ForumDiscussionState::class)]
     private ForumDiscussionState $discussionState = ForumDiscussionState::Visible;
+
+    #[ORM\Column(name: 'deleted_at', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $deletedAt = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'deleted_by_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $deletedBy = null;
+
+    #[ORM\Column(name: 'delete_reason', type: 'string', length: 255, nullable: true)]
+    private ?string $deleteReason = null;
+
+    #[ORM\Column(name: 'edit_reason', type: 'string', length: 255, nullable: true)]
+    private ?string $editReason = null;
+
+    #[ORM\Column(name: 'edit_locked', type: 'boolean', options: ['default' => false])]
+    private bool $editLocked = false;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'edited_by_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $editedBy = null;
 
     public function __construct(ForumTopic $topic, ForumSection $section, string $posterName, string $body)
     {
@@ -184,13 +206,17 @@ class ForumPost
         return $this;
     }
 
-    public function recordEdit(string $editorName): static
+    public function recordEdit(string $editorName, ?User $editor = null, ?string $reason = null): static
     {
         ++$this->editCount;
         $now = new \DateTimeImmutable();
         $this->lastEditDate = $now;
         $this->updatedAt = $now;
         $this->updatedByName = $editorName;
+        $this->editedBy = $editor;
+        if ($reason !== null) {
+            $this->editReason = $reason !== '' ? mb_substr($reason, 0, 255) : null;
+        }
 
         return $this;
     }
@@ -291,5 +317,81 @@ class ForumPost
     public function isModerated(): bool
     {
         return $this->discussionState === ForumDiscussionState::Moderated;
+    }
+
+    public function getDeletedAt(): ?\DateTimeImmutable
+    {
+        return $this->deletedAt;
+    }
+
+    public function setDeletedAt(?\DateTimeImmutable $deletedAt): static
+    {
+        $this->deletedAt = $deletedAt;
+
+        return $this;
+    }
+
+    public function getDeletedBy(): ?User
+    {
+        return $this->deletedBy;
+    }
+
+    public function setDeletedBy(?User $deletedBy): static
+    {
+        $this->deletedBy = $deletedBy;
+
+        return $this;
+    }
+
+    public function getDeleteReason(): ?string
+    {
+        return $this->deleteReason;
+    }
+
+    public function setDeleteReason(?string $deleteReason): static
+    {
+        $this->deleteReason = $deleteReason !== null && $deleteReason !== ''
+            ? mb_substr($deleteReason, 0, 255)
+            : null;
+
+        return $this;
+    }
+
+    public function getEditReason(): ?string
+    {
+        return $this->editReason;
+    }
+
+    public function setEditReason(?string $editReason): static
+    {
+        $this->editReason = $editReason !== null && $editReason !== ''
+            ? mb_substr($editReason, 0, 255)
+            : null;
+
+        return $this;
+    }
+
+    public function isEditLocked(): bool
+    {
+        return $this->editLocked;
+    }
+
+    public function setEditLocked(bool $editLocked): static
+    {
+        $this->editLocked = $editLocked;
+
+        return $this;
+    }
+
+    public function getEditedBy(): ?User
+    {
+        return $this->editedBy;
+    }
+
+    public function setEditedBy(?User $editedBy): static
+    {
+        $this->editedBy = $editedBy;
+
+        return $this;
     }
 }

@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumBan;
+use Modules\Forum\Navigation\ForumNavigation;
 use Modules\Forum\Repository\ForumBanRepository;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
@@ -49,7 +50,7 @@ final class ForumMemberAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'studio.forum.dashboard.action.members', icon: 'heroicons:users', panel: 'studio', priority: 29, capability: 'forum.user.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
+    #[CpAdminMenu(label: 'studio.forum.menu.people', icon: 'heroicons:users', panel: 'studio', priority: ForumNavigation::PEOPLE, capability: 'forum.user.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
     public function index(Request $request): Response
     {
         $page = max(1, $request->query->getInt('page', 1));
@@ -91,6 +92,7 @@ final class ForumMemberAdminController extends AbstractController
         return $this->render('@ForumModule/admin/members/index.html.twig', [
             'members' => $members,
             'allRanks' => $allRanks,
+            'activeBans' => $this->banRepository->findActiveAll(40),
             'page' => $page,
             'totalPages' => max(1, (int) ceil($totalMembers / self::PER_PAGE)),
         ]);
@@ -129,6 +131,7 @@ final class ForumMemberAdminController extends AbstractController
                     'user' => $user,
                     'formValues' => $formValues,
                     'allRanks' => $this->rankRepository->findAllOrdered(),
+                    'restriction' => $this->memberRestriction($user),
                 ]);
             }
 
@@ -141,7 +144,40 @@ final class ForumMemberAdminController extends AbstractController
             'user' => $user,
             'formValues' => $formValues,
             'allRanks' => $this->rankRepository->findAllOrdered(),
+            'restriction' => $this->memberRestriction($user),
         ]);
+    }
+
+    #[Route('/ban-user', name: 'ban_user', methods: ['POST'])]
+    public function banUser(Request $request): Response
+    {
+        $this->assertValidCsrf($request);
+
+        $user = $this->userRepository->find($request->request->getInt('user_id'));
+        if (!$user instanceof User) {
+            $this->addFlash('error', $this->translator->trans('studio.forum.members.not_found'));
+
+            return $this->redirectToRoute('admin_forum_members_index');
+        }
+
+        $type = $request->request->get('type') === 'ban' ? ForumBan::TYPE_BAN : ForumBan::TYPE_MUTE;
+        $reason = trim((string) $request->request->get('reason'));
+        if ($reason === '') {
+            $this->addFlash('error', $this->translator->trans('studio.forum.members.reason_required'));
+
+            return $this->redirectToRoute('admin_forum_members_index');
+        }
+
+        $days = $this->parseOptionalPositiveInt($request, 'duration_days') ?? 0;
+        $expiresAt = $days > 0 ? (new \DateTimeImmutable())->modify(sprintf('+%d days', $days)) : null;
+
+        /** @var User $moderator */
+        $moderator = $this->getUser();
+        $this->banService->ban($user, $type, $reason, $moderator, $expiresAt);
+        $flashKey = $type === ForumBan::TYPE_BAN ? 'studio.forum.members.user_banned' : 'studio.forum.members.user_muted';
+        $this->addFlash('success', $this->translator->trans($flashKey, ['name' => $user->getFullName()]));
+
+        return $this->redirectToRoute('admin_forum_members_index');
     }
 
     #[Route('/{id}/ban', name: 'ban', methods: ['POST'], requirements: ['id' => '\d+'])]
@@ -224,6 +260,17 @@ final class ForumMemberAdminController extends AbstractController
         }
 
         return $user;
+    }
+
+    /**
+     * @return array{ban: ?ForumBan, mute: ?ForumBan}
+     */
+    private function memberRestriction(User $user): array
+    {
+        $userId = $user->getId();
+        $restrictions = $this->banService->activeRestrictionsByUserIds([$userId]);
+
+        return $restrictions[$userId] ?? ['ban' => null, 'mute' => null];
     }
 
     private function assertValidCsrf(Request $request): void

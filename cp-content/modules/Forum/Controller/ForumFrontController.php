@@ -16,6 +16,7 @@ use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\Entity\ForumTopicPrefix;
 use Modules\Forum\ForumDictionary;
 use Modules\Forum\ForumSectionType;
+use Modules\Forum\Repository\ForumAnnouncementRepository;
 use Modules\Forum\Repository\ForumPostReportRepository;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumPostVoteRepository;
@@ -23,7 +24,9 @@ use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicPrefixRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
 use Modules\Forum\Repository\ForumUserRankRepository;
+use Modules\Forum\Service\ForumAccessService;
 use Modules\Forum\Service\ForumActivityService;
+use Modules\Forum\Service\ForumCounterService;
 use Modules\Forum\Service\ForumAttachmentService;
 use Modules\Forum\Service\ForumBanService;
 use Modules\Forum\Service\ForumDraftService;
@@ -78,6 +81,9 @@ final class ForumFrontController extends AbstractController
         private readonly ForumAttachmentService $attachmentService,
         private readonly ForumDraftService $draftService,
         private readonly ForumPollService $pollService,
+        private readonly ForumAccessService $accessService,
+        private readonly ForumAnnouncementRepository $announcementRepository,
+        private readonly ForumCounterService $counterService,
         private readonly ForumUnreadService $unreadService,
         private readonly ForumWatchService $watchService,
         private readonly ForumWordFilterService $wordFilterService,
@@ -104,6 +110,7 @@ final class ForumFrontController extends AbstractController
             'currentSection' => null,
             'forumActivity' => $this->activityService->buildPanelState($locale),
             'lastVisitAt' => $this->resolveLastVisit($request),
+            'announcements' => $this->announcementRepository->findActiveForSection(null),
         ]);
 
         return $this->withLastVisitCookie($response);
@@ -150,6 +157,11 @@ final class ForumFrontController extends AbstractController
         $request->attributes->set('forum_section', $section);
         $this->assertNodeAccessible($section);
 
+        $locked = $this->accessService->lockedAncestor($section);
+        if ($locked instanceof ForumSection) {
+            return $this->renderSectionPassword($section, $locked);
+        }
+
         if ($section->isLinkNode() && $section->getLinkUrl() !== null) {
             return $this->redirect($section->getLinkUrl());
         }
@@ -161,6 +173,7 @@ final class ForumFrontController extends AbstractController
                 'breadcrumbs' => $this->hierarchyService->getBreadcrumbChain($section),
                 'currentSection' => $section,
                 'lastVisitAt' => $this->resolveLastVisit($request),
+                'announcements' => $this->announcementRepository->findActiveForSection($section),
             ]));
         }
 
@@ -224,7 +237,27 @@ final class ForumFrontController extends AbstractController
             'unreadTopicIds' => $viewerEntity instanceof User
                 ? $this->unreadService->unreadTopicIdMap($viewerEntity, iterator_to_array($topics))
                 : [],
+            'announcements' => $this->announcementRepository->findActiveForSection($section),
         ] + $this->inlineModContext($section)));
+    }
+
+    #[Route('/forums/forum/{sectionSlug}/unlock', name: 'forum_section_unlock', methods: ['POST'], priority: 3)]
+    #[Route('/forum/{sectionSlug}/unlock', name: 'forum_section_unlock_legacy', methods: ['POST'], priority: 3)]
+    public function unlockSection(Request $request, string $sectionSlug): Response
+    {
+        $section = $this->findSectionOrFail($sectionSlug, $request->getLocale());
+        $this->assertNodeAccessible($section);
+        $this->assertValidCsrf($request, 'forum_section_unlock');
+
+        $locked = $this->accessService->lockedAncestor($section) ?? $section;
+        try {
+            $this->accessService->unlockSection($locked, (string) $request->request->get('secret'));
+            $this->addFlash('success', $this->translator->trans('forum.access.unlocked'));
+        } catch (\DomainException $e) {
+            $this->addFlash('error', $this->translator->trans($e->getMessage()));
+        }
+
+        return $this->redirectToRoute('forum_section', ['sectionSlug' => $sectionSlug]);
     }
 
     #[Route('/forums/forum/{sectionSlug}/yeni', name: 'forum_new_topic', methods: ['GET', 'POST'])]
@@ -234,6 +267,10 @@ final class ForumFrontController extends AbstractController
         $section = $this->findSectionOrFail($sectionSlug, $request->getLocale());
         $request->attributes->set('forum_section', $section);
         $this->assertNodeAccessible($section);
+        $lockedForWrite = $this->accessService->lockedAncestor($section);
+        if ($lockedForWrite instanceof ForumSection) {
+            return $this->redirectToRoute('forum_section', ['sectionSlug' => $lockedForWrite->getSlug()]);
+        }
 
         if (!$this->canCreateThread($section)) {
             throw new AccessDeniedHttpException();
@@ -336,6 +373,10 @@ final class ForumFrontController extends AbstractController
         $topic = $this->findTopicOrFail($topicId);
         $this->assertTopicVisible($topic);
         $this->assertNodeAccessible($topic->getSection());
+        $locked = $this->accessService->lockedAncestor($topic->getSection());
+        if ($locked instanceof ForumSection) {
+            return $this->redirectToRoute('forum_section', ['sectionSlug' => $locked->getSlug()]);
+        }
         $displaySection = $this->sectionRepository->findLocaleSibling($topic->getSection(), $request->getLocale())
             ?? $topic->getSection();
 
@@ -353,8 +394,7 @@ final class ForumFrontController extends AbstractController
             return $this->redirectToRoute('forum_topic', $params, 301);
         }
 
-        $topic->incrementViewCount();
-        $this->entityManager->flush();
+        $this->counterService->recordTopicView($topic);
 
         $perPage = (int) $this->settingsRegistry->get('forum.posts_per_page', ForumDictionary::DEFAULT_POSTS_PER_PAGE);
         $canModerate = $this->isGranted('forum.topic.moderate');
@@ -406,6 +446,8 @@ final class ForumFrontController extends AbstractController
             'fastReplyEnabled' => (bool) $this->settingsRegistry->get('forum.fast_reply_enabled', true),
             'poll' => $poll,
             'pollVotedIds' => $viewer instanceof User && $poll !== null ? $this->pollService->votedOptionIds($poll, $viewer) : [],
+            'pollVoters' => $poll !== null ? $this->pollService->publicVoters($poll) : [],
+            'blockedAuthorIds' => $viewer instanceof User ? $this->accessService->blockedIds($viewer) : [],
             'watching' => $viewer instanceof User && $this->watchService->isWatching($topic, $viewer),
             'watchEnabled' => $this->watchService->isEnabled(),
             'attachmentsByPost' => $this->attachmentService->groupedByPostIds(array_filter($postIds)),
@@ -486,6 +528,9 @@ final class ForumFrontController extends AbstractController
 
         $topic = $this->findTopicOrFail($topicId);
         $this->assertTopicVisible($topic);
+        if ($this->accessService->lockedAncestor($topic->getSection()) instanceof ForumSection) {
+            return $this->redirectToRoute('forum_section', ['sectionSlug' => $topic->getSection()->getSlug()]);
+        }
 
         if ($topic->isLocked()) {
             throw new BadRequestHttpException($this->translator->trans('site.forum.topic_locked'));
@@ -1050,6 +1095,16 @@ final class ForumFrontController extends AbstractController
         }
 
         throw new AccessDeniedHttpException($this->translator->trans('site.forum.private_topic_denied'));
+    }
+
+    private function renderSectionPassword(ForumSection $requested, ForumSection $locked): Response
+    {
+        return $this->render('@Theme/forum/section_password.html.twig', [
+            'section' => $requested,
+            'lockedSection' => $locked,
+            'breadcrumbs' => $this->hierarchyService->getBreadcrumbChain($requested),
+            'forumHome' => $this->forumHomeContext(),
+        ]);
     }
 
     private function assertNodeAccessible(ForumSection $section): void

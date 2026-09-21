@@ -1,0 +1,39 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.filters.index.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.filters.action.dashboard'|trans }}</a>
+    <a href="{{ path('admin_forum_filters_create') }}" class="btn btn-sm btn-primary">{{ 'studio.forum.filters.index.action.new'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'studio.forum.filters.index.column.type'|trans,
+            'studio.forum.filters.index.column.rule'|trans,
+            'studio.forum.filters.index.column.reason'|trans,
+            '',
+        ] }}" empty="{{ filters is empty }}" emptyText="{{ 'studio.forum.filters.index.empty'|trans }}">
+            <twig:block name="rows">
+                {% for filter in filters %}
+                    <tr>
+                        <td>{{ ('studio.forum.filters.type.' ~ filter.type.value)|trans }}</td>
+                        <td><code>{{ filter.rule }}</code></td>
+                        <td>{{ filter.reason|default('—') }}</td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ path('admin_forum_filters_edit', {id: filter.id}) }}" class="btn btn-sm btn-neutral">{{ 'aacp.users.edit_action'|trans }}</a>
+                                <form method="post" action="{{ path('admin_forum_filters_delete', {id: filter.id}) }}" onsubmit="return confirm({{ 'studio.forum.filters.index.delete_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_filter') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+{% endblock %}

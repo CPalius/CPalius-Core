@@ -10,6 +10,7 @@ use Modules\Forum\Repository\ForumReadMarkerRepository;
 
 #[ORM\Entity(repositoryClass: ForumReadMarkerRepository::class)]
 #[ORM\Table(name: 'cp_forum_read_markers')]
+#[ORM\UniqueConstraint(name: 'uniq_forum_read_user_section', columns: ['user_id', 'section_id'])]
 #[ORM\Index(columns: ['user_id'], name: 'idx_forum_read_user')]
 class ForumReadMarker
 {

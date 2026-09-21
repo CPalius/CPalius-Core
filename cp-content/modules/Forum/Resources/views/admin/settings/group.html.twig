@@ -1,0 +1,31 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ titleKey|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_settings_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.settings.hub.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+
+    <form method="post" action="{{ path('admin_forum_settings_update') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_settings') }}">
+        <input type="hidden" name="return_route" value="{{ returnRoute }}">
+
+        <twig:studio:card title="{{ titleKey|trans }}">
+            <div class="grid gap-4 md:grid-cols-2">
+                {% for definition in definitions %}
+                    <input type="hidden" name="setting_keys[]" value="{{ definition.key }}">
+                    {% include '@ForumModule/admin/settings/_field.html.twig' with {definition: definition, values: values} %}
+                {% else %}
+                    <p class="text-neutral-500">{{ 'studio.forum.settings.index.no_settings'|trans }}</p>
+                {% endfor %}
+            </div>
+        </twig:studio:card>
+
+        <div class="mt-6">
+            <button type="submit" class="btn btn-primary">{{ 'studio.forum.settings.index.save'|trans }}</button>
+        </div>
+    </form>
+{% endblock %}

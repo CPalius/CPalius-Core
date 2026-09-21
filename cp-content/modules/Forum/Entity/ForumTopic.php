@@ -25,6 +25,8 @@ use Modules\Forum\Repository\ForumTopicRepository;
 #[ORM\Index(columns: ['discussion_state'], name: 'idx_forum_topic_discussion_state')]
 #[ORM\Index(columns: ['last_post_date'], name: 'idx_forum_topic_last_post_date')]
 #[ORM\Index(columns: ['locale'], name: 'idx_forum_topic_locale')]
+#[ORM\Index(columns: ['section_id', 'discussion_state', 'sticky', 'last_post_date'], name: 'idx_forum_topic_section_list')]
+#[ORM\Index(columns: ['deleted_by_id'], name: 'idx_forum_topic_deleted_by')]
 class ForumTopic
 {
     public const MODE_NORMAL = 0;
@@ -80,8 +82,31 @@ class ForumTopic
     #[ORM\Column(name: 'view_count', type: 'integer')]
     private int $viewCount = 0;
 
+    /** Visible (public) posts in this topic, opening post included. */
     #[ORM\Column(name: 'post_count', type: 'integer')]
     private int $postCount = 0;
+
+    #[ORM\Column(name: 'post_count_held', type: 'integer', options: ['default' => 0])]
+    private int $postCountHeld = 0;
+
+    #[ORM\Column(name: 'post_count_deleted', type: 'integer', options: ['default' => 0])]
+    private int $postCountDeleted = 0;
+
+    #[ORM\Column(name: 'deleted_at', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $deletedAt = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'deleted_by_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $deletedBy = null;
+
+    #[ORM\Column(name: 'delete_reason', type: 'string', length: 255, nullable: true)]
+    private ?string $deleteReason = null;
+
+    #[ORM\Column(name: 'has_attachment', type: 'boolean', options: ['default' => false])]
+    private bool $hasAttachment = false;
+
+    #[ORM\Column(name: 'is_reported', type: 'boolean', options: ['default' => false])]
+    private bool $reported = false;
 
     #[ORM\Column(name: 'first_post_id', type: 'integer', nullable: true)]
     private ?int $firstPostId = null;
@@ -322,6 +347,7 @@ class ForumTopic
         return $this;
     }
 
+    /** Visible (public) posts in this topic, opening post included. */
     public function getPostCount(): int
     {
         return $this->postCount;
@@ -330,6 +356,92 @@ class ForumTopic
     public function setPostCount(int $postCount): static
     {
         $this->postCount = $postCount;
+
+        return $this;
+    }
+
+    public function getPostCountHeld(): int
+    {
+        return $this->postCountHeld;
+    }
+
+    public function setPostCountHeld(int $postCountHeld): static
+    {
+        $this->postCountHeld = max(0, $postCountHeld);
+
+        return $this;
+    }
+
+    public function getPostCountDeleted(): int
+    {
+        return $this->postCountDeleted;
+    }
+
+    public function setPostCountDeleted(int $postCountDeleted): static
+    {
+        $this->postCountDeleted = max(0, $postCountDeleted);
+
+        return $this;
+    }
+
+    public function getDeletedAt(): ?\DateTimeImmutable
+    {
+        return $this->deletedAt;
+    }
+
+    public function setDeletedAt(?\DateTimeImmutable $deletedAt): static
+    {
+        $this->deletedAt = $deletedAt;
+
+        return $this;
+    }
+
+    public function getDeletedBy(): ?User
+    {
+        return $this->deletedBy;
+    }
+
+    public function setDeletedBy(?User $deletedBy): static
+    {
+        $this->deletedBy = $deletedBy;
+
+        return $this;
+    }
+
+    public function getDeleteReason(): ?string
+    {
+        return $this->deleteReason;
+    }
+
+    public function setDeleteReason(?string $deleteReason): static
+    {
+        $this->deleteReason = $deleteReason !== null && $deleteReason !== ''
+            ? mb_substr($deleteReason, 0, 255)
+            : null;
+
+        return $this;
+    }
+
+    public function hasAttachment(): bool
+    {
+        return $this->hasAttachment;
+    }
+
+    public function setHasAttachment(bool $hasAttachment): static
+    {
+        $this->hasAttachment = $hasAttachment;
+
+        return $this;
+    }
+
+    public function isReported(): bool
+    {
+        return $this->reported;
+    }
+
+    public function setReported(bool $reported): static
+    {
+        $this->reported = $reported;
 
         return $this;
     }

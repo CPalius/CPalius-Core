@@ -6,8 +6,12 @@ namespace Modules\Forum\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Localization\LocaleProvider;
-use Modules\Forum\Entity\ForumNodePermission;
+use Modules\Forum\Entity\ForumSection;
+use Modules\Forum\Navigation\ForumNavigation;
+use Modules\Forum\ForumAclEffect;
+use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Service\ForumPermissionService;
+use Modules\Forum\Service\ForumSectionHierarchyService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,22 +20,21 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * Studio node × role permission matrix.
- */
 #[Route('/admin/forum/permissions', name: 'admin_forum_permissions_')]
 #[IsGranted('forum.permissions.manage')]
 final class ForumPermissionAdminController extends AbstractController
 {
     public function __construct(
         private readonly ForumPermissionService $permissionService,
+        private readonly ForumSectionRepository $sectionRepository,
+        private readonly ForumSectionHierarchyService $hierarchyService,
         private readonly TranslatorInterface $translator,
         private readonly LocaleProvider $localeProvider,
     ) {
     }
 
     #[Route('', name: 'index', methods: ['GET', 'POST'])]
-    #[CpAdminMenu(label: 'studio.forum.menu.permissions', icon: 'heroicons:key', panel: 'studio', priority: 27, capability: 'forum.permissions.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
+    #[CpAdminMenu(label: 'studio.forum.menu.permissions', icon: 'heroicons:key', panel: 'studio', priority: ForumNavigation::PERMISSIONS, capability: 'forum.permissions.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
     public function index(Request $request): Response
     {
         $locale = $this->localeProvider->resolve(
@@ -40,51 +43,85 @@ final class ForumPermissionAdminController extends AbstractController
                 : null,
         );
 
+        $tree = $this->hierarchyService->buildAdminTree($locale);
+        $section = $this->resolveSection($request, $tree);
+
         if ($request->isMethod('POST')) {
             $this->assertValidCsrf($request);
-            $matrix = $this->parsePostedMatrix($request);
-            $this->permissionService->persistMatrix($matrix, $locale);
+            if (!$section instanceof ForumSection) {
+                throw new BadRequestHttpException($this->translator->trans('studio.forum.permissions.empty', [], 'forums'));
+            }
+
+            $this->permissionService->persistSectionMatrix($section, $this->parsePostedCells($request));
             $this->addFlash('success', $this->translator->trans('studio.forum.permissions.saved', [], 'forums'));
 
-            return $this->redirectToRoute('admin_forum_permissions_index', ['locale' => $locale]);
+            return $this->redirectToRoute('admin_forum_permissions_index', [
+                'locale' => $locale,
+                'section' => $section->getId(),
+            ]);
         }
 
         return $this->render('@ForumModule/admin/permissions/index.html.twig', [
-            'matrix' => $this->permissionService->buildAdminMatrix($locale),
-            'groups' => $this->permissionService->buildAdminMatrixGrouped($locale),
+            'tree' => $tree,
+            'section' => $section,
+            'cells' => $section instanceof ForumSection ? $this->permissionService->buildSectionMatrix($section) : [],
             'roles' => $this->permissionService->matrixRoles(),
-            'permissions' => ForumNodePermission::PERMISSIONS,
+            'contentPermissions' => $this->permissionService->matrixContentKeys(),
+            'moderatePermissions' => $this->permissionService->matrixModerateKeys(),
+            'effects' => [
+                ForumAclEffect::Inherit->value,
+                ForumAclEffect::Allow->value,
+                ForumAclEffect::Deny->value,
+            ],
             'locales' => $this->localeProvider->getLocales(),
             'currentLocale' => $locale,
         ]);
     }
 
     /**
-     * @return array<int, array<string, array<string, bool>>>
+     * @param list<array{section: ForumSection, depth: int, type: mixed}> $tree
      */
-    private function parsePostedMatrix(Request $request): array
+    private function resolveSection(Request $request, array $tree): ?ForumSection
+    {
+        $raw = $request->request->get('section') ?? $request->query->get('section');
+        if ($raw !== null && ctype_digit((string) $raw)) {
+            $found = $this->sectionRepository->find((int) $raw);
+            if ($found instanceof ForumSection) {
+                return $found;
+            }
+        }
+
+        return isset($tree[0]['section']) && $tree[0]['section'] instanceof ForumSection
+            ? $tree[0]['section']
+            : null;
+    }
+
+    /**
+     * @return array<string, array<string, string>>
+     */
+    private function parsePostedCells(Request $request): array
     {
         $raw = (array) $request->request->all('matrix');
         $parsed = [];
+        $allowed = [
+            ForumAclEffect::Inherit->value,
+            ForumAclEffect::Allow->value,
+            ForumAclEffect::Deny->value,
+        ];
 
-        foreach ($raw as $sectionId => $roles) {
-            if (!\is_array($roles)) {
+        foreach ($raw as $role => $perms) {
+            if (!\is_array($perms) || !$this->permissionService->isMatrixRole((string) $role)) {
                 continue;
             }
-            $sectionId = (int) $sectionId;
-            if ($sectionId <= 0) {
-                continue;
-            }
-            foreach ($roles as $role => $perms) {
-                if (!\is_array($perms) || !$this->permissionService->isMatrixRole((string) $role)) {
+            foreach ($perms as $perm => $value) {
+                $effect = (string) $value;
+                if (!\in_array($effect, $allowed, true)) {
                     continue;
                 }
-                foreach ($perms as $perm => $value) {
-                    if (!\in_array($perm, ForumNodePermission::PERMISSIONS, true)) {
-                        continue;
-                    }
-                    $parsed[$sectionId][$role][$perm] = $value === '1' || $value === 1 || $value === true;
+                if (!\in_array((string) $perm, $this->permissionService->matrixPermissionKeys(), true)) {
+                    continue;
                 }
+                $parsed[(string) $role][(string) $perm] = $effect;
             }
         }
 

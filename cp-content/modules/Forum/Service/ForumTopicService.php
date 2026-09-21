@@ -32,7 +32,7 @@ final class ForumTopicService
         private readonly ForumPostRepository $postRepository,
         private readonly ForumSectionRepository $sectionRepository,
         private readonly ForumPostVoteRepository $postVoteRepository,
-        private readonly ForumStatsService $statsService,
+        private readonly ForumCounterService $counterService,
         private readonly RichTextSanitizer $richTextSanitizer,
         private readonly ForumDomainDispatcher $domainDispatcher,
         private readonly SettingsRegistry $settingsRegistry,
@@ -64,7 +64,7 @@ final class ForumTopicService
         $topic->setPrefix($prefix);
         $topic->setFirstPoster($author);
         $topic->setMode($isPrivate ? ForumTopic::MODE_PRIVATE : ForumTopic::MODE_NORMAL);
-        $topic->setPostCount(1);
+        $topic->setPostCount(0);
         $topic->setDiscussionState(ForumDiscussionState::Visible);
 
         $post = new ForumPost($topic, $home, $this->posterLabel($author), $this->sanitizeBody($body));
@@ -89,10 +89,9 @@ final class ForumTopicService
         $topic->setLastPostId($post->getId());
         $this->entityManager->flush();
 
-        $this->statsService->syncSection($home);
-        if ($home->getId() !== $section->getId()) {
-            $this->statsService->syncSection($section);
-        }
+        $this->counterService->incrementTopic($topic);
+        $this->counterService->incrementPost($post);
+        $this->entityManager->flush();
         if (!$topic->isModerated()) {
             $this->domainDispatcher->dispatchPostCreated($post, $topic, $author, true);
             $this->invalidatePublicCache();
@@ -138,7 +137,8 @@ final class ForumTopicService
             $this->entityManager->flush();
         }
 
-        $this->statsService->syncTopic($topic);
+        $this->counterService->incrementPost($post);
+        $this->entityManager->flush();
         if (!$held) {
             $this->domainDispatcher->dispatchPostCreated($post, $topic, $author, false);
             $this->invalidatePublicCache();
@@ -149,19 +149,10 @@ final class ForumTopicService
 
     public function publishHeldPost(ForumPost $post): void
     {
-        $post->setDiscussionState(ForumDiscussionState::Visible);
         $topic = $post->getTopic();
         $wasHeldTopic = $topic->isModerated();
-        if ($wasHeldTopic) {
-            $topic->setDiscussionState(ForumDiscussionState::Visible);
-        }
-        $topic->setLastPoster($post->getAuthor());
-        $topic->setLastPosterName($post->getPosterName());
-        $topic->setLastPostDate($post->getCreatedAt());
-        $topic->setLastPostId($post->getId());
-        $topic->touch();
+        $this->counterService->approvePost($post);
         $this->entityManager->flush();
-        $this->statsService->syncTopic($topic);
 
         $author = $post->getAuthor();
         if ($author !== null) {
@@ -172,21 +163,17 @@ final class ForumTopicService
 
     public function deleteTopic(ForumTopic $topic, bool $hard = false): void
     {
-        $section = $topic->getSection();
-
         if ($hard) {
+            $this->counterService->removeTopic($topic);
             $this->entityManager->remove($topic);
             $this->entityManager->flush();
-            $this->statsService->syncSection($section);
             $this->invalidatePublicCache();
 
             return;
         }
 
-        $topic->setDiscussionState(ForumDiscussionState::Deleted);
-        $topic->touch();
+        $this->counterService->softDeleteTopic($topic);
         $this->entityManager->flush();
-        $this->statsService->syncSection($section);
         $this->invalidatePublicCache();
     }
 
@@ -194,8 +181,8 @@ final class ForumTopicService
     {
         $topic->setDiscussionState(ForumDiscussionState::Visible);
         $topic->touch();
+        $this->counterService->restoreTopic($topic);
         $this->entityManager->flush();
-        $this->statsService->syncSection($topic->getSection());
         $this->invalidatePublicCache();
     }
 
@@ -224,8 +211,8 @@ final class ForumTopicService
 
         $this->entityManager->flush();
 
-        $this->statsService->syncSection($origin);
-        $this->statsService->syncSection($target);
+        $this->counterService->moveTopic($topic, $origin, $target);
+        $this->entityManager->flush();
         $this->invalidatePublicCache();
     }
 
@@ -238,7 +225,6 @@ final class ForumTopicService
             return;
         }
 
-        $originSection = $source->getSection();
         $targetSection = $target->getSection();
 
         foreach ($this->postRepository->findByTopic($source) as $post) {
@@ -247,17 +233,13 @@ final class ForumTopicService
         }
 
         $source->setMovedToTopic($target);
-        $source->setDiscussionState(ForumDiscussionState::Deleted);
         $source->setLocked(true);
         $source->touch();
         $target->touch();
 
         $this->entityManager->flush();
-        $this->statsService->syncTopic($target);
-        $this->statsService->syncSection($originSection);
-        if ($originSection->getId() !== $targetSection->getId()) {
-            $this->statsService->syncSection($targetSection);
-        }
+        $this->counterService->mergeTopicInto($source, $target);
+        $this->entityManager->flush();
         $this->invalidatePublicCache();
     }
 
@@ -361,7 +343,6 @@ final class ForumTopicService
         }
 
         $this->entityManager->flush();
-        $this->statsService->syncTopic($post->getTopic());
         $this->invalidatePublicCache();
     }
 
@@ -430,18 +411,20 @@ final class ForumTopicService
 
     public function deletePost(ForumPost $post): void
     {
-        $topic = $post->getTopic();
-        $postCount = $this->postRepository->countByTopic($topic);
+        if ($post->getDiscussionState() === ForumDiscussionState::Deleted) {
+            return;
+        }
 
-        if ($postCount <= 1) {
+        $topic = $post->getTopic();
+        $this->counterService->softDeletePost($post);
+        $this->entityManager->flush();
+
+        if ($topic->getPostCount() === 0 && $topic->getPostCountHeld() === 0 && !$topic->isDeleted()) {
             $this->deleteTopic($topic);
 
             return;
         }
 
-        $this->entityManager->remove($post);
-        $this->entityManager->flush();
-        $this->statsService->syncTopic($topic);
         $this->invalidatePublicCache();
     }
 

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Controller\Admin;
 
-use App\Core\Annotation\CpAdminMenu;
 use App\Core\Localization\LocaleProvider;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumSection;
@@ -36,7 +35,6 @@ final class ForumPrefixAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.forums_prefixes', icon: 'heroicons:tag', panel: 'studio', priority: 27, capability: 'forum.prefixes.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
     public function index(): Response
     {
         return $this->render('@ForumModule/admin/prefixes/index.html.twig', [

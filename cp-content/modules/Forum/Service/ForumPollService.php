@@ -79,12 +79,12 @@ final class ForumPollService
     public function vote(ForumPoll $poll, User $user, array $optionIds): bool
     {
         if ($poll->isClosed()) {
-            return false;
+            throw new \DomainException('forum.error.poll_closed');
         }
 
-        $already = $this->voteRepository->countByPollAndUser($poll, $user);
-        if ($already > 0) {
-            return false;
+        $existing = $this->voteRepository->findByPollAndUser($poll, $user);
+        if ($existing !== [] && !$poll->allowsChange()) {
+            throw new \DomainException('forum.error.poll_cannot_change_vote');
         }
 
         $wanted = array_values(array_unique(array_filter(
@@ -107,6 +107,11 @@ final class ForumPollService
             return false;
         }
 
+        foreach ($existing as $vote) {
+            $vote->getOption()->decrementVoteCount();
+            $this->entityManager->remove($vote);
+        }
+
         foreach ($valid as $option) {
             $this->entityManager->persist(new ForumPollVote($poll, $option, $user));
             $option->incrementVoteCount();
@@ -125,5 +130,17 @@ final class ForumPollService
     public function votedOptionIds(ForumPoll $poll, User $user): array
     {
         return $this->voteRepository->optionIdsVotedByUser($poll, $user);
+    }
+
+    /**
+     * @return array<int, list<User>>
+     */
+    public function publicVoters(ForumPoll $poll): array
+    {
+        if (!$poll->isPublic()) {
+            return [];
+        }
+
+        return $this->voteRepository->votersGroupedByOption($poll);
     }
 }

@@ -7,11 +7,13 @@ namespace Modules\Forum\Controller;
 use App\Core\Settings\SettingsRegistry;
 use App\Core\Pagination\Paginator;
 use App\Entity\User;
+use App\Repository\UserRepository;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\ForumDictionary;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
+use Modules\Forum\Service\ForumAccessService;
 use Modules\Forum\Service\ForumDraftService;
 use Modules\Forum\Service\ForumInlineModerationService;
 use Modules\Forum\Service\ForumModerationLogService;
@@ -37,6 +39,8 @@ final class ForumToolsController extends AbstractController
         private readonly ForumSectionRepository $sectionRepository,
         private readonly ForumWatchService $watchService,
         private readonly ForumPollService $pollService,
+        private readonly ForumAccessService $accessService,
+        private readonly UserRepository $userRepository,
         private readonly ForumDraftService $draftService,
         private readonly ForumUnreadService $unreadService,
         private readonly ForumSplitService $splitService,
@@ -216,10 +220,41 @@ final class ForumToolsController extends AbstractController
             $raw = $single > 0 ? [$single] : [];
         }
 
-        $ok = $this->pollService->vote($poll, $user, is_array($raw) ? $raw : []);
-        $this->addFlash($ok ? 'success' : 'error', $this->translator->trans($ok ? 'forum.poll.voted' : 'forum.poll.vote_failed'));
+        try {
+            $ok = $this->pollService->vote($poll, $user, is_array($raw) ? $raw : []);
+            $this->addFlash($ok ? 'success' : 'error', $this->translator->trans($ok ? 'forum.poll.voted' : 'forum.poll.vote_failed'));
+        } catch (\DomainException $e) {
+            $this->addFlash('error', $this->translator->trans($e->getMessage()));
+        }
 
         return $this->redirectToRoute('forum_topic', ['topicId' => $topicId, 'slug' => $topic->getSlug() ?? 'konu']);
+    }
+
+    #[Route('/forums/member/{userId}/block', name: 'forum_block_user', methods: ['POST'], requirements: ['userId' => '\d+'], priority: 5)]
+    #[IsGranted('IS_AUTHENTICATED')]
+    public function blockUser(Request $request, int $userId): Response
+    {
+        $this->assertValidCsrf($request, 'forum_block');
+        $target = $this->userRepository->find($userId);
+        if (!$target instanceof User) {
+            throw new NotFoundHttpException($this->translator->trans('forum.ignore.user_not_found'));
+        }
+
+        /** @var User $user */
+        $user = $this->getUser();
+        try {
+            if ($request->request->getBoolean('unblock')) {
+                $this->accessService->unblock($user, $target);
+                $this->addFlash('success', $this->translator->trans('forum.ignore.unblocked'));
+            } else {
+                $this->accessService->block($user, $target);
+                $this->addFlash('success', $this->translator->trans('forum.ignore.blocked'));
+            }
+        } catch (\DomainException $e) {
+            $this->addFlash('error', $this->translator->trans($e->getMessage()));
+        }
+
+        return $this->redirect($this->safeBackUrl($request));
     }
 
     #[Route('/forums/drafts', name: 'forum_drafts', methods: ['GET'], priority: 4)]

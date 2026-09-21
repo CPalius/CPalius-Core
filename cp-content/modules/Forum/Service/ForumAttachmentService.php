@@ -114,4 +114,10 @@ final class ForumAttachmentService
     {
         return $this->attachmentRepository->findGroupedByPostIds($postIds);
     }
+
+    public function incrementDownload(ForumPostAttachment $attachment): void
+    {
+        $attachment->setDownloadCount($attachment->getDownloadCount() + 1);
+        $this->entityManager->flush();
+    }
 }

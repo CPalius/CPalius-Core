@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Controller\Admin;
 
-use App\Core\Annotation\CpAdminMenu;
 use App\Repository\UserRepository;
+use Modules\Forum\Attribute\ForumSettingsCard;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
@@ -35,7 +35,13 @@ final class ForumStatsAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'studio.forum.menu.stats', icon: 'heroicons:chart-bar', panel: 'studio', priority: 30, capability: 'forum.section.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
+    #[ForumSettingsCard(
+        label: 'studio.forum.settings.card.maintenance',
+        description: 'studio.forum.settings.card.maintenance_desc',
+        icon: 'heroicons:chart-bar',
+        group: 'studio.forum.settings.hub.maintenance',
+        priority: 110,
+    )]
     public function index(): Response
     {
         $totalTopics = (int) $this->entityManager->createQueryBuilder()

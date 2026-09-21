@@ -100,4 +100,40 @@
             </div>
         </form>
     </twig:studio:card>
+
+    <twig:studio:card title="{{ 'studio.forum.members.ban.form_header'|trans }}">
+        {% if restriction.ban or restriction.mute %}
+            {% set current = restriction.ban ?: restriction.mute %}
+            <p class="mb-3 text-fs-sm {{ restriction.ban ? 'text-red-700' : 'text-amber-700' }}">
+                {{ restriction.ban ? 'studio.forum.members.status.banned'|trans : 'studio.forum.members.status.muted'|trans }}
+                — {{ current.reason }}
+            </p>
+            <form method="post" action="{{ path('admin_forum_members_revoke', {banId: current.id}) }}" class="mb-6">
+                <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_member') }}">
+                <button type="submit" class="btn btn-sm btn-neutral">{{ 'studio.forum.members.action.remove'|trans }}</button>
+            </form>
+        {% endif %}
+
+        <form method="post" action="{{ path('admin_forum_members_ban', {id: user.id}) }}" class="grid gap-3 md:grid-cols-2">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_member') }}">
+            <div>
+                <label class="form-label">{{ 'studio.forum.members.ban.type'|trans }}</label>
+                <select name="type" class="form-select">
+                    <option value="mute">{{ 'studio.forum.members.type.mute_hint'|trans }}</option>
+                    <option value="ban">{{ 'studio.forum.members.type.ban_hint'|trans }}</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">{{ 'studio.forum.members.duration_placeholder'|trans }}</label>
+                <input type="number" name="duration_days" class="form-control" min="0">
+            </div>
+            <div class="md:col-span-2">
+                <label class="form-label">{{ 'studio.forum.members.reason_placeholder'|trans }}</label>
+                <textarea name="reason" class="form-control" rows="2" required></textarea>
+            </div>
+            <div>
+                <button type="submit" class="btn btn-outline-danger">{{ 'studio.forum.members.action.apply'|trans }}</button>
+            </div>
+        </form>
+    </twig:studio:card>
 {% endblock %}

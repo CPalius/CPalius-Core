@@ -9,132 +9,92 @@
 
 {% block body %}
     {% include '@ForumModule/admin/_desk_nav.html.twig' %}
-    <twig:studio:locale_filter locales="{{ locales }}" current="{{ currentLocale }}" route="admin_forum_permissions_index" />
+    <twig:studio:locale_filter locales="{{ locales }}" current="{{ currentLocale }}" route="admin_forum_permissions_index" extraParams="{{ section ? {section: section.id} : {} }}" />
 
-    <form method="post" id="forum-permissions-form">
-        <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_permissions') }}">
-        <input type="hidden" name="locale" value="{{ currentLocale }}">
-
+    <div class="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
         <twig:studio:card padded="{{ false }}">
-            <div class="border-b border-neutral-200 px-4 py-3 text-fs-sm text-neutral-600">
-                {{ 'studio.forum.permissions.hint'|trans({}, 'forums') }}
+            <div class="border-b border-neutral-200 px-4 py-3 text-fs-sm font-medium text-neutral-800">
+                {{ 'studio.forum.permissions.pick_section'|trans({}, 'forums') }}
             </div>
-
-            <div class="flex flex-wrap gap-1 border-b border-neutral-200 bg-neutral-50 px-4 py-2" role="tablist" aria-label="{{ 'studio.forum.permissions.tabs_aria'|trans({}, 'forums') }}">
-                {% for role in roles %}
-                    <button type="button"
-                            class="rounded-md px-3 py-1.5 text-fs-xs font-medium transition {% if loop.first %}bg-white text-primary-700 shadow-sm ring-1 ring-neutral-200{% else %}text-neutral-600 hover:bg-white/70{% endif %}"
-                            data-perm-tab="{{ role.id }}"
-                            role="tab"
-                            aria-selected="{{ loop.first ? 'true' : 'false' }}">
-                        {{ ('studio.forum.permissions.role.' ~ role.id)|trans({}, 'forums') != 'studio.forum.permissions.role.' ~ role.id
-                            ? ('studio.forum.permissions.role.' ~ role.id)|trans({}, 'forums')
-                            : role.label }}
-                    </button>
+            <nav class="max-h-[70vh] overflow-y-auto py-2">
+                {% for row in tree %}
+                    {% set node = row.section %}
+                    <a href="{{ path('admin_forum_permissions_index', {locale: currentLocale, section: node.id}) }}"
+                       class="flex items-center gap-2 px-4 py-1.5 text-fs-sm {{ section and section.id == node.id ? 'bg-primary-50 text-primary-800 font-medium' : 'text-neutral-700 hover:bg-neutral-50' }}"
+                       style="padding-left: {{ 16 + row.depth * 14 }}px">
+                        {{ node.title }}
+                    </a>
+                {% else %}
+                    <p class="px-4 py-6 text-fs-sm text-neutral-500">{{ 'studio.forum.permissions.empty'|trans({}, 'forums') }}</p>
                 {% endfor %}
-            </div>
-
-            {% for role in roles %}
-                <div class="overflow-x-auto {{ not loop.first ? 'hidden' : '' }}" data-perm-panel="{{ role.id }}" role="tabpanel">
-                    <p class="border-b border-neutral-100 bg-neutral-50/50 px-4 py-2 text-fs-xs text-neutral-500">
-                        {% set descKey = 'studio.forum.permissions.role_desc.' ~ role.id %}
-                        {% set desc = descKey|trans({}, 'forums') %}
-                        {{ desc != descKey ? desc : 'studio.forum.permissions.role_desc.custom'|trans({'%name%': role.label}, 'forums') }}
-                    </p>
-                    <table class="w-full text-left text-fs-sm">
-                        <thead class="bg-neutral-50 text-fs-xs uppercase tracking-wide text-neutral-500">
-                            <tr>
-                                <th class="px-4 py-2 font-medium">{{ 'studio.forum.permissions.col.node'|trans({}, 'forums') }}</th>
-                                {% for perm in permissions %}
-                                    <th class="px-2 py-2 text-center font-medium whitespace-nowrap">
-                                        <label class="inline-flex flex-col items-center gap-1 cursor-pointer">
-                                            <span>{{ ('studio.forum.permissions.perm.' ~ perm)|trans({}, 'forums') }}</span>
-                                            <input type="checkbox" class="form-check-input" data-perm-col="{{ role.id }}-{{ perm }}" title="{{ 'studio.forum.permissions.select_column'|trans({}, 'forums') }}">
-                                        </label>
-                                    </th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in matrix %}
-                                {% set section = row.section %}
-                                <tr class="border-t border-neutral-100 {{ row.depth == 0 ? 'bg-neutral-50/80' : '' }}">
-                                    <td class="px-4 py-2 font-medium text-neutral-900">
-                                        <span style="padding-left: {{ row.depth * 16 }}px" class="inline-flex items-center gap-2">
-                                            {% if section.isLocked %}
-                                                <twig:ux:icon name="heroicons:lock-closed" class="h-3.5 w-3.5 text-neutral-400" />
-                                            {% endif %}
-                                            {{ section.title }}
-                                            <span class="rounded bg-white px-1.5 py-0.5 text-fs-xs font-normal capitalize text-neutral-500 ring-1 ring-neutral-200">{{ section.nodeType.value }}</span>
-                                        </span>
-                                    </td>
-                                    {% for perm in permissions %}
-                                        {% set checked = row.cells[role.id][perm] %}
-                                        <td class="px-2 py-2 text-center">
-                                            <input type="hidden" name="matrix[{{ section.id }}][{{ role.id }}][{{ perm }}]" value="0">
-                                            <input type="checkbox"
-                                                   name="matrix[{{ section.id }}][{{ role.id }}][{{ perm }}]"
-                                                   value="1"
-                                                   {{ checked ? 'checked' : '' }}
-                                                   class="form-check-input"
-                                                   data-perm-cell="{{ role.id }}-{{ perm }}"
-                                                   title="{{ ('studio.forum.permissions.perm.' ~ perm)|trans({}, 'forums') }}">
-                                        </td>
-                                    {% endfor %}
-                                </tr>
-                            {% else %}
-                                <tr>
-                                    <td colspan="{{ 1 + permissions|length }}" class="px-4 py-6 text-center text-neutral-500">{{ 'studio.forum.permissions.empty'|trans({}, 'forums') }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% endfor %}
-
-            <div class="flex items-center justify-end gap-2 border-t border-neutral-200 px-4 py-3">
-                <p class="mr-auto text-fs-xs text-neutral-500">{{ 'studio.forum.permissions.save_hint'|trans({}, 'forums') }}</p>
-                <a href="{{ path('admin_forum_sections_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.sections.form.cancel'|trans }}</a>
-                <button type="submit" class="btn btn-sm btn-primary">{{ 'studio.forum.permissions.save'|trans({}, 'forums') }}</button>
-            </div>
+            </nav>
         </twig:studio:card>
-    </form>
 
-    <script{{ csp_nonce_attr() }}>
-    (function () {
-        var tabs = document.querySelectorAll('[data-perm-tab]');
-        var panels = document.querySelectorAll('[data-perm-panel]');
-        if (!tabs.length) return;
+        {% if section %}
+            <form method="post" id="forum-permissions-form">
+                <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_permissions') }}">
+                <input type="hidden" name="locale" value="{{ currentLocale }}">
+                <input type="hidden" name="section" value="{{ section.id }}">
 
-        tabs.forEach(function (tab) {
-            tab.addEventListener('click', function () {
-                var role = tab.getAttribute('data-perm-tab');
-                tabs.forEach(function (t) {
-                    var active = t === tab;
-                    t.setAttribute('aria-selected', active ? 'true' : 'false');
-                    t.classList.toggle('bg-white', active);
-                    t.classList.toggle('text-primary-700', active);
-                    t.classList.toggle('shadow-sm', active);
-                    t.classList.toggle('ring-1', active);
-                    t.classList.toggle('ring-neutral-200', active);
-                    t.classList.toggle('text-neutral-600', !active);
-                });
-                panels.forEach(function (panel) {
-                    panel.classList.toggle('hidden', panel.getAttribute('data-perm-panel') !== role);
-                });
-            });
-        });
+                <twig:studio:card padded="{{ false }}">
+                    <div class="border-b border-neutral-200 px-4 py-3">
+                        <h2 class="text-fs-base font-semibold text-neutral-900">{{ section.title }}</h2>
+                        <p class="mt-1 text-fs-sm text-neutral-600">{{ 'studio.forum.permissions.hint'|trans({}, 'forums') }}</p>
+                    </div>
 
-        document.querySelectorAll('[data-perm-col]').forEach(function (header) {
-            header.addEventListener('change', function () {
-                var key = header.getAttribute('data-perm-col');
-                var panel = header.closest('[data-perm-panel]');
-                if (!panel) return;
-                panel.querySelectorAll('[data-perm-cell="' + key + '"]').forEach(function (cell) {
-                    cell.checked = header.checked;
-                });
-            });
-        });
-    })();
-    </script>
+                    {% for groupKey, permissions in {
+                        'content': contentPermissions,
+                        'moderate': moderatePermissions
+                    } %}
+                        <div class="overflow-x-auto {{ not loop.first ? 'border-t border-neutral-200' : '' }}">
+                            <p class="bg-neutral-50 px-4 py-2 text-fs-xs font-semibold uppercase tracking-wide text-neutral-500">
+                                {{ ('studio.forum.permissions.group.' ~ groupKey)|trans({}, 'forums') }}
+                            </p>
+                            <table class="w-full text-left text-fs-sm">
+                                <thead class="bg-neutral-50 text-fs-xs uppercase tracking-wide text-neutral-500">
+                                    <tr>
+                                        <th class="sticky left-0 z-10 bg-neutral-50 px-4 py-2 font-medium">{{ 'studio.forum.permissions.col.role'|trans({}, 'forums') }}</th>
+                                        {% for perm in permissions %}
+                                            <th class="px-2 py-2 text-center font-medium whitespace-nowrap">
+                                                {{ ('studio.forum.permissions.perm.' ~ perm)|trans({}, 'forums') }}
+                                            </th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for role in roles %}
+                                        <tr class="border-t border-neutral-100">
+                                            <td class="sticky left-0 z-10 bg-white px-4 py-2 font-medium text-neutral-900 whitespace-nowrap">
+                                                {{ ('studio.forum.permissions.role.' ~ role.id)|trans({}, 'forums') != 'studio.forum.permissions.role.' ~ role.id
+                                                    ? ('studio.forum.permissions.role.' ~ role.id)|trans({}, 'forums')
+                                                    : role.label }}
+                                            </td>
+                                            {% for perm in permissions %}
+                                                {% set current = cells[role.id][perm]|default('inherit') %}
+                                                <td class="px-1 py-1.5">
+                                                    <select name="matrix[{{ role.id }}][{{ perm }}]"
+                                                            class="form-select text-fs-xs {{ current == 'allow' ? 'border-success-300 bg-success-50' : (current == 'deny' ? 'border-danger-300 bg-danger-50' : '') }}">
+                                                        {% for effect in effects %}
+                                                            <option value="{{ effect }}" {{ current == effect ? 'selected' : '' }}>
+                                                                {{ ('studio.forum.permissions.effect.' ~ effect)|trans({}, 'forums') }}
+                                                            </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </td>
+                                            {% endfor %}
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endfor %}
+
+                    <div class="flex items-center justify-end gap-2 border-t border-neutral-200 px-4 py-3">
+                        <p class="mr-auto text-fs-xs text-neutral-500">{{ 'studio.forum.permissions.save_hint'|trans({}, 'forums') }}</p>
+                        <button type="submit" class="btn btn-sm btn-primary">{{ 'studio.forum.permissions.save'|trans({}, 'forums') }}</button>
+                    </div>
+                </twig:studio:card>
+            </form>
+        {% endif %}
+    </div>
 {% endblock %}

@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Modules\Forum\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Modules\Forum\ForumAclEffect;
+use Modules\Forum\ForumPermission;
 use Modules\Forum\Repository\ForumNodePermissionRepository;
 
 /**
  * Node × role permission matrix row (cp_forum_node_permissions).
+ * Missing row = inherit. Persist should stay sparse (inherit is not stored).
  */
 #[ORM\Entity(repositoryClass: ForumNodePermissionRepository::class)]
 #[ORM\Table(name: 'cp_forum_node_permissions')]
@@ -24,7 +27,8 @@ class ForumNodePermission
     public const PERM_THREAD_CREATE = 'thread_create';
     public const PERM_REPLY = 'reply';
     public const PERM_UPLOAD = 'upload';
-    public const PERM_POLL = 'poll';
+    /** @deprecated use ForumPermission::PollCreate — kept so current callers compile */
+    public const PERM_POLL = 'poll_create';
 
     /** @var list<string> */
     public const ROLES = [
@@ -34,7 +38,12 @@ class ForumNodePermission
         self::ROLE_ADMIN,
     ];
 
-    /** @var list<string> */
+    /**
+     * Studio matrix columns still written by ForumPermissionService.
+     * Full dictionary lives on ForumPermission.
+     *
+     * @var list<string>
+     */
     public const PERMISSIONS = [
         self::PERM_VIEW,
         self::PERM_THREAD_CREATE,
@@ -55,18 +64,24 @@ class ForumNodePermission
     #[ORM\Column(name: 'role_key', type: 'string', length: 32)]
     private string $roleKey;
 
-    #[ORM\Column(name: 'permission_key', type: 'string', length: 32)]
+    #[ORM\Column(name: 'permission_key', type: 'string', length: 64)]
     private string $permissionKey;
 
-    #[ORM\Column(type: 'boolean')]
-    private bool $allowed = true;
+    #[ORM\Column(name: 'effect', type: 'string', length: 8, enumType: ForumAclEffect::class)]
+    private ForumAclEffect $effect = ForumAclEffect::Inherit;
 
-    public function __construct(ForumSection $section, string $roleKey, string $permissionKey, bool $allowed = true)
-    {
+    public function __construct(
+        ForumSection $section,
+        string $roleKey,
+        string $permissionKey,
+        bool|ForumAclEffect $effect = true,
+    ) {
         $this->section = $section;
         $this->roleKey = $roleKey;
         $this->permissionKey = $permissionKey;
-        $this->allowed = $allowed;
+        $this->effect = $effect instanceof ForumAclEffect
+            ? $effect
+            : ($effect ? ForumAclEffect::Allow : ForumAclEffect::Deny);
     }
 
     public function getId(): ?int
@@ -89,15 +104,33 @@ class ForumNodePermission
         return $this->permissionKey;
     }
 
+    public function getEffect(): ForumAclEffect
+    {
+        return $this->effect;
+    }
+
+    public function setEffect(ForumAclEffect $effect): static
+    {
+        $this->effect = $effect;
+
+        return $this;
+    }
+
+    /** Boolean view of the cell: only Allow is true. Inherit/Deny are false. */
     public function isAllowed(): bool
     {
-        return $this->allowed;
+        return $this->effect === ForumAclEffect::Allow;
     }
 
     public function setAllowed(bool $allowed): static
     {
-        $this->allowed = $allowed;
+        $this->effect = $allowed ? ForumAclEffect::Allow : ForumAclEffect::Deny;
 
         return $this;
+    }
+
+    public function getPermission(): ?ForumPermission
+    {
+        return ForumPermission::tryFrom($this->permissionKey);
     }
 }

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Controller\Admin;
 
-use App\Core\Annotation\CpAdminMenu;
 use App\Core\Settings\SettingsRegistry;
+use Modules\Forum\Attribute\ForumSettingsCard;
 use App\Entity\Setting;
 use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -49,7 +49,13 @@ final class ForumPostbitAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'studio.forum.postbit.menu', icon: 'heroicons:identification', panel: 'studio', priority: 27, capability: 'forum.section.manage', group: 'studio.group.content', parent: 'admin_forum_dashboard')]
+    #[ForumSettingsCard(
+        label: 'studio.forum.settings.card.postbit',
+        description: 'studio.forum.settings.card.postbit_desc',
+        icon: 'heroicons:identification',
+        group: 'studio.forum.settings.hub.appearance',
+        priority: 90,
+    )]
     public function index(): Response
     {
         $hidden = $this->layout->hiddenElements();

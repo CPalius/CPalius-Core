@@ -24,6 +24,7 @@ use Modules\Forum\Repository\ForumSectionRepository;
 #[ORM\UniqueConstraint(name: 'uniq_forum_section_slug_locale', columns: ['slug', 'locale'])]
 #[ORM\Index(columns: ['locale'], name: 'idx_forum_section_locale')]
 #[ORM\Index(columns: ['node_type'], name: 'idx_forum_section_node_type')]
+#[ORM\Index(columns: ['parent_path'], name: 'idx_forum_section_parent_path')]
 #[ORM\UniqueConstraint(name: 'uniq_forum_section_translation_group_locale', columns: ['translation_group_id', 'locale'])]
 class ForumSection implements TranslatableInterface
 {
@@ -89,11 +90,38 @@ class ForumSection implements TranslatableInterface
     #[ORM\Column(name: 'default_topic_sort', type: 'string', length: 32)]
     private string $defaultTopicSort = 'latest';
 
+    #[ORM\Column(name: 'rules_html', type: 'text', nullable: true)]
+    private ?string $rulesHtml = null;
+
+    #[ORM\Column(name: 'access_secret_hash', type: 'string', length: 255, nullable: true)]
+    private ?string $accessSecretHash = null;
+
+    /**
+     * Materialized path including self, e.g. `/1/5/12/`.
+     * Empty only before the first persist/backfill; roll-up reads ancestorIds().
+     */
+    #[ORM\Column(name: 'parent_path', type: 'string', length: 255, options: ['default' => ''])]
+    private string $parentPath = '';
+
+    /** Visible (public) topic count for this node and its descendants. */
     #[ORM\Column(name: 'topic_count', type: 'integer')]
     private int $topicCount = 0;
 
+    /** Visible (public) post count for this node and its descendants. */
     #[ORM\Column(name: 'post_count', type: 'integer')]
     private int $postCount = 0;
+
+    #[ORM\Column(name: 'topic_count_held', type: 'integer', options: ['default' => 0])]
+    private int $topicCountHeld = 0;
+
+    #[ORM\Column(name: 'topic_count_deleted', type: 'integer', options: ['default' => 0])]
+    private int $topicCountDeleted = 0;
+
+    #[ORM\Column(name: 'post_count_held', type: 'integer', options: ['default' => 0])]
+    private int $postCountHeld = 0;
+
+    #[ORM\Column(name: 'post_count_deleted', type: 'integer', options: ['default' => 0])]
+    private int $postCountDeleted = 0;
 
     #[ORM\Column(name: 'view_count', type: 'integer')]
     private int $viewCount = 0;
@@ -360,6 +388,37 @@ class ForumSection implements TranslatableInterface
         return $this;
     }
 
+    public function getRulesHtml(): ?string
+    {
+        return $this->rulesHtml;
+    }
+
+    public function setRulesHtml(?string $rulesHtml): static
+    {
+        $this->rulesHtml = $rulesHtml !== null && $rulesHtml !== '' ? $rulesHtml : null;
+
+        return $this;
+    }
+
+    public function getAccessSecretHash(): ?string
+    {
+        return $this->accessSecretHash;
+    }
+
+    public function setAccessSecretHash(?string $accessSecretHash): static
+    {
+        $this->accessSecretHash = $accessSecretHash !== null && $accessSecretHash !== ''
+            ? $accessSecretHash
+            : null;
+
+        return $this;
+    }
+
+    public function isPassworded(): bool
+    {
+        return $this->accessSecretHash !== null && $this->accessSecretHash !== '';
+    }
+
     public function isDivision(): bool
     {
         return $this->sectionType === ForumSectionType::Division;
@@ -375,6 +434,40 @@ class ForumSection implements TranslatableInterface
         return $this->sectionType === ForumSectionType::Subcategory;
     }
 
+    public function getParentPath(): string
+    {
+        return $this->parentPath;
+    }
+
+    public function setParentPath(string $parentPath): static
+    {
+        $this->parentPath = $parentPath;
+
+        return $this;
+    }
+
+    /**
+     * Self-inclusive ancestor ids parsed from parent_path (`/1/5/12/` → [1, 5, 12]).
+     *
+     * @return list<int>
+     */
+    public function ancestorIds(): array
+    {
+        if ($this->parentPath === '') {
+            return $this->id !== null ? [$this->id] : [];
+        }
+
+        $ids = [];
+        foreach (explode('/', trim($this->parentPath, '/')) as $part) {
+            if ($part !== '') {
+                $ids[] = (int) $part;
+            }
+        }
+
+        return $ids;
+    }
+
+    /** Visible (public) topics in this node and its descendants. */
     public function getTopicCount(): int
     {
         return $this->topicCount;
@@ -393,6 +486,31 @@ class ForumSection implements TranslatableInterface
         return $this->topicCount;
     }
 
+    public function getTopicCountHeld(): int
+    {
+        return $this->topicCountHeld;
+    }
+
+    public function setTopicCountHeld(int $topicCountHeld): static
+    {
+        $this->topicCountHeld = max(0, $topicCountHeld);
+
+        return $this;
+    }
+
+    public function getTopicCountDeleted(): int
+    {
+        return $this->topicCountDeleted;
+    }
+
+    public function setTopicCountDeleted(int $topicCountDeleted): static
+    {
+        $this->topicCountDeleted = max(0, $topicCountDeleted);
+
+        return $this;
+    }
+
+    /** Visible (public) posts in this node and its descendants. */
     public function getPostCount(): int
     {
         return $this->postCount;
@@ -401,6 +519,30 @@ class ForumSection implements TranslatableInterface
     public function setPostCount(int $postCount): static
     {
         $this->postCount = $postCount;
+
+        return $this;
+    }
+
+    public function getPostCountHeld(): int
+    {
+        return $this->postCountHeld;
+    }
+
+    public function setPostCountHeld(int $postCountHeld): static
+    {
+        $this->postCountHeld = max(0, $postCountHeld);
+
+        return $this;
+    }
+
+    public function getPostCountDeleted(): int
+    {
+        return $this->postCountDeleted;
+    }
+
+    public function setPostCountDeleted(int $postCountDeleted): static
+    {
+        $this->postCountDeleted = max(0, $postCountDeleted);
 
         return $this;
     }

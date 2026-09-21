@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Modules\Forum\Security;
 
 use App\Entity\User;
-use Modules\Forum\Entity\ForumNodePermission;
 use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
+use Modules\Forum\ForumPermission;
 use Modules\Forum\Service\ForumPermissionService;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
 /**
@@ -21,17 +23,10 @@ final class ForumNodeVoter extends Voter
 {
     private const PREFIX = 'forum.node.';
 
-    /** @var list<string> */
-    private const PERMISSIONS = [
-        ForumNodePermission::PERM_VIEW,
-        ForumNodePermission::PERM_THREAD_CREATE,
-        ForumNodePermission::PERM_REPLY,
-        ForumNodePermission::PERM_UPLOAD,
-        ForumNodePermission::PERM_POLL,
-    ];
-
     public function __construct(
         private readonly ForumPermissionService $permissionService,
+        #[Autowire(lazy: true)]
+        private readonly AuthorizationCheckerInterface $authorizationChecker,
     ) {
     }
 
@@ -41,9 +36,11 @@ final class ForumNodeVoter extends Voter
             return false;
         }
 
-        $perm = substr($attribute, \strlen(self::PREFIX));
+        $perm = $this->normalizePermission(substr($attribute, \strlen(self::PREFIX)));
+        $wanted = ForumPermission::tryFrom($perm);
 
-        return \in_array($perm, self::PERMISSIONS, true)
+        return $wanted instanceof ForumPermission
+            && $wanted->isContent()
             && ($subject instanceof ForumSection || $subject instanceof ForumTopic || $subject instanceof ForumPost);
     }
 
@@ -54,9 +51,16 @@ final class ForumNodeVoter extends Voter
             return false;
         }
 
+        if ($this->authorizationChecker->isGranted('forum.section.manage')
+            || $this->authorizationChecker->isGranted('forum.nodes.manage')
+            || $this->authorizationChecker->isGranted('forum.topic.moderate')
+        ) {
+            return true;
+        }
+
         $user = $token->getUser();
         $actor = $user instanceof User ? $user : null;
-        $perm = substr($attribute, \strlen(self::PREFIX));
+        $perm = $this->normalizePermission(substr($attribute, \strlen(self::PREFIX)));
 
         return $this->permissionService->isAllowed($section, $actor, $perm);
     }
@@ -74,5 +78,10 @@ final class ForumNodeVoter extends Voter
         }
 
         return null;
+    }
+
+    private function normalizePermission(string $permission): string
+    {
+        return $permission === 'poll' ? ForumPermission::PollCreate->value : $permission;
     }
 }

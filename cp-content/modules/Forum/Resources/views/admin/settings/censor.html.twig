@@ -1,0 +1,39 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.censor.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_settings_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.settings.hub.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+
+    <twig:studio:card title="{{ 'studio.forum.censor.header'|trans }}">
+        <form method="post" action="{{ path('admin_forum_settings_censor_add') }}" class="mb-4 flex flex-wrap gap-2 items-end">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_settings') }}">
+            <div>
+                <label class="form-label">{{ 'studio.forum.censor.word'|trans }}</label>
+                <input type="text" name="word" class="form-control" required maxlength="100">
+            </div>
+            <div>
+                <label class="form-label">{{ 'studio.forum.censor.replacement'|trans }}</label>
+                <input type="text" name="replacement" class="form-control" maxlength="100" placeholder="***">
+            </div>
+            <button type="submit" class="btn btn-primary">{{ 'studio.forum.censor.add'|trans }}</button>
+        </form>
+        <ul class="space-y-2">
+            {% for word in censorWords|default([]) %}
+                <li class="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2">
+                    <span><code>{{ word.word }}</code> → {{ word.replacement|default('***') }}</span>
+                    <form method="post" action="{{ path('admin_forum_settings_censor_delete', {id: word.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_settings') }}">
+                        <button class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</button>
+                    </form>
+                </li>
+            {% else %}
+                <li class="text-fs-sm text-neutral-500">{{ 'studio.forum.censor.empty'|trans }}</li>
+            {% endfor %}
+        </ul>
+    </twig:studio:card>
+{% endblock %}

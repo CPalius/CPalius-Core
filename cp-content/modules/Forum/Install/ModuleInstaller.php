@@ -23,6 +23,19 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
     protected function tables(): array
     {
         return [
+            'cp_forum_topics_posted',
+            'cp_forum_announcements',
+            'cp_forum_warnings',
+            'cp_forum_ban_filters',
+            'cp_forum_user_blocks',
+            'cp_forum_moderator_cache',
+            'cp_forum_permission_role_grants',
+            'cp_forum_permission_roles',
+            'cp_forum_user_permissions',
+            'cp_forum_moderators',
+            'cp_forum_topic_view_buffer',
+            'cp_forum_user_stats',
+            'cp_forum_board_stats',
             'cp_forum_link_previews',
             'cp_forum_censor_words',
             'cp_forum_moderation_logs',

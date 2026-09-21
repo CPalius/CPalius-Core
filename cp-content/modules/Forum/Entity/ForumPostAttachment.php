@@ -35,6 +35,9 @@ class ForumPostAttachment
     #[ORM\Column(name: 'file_size', type: 'integer')]
     private int $fileSize;
 
+    #[ORM\Column(name: 'download_count', type: 'integer', options: ['default' => 0])]
+    private int $downloadCount = 0;
+
     #[ORM\Column(name: 'created_at', type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
@@ -76,6 +79,18 @@ class ForumPostAttachment
     public function getFileSize(): int
     {
         return $this->fileSize;
+    }
+
+    public function getDownloadCount(): int
+    {
+        return $this->downloadCount;
+    }
+
+    public function setDownloadCount(int $downloadCount): static
+    {
+        $this->downloadCount = max(0, $downloadCount);
+
+        return $this;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

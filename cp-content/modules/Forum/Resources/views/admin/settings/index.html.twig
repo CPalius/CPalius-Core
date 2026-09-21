@@ -2,67 +2,32 @@
 
 {% block header %}{{ 'studio.forum.settings.index.header'|trans }}{% endblock %}
 
-{% block header_actions %}
-    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.settings.index.action.dashboard'|trans }}</a>
-{% endblock %}
-
 {% block body %}
     {% include '@ForumModule/admin/_desk_nav.html.twig' %}
 
-    <form method="post" action="{{ path('admin_forum_settings_update') }}">
-        <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_settings') }}">
+    {% for groupKey, cards in groups %}
+        <h2 class="mb-sp-sm mt-sp-lg text-fs-sm font-semibold uppercase tracking-wide text-neutral-500 first:mt-0">
+            {{ groupKey|trans }}
+        </h2>
 
-        <twig:studio:card title="{{ 'studio.forum.settings.seo.header'|trans }}">
-            <p class="mb-4 text-fs-sm text-neutral-500">{{ 'studio.forum.settings.seo.hint'|trans }}</p>
-            <div class="grid gap-4 md:grid-cols-2">
-                {% for definition in homeDefinitions %}
-                    {% include '@ForumModule/admin/settings/_field.html.twig' with {definition: definition, values: values} %}
-                {% else %}
-                    <p class="text-neutral-500">{{ 'studio.forum.settings.index.no_settings'|trans }}</p>
-                {% endfor %}
-            </div>
-        </twig:studio:card>
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {% for card in cards %}
+                <a href="{{ path(card.route) }}"
+                   class="group flex items-start gap-3 rounded-lg border border-neutral-200 p-4 transition hover:border-primary-400 hover:bg-neutral-50">
+                    <span class="mt-0.5 shrink-0 text-primary-600">
+                        <twig:ux:icon name="{{ card.icon }}" class="h-6 w-6" />
+                    </span>
 
-        <twig:studio:card title="{{ 'studio.forum.settings.engine.header'|trans }}">
-            <div class="grid gap-4 md:grid-cols-2">
-                {% for definition in engineDefinitions %}
-                    {% include '@ForumModule/admin/settings/_field.html.twig' with {definition: definition, values: values} %}
-                {% else %}
-                    <p class="text-neutral-500">{{ 'studio.forum.settings.index.no_settings'|trans }}</p>
-                {% endfor %}
-            </div>
-        </twig:studio:card>
+                    <span class="min-w-0 flex-1">
+                        <span class="block font-medium text-neutral-900">{{ card.label|trans }}</span>
+                        <span class="mt-0.5 block text-fs-xs text-neutral-500">{{ card.description|trans }}</span>
+                    </span>
 
-        <div class="mt-6">
-            <button type="submit" class="btn btn-primary">{{ 'studio.forum.settings.index.save'|trans }}</button>
-        </div>
-    </form>
-
-    <twig:studio:card title="{{ 'studio.forum.censor.header'|trans }}">
-        <form method="post" action="{{ path('admin_forum_settings_censor_add') }}" class="mb-4 flex flex-wrap gap-2 items-end">
-            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_settings') }}">
-            <div>
-                <label class="form-label">{{ 'studio.forum.censor.word'|trans }}</label>
-                <input type="text" name="word" class="form-control" required maxlength="100">
-            </div>
-            <div>
-                <label class="form-label">{{ 'studio.forum.censor.replacement'|trans }}</label>
-                <input type="text" name="replacement" class="form-control" maxlength="100" placeholder="***">
-            </div>
-            <button type="submit" class="btn btn-primary">{{ 'studio.forum.censor.add'|trans }}</button>
-        </form>
-        <ul class="space-y-2">
-            {% for word in censorWords|default([]) %}
-                <li class="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2">
-                    <span><code>{{ word.word }}</code> → {{ word.replacement|default('***') }}</span>
-                    <form method="post" action="{{ path('admin_forum_settings_censor_delete', {id: word.id}) }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_settings') }}">
-                        <button class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</button>
-                    </form>
-                </li>
-            {% else %}
-                <li class="text-fs-sm text-neutral-500">{{ 'studio.forum.censor.empty'|trans }}</li>
+                    <span class="shrink-0 text-neutral-300 group-hover:text-primary-500">
+                        <twig:ux:icon name="heroicons:chevron-right" class="h-5 w-5" />
+                    </span>
+                </a>
             {% endfor %}
-        </ul>
-    </twig:studio:card>
+        </div>
+    {% endfor %}
 {% endblock %}

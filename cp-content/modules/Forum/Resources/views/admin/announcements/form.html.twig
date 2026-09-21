@@ -1,0 +1,50 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ announcement ? 'studio.forum.announcements.form.edit_header'|trans : 'studio.forum.announcements.form.create_header'|trans }}{% endblock %}
+
+{% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+    <twig:studio:card>
+        <form method="post">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_announcement') }}">
+
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="md:col-span-2">
+                    <label class="form-label" for="section_id">{{ 'studio.forum.announcements.form.section'|trans }}</label>
+                    <select name="section_id" id="section_id" class="form-select">
+                        <option value="">{{ 'studio.forum.announcements.scope.global'|trans }}</option>
+                        {% for row in tree %}
+                            <option value="{{ row.section.id }}" {{ formValues.sectionId == row.section.id ? 'selected' : '' }}>
+                                {% if row.depth > 0 %}{% for i in 1..row.depth %}— {% endfor %}{% endif %}{{ row.section.title }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.forum.announcements.form.section_hint'|trans }}</p>
+                </div>
+                <div>
+                    <label class="form-label" for="starts_at">{{ 'studio.forum.announcements.form.starts_at'|trans }}</label>
+                    <input type="datetime-local" name="starts_at" id="starts_at" value="{{ formValues.startsAt }}" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label" for="ends_at">{{ 'studio.forum.announcements.form.ends_at'|trans }}</label>
+                    <input type="datetime-local" name="ends_at" id="ends_at" value="{{ formValues.endsAt }}" class="form-control">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label" for="body">{{ 'studio.forum.announcements.form.body'|trans }}</label>
+                    <textarea name="body" id="body" rows="6" required class="form-control">{{ formValues.body }}</textarea>
+                </div>
+                <div>
+                    <label class="inline-flex items-center gap-2 text-fs-sm">
+                        <input type="checkbox" name="is_active" value="1" {{ formValues.active ? 'checked' : '' }}>
+                        {{ 'studio.forum.announcements.form.is_active'|trans }}
+                    </label>
+                </div>
+            </div>
+
+            <div class="mt-6 flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ 'studio.forum.announcements.form.save'|trans }}</button>
+                <a href="{{ path('admin_forum_announcements_index') }}" class="btn btn-neutral">{{ 'studio.forum.announcements.form.cancel'|trans }}</a>
+            </div>
+        </form>
+    </twig:studio:card>
+{% endblock %}

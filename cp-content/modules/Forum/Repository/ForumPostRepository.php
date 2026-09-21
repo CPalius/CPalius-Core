@@ -75,6 +75,35 @@ final class ForumPostRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
+    /**
+     * Recount helper. Illegal on the write path.
+     *
+     * @return array<string, int>
+     */
+    public function countBucketsByTopic(ForumTopic $topic): array
+    {
+        $buckets = [
+            ForumDiscussionState::Visible->value => 0,
+            ForumDiscussionState::Moderated->value => 0,
+            ForumDiscussionState::Deleted->value => 0,
+        ];
+
+        $rows = $this->createQueryBuilder('p')
+            ->select('p.discussionState AS state, COUNT(p.id) AS cnt')
+            ->andWhere('p.topic = :topic')
+            ->setParameter('topic', $topic)
+            ->groupBy('p.discussionState')
+            ->getQuery()
+            ->getArrayResult();
+
+        foreach ($rows as $row) {
+            $state = $row['state'] instanceof ForumDiscussionState ? $row['state']->value : (string) $row['state'];
+            $buckets[$state] = (int) $row['cnt'];
+        }
+
+        return $buckets;
+    }
+
     public function countBySection(ForumSection $section): int
     {
         return (int) $this->createQueryBuilder('p')
@@ -113,6 +142,20 @@ final class ForumPostRepository extends ServiceEntityRepository
             ->andWhere('p.topic = :topic')
             ->setParameter('topic', $topic)
             ->orderBy('p.createdAt', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    public function findLastVisibleByTopic(ForumTopic $topic): ?ForumPost
+    {
+        return $this->createQueryBuilder('p')
+            ->andWhere('p.topic = :topic')
+            ->andWhere('p.discussionState = :visible')
+            ->setParameter('topic', $topic)
+            ->setParameter('visible', ForumDiscussionState::Visible)
+            ->orderBy('p.createdAt', 'DESC')
+            ->addOrderBy('p.id', 'DESC')
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
