@@ -37,6 +37,8 @@ use Modules\Forum\Service\ForumSectionHierarchyService;
 use Modules\Forum\Service\ForumTopicEngagementService;
 use Modules\Forum\Service\ForumTopicService;
 use Modules\Forum\Service\ForumUnreadService;
+use Modules\Forum\Service\ForumGuestView;
+use Modules\Forum\Service\ForumSpoilerGate;
 use Modules\Forum\Service\ForumWatchService;
 use Modules\Forum\Service\ForumWordFilterService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -79,6 +81,8 @@ final class ForumFrontController extends AbstractController
         private readonly ForumUnreadService $unreadService,
         private readonly ForumWatchService $watchService,
         private readonly ForumWordFilterService $wordFilterService,
+        private readonly ForumGuestView $guestView,
+        private readonly ForumSpoilerGate $spoilerGate,
         private readonly LocaleProvider $localeProvider,
         private readonly Paginator $paginator,
         private readonly SettingsRegistry $settingsRegistry,
@@ -372,6 +376,8 @@ final class ForumFrontController extends AbstractController
 
         $poll = $this->pollService->findForTopic($topic);
         $voteCounts = $this->postVoteRepository->countBothByPostIds($postIds);
+        $likedPostIds = $viewer instanceof User ? $this->postVoteRepository->findVotedPostIdsForUser($postIds, $viewer, ForumPostVote::LIKE) : [];
+        $this->spoilerGate->rememberLikes($likedPostIds);
 
         return $this->render('@Theme/forum/posts.html.twig', [
             'topic' => $topic,
@@ -389,7 +395,7 @@ final class ForumFrontController extends AbstractController
             // One grouped query for both tallies now that they share a table,
             // where this used to be two (Manifesto Law 6.1).
             'likeCounts' => array_map(static fn (array $t): int => $t['likes'], $voteCounts),
-            'likedPostIds' => $viewer instanceof User ? $this->postVoteRepository->findVotedPostIdsForUser($postIds, $viewer, ForumPostVote::LIKE) : [],
+            'likedPostIds' => $likedPostIds,
             'dislikeCounts' => array_map(static fn (array $t): int => $t['dislikes'], $voteCounts),
             'dislikedPostIds' => $viewer instanceof User ? $this->postVoteRepository->findVotedPostIdsForUser($postIds, $viewer, ForumPostVote::DISLIKE) : [],
             'topicReaders' => $this->engagementService->readers($topic),
@@ -782,9 +788,13 @@ final class ForumFrontController extends AbstractController
         $totalResults = 0;
 
         if ($query !== '' && mb_strlen($query) >= 2) {
+            $searchScope = $scope;
+            if ($this->guestView->hidePostBodies() && ($searchScope === 'all' || $searchScope === 'posts')) {
+                $searchScope = 'topics';
+            }
             $results = $this->searchService->search(
                 $query,
-                $scope,
+                $searchScope,
                 $sectionFilter > 0 ? $sectionFilter : null,
                 20,
                 $locale,
@@ -793,8 +803,8 @@ final class ForumFrontController extends AbstractController
                 $this->parseSearchDate($request->query->get('to'), true),
             );
             $topicResults = $results['topics'];
-            $postResults = $results['posts'];
-            $totalResults = $results['totalTopics'] + $results['totalPosts'];
+            $postResults = $this->guestView->hidePostBodies() ? [] : $results['posts'];
+            $totalResults = $results['totalTopics'] + ($this->guestView->hidePostBodies() ? 0 : $results['totalPosts']);
         }
 
         return $this->render('@Theme/forum/search.html.twig', [

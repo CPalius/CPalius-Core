@@ -164,6 +164,48 @@ final class ForumPostRepository extends ServiceEntityRepository
         return (int) $qb->getQuery()->getSingleScalarResult();
     }
 
+    /**
+     * Opening a topic is not "replying to unlock a spoiler". The first visible
+     * post's author still needs a later post, or a like, to open other people's
+     * spoilers. Anyone else with a visible post in the topic has replied.
+     */
+    public function authorHasReplyInTopic(ForumTopic $topic, User $author): bool
+    {
+        $count = (int) $this->createQueryBuilder('p')
+            ->select('COUNT(p.id)')
+            ->andWhere('p.topic = :topic')
+            ->andWhere('p.author = :author')
+            ->andWhere('p.discussionState = :visible')
+            ->setParameter('topic', $topic)
+            ->setParameter('author', $author)
+            ->setParameter('visible', ForumDiscussionState::Visible)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        if ($count === 0) {
+            return false;
+        }
+
+        $first = $this->createQueryBuilder('p')
+            ->andWhere('p.topic = :topic')
+            ->andWhere('p.discussionState = :visible')
+            ->setParameter('topic', $topic)
+            ->setParameter('visible', ForumDiscussionState::Visible)
+            ->orderBy('p.createdAt', 'ASC')
+            ->addOrderBy('p.id', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        if (!$first instanceof ForumPost) {
+            return $count > 0;
+        }
+
+        $isOp = $first->getAuthor()?->getId() === $author->getId();
+
+        return $isOp ? $count > 1 : $count > 0;
+    }
+
     /** @return ForumPost[] */
     public function findByTopic(ForumTopic $topic): array
     {

@@ -146,6 +146,18 @@ services:
             $quarantineLogFile: '%kernel.project_dir%/cp-core/var/log/module_quarantine.log'
             $modulesDir: '%kernel.project_dir%/cp-content/modules'
 
+    # Reads the homepage declarations of inactive modules too, so the settings
+    # screen can show the whole set instead of only what happens to be booted.
+    App\Core\Portal\HomepageModeCatalog:
+        arguments:
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+
+    # A module that has claimed the Studio panel supplies its live name and logo
+    # through the tagged interface; the static claim lives in contributions.yaml.
+    App\Core\Admin\StudioShell:
+        arguments:
+            $brandingSuppliers: !tagged_iterator cpalius.studio_shell_branding
+
     App\Core\Module\ActiveModulesFileWriter:
         arguments:
             $activeModulesFile: '%kernel.project_dir%/cp-core/config/active_modules.php'

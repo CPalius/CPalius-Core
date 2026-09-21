@@ -13,6 +13,8 @@ final class AdminMenuExtension extends AbstractExtension
     {
         return [
             new TwigFunction('cp_admin_menu', [AdminMenuRuntime::class, 'render']),
+            // The Studio layout asks this to decide whose panel it is rendering.
+            new TwigFunction('cp_studio_shell', [AdminMenuRuntime::class, 'studioShell']),
         ];
     }
 }

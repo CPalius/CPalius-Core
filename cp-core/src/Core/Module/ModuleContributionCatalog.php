@@ -72,6 +72,23 @@ final class ModuleContributionCatalog
     }
 
     /**
+     * The module that has claimed the Studio panel, if any.
+     *
+     * @return array{brand: string, subtitle: ?string, home_route: ?string, keep: list<string>, regroup: array<string, string>}|null
+     */
+    public function studioShell(): ?array
+    {
+        $shell = $this->studio()['shell'] ?? null;
+
+        if (!\is_array($shell) || !\is_string($shell['brand'] ?? null) || $shell['brand'] === '') {
+            return null;
+        }
+
+        /** @var array{brand: string, subtitle: ?string, home_route: ?string, keep: list<string>, regroup: array<string, string>} $shell */
+        return $shell;
+    }
+
+    /**
      * @return array<string, string>
      */
     public function studioTypeLabels(): array

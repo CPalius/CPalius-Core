@@ -66,7 +66,6 @@
             <twig:cp:table headers="{{ [
                 'aacp.cron.column.name'|trans,
                 'aacp.cron.column.source'|trans,
-                'aacp.cron.column.command'|trans,
                 'aacp.cron.column.schedule'|trans,
                 'aacp.cron.column.last_run'|trans,
                 'aacp.cron.column.status'|trans,
@@ -75,14 +74,24 @@
                 <twig:block name="rows">
                     {% for task in tasks %}
                         <tr data-cron-row="{{ task.codeBased ? 'code:' ~ task.jobName : 'db:' ~ task.id }}">
-                            <td class="!text-slate-200">
+                            {#
+                                The handler — a class and method for a code job,
+                                a console command for a manual one — used to have
+                                a column of its own. It is a developer detail an
+                                operator never acts on, and it was long enough to
+                                push the whole table off the screen. It lives on
+                                the row title now: still one hover away when
+                                somebody is debugging, gone the rest of the time.
+                            #}
+                            <td class="!text-slate-200"
+                                title="{{ task.codeBased ? task.sourceDetail : task.commandName }}">
                                 {% if task.codeBased %}
                                     {% set cronLabelKey = 'aacp.cron.job.' ~ task.jobName %}
                                     {% set cronLabel = cronLabelKey|trans %}
                                     <span class="block">{{ cronLabel != cronLabelKey ? cronLabel : task.description|default(task.name) }}</span>
-                                    <span class="mt-0.5 block font-mono text-fs-xs !text-slate-500">{{ task.jobName }}</span>
+                                    <span class="cell-truncate mt-0.5 font-mono text-fs-xs !text-slate-500">{{ task.jobName }}</span>
                                 {% else %}
-                                    <a href="{{ path('aacp_cron_edit', {id: task.id}) }}" class="hover:text-primary-400">{{ task.name }}</a>
+                                    <a href="{{ path('aacp_cron_edit', {id: task.id}) }}" class="cell-truncate hover:text-primary-400">{{ task.name }}</a>
                                 {% endif %}
                             </td>
                             <td>
@@ -90,13 +99,6 @@
                                     <span class="badge badge-info">{{ 'aacp.cron.source_code'|trans }}</span>
                                 {% else %}
                                     <span class="badge badge-neutral">{{ 'aacp.cron.source_manual'|trans }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="font-mono text-fs-xs !text-slate-500">
-                                {% if task.codeBased %}
-                                    {{ task.sourceDetail }}
-                                {% else %}
-                                    {{ task.commandName }}
                                 {% endif %}
                             </td>
                             <td class="font-mono text-fs-xs !text-slate-400">

@@ -374,6 +374,41 @@ final class ForumTopicRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
+    /**
+     * Totals across everything this member has opened, for the header of their
+     * own topic list. Computed over the whole set rather than the page being
+     * shown — a summary that changes when you turn the page is not a summary.
+     *
+     * postCount includes the opening post, so replies are one less per topic;
+     * clamped at zero because a topic whose posts were all deleted can report
+     * a count of zero.
+     *
+     * @return array{topics: int, replies: int, views: int}
+     */
+    public function summaryForAuthor(User $author): array
+    {
+        /** @var array{topics: ?string, posts: ?string, views: ?string} $row */
+        $row = $this->createQueryBuilder('t')
+            ->select('COUNT(t.id) AS topics, COALESCE(SUM(t.postCount), 0) AS posts, COALESCE(SUM(t.viewCount), 0) AS views')
+            ->andWhere('t.firstPoster = :author')
+            ->andWhere('t.movedToTopic IS NULL')
+            ->andWhere('t.mode = :normal')
+            ->andWhere('t.discussionState = :visible')
+            ->setParameter('author', $author)
+            ->setParameter('normal', ForumTopic::MODE_NORMAL)
+            ->setParameter('visible', ForumDiscussionState::Visible)
+            ->getQuery()
+            ->getSingleResult();
+
+        $topics = (int) ($row['topics'] ?? 0);
+
+        return [
+            'topics' => $topics,
+            'replies' => max(0, (int) ($row['posts'] ?? 0) - $topics),
+            'views' => (int) ($row['views'] ?? 0),
+        ];
+    }
+
     public function createPublicByAuthorQueryBuilder(User $author): QueryBuilder
     {
         return $this->createQueryBuilder('t')

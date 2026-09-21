@@ -151,6 +151,8 @@ studio.forum.sections.index.column.lock: "Kilit"
 studio.forum.sections.lock: "Forumu kilitle"
 studio.forum.sections.unlock: "Forum kilidini aç"
 studio.forum.sections.lock_toggled: "%title% — %state%"
+studio.forum.sections.state_locked: "kilitlendi"
+studio.forum.sections.state_open: "kilidi açıldı"
 
 forum.js.report_prompt: "Bu mesajı neden bildiriyorsunuz? (kısaca açıklayın)"
 forum.js.link_copied: "Bağlantı kopyalandı"

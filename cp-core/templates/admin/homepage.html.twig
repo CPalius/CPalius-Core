@@ -1,4 +1,13 @@
-{% extends 'admin/layout.html.twig' %}
+{#
+    Lives on AACP, under Appearance, next to themes and fonts.
+
+    It used to sit in Studio, and the mismatch showed: the markup below already
+    reaches for twig:cp:card and hard-codes slate on #0f172a — the dark console
+    palette — while the Studio layout it extended is white. Which homepage the
+    site serves is a presentation decision about the site, not a content task,
+    so it belongs beside the theme it is presented through.
+#}
+{% extends 'aacp/layout.html.twig' %}
 
 {% block header %}{{ 'studio.homepage.header'|trans }}{% endblock %}
 
@@ -99,9 +108,39 @@
             <label class="form-label" for="homepage_mode">{{ (modeDefinition.label|default('studio.homepage.mode_card'))|trans }}</label>
             <select name="homepage_mode" id="homepage_mode" class="form-select lg:w-[61.8%]">
                 {% for value, label in modeDefinition.variants|default({}) %}
-                    <option value="{{ value }}" {{ modeValue == value ? 'selected' : '' }}>{{ label|trans }}</option>
+                    {% set owner = availableModes[value].module|default(null) %}
+                    <option value="{{ value }}" {{ modeValue == value ? 'selected' : '' }}>
+                        {{ label|trans }}{% if owner %} — {{ owner }}{% endif %}
+                    </option>
                 {% endfor %}
             </select>
+
+            <p class="mt-2 text-fs-xs text-slate-500">{{ 'studio.homepage.mode_help'|trans }}</p>
+
+            {#
+                What the platform could serve but currently cannot. Shown rather
+                than hidden: a dropdown with one entry in it gave no way to tell
+                whether that was everything on offer or the consequence of a
+                module being switched off on another screen.
+            #}
+            {% if dormantModes is not empty %}
+                <div class="mt-sp-sm rounded-lg border border-white/10 bg-white/5 px-3 py-3">
+                    <p class="mb-2 text-fs-xs font-semibold uppercase tracking-wider text-slate-400">
+                        {{ 'studio.homepage.dormant_title'|trans }}
+                    </p>
+                    <ul class="space-y-1">
+                        {% for id, mode in dormantModes %}
+                            <li class="flex flex-wrap items-center justify-between gap-2 text-fs-sm text-slate-400">
+                                <span>{{ mode.label|trans }}</span>
+                                <span class="text-fs-xs text-slate-500">
+                                    {{ 'studio.homepage.dormant_needs'|trans({module: mode.module}) }}
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <p class="mt-2 text-fs-xs text-slate-500">{{ 'studio.homepage.dormant_help'|trans }}</p>
+                </div>
+            {% endif %}
         </twig:cp:card>
 
         <twig:cp:card title="{{ 'studio.homepage.blocks_card'|trans }}">

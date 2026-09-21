@@ -9,6 +9,7 @@ use App\Core\Pagination\Paginator;
 use App\Entity\User;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
+use Modules\Forum\ForumDictionary;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
 use Modules\Forum\Service\ForumDraftService;
@@ -245,10 +246,18 @@ final class ForumToolsController extends AbstractController
         // same per-page setting the board list uses, so one number in Studio
         // governs every topic list.
         $qb = $this->topicRepository->createPublicByAuthorQueryBuilder($user)
-            ->leftJoin('t.section', 's')->addSelect('s');
+            ->leftJoin('t.section', 's')->addSelect('s')
+            ->leftJoin('t.prefix', 'prefix')->addSelect('prefix')
+            ->leftJoin('t.lastPoster', 'lp')->addSelect('lp');
 
         return $this->render('@Theme/forum/my_topics.html.twig', [
             'topics' => $this->paginator->paginate($qb, $request->query->getInt('page', 1), $this->topicsPerPage()),
+            'summary' => $this->topicRepository->summaryForAuthor($user),
+            // The row markup is the board's, so it needs the same two numbers the
+            // board passes: one decides the "hot" icon, the other the page a
+            // "last reply" link has to jump to.
+            'hotThreshold' => (int) $this->settingsRegistry->get('forum.hot_topic_threshold', ForumDictionary::HOT_TOPIC_POST_THRESHOLD),
+            'postsPerPage' => (int) $this->settingsRegistry->get('forum.posts_per_page', ForumDictionary::DEFAULT_POSTS_PER_PAGE),
             'forumHome' => ['title' => (string) $this->settingsRegistry->get('forum.home_title', 'Forum')],
         ]);
     }

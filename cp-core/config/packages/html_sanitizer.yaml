@@ -12,6 +12,7 @@ framework:
                     img: ['src', 'alt', 'width', 'height', 'class']
                     a: ['href', 'title', 'target', 'rel']
                     blockquote: ['data-post', 'class']
+                    div: ['class']
                 allow_attributes:
                     class: '*'
                     data-post: ['blockquote']

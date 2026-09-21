@@ -1,47 +1,117 @@
 {% extends '@Theme/forum/layout.html.twig' %}
 
+{#
+    "My topics" — the member's own list, built on the board's row markup rather
+    than a reduced copy of it. The earlier version drew a single content block
+    into the board's five-column grid, so every title landed in the 40px icon
+    track; that is what made the page look like a broken mobile layout.
+
+    The columns differ from a board on purpose: the section a topic sits in
+    matters here (the list spans all of them) and the author does not, because
+    it is always you.
+#}
+
 {% block title %}{{ 'forum.my_topics.title'|trans }} — {{ 'forum.breadcrumb.home_title'|trans }}{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
 
 {% block forum_breadcrumbs %}
     <nav class="forum-crumb fade-in" aria-label="{{ 'forum.nav_aria'|trans }}">
         <ol class="forum-crumb__list">
             <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
-            <li><a href="{{ path('forum_index') }}">{{ 'forum.breadcrumb.home_title'|trans }}</a></li>
+            <li><a href="{{ path('forum_index') }}">{{ forumHome.title|default('forum.breadcrumb.home_title'|trans) }}</a></li>
             <li class="is-active">{{ 'forum.my_topics.title'|trans }}</li>
         </ol>
     </nav>
 {% endblock %}
 
 {% block forum_content %}
-{% include '@Theme/forum/partials/_user_rail.html.twig' %}
 <div class="forum-header fade-in">
-    <h1 class="section-title">{{ 'forum.my_topics.title'|trans }}</h1>
+    <div class="forum-header__top">
+        <div>
+            <h1 class="section-title">{{ 'forum.my_topics.title'|trans }}</h1>
+            <p class="forum-header__desc">{{ 'forum.my_topics.desc'|trans }}</p>
+        </div>
+        <div class="forum-header__actions">
+            <div class="forum-stats-inline">
+                <span><strong>{{ summary.topics|default(0)|forum_number }}</strong> {{ 'index.topics'|trans({}, 'forums') }}</span>
+                <span><strong>{{ summary.replies|default(0)|forum_number }}</strong> {{ 'stat.reply'|trans({}, 'forums') }}</span>
+                <span><strong>{{ summary.views|default(0)|forum_number }}</strong> {{ 'stat.view'|trans({}, 'forums') }}</span>
+            </div>
+        </div>
+    </div>
 </div>
-{# forum-topic--simple, not the board row: the board grid is five columns wide
-   and this list fills one of them, which left every title squeezed into the
-   40px icon slot. #}
-<div class="forum-topics fade-in">
+
+{% include '@Theme/forum/partials/_user_rail.html.twig' %}
+
+{% if topics|length %}
+    <div class="forum-topics-head forum-topics-head--mine fade-in" aria-hidden="true">
+        <span></span>
+        <span>{{ 'forum.my_topics.column.topic'|trans }}</span>
+        <span>{{ 'stat.reply'|trans({}, 'forums') }}</span>
+        <span>{{ 'stat.view'|trans({}, 'forums') }}</span>
+        <span>{{ 'index.last_post'|trans({}, 'forums') }}</span>
+    </div>
+{% endif %}
+
+<div class="forum-topics forum-topics--mine fade-in">
     {% for topic in topics %}
-        <div class="forum-topic forum-topic--simple">
+        <div class="forum-topic forum-topic--mine {{ topic.sticky ? 'forum-topic--sticky' : '' }} {{ topic.isLocked ? 'forum-topic--locked' : '' }}">
+            {% include '@Theme/forum/partials/_topic_icon.html.twig' with {
+                topic: topic,
+                hotThreshold: hotThreshold|default(20),
+            } only %}
+
             <div class="forum-topic__main">
                 <div class="forum-topic__title">
+                    {% if topic.prefix %}
+                        <span class="forum-prefix {{ topic.prefix.cssClass|default('forum-prefix--default') }}"
+                              {% if not topic.prefix.cssClass %}style="background: color-mix(in srgb, {{ topic.prefix.color }} 15%, white); color: {{ topic.prefix.color }};"{% endif %}>{{ topic.prefix.title }}</span>
+                    {% endif %}
                     <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}">{{ topic.title }}</a>
+                    {% if topic.sticky and topic.isLocked %}<span class="forum-badge forum-badge--sticky">{{ 'forum.badge.announcement'|trans }}</span>
+                    {% elseif topic.sticky %}<span class="forum-badge forum-badge--sticky">{{ 'forum.badge.sticky'|trans }}</span>{% endif %}
+                    {% if topic.isLocked and not topic.sticky %}<span class="forum-badge forum-badge--locked">{{ 'forum.badge.locked'|trans }}</span>{% endif %}
+                    {% if topic.postCount >= hotThreshold|default(20) %}<span class="forum-badge forum-badge--hot">{{ 'forum.badge.hot'|trans }}</span>{% endif %}
+                    {% if topic.isPrivate %}<span class="forum-badge forum-badge--private">{{ 'forum.badge.private'|trans }}</span>{% endif %}
                 </div>
-                <div class="forum-topic__meta">{{ topic.section.title }} · {{ (topic.lastPostDate ?? topic.updatedAt)|forum_relative_time }}</div>
+                <div class="forum-topic__meta">
+                    {# The board this sits in is the useful crumb here; the author is always you. #}
+                    <a class="forum-topic__board" href="{{ path('forum_section', {sectionSlug: topic.section.slug}) }}">
+                        <i class="bi bi-folder2"></i> {{ topic.section.title }}
+                    </a>
+                    · {{ topic.createdAt|forum_relative_time }}
+                </div>
             </div>
-            <div class="forum-topic__side">
-                <span class="forum-topic__stat">
-                    <strong>{{ max(0, topic.postCount - 1)|number_format(0, ',', '.') }}</strong>
-                    <span>{{ 'stat.reply'|trans({}, 'forums') }}</span>
-                </span>
-                <span class="forum-topic__stat">
-                    <strong>{{ topic.viewCount|number_format(0, ',', '.') }}</strong>
-                    <span>{{ 'stat.view'|trans({}, 'forums') }}</span>
-                </span>
+
+            <div class="forum-topic__stat">
+                <strong>{{ max(0, topic.postCount - 1)|forum_number }}</strong>
+                <span>{{ 'stat.reply'|trans({}, 'forums') }}</span>
+            </div>
+            <div class="forum-topic__stat">
+                <strong>{{ topic.viewCount|forum_number }}</strong>
+                <span>{{ 'stat.view'|trans({}, 'forums') }}</span>
+            </div>
+
+            <div class="forum-topic__activity">
+                {% if topic.lastPosterName %}
+                    {% include '@Theme/forum/partials/_avatar.html.twig' with {name: topic.lastPosterName, user: topic.lastPoster} %}
+                    {% set lastPage = ((topic.postCount - 1) // postsPerPage|default(15)) + 1 %}
+                    <div class="forum-topic__activity-text">
+                        <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug, page: lastPage}) }}">{{ topic.lastPosterName }}</a>
+                        <time>{{ (topic.lastPostDate ?? topic.updatedAt)|forum_relative_time }}</time>
+                    </div>
+                {% else %}
+                    <div class="forum-topic__activity-text">
+                        <time>{{ (topic.lastPostDate ?? topic.updatedAt)|forum_relative_time }}</time>
+                    </div>
+                {% endif %}
             </div>
         </div>
     {% else %}
-        <div class="forum-empty">{{ 'forum.my_topics.empty'|trans }}</div>
+        <div class="forum-empty">
+            <i class="bi bi-chat-square-dots"></i>
+            {{ 'forum.my_topics.empty'|trans }}
+        </div>
     {% endfor %}
 </div>
 
@@ -49,4 +119,6 @@
     result: topics,
     route: 'forum_my_topics',
 } %}
+
+{% include '@Theme/forum/partials/_stats_bar.html.twig' %}
 {% endblock %}

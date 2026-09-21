@@ -145,7 +145,7 @@
 }
 
 .forum-header__stats strong {
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-weight: 600;
   color: var(--cp-dark);
 }
@@ -153,7 +153,7 @@
 .forum-stats-inline {
   display: flex;
   gap: var(--sp-md);
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   color: var(--slw-text-faint);
   white-space: nowrap;
@@ -243,7 +243,7 @@
 
 .forum-division__title {
   display: block;
-  font-family: var(--font-heading, 'Roboto Condensed', sans-serif);
+  font-family: var(--cp-font-heading);
   font-size: 1.15rem;
   font-weight: 700;
   color: #fff;
@@ -394,7 +394,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: var(--fs-md);
   font-weight: 700;
   color: var(--cp-dark);
@@ -449,7 +449,7 @@
   font-size: var(--fs-md);
   font-weight: 600;
   margin-bottom: 3px;
-  font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+  font-family: var(--cp-font-body);
 }
 
 .forum-board__body h3 a {
@@ -476,7 +476,7 @@
 .forum-board__sub a {
   font-size: var(--fs-xs);
   color: var(--cp-accent);
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
 }
 
 .forum-board__sub a:hover {
@@ -518,7 +518,7 @@
 
 .forum-board__stats {
   text-align: center;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
 }
 
 .forum-board__stats strong {
@@ -601,6 +601,23 @@
 /* The narrow-screen overrides for these rows live in the responsive section
    further down, after the board rules that would otherwise win on cascade order. */
 
+/*
+  "My topics" reuses the board row wholesale — same grid, same icon, same stat
+  and activity columns — because it is the same kind of list. What it swaps is
+  the second line: the board a topic sits in matters when the list spans every
+  board, and the author does not, because it is always the reader.
+*/
+.forum-topic__board {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--slw-text-muted);
+}
+
+.forum-topic__board:hover {
+  color: var(--cp-accent);
+}
+
 .forum-topic--sticky {
   border-left-color: var(--cp-gold);
   background: color-mix(in srgb, var(--cp-gold) 4%, white);
@@ -655,7 +672,7 @@
 
 .forum-topic__stat {
   text-align: center;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
 }
 
 .forum-topic__stat strong {
@@ -691,7 +708,7 @@
   color: var(--cp-white);
   background: var(--cp-primary);
   flex-shrink: 0;
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
 }
 
 .forum-topic__activity-text {
@@ -724,7 +741,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   line-height: 1.6;
 }
 
@@ -789,7 +806,7 @@
   color: rgba(255,255,255,0.5);
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
 }
 
 .forum-mod-bar__actions {
@@ -938,7 +955,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   line-height: 1.6;
   background: color-mix(in srgb, var(--badge-color, var(--cp-accent)) 12%, white);
   color: var(--badge-color, var(--cp-accent));
@@ -967,7 +984,7 @@
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--cp-dark);
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
 }
 
 .forum-postbit__stat span {
@@ -1018,7 +1035,7 @@
   align-items: center;
   gap: 8px;
   color: var(--slw-text-faint);
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
 }
 
 .forum-post__num {
@@ -1051,7 +1068,7 @@
   cursor: pointer;
   transition: all var(--tr-fast);
   text-decoration: none;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   padding: 0;
 }
 
@@ -1132,14 +1149,14 @@
   border-radius: 0 var(--forum-radius) var(--forum-radius) 0;
 }
 .forum-post__body code {
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   background: var(--slw-surface);
   padding: 2px 5px;
   border-radius: 3px;
   font-size: 0.9em;
 }
 .forum-post__body pre {
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   background: var(--slw-accent, #0d1117);
   color: #e6edf3;
   padding: 14px;
@@ -1175,7 +1192,7 @@
 
 .forum-post__engagement-label {
   font-size: var(--fs-xs);
-  font-family: var(--slw-font-sans);
+  font-family: var(--cp-font-body);
 }
 
 .forum-post__toolbar--meta {
@@ -1225,7 +1242,7 @@
   letter-spacing: 0.5px;
   color: var(--slw-text-muted);
   margin-bottom: 6px;
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
 }
 
 .forum-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="image"]),
@@ -1438,7 +1455,7 @@
   gap: 4px;
   background: none;
   border: none;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   color: var(--slw-text-faint);
   cursor: pointer;
@@ -1465,7 +1482,7 @@
 
 .forum-pagination-info {
   font-size: var(--fs-xs);
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   color: var(--slw-text-faint);
 }
 
@@ -1938,7 +1955,7 @@
   justify-content: center;
   gap: 6px;
   font-size: 12px;
-  font-family: var(--slw-font-mono, ui-monospace, monospace);
+  font-family: var(--cp-font-mono);
   color: var(--slw-text-muted);
 }
 
@@ -1978,7 +1995,7 @@
   font-size: 10px;
   line-height: 1.2;
   color: var(--slw-text-faint);
-  font-family: var(--slw-font-mono, ui-monospace, monospace);
+  font-family: var(--cp-font-mono);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2312,14 +2329,28 @@
 }
 .forum-postbit__title--bold { font-weight: 700; }
 .forum-postbit__title--badge { font-weight: 600; }
+/*
+  The signature is a direct child of .forum-post__main, which has no padding of
+  its own — so without this it sat flush against the card edge while the header,
+  body and footer above it were all inset by 18px. Inset a little further than
+  those, so the block reads as an aside rather than as more post.
+*/
 .forum-post__signature {
-  margin-top: 16px;
+  margin: 16px 30px 0;
   padding-top: 12px;
   border-top: 1px dashed var(--slw-border);
   font-size: var(--fs-xs);
   color: var(--slw-text-muted);
   font-style: italic;
   white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  /* 30px a side is a tenth of a phone screen; fall back to the body inset. */
+  .forum-post__signature {
+    margin-inline: 18px;
+  }
 }
 
 /* Word filter: why this list may be shorter than the reader expects. */
@@ -2546,7 +2577,7 @@ blockquote.cp-quote-post-0,
   font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   color: var(--cp-dark);
 }
 
@@ -3763,6 +3794,18 @@ blockquote.cp-quote-post-0,
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* Three nowrap counters side by side do not fit a phone header. */
+  .forum-stats-inline {
+    flex-wrap: wrap;
+    gap: var(--sp-sm);
+    white-space: normal;
+  }
+
+  /* The column headings describe columns that are hidden at this width. */
+  .forum-topics-head--mine {
+    display: none;
+  }
+
   /* Poll result rows: label, bar and count stop competing for one line. */
   .forum-poll__results li {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -3771,3 +3814,53 @@ blockquote.cp-quote-post-0,
 
 /* The stats footer is deliberately not touched here: it already stacks in the
    900px block above, and re-stating it at 600px only fought with it. */
+
+/* ---- Spoiler + guest content gates ---- */
+.forum-spoiler {
+  margin: 1em 0;
+  border: 1px solid var(--slw-border);
+  border-radius: var(--forum-radius);
+  overflow: hidden;
+  background: var(--slw-surface);
+}
+.forum-spoiler__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--cp-text);
+  background: color-mix(in srgb, var(--cp-accent) 12%, var(--slw-surface));
+  border-bottom: 1px solid var(--slw-border);
+}
+.forum-spoiler.is-locked .forum-spoiler__bar {
+  border-bottom: none;
+}
+.forum-spoiler__hint {
+  margin: 0;
+  padding: 12px 14px 14px;
+  font-size: var(--fs-sm);
+  color: var(--slw-text-muted);
+}
+.forum-spoiler__content {
+  padding: 12px 14px;
+}
+.forum-spoiler__content > :last-child {
+  margin-bottom: 0;
+}
+.forum-guest-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px 0 8px;
+  color: var(--slw-text-muted);
+}
+.forum-guest-content i {
+  font-size: 1.35em;
+  opacity: 0.7;
+}
+.forum-guest-content p {
+  margin: 0;
+}

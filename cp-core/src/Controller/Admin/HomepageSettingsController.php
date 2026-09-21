@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
+use App\Core\Portal\HomepageModeCatalog;
 use App\Core\Portal\PortalCopyService;
 use App\Core\Portal\PortalLayoutService;
 use App\Core\Settings\SettingsRegistry;
@@ -24,7 +25,13 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Studio homepage: root route mode, portal block layout, and bilingual showcase copy.
+ * What the site serves at its root: the homepage mode, the portal block layout,
+ * and the bilingual copy inside those blocks.
+ *
+ * An AACP Appearance screen. It sat in Studio until the homepage stopped being
+ * a content decision and started being a presentation one — every module that
+ * ships a public index can claim the root, so the choice belongs beside the
+ * theme rather than beside the pages.
  */
 final class HomepageSettingsController extends AbstractController
 {
@@ -40,12 +47,22 @@ final class HomepageSettingsController extends AbstractController
         private readonly TranslatorInterface $translator,
         private readonly PortalLayoutService $portalLayoutService,
         private readonly PortalCopyService $portalCopyService,
+        private readonly HomepageModeCatalog $homepageModes,
     ) {
     }
 
+    /**
+     * On AACP under Appearance, beside themes, theme options and fonts.
+     *
+     * Which homepage the site serves is a decision about how the site presents
+     * itself, not a content task, so it sits with the theme rather than with
+     * the pages and posts. The capability matches its neighbours for the same
+     * reason: whoever is trusted to swap the theme is trusted to choose what
+     * the front door shows.
+     */
     #[Route('/admin/homepage', name: 'admin_homepage_settings', methods: ['GET'])]
-    #[CpAdminMenu(label: 'studio.homepage.header', icon: 'heroicons:home-modern', panel: 'studio', priority: 11, group: 'studio.group.content')]
-    #[IsGranted('admin.access')]
+    #[CpAdminMenu(label: 'studio.homepage.header', icon: 'heroicons:home-modern', panel: 'aacp', priority: 74, capability: 'system.settings.manage', parent: 'aacp_themes')]
+    #[IsGranted('system.settings.manage')]
     public function index(): Response
     {
         $modeDefinition = $this->settingsRegistry->getDefinition(self::MODE_KEY);
@@ -66,6 +83,8 @@ final class HomepageSettingsController extends AbstractController
         return $this->render('admin/homepage.html.twig', [
             'modeDefinition' => $modeDefinition,
             'modeValue' => $this->settingsRegistry->get(self::MODE_KEY),
+            'availableModes' => $this->homepageModes->available(),
+            'dormantModes' => $this->homepageModes->dormant(),
             'portalBlocks' => $this->portalLayoutService->getLayout(),
             'portalCatalog' => $this->portalLayoutService->getCatalog(),
             'portalLocaleTabs' => $this->portalCopyService->localeTabs(),
@@ -80,7 +99,7 @@ final class HomepageSettingsController extends AbstractController
     }
 
     #[Route('/admin/homepage/update', name: 'admin_homepage_settings_update', methods: ['POST'])]
-    #[IsGranted('admin.access')]
+    #[IsGranted('system.settings.manage')]
     public function update(Request $request): RedirectResponse
     {
         $this->assertCsrf($request);
@@ -106,7 +125,7 @@ final class HomepageSettingsController extends AbstractController
     }
 
     #[Route('/admin/homepage/copy/save-block', name: 'admin_homepage_copy_save_block', methods: ['POST'])]
-    #[IsGranted('admin.access')]
+    #[IsGranted('system.settings.manage')]
     public function saveBlock(Request $request): JsonResponse
     {
         $this->assertCsrf($request);
@@ -135,7 +154,7 @@ final class HomepageSettingsController extends AbstractController
     }
 
     #[Route('/admin/homepage/copy/reset-block', name: 'admin_homepage_copy_reset_block', methods: ['POST'])]
-    #[IsGranted('admin.access')]
+    #[IsGranted('system.settings.manage')]
     public function resetBlock(Request $request): JsonResponse
     {
         $this->assertCsrf($request);
@@ -159,7 +178,7 @@ final class HomepageSettingsController extends AbstractController
     }
 
     #[Route('/admin/homepage/copy/reset-all', name: 'admin_homepage_copy_reset_all', methods: ['POST'])]
-    #[IsGranted('admin.access')]
+    #[IsGranted('system.settings.manage')]
     public function resetAll(Request $request): RedirectResponse
     {
         $this->assertCsrf($request);

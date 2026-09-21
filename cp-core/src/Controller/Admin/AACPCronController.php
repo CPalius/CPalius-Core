@@ -8,6 +8,7 @@ use App\Core\Annotation\CpAdminMenu;
 use App\Core\Cron\CronCommandProcessFactory;
 use App\Core\Cron\CronCommandWhitelist;
 use App\Core\Cron\CronExpressionEvaluator;
+use App\Core\Cron\CronLock;
 use App\Core\Cron\CronManager;
 use App\Core\Cron\CronOverrideStore;
 use App\Entity\CronJob;
@@ -52,6 +53,7 @@ final class AACPCronController
         private readonly CronCommandProcessFactory $cronCommandProcessFactory,
         private readonly CronManager $cronManager,
         private readonly CronOverrideStore $cronOverrideStore,
+        private readonly CronLock $cronLock,
         private readonly EntityManagerInterface $entityManager,
         private readonly TranslatorInterface $translator,
         private readonly UrlGeneratorInterface $urlGenerator,
@@ -243,14 +245,25 @@ final class AACPCronController
             return new RedirectResponse('/aacp/cron/'.$id.'/edit?run_rejected=1');
         }
 
-        $process = $this->cronCommandProcessFactory->create($cronJob->getCommandName(), $cronJob->getCommandArguments());
-        $process->run();
+        // The scheduler locks this job too. Without the same lock here, Run Now
+        // would start a second copy of a job the scheduler is mid-way through —
+        // the exact overlap the lock exists to prevent.
+        [$ok, $output] = $this->cronLock->withLock(
+            CronLock::jobLockName($cronJob->getName()),
+            function () use ($cronJob): array {
+                $process = $this->cronCommandProcessFactory->create($cronJob->getCommandName(), $cronJob->getCommandArguments());
+                $process->run();
+
+                return [$process->isSuccessful(), $process->getOutput().$process->getErrorOutput()];
+            },
+            fn (): array => [false, $this->translator->trans('aacp.cron.already_running')],
+        );
 
         $cronJob->markRunAt(new \DateTimeImmutable());
-        $run->markFinished($process->isSuccessful(), $process->getOutput().$process->getErrorOutput());
+        $run->markFinished($ok, $output);
         $this->entityManager->flush();
 
-        return new RedirectResponse('/aacp/cron/'.$id.'/edit?run_completed=1');
+        return new RedirectResponse('/aacp/cron/'.$id.'/edit?'.($ok ? 'run_completed=1' : 'run_busy=1'));
     }
 
     /**
@@ -291,17 +304,24 @@ final class AACPCronController
             return new JsonResponse(['success' => false, 'output' => $message]);
         }
 
-        $process = $this->cronCommandProcessFactory->create($cronJob->getCommandName(), $cronJob->getCommandArguments());
-        $process->run();
+        [$ok, $output] = $this->cronLock->withLock(
+            CronLock::jobLockName($cronJob->getName()),
+            function () use ($cronJob): array {
+                $process = $this->cronCommandProcessFactory->create($cronJob->getCommandName(), $cronJob->getCommandArguments());
+                $process->run();
+
+                return [$process->isSuccessful(), $process->getOutput().$process->getErrorOutput()];
+            },
+            fn (): array => [false, $this->translator->trans('aacp.cron.already_running')],
+        );
 
         $now = new \DateTimeImmutable();
         $cronJob->markRunAt($now);
-        $output = $process->getOutput().$process->getErrorOutput();
-        $run->markFinished($process->isSuccessful(), $output);
+        $run->markFinished($ok, $output);
         $this->entityManager->flush();
 
         return new JsonResponse([
-            'success' => $process->isSuccessful(),
+            'success' => $ok,
             'output' => $output,
             'lastRunAt' => $now->format('d.m.Y H:i:s'),
         ]);

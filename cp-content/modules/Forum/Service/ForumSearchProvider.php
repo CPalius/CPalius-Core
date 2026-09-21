@@ -21,6 +21,7 @@ final class ForumSearchProvider implements SearchProviderInterface
     public function __construct(
         private readonly ForumSearchService $searchService,
         private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly ForumGuestView $guestView,
     ) {
     }
 
@@ -46,7 +47,8 @@ final class ForumSearchProvider implements SearchProviderInterface
 
     public function search(string $term, string $locale, int $limit): SearchGroup
     {
-        $results = $this->searchService->search($term, 'all', null, $limit, $locale);
+        $hideBodies = $this->guestView->hidePostBodies();
+        $results = $this->searchService->search($term, $hideBodies ? 'topics' : 'all', null, $limit, $locale);
         $hits = [];
         $seenTopicIds = [];
 
@@ -70,7 +72,7 @@ final class ForumSearchProvider implements SearchProviderInterface
             }
         }
 
-        if (\count($hits) < $limit) {
+        if (!$hideBodies && \count($hits) < $limit) {
             foreach ($results['posts'] as $post) {
                 if (!$post instanceof ForumPost) {
                     continue;
@@ -99,7 +101,7 @@ final class ForumSearchProvider implements SearchProviderInterface
             }
         }
 
-        $total = $results['totalTopics'] + $results['totalPosts'];
+        $total = $results['totalTopics'] + ($hideBodies ? 0 : $results['totalPosts']);
 
         return new SearchGroup(
             key: $this->getKey(),

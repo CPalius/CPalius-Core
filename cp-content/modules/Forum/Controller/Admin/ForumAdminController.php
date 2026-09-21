@@ -495,9 +495,16 @@ final class ForumAdminController extends AbstractController
         $section->setLocked(!$section->isLocked());
         $section->touch();
         $this->entityManager->flush();
+        // Same delimiter rule as the relative-time filter: "forums" is a plain
+        // domain, so the keys have to carry their own %…%. The state was also
+        // being pasted in as an untranslated English word.
         $this->addFlash('success', $this->translator->trans('studio.forum.sections.lock_toggled', [
-            'title' => $section->getTitle(),
-            'state' => $section->isLocked() ? 'locked' : 'open',
+            '%title%' => $section->getTitle(),
+            '%state%' => $this->translator->trans(
+                $section->isLocked() ? 'studio.forum.sections.state_locked' : 'studio.forum.sections.state_open',
+                [],
+                'forums',
+            ),
         ], 'forums'));
 
         return $this->redirectToRoute('admin_forum_sections_index', ['locale' => $section->getLocale()]);

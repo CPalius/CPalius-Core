@@ -22,6 +22,7 @@ final class RoadmapForumFeedProvider implements RoadmapForumFeedProviderInterfac
         private readonly ForumTopicRepository $topicRepository,
         private readonly AssetRepository $assetRepository,
         private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly ForumGuestView $guestView,
     ) {
     }
 
@@ -73,7 +74,9 @@ final class RoadmapForumFeedProvider implements RoadmapForumFeedProviderInterfac
         return new RoadmapFeedItem(
             source: RoadmapFeedItem::SOURCE_FORUM,
             title: $topic->getTitle(),
-            excerpt: (string) ($topic->getDescription() ?? $topic->getPreview() ?? ''),
+            excerpt: $this->guestView->hidePostBodies()
+                ? (string) ($topic->getDescription() ?? '')
+                : (string) ($topic->getDescription() ?? $topic->getPreview() ?? ''),
             url: $this->urlGenerator->generate('forum_topic', [
                 '_locale' => $locale,
                 'topicId' => $topic->getId(),

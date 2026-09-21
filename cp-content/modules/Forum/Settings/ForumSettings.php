@@ -34,6 +34,22 @@ use App\Core\Annotation\CpSetting;
     group: 'forum.engine',
 )]
 #[CpSetting(
+    key: 'forum.guest_hide_postbit',
+    label: 'forum.settings.guest_hide_postbit',
+    type: 'checkbox',
+    default: false,
+    module: 'forum',
+    group: 'forum.engine',
+)]
+#[CpSetting(
+    key: 'forum.guest_hide_content',
+    label: 'forum.settings.guest_hide_content',
+    type: 'checkbox',
+    default: false,
+    module: 'forum',
+    group: 'forum.engine',
+)]
+#[CpSetting(
     key: 'forum.fast_reply_enabled',
     label: 'forum.settings.fast_reply_enabled',
     type: 'checkbox',

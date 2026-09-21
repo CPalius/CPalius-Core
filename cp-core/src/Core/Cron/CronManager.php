@@ -27,6 +27,7 @@ final class CronManager
         private readonly string $projectDir,
         private readonly array $cronDefinitions,
         private readonly CronOverrideStore $overrides,
+        private readonly CronLock $lock,
     ) {
     }
 
@@ -85,6 +86,14 @@ final class CronManager
      *
      * @throws \RuntimeException when the job name is unknown or the task throws
      */
+    /**
+     * Runs one code-based job, refusing to start a second copy of it.
+     *
+     * The lock lives here rather than in the dispatcher because this is the one
+     * place all three routes to a code job meet: the scheduler (which spawns
+     * cp:cron:run-virtual), the Run Now button in AACP, and the console command
+     * run by hand. Locking upstream would leave the other two doors open.
+     */
     public function runVirtualTask(string $jobName): string
     {
         $definition = $this->findDefinitionByJobName($jobName);
@@ -93,15 +102,29 @@ final class CronManager
             throw new \RuntimeException(sprintf('No virtual cron job found with name "%s".', $jobName));
         }
 
-        try {
-            return $definition['sourceType'] === 'attribute'
-                ? $this->runAttributeTask($definition)
-                : $this->runFlatFileTask($definition);
-        } catch (\Throwable $e) {
-            $this->quarantineTaskFailure($jobName, $e);
+        return $this->lock->withLock(
+            CronLock::jobLockName($jobName),
+            function () use ($definition, $jobName): string {
+                try {
+                    return $definition['sourceType'] === 'attribute'
+                        ? $this->runAttributeTask($definition)
+                        : $this->runFlatFileTask($definition);
+                } catch (\Throwable $e) {
+                    $this->quarantineTaskFailure($jobName, $e);
 
-            throw new \RuntimeException(sprintf('Error while running job "%s": %s', $jobName, $e->getMessage()), previous: $e);
-        }
+                    throw new \RuntimeException(sprintf('Error while running job "%s": %s', $jobName, $e->getMessage()), previous: $e);
+                }
+            },
+            // Not an error: the job is doing exactly what it was asked to, it is
+            // just still doing it. Reporting a failure here would raise an alarm
+            // every time a long job outlives its own interval.
+            static fn (): string => sprintf('Skipped: "%s" is already running.', $jobName),
+        );
+    }
+
+    public function isRunning(string $jobName): bool
+    {
+        return $this->lock->isHeld(CronLock::jobLockName($jobName));
     }
 
     /**

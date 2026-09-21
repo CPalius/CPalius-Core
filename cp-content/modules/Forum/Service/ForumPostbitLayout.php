@@ -49,7 +49,7 @@ final class ForumPostbitLayout
      *
      * @var list<string>
      */
-    private const IDENTITY_ELEMENTS = ['avatar', 'name'];
+    public const IDENTITY_ELEMENTS = ['avatar', 'name'];
 
     public function __construct(
         private readonly SettingsRegistry $settingsRegistry,
@@ -80,6 +80,19 @@ final class ForumPostbitLayout
         }
 
         return array_values(array_unique($visible));
+    }
+
+    /**
+     * Guest postbit: username and photo only, even if Studio shows more.
+     *
+     * @return list<string>
+     */
+    public function guestVisibleElements(): array
+    {
+        return array_values(array_filter(
+            $this->visibleElements(),
+            static fn (string $element): bool => \in_array($element, self::IDENTITY_ELEMENTS, true),
+        ));
     }
 
     /**

@@ -147,7 +147,7 @@
 @layer components {
     /* --- Sidebar --- */
     .sidebar {
-        @apply fixed start-[-105%] xl:start-0 top-0 w-[250px] xl:w-[220px] 2xl:w-[275px] 3xl:w-[312px] h-screen bg-white z-30 transition-all duration-300;
+        @apply fixed start-[-105%] xl:start-0 top-0 w-[250px] xl:w-[220px] 2xl:w-[250px] h-screen bg-white z-30 transition-all duration-300;
     }
     .sidebar.sidebar-open {
         @apply start-0;
@@ -251,7 +251,7 @@
        sidebar'ın altında kalmaması adına sidebar genişliği kadar
        margin-inline-start verir; bkz. Wowdash _dashboard-body.scss) --- */
     .dashboard-main {
-        @apply ms-0 xl:ms-[220px] 2xl:ms-[275px] 3xl:ms-[312px] min-w-0 flex-1 overflow-y-auto transition-all duration-300;
+        @apply ms-0 xl:ms-[220px] 2xl:ms-[250px] min-w-0 flex-1 overflow-y-auto transition-all duration-300;
     }
     .dashboard-main.sidebar-collapsed {
         @apply xl:ms-[72px];
@@ -354,7 +354,7 @@
         @apply overflow-x-auto;
     }
     .table {
-        @apply w-full min-w-max border-separate border-spacing-0 rounded-lg border border-neutral-200;
+        @apply w-full border-separate border-spacing-0 rounded-lg border border-neutral-200;
     }
     .table th {
         @apply px-4 py-3 bg-neutral-50 text-start font-semibold text-fs-xs uppercase tracking-wider text-neutral-600 first:rounded-tl-lg last:rounded-tr-lg;
@@ -1024,5 +1024,223 @@
     }
     .aacp-security-sev-fill {
         @apply block h-full rounded-full bg-current opacity-80 transition-[width] duration-700 ease-out;
+    }
+
+    /* ------------------------------------------------------------------
+       AACP dark shell
+       ------------------------------------------------------------------
+       Every component above is written for the light Studio panel, and AACP
+       renders on #1B2431. Until now only two of them had a dark counterpart,
+       which is why so much of the console was grey text on a navy card and why
+       AACP templates are full of hand-written !text-slate-* patches: each
+       screen was fixing the palette for itself, one element at a time, and any
+       element nobody had got to yet stayed unreadable.
+
+       The fix belongs here rather than in the templates. A component gets its
+       dark form once, every screen inherits it, and a new screen is correct
+       without its author having to know the palette. The !important markers
+       match the ones the components already carry; without them the utility
+       classes sprinkled through the markup would keep winning.
+       ------------------------------------------------------------------ */
+
+    /* --- Shell chrome --- */
+    .aacp-shell .sidebar {
+        @apply bg-dark-2;
+    }
+    .aacp-shell .sidebar-logo,
+    .aacp-shell .sidebar-menu-area {
+        @apply border-white/10;
+    }
+    .aacp-shell .sidebar-menu-group-title {
+        @apply text-slate-500;
+    }
+    .aacp-shell .sidebar-menu li a {
+        @apply text-slate-400;
+    }
+    .aacp-shell .sidebar-menu li a:hover {
+        @apply bg-white/5 text-slate-100;
+    }
+    .aacp-shell .sidebar-menu .sidebar-submenu li.active-page a {
+        @apply bg-primary-500/15 text-primary-200;
+    }
+    .aacp-shell .sidebar-close-btn {
+        @apply border-white/20 text-slate-300;
+    }
+    .aacp-shell .navbar-header {
+        @apply border-white/10 bg-dark-2 text-slate-100;
+    }
+    .aacp-shell .sidebar-toggle,
+    .aacp-shell .sidebar-mobile-toggle {
+        @apply text-slate-300 hover:text-slate-100;
+    }
+    .aacp-shell .navbar-search input {
+        @apply border-white/10 bg-dark-1 text-slate-100 placeholder:text-slate-500;
+    }
+    .aacp-shell .navbar-search .icon {
+        @apply text-slate-500;
+    }
+    .aacp-shell .header-icon-btn {
+        @apply text-slate-300 hover:bg-white/5 hover:text-slate-100;
+    }
+
+    /* --- Surfaces --- */
+    .aacp-shell .card {
+        @apply border-white/10 bg-dark-2 text-slate-200 shadow-none;
+    }
+    .aacp-shell .card-header {
+        @apply border-white/10 text-slate-200;
+    }
+
+    /* --- Buttons --- */
+    .aacp-shell .btn-neutral {
+        @apply border-white/15 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white;
+    }
+    .aacp-shell .btn-outline-primary {
+        @apply border-primary-400 text-primary-300 hover:bg-primary-500 hover:text-white;
+    }
+    .aacp-shell .btn-outline-danger {
+        @apply border-danger-500/60 text-danger-300 hover:bg-danger-600 hover:text-white;
+    }
+
+    /* --- Badges ---
+       The light badges are a pale tint behind a dark ink, which on this shell
+       reads as a bright block with text that disappears into it. Inverted here:
+       a dim tint behind bright ink, with a hairline so the shape survives. */
+    .aacp-shell .badge-success {
+        @apply border border-success-500/30 bg-success-500/10 text-success-300;
+    }
+    .aacp-shell .badge-danger {
+        @apply border border-danger-500/30 bg-danger-500/10 text-danger-300;
+    }
+    .aacp-shell .badge-warning {
+        @apply border border-warning-500/30 bg-warning-500/10 text-warning-200;
+    }
+    .aacp-shell .badge-info {
+        @apply border border-info-500/30 bg-info-500/10 text-info-300;
+    }
+    .aacp-shell .badge-neutral {
+        @apply border border-white/15 bg-white/5 text-slate-300;
+    }
+
+    /* --- Tables --- */
+    .aacp-shell .table {
+        @apply border-white/10;
+    }
+    .aacp-shell .table th {
+        @apply border-white/10 bg-white/5 text-slate-400;
+    }
+    .aacp-shell .table td {
+        @apply border-white/10 text-slate-300;
+    }
+    .aacp-shell .table tbody tr:hover td {
+        @apply bg-white/[0.03];
+    }
+
+    /* --- Forms --- */
+    .aacp-shell .form-label {
+        @apply text-slate-300;
+    }
+    .aacp-shell .form-control,
+    .aacp-shell .form-select {
+        @apply border-white/15 bg-dark-1 text-slate-100 placeholder:text-slate-500;
+    }
+    .aacp-shell .form-control:focus,
+    .aacp-shell .form-select:focus {
+        @apply border-primary-400 ring-primary-400;
+    }
+    .aacp-shell .form-control[readonly],
+    .aacp-shell .form-control:disabled {
+        @apply border-white/10 bg-white/5 text-slate-500;
+    }
+    /* A native select drops its options on the page background, so the option
+       list needs the colour set too or it renders white-on-white on Windows. */
+    .aacp-shell .form-select option {
+        @apply bg-dark-2 text-slate-100;
+    }
+    .aacp-shell .form-check-input {
+        @apply border-white/25 bg-dark-1;
+    }
+
+    /* --- Dropdown, modal, toast --- */
+    .aacp-shell .dropdown-menu {
+        @apply border border-white/10 bg-dark-2 shadow-2xl;
+    }
+    .aacp-shell .dropdown-menu a,
+    .aacp-shell .dropdown-menu button {
+        @apply text-slate-300 hover:bg-white/5 hover:text-slate-100;
+    }
+    .aacp-shell .modal-panel {
+        @apply border border-white/10 bg-dark-2 text-slate-200;
+    }
+    .aacp-shell .modal-header,
+    .aacp-shell .modal-footer {
+        @apply border-white/10;
+    }
+    .aacp-shell .toast-success {
+        @apply border-success-500/40 bg-success-500/10 text-success-200;
+    }
+    .aacp-shell .toast-error {
+        @apply border-danger-500/40 bg-danger-500/10 text-danger-200;
+    }
+
+    /* --- Typography escaping from light-panel markup ---
+       AACP screens inherit snippets written for Studio, and those reach for the
+       neutral scale. On a navy card neutral-900 is very nearly the background.
+       Remapping the three that actually appear costs nothing and removes a
+       whole class of "I cannot read this" report. */
+    .aacp-shell .text-neutral-900 {
+        @apply !text-slate-100;
+    }
+    .aacp-shell .text-neutral-700,
+    .aacp-shell .text-neutral-600 {
+        @apply !text-slate-300;
+    }
+    .aacp-shell .text-neutral-500,
+    .aacp-shell .text-neutral-400 {
+        @apply !text-slate-400;
+    }
+    .aacp-shell hr {
+        @apply border-white/10;
+    }
+    .aacp-shell code,
+    .aacp-shell kbd {
+        @apply text-slate-300;
+    }
+    .aacp-shell a:not(.btn):not(.sidebar-menu a) {
+        @apply text-primary-300 hover:text-primary-200;
+    }
+
+    /* ------------------------------------------------------------------
+       Table overflow
+       ------------------------------------------------------------------
+       A table cell holding something like a fully qualified class name has no
+       space in it, so the browser cannot wrap it and widens the table until the
+       page scrolls sideways. Two tools, used deliberately:
+
+       .cell-truncate clips to one line with an ellipsis. Use it where the value
+       is an identifier the operator recognises from its start — a path, a class,
+       an email. Always pair it with a title attribute so the full value is one
+       hover away.
+
+       .cell-wrap breaks anywhere. Use it where the value has to be read in full
+       and losing the end would lose the meaning.
+       ------------------------------------------------------------------ */
+    .cell-truncate {
+        @apply block max-w-[22ch] truncate align-middle;
+    }
+    .cell-truncate-sm {
+        @apply block max-w-[14ch] truncate align-middle;
+    }
+    .cell-truncate-lg {
+        @apply block max-w-[36ch] truncate align-middle;
+    }
+    .cell-wrap {
+        @apply break-words [overflow-wrap:anywhere];
+    }
+    /* Long values in a narrow column still have to give somewhere; without this
+       a single unbroken token defeats every max-width above it. */
+    .table td,
+    .table th {
+        @apply [overflow-wrap:anywhere];
     }
 }

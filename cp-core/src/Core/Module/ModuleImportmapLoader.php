@@ -76,14 +76,27 @@ final class ModuleImportmapLoader
         return $core;
     }
 
+    /**
+     * A module asset path the asset mapper can actually resolve.
+     *
+     * Always the full project-relative path. The obvious shortcut — strip
+     * "Resources/assets/" and rely on the bare filename already being a
+     * logical path — looks right and is not. AssetMapper resolves a path
+     * beginning with "./" against the project root, so "./media-picker.js"
+     * matches nothing there; it then registers a second asset under the
+     * literal logical path "./media-picker.js", and every URL built from it
+     * comes out as "/assets/./media-picker-HASH.js". Browsers normalise the
+     * "/./" away before sending the request, the server receives a path
+     * matching no logical path, and the module script 404s.
+     *
+     * The full path resolves through getAssetFromSourcePath() to the clean
+     * logical path the asset map already holds, so the URL is
+     * "/assets/media-picker-HASH.js" and the bare specifier resolves.
+     */
     private static function resolvePath(string $dirName, string $path): string
     {
         $path = str_replace('\\', '/', $path);
         $path = ltrim($path, './');
-
-        if (str_starts_with($path, 'Resources/assets/')) {
-            return './'.substr($path, \strlen('Resources/assets/'));
-        }
 
         if (str_starts_with($path, 'cp-content/modules/')) {
             return './'.$path;

@@ -43,12 +43,12 @@
         </button>
     {% endif %}
     {% if canReply %}
-        <button type="button" class="forum-tool-btn" data-quote-btn data-quote-post="{{ post.id }}" data-quote-author="{{ post.posterName }}" data-quote-body="{{ post.body|striptags }}" title="{{ 'action.quote'|trans({}, 'forums') }}">
+        <button type="button" class="forum-tool-btn" data-quote-btn data-quote-post="{{ post.id }}" data-quote-author="{{ post.posterName }}" data-quote-body="{{ post.body|forum_quote_plain }}" title="{{ 'action.quote'|trans({}, 'forums') }}">
             <i class="bi bi-chat-quote"></i>
             <span class="forum-post__engagement-label">{{ 'action.quote'|trans({}, 'forums') }}</span>
         </button>
         <label class="forum-multi-quote-check" title="{{ 'action.multi_quote'|trans({}, 'forums') }}">
-            <input type="checkbox" data-multi-quote data-quote-post="{{ post.id }}" data-quote-author="{{ post.posterName }}" data-quote-body="{{ post.body|striptags|e('html_attr') }}">
+            <input type="checkbox" data-multi-quote data-quote-post="{{ post.id }}" data-quote-author="{{ post.posterName }}" data-quote-body="{{ post.body|forum_quote_plain|e('html_attr') }}">
             <span>{{ 'action.multi_quote'|trans({}, 'forums') }}</span>
         </label>
     {% endif %}

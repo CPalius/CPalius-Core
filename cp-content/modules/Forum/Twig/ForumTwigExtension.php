@@ -7,14 +7,17 @@ namespace Modules\Forum\Twig;
 use App\Core\Account\UserAvatarService;
 use App\Entity\User;
 use App\Repository\UserRepository;
+use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Notification\ForumInboxItem;
 use Modules\Forum\Service\ForumBodyPresenter;
+use Modules\Forum\Service\ForumGuestView;
 use Modules\Forum\Service\ForumNotificationService;
 use Modules\Forum\Service\ForumPostbitLayout;
 use Modules\Forum\Service\ForumPresenceService;
 use Modules\Forum\Service\ForumReputationService;
 use Modules\Forum\Service\ForumSectionHierarchyService;
+use Modules\Forum\Service\ForumSpoilerGate;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
@@ -32,6 +35,8 @@ final class ForumTwigExtension extends AbstractExtension
     public function __construct(
         private readonly ForumBodyPresenter $bodyPresenter,
         private readonly ForumPostbitLayout $postbitLayout,
+        private readonly ForumGuestView $guestView,
+        private readonly ForumSpoilerGate $spoilerGate,
         private readonly ForumNotificationService $notificationService,
         private readonly ForumReputationService $reputationService,
         private readonly ForumSectionHierarchyService $hierarchyService,
@@ -60,6 +65,7 @@ final class ForumTwigExtension extends AbstractExtension
             new TwigFunction('forum_studio_desk_tabs', [$this, 'studioDeskTabs']),
             new TwigFunction('forum_postbit_elements', [$this, 'postbitElements']),
             new TwigFunction('forum_postbit_css', [$this, 'postbitCss']),
+            new TwigFunction('forum_guest_hide_content', [$this, 'guestHideContent']),
         ];
     }
 
@@ -70,7 +76,16 @@ final class ForumTwigExtension extends AbstractExtension
      */
     public function postbitElements(): array
     {
+        if ($this->guestView->hidePostbitExtras()) {
+            return $this->postbitLayout->guestVisibleElements();
+        }
+
         return $this->postbitLayout->visibleElements();
+    }
+
+    public function guestHideContent(): bool
+    {
+        return $this->guestView->hidePostBodies();
     }
 
     /**
@@ -88,6 +103,7 @@ final class ForumTwigExtension extends AbstractExtension
             new TwigFilter('forum_relative_time', [$this, 'relativeTime']),
             new TwigFilter('forum_number', [$this, 'formatNumber']),
             new TwigFilter('forum_body', [$this, 'presentBody'], ['is_safe' => ['html']]),
+            new TwigFilter('forum_quote_plain', [$this, 'quotePlain']),
         ];
     }
 
@@ -207,13 +223,24 @@ final class ForumTwigExtension extends AbstractExtension
     }
 
     /**
-     * @param int|null $topicId the post's topic, so "#3" can resolve to the
-     *                          third post of this conversation; omit it and
-     *                          post references stay plain text
+     * @param int|null    $topicId the post's topic, so "#3" can resolve to the
+     *                             third post of this conversation; omit it and
+     *                             post references stay plain text
+     * @param ForumPost|null $post spoiler unlock is per-post (like / reply / author / admin)
      */
-    public function presentBody(?string $html, ?int $topicId = null): string
+    public function presentBody(?string $html, ?int $topicId = null, mixed $post = null): string
     {
-        return $this->bodyPresenter->present((string) $html, $topicId);
+        $html = $this->bodyPresenter->present((string) $html, $topicId);
+        if ($post instanceof ForumPost) {
+            $html = $this->spoilerGate->rewrite($html, $post);
+        }
+
+        return $html;
+    }
+
+    public function quotePlain(?string $html): string
+    {
+        return $this->spoilerGate->quotePlain((string) $html);
     }
 
     public function relativeTime(?\DateTimeInterface $date): string
@@ -228,20 +255,23 @@ final class ForumTwigExtension extends AbstractExtension
         if ($diff < 60) {
             return $this->translator->trans('time.just_now', domain: 'forums');
         }
+        // The parameter key carries its own delimiters. "forums" is a plain
+        // domain, not +intl-icu, so the translator substitutes by literal string:
+        // passing 'count' replaced the word inside "%count%" and rendered "%12%".
         if ($diff < 3600) {
             $m = (int) floor($diff / 60);
 
-            return $this->translator->trans('time.minutes_ago', ['count' => $m], 'forums');
+            return $this->translator->trans('time.minutes_ago', ['%count%' => $m], 'forums');
         }
         if ($diff < 86400) {
             $h = (int) floor($diff / 3600);
 
-            return $this->translator->trans('time.hours_ago', ['count' => $h], 'forums');
+            return $this->translator->trans('time.hours_ago', ['%count%' => $h], 'forums');
         }
         if ($diff < 604800) {
             $d = (int) floor($diff / 86400);
 
-            return $this->translator->trans('time.days_ago', ['count' => $d], 'forums');
+            return $this->translator->trans('time.days_ago', ['%count%' => $d], 'forums');
         }
 
         return $date->format('d.m.Y H:i');

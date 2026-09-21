@@ -109,7 +109,7 @@
                     {% if topic.prefix %}
                         <span class="forum-prefix {{ topic.prefix.cssClass|default('forum-prefix--default') }}" {% if not topic.prefix.cssClass %}style="background: color-mix(in srgb, {{ topic.prefix.color }} 15%, white); color: {{ topic.prefix.color }};"{% endif %}>{{ topic.prefix.title }}</span>
                     {% endif %}
-                    <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}" title="{{ topic.preview }}">{{ topic.title }}</a>
+                    <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}"{% if not forum_guest_hide_content() %} title="{{ topic.preview }}"{% endif %}>{{ topic.title }}</a>
                     {% if topic.locale != app.request.locale or contentLang|default('') == 'all' %}
                         <span class="forum-lang-badge">{{ topic.locale }}</span>
                     {% endif %}

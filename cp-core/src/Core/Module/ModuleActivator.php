@@ -272,7 +272,11 @@ final class ModuleActivator
         $phpBinary = (new PhpExecutableFinder())->find() ?: 'php';
         $consolePath = $this->projectDir.'/cp-core/bin/console';
 
-        $clear = new Process([$phpBinary, $consolePath, 'cache:clear'], $this->projectDir);
+        // --no-warmup: the dry-run already proved the container compiles (runDryRun's
+        // lint:container). Rebuilding it here too just pays the warmup cost (~20s on
+        // this stack) synchronously inside the admin's click; the next real request
+        // warms it lazily instead, off the critical path.
+        $clear = new Process([$phpBinary, $consolePath, 'cache:clear', '--no-warmup'], $this->projectDir);
         $clear->setTimeout(180);
         $clear->run();
 

@@ -3,7 +3,17 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{% block title %}{{ 'studio.layout.title.default'|trans }}{% endblock %}</title>
+        {#
+            A module can claim this panel (see App\Core\Admin\StudioShell). When
+            one has, the platform name and mark step aside for its own — the
+            operator of a hosting panel is running a hosting panel, not a content
+            workspace that happens to contain one. Nothing else changes: the
+            layout, the console and /aacp are exactly where they were.
+        #}
+        {% set studioShell = cp_studio_shell() %}
+        {% set shellBrand = studioShell.brandText ?? (studioShell.brandKey ? studioShell.brandKey|trans : null) %}
+
+        <title>{% block title %}{{ shellBrand ?? 'studio.layout.title.default'|trans }}{% endblock %}</title>
         <meta name="robots" content="noindex, nofollow">
 
         {# Studio uses core AssetMapper (app.css/app.js), not theme/module assets.
@@ -33,13 +43,21 @@
                     <twig:ux:icon name="tabler:x" class="h-3.5 w-3.5" />
                 </button>
 
-                <div class="sidebar-logo">
-                    <img src="/CPalius.png" alt="CPalius" class="h-6 w-auto shrink-0">
+                <a class="sidebar-logo" href="{{ path(studioShell.homeRoute ?? 'admin_dashboard') }}">
+                    {% if studioShell.logoUrl %}
+                        <img src="{{ studioShell.logoUrl }}" alt="{{ shellBrand }}" class="h-6 w-auto shrink-0">
+                    {% else %}
+                        <img src="/CPalius.png" alt="{{ shellBrand ?? 'CPalius' }}" class="h-6 w-auto shrink-0">
+                    {% endif %}
                     <div class="leading-tight">
-                        <p class="text-fs-sm font-semibold text-neutral-900">{{ 'studio.layout.brand.name'|trans }}</p>
-                        <p class="text-fs-xs text-neutral-500">{{ 'studio.layout.brand.subtitle'|trans }}</p>
+                        <p class="text-fs-sm font-semibold text-neutral-900">
+                            {{ shellBrand ?? 'studio.layout.brand.name'|trans }}
+                        </p>
+                        <p class="text-fs-xs text-neutral-500">
+                            {{ studioShell.subtitleKey ? studioShell.subtitleKey|trans : 'studio.layout.brand.subtitle'|trans }}
+                        </p>
                     </div>
-                </div>
+                </a>
 
                 <nav class="sidebar-menu-area">
                     <ul class="sidebar-menu" id="sidebar-menu">
@@ -92,20 +110,32 @@
                     </ul>
                 </nav>
 
-                <div class="sidebar-meta border-t border-neutral-200 px-sp-sm py-sp-xs text-fs-xs text-neutral-500 font-mono">
-                    {{ cp_app_name|default('CPalius CMF') }} · v{{ cp_app_version|default('1.0.0') }}
-                    {# Null status means "no successful check yet" — render nothing
-                       rather than implying the installation is current. #}
-                    {% set cp_release = cp_release_status() %}
-                    {% if cp_release and cp_release.outdated %}
-                        <a href="{{ cp_release.notes_url|default('https://github.com/CPalius/version') }}"
-                           target="_blank" rel="noopener"
-                           class="mt-1 block font-sans {{ cp_release.critical ? 'text-red-600' : 'text-amber-600' }}">
-                            {{ cp_release.critical ? '⚠' : '↑' }}
-                            {{ 'aacp.update.available'|trans({ version: cp_release.version }) }}
-                        </a>
-                    {% endif %}
-                </div>
+                {#
+                    The platform name, its version and its update notice.
+
+                    Hidden while a module owns the panel: the point of a
+                    takeover is that the operator is looking at their
+                    application, and a footer naming the framework underneath is
+                    the one line that gives the game away. None of it is lost —
+                    AACP still shows all three, and AACP is where somebody who
+                    cares about the platform version is working anyway.
+                #}
+                {% if not studioShell.active %}
+                    <div class="sidebar-meta border-t border-neutral-200 px-sp-sm py-sp-xs text-fs-xs text-neutral-500 font-mono">
+                        {{ cp_app_name|default('CPalius CMF') }} · v{{ cp_app_version|default('1.0.0') }}
+                        {# Null status means "no successful check yet" — render nothing
+                           rather than implying the installation is current. #}
+                        {% set cp_release = cp_release_status() %}
+                        {% if cp_release and cp_release.outdated %}
+                            <a href="{{ cp_release.notes_url|default('https://github.com/CPalius/version') }}"
+                               target="_blank" rel="noopener"
+                               class="mt-1 block font-sans {{ cp_release.critical ? 'text-red-600' : 'text-amber-600' }}">
+                                {{ cp_release.critical ? '⚠' : '↑' }}
+                                {{ 'aacp.update.available'|trans({ version: cp_release.version }) }}
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </aside>
 
             <main data-sidebar-main class="dashboard-main">

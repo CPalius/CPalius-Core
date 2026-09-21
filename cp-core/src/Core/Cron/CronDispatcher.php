@@ -17,12 +17,15 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 final class CronDispatcher
 {
+    private const SWEEP_LOCK = 'dispatcher';
+
     public function __construct(
         private readonly CronManager $cronManager,
         private readonly CronExpressionEvaluator $cronExpressionEvaluator,
         private readonly CronCommandWhitelist $cronCommandWhitelist,
         private readonly CronCommandProcessFactory $cronCommandProcessFactory,
         private readonly EntityManagerInterface $entityManager,
+        private readonly CronLock $lock,
     ) {
     }
 
@@ -32,6 +35,30 @@ final class CronDispatcher
      * @return list<array{jobName: string, sourceType: 'db'|'code', success: bool, message: string}>
      */
     public function runDueTasks(): array
+    {
+        // One sweep at a time. Without this, a host that calls /cron/execute
+        // every minute while a slow sweep is running starts a new sweep every
+        // minute, and they pile up on the same database.
+        //
+        // Code jobs are not locked here as well — CronManager::runVirtualTask()
+        // owns their lock, and taking it in this process too would deadlock the
+        // subprocess it spawns.
+        return $this->lock->withLock(
+            self::SWEEP_LOCK,
+            fn (): array => $this->runDueTasksUnlocked(),
+            static fn (): array => [[
+                'jobName' => 'cron.dispatcher',
+                'sourceType' => 'code',
+                'success' => true,
+                'message' => 'Skipped: a previous cron run is still in progress.',
+            ]],
+        );
+    }
+
+    /**
+     * @return list<array{jobName: string, sourceType: 'db'|'code', success: bool, message: string}>
+     */
+    private function runDueTasksUnlocked(): array
     {
         $now = new \DateTimeImmutable();
 
@@ -67,6 +94,26 @@ final class CronDispatcher
      * @return array{jobName: string, sourceType: 'db', success: bool, message: string}
      */
     private function runDatabaseJob(CronJob $job, \DateTimeImmutable $now): array
+    {
+        // A database job runs an arbitrary console command in a subprocess, so
+        // there is no inner method to lock the way code jobs have. The lock has
+        // to sit around the spawn, here and at the Run Now button.
+        return $this->lock->withLock(
+            CronLock::jobLockName($job->getName()),
+            fn (): array => $this->spawnDatabaseJob($job, $now),
+            static fn (): array => [
+                'jobName' => $job->getName(),
+                'sourceType' => 'db',
+                'success' => true,
+                'message' => sprintf('Skipped: "%s" is already running.', $job->getName()),
+            ],
+        );
+    }
+
+    /**
+     * @return array{jobName: string, sourceType: 'db', success: bool, message: string}
+     */
+    private function spawnDatabaseJob(CronJob $job, \DateTimeImmutable $now): array
     {
         $run = new CronJobRun($job, triggeredManually: false);
         $this->entityManager->persist($run);

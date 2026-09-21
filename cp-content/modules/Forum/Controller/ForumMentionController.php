@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Repository\UserRepository;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
+use Modules\Forum\Service\ForumSpoilerGate;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -47,6 +48,7 @@ final class ForumMentionController extends AbstractController
         private readonly ForumTopicRepository $topicRepository,
         private readonly UserAvatarService $avatarService,
         private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly ForumSpoilerGate $spoilerGate,
     ) {
     }
 
@@ -139,7 +141,7 @@ final class ForumMentionController extends AbstractController
             'date' => $post->getCreatedAt()->format('d.m.Y H:i'),
             // Plain text, not HTML: a card is a glance, and re-rendering a post
             // body here would drag embeds, lightboxes and scripts into a tooltip.
-            'excerpt' => $this->excerpt($post->getBody()),
+            'excerpt' => $this->excerpt($this->spoilerGate->isUnlocked($post) ? $post->getBody() : $this->spoilerGate->quotePlain($post->getBody())),
             'anchor' => '#post'.$post->getId(),
         ]);
     }

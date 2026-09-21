@@ -264,6 +264,9 @@ final class ForumBodyPresenter
             if ($this->isInside($node, ['blockquote', 'pre', 'code', 'a'])) {
                 continue;
             }
+            if (str_contains($node->getAttribute('class'), 'forum-spoiler')) {
+                continue;
+            }
             $url = $this->extractStandaloneUrl($node);
             if ($url === null || !preg_match('#^https?://#i', $url)) {
                 continue;

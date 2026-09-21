@@ -33,6 +33,8 @@ import {
     TextTransformation,
     Underline,
     Undo,
+    Plugin,
+    ButtonView,
 } from 'ckeditor5';
 import 'ckeditor5/dist/ckeditor5.css';
 import 'ckeditor5/translations/tr';
@@ -87,6 +89,23 @@ forumEditorStyle.innerHTML = `
     .forum .ck-content .cp-mark-pink { background: #f9a8d4; color: #1f2430; }
     .cp-mention-item { display: flex; align-items: center; gap: 8px; }
     .cp-mention-item__avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+    .forum .ck-content .forum-spoiler {
+        border: 1px dashed #64748b;
+        border-radius: 6px;
+        padding: 10px 12px 8px;
+        margin: 0.75em 0;
+        background: rgba(15, 23, 42, 0.06);
+    }
+    .forum .ck-content .forum-spoiler::before {
+        content: 'Spoiler';
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        opacity: 0.65;
+        margin-bottom: 6px;
+    }
 `;
 document.head.appendChild(forumEditorStyle);
 
@@ -176,6 +195,57 @@ function renderMentionItem(item) {
 }
 
 /**
+ * Spoiler block: stored as <div class="forum-spoiler"> so the sanitizer
+ * (class on div) keeps it. Unlocking is a server-side rewrite, not CSS.
+ */
+class ForumSpoiler extends Plugin {
+    static get pluginName() {
+        return 'ForumSpoiler';
+    }
+
+    init() {
+        const editor = this.editor;
+
+        editor.model.schema.register('forumSpoiler', {
+            allowWhere: '$block',
+            allowContentOf: '$root',
+        });
+
+        editor.conversion.elementToElement({
+            model: 'forumSpoiler',
+            view: {
+                name: 'div',
+                classes: 'forum-spoiler',
+            },
+        });
+
+        editor.ui.componentFactory.add('forumSpoiler', (locale) => {
+            const button = new ButtonView(locale);
+            button.set({
+                label: 'Spoiler',
+                tooltip: true,
+                withText: true,
+            });
+            button.on('execute', () => {
+                editor.model.change((writer) => {
+                    const spoiler = writer.createElement('forumSpoiler');
+                    const selected = editor.model.getSelectedContent(editor.model.document.selection);
+                    if (!selected.isEmpty) {
+                        writer.append(selected, spoiler);
+                    } else {
+                        writer.append(writer.createElement('paragraph'), spoiler);
+                    }
+                    editor.model.insertContent(spoiler);
+                });
+                editor.editing.view.focus();
+            });
+
+            return button;
+        });
+    }
+}
+
+/**
  * Writes a mention out as a real profile link instead of CKEditor's default
  * inert <span data-mention>.
  *
@@ -248,6 +318,7 @@ async function initForumEditor(textarea) {
         TextTransformation,
         Underline,
         Undo,
+        ForumSpoiler,
     ];
 
     if (uploadEnabled) {
@@ -270,7 +341,7 @@ async function initForumEditor(textarea) {
                 '|',
                 'bulletedList', 'numberedList',
                 '|',
-                'link', 'insertImage', 'blockQuote', 'code', 'codeBlock',
+                'link', 'insertImage', 'blockQuote', 'forumSpoiler', 'code', 'codeBlock',
                 '|',
                 'removeFormat',
             ],

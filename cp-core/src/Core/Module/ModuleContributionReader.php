@@ -16,7 +16,15 @@ use Symfony\Component\Yaml\Yaml;
  *     view_routes: array<string, array{0: string, 1: string}>,
  *     quick_create: list<array{labelKey: string, routeName: string, icon: string}>,
  *     quick_links: list<array{labelKey: string, routeName: string, icon: string}>,
- *     hidden_node_types: list<string>
+ *     hidden_node_types: list<string>,
+ *     shell: ?StudioShellConfig
+ * }
+ * @phpstan-type StudioShellConfig array{
+ *     brand: string,
+ *     subtitle: ?string,
+ *     home_route: ?string,
+ *     keep: list<string>,
+ *     regroup: array<string, string>
  * }
  * @phpstan-type HomepageMode array{route: string, label: string, priority: int}
  * @phpstan-type PortalBlock array{
@@ -72,6 +80,7 @@ final class ModuleContributionReader
                 'quick_create' => [],
                 'quick_links' => [],
                 'hidden_node_types' => [],
+                'shell' => null,
             ],
             'homepage_modes' => [],
             'portal_blocks' => [],
@@ -131,6 +140,10 @@ final class ModuleContributionReader
             $studio['hidden_node_types'],
             $add['hidden_node_types'],
         )));
+        // First declaration wins. Two modules both claiming the shell is a
+        // configuration mistake, and silently letting the last one loaded take
+        // it would make which panel you get depend on activation order.
+        $studio['shell'] ??= $add['shell'];
         $base['studio'] = $studio;
 
         $base['homepage_modes'] = array_merge($base['homepage_modes'], $incoming['homepage_modes']);
@@ -168,6 +181,7 @@ final class ModuleContributionReader
         $empty['studio']['quick_create'] = self::linkList($studio['quick_create'] ?? null);
         $empty['studio']['quick_links'] = self::linkList($studio['quick_links'] ?? null);
         $empty['studio']['hidden_node_types'] = self::stringList($studio['hidden_node_types'] ?? null);
+        $empty['studio']['shell'] = self::studioShell($studio['shell'] ?? null);
 
         $empty['homepage_modes'] = self::homepageModes($data['homepage_modes'] ?? null);
         $empty['portal_blocks'] = self::portalBlocks($data['portal_blocks'] ?? null);
@@ -456,6 +470,45 @@ final class ModuleContributionReader
         }
 
         return $list;
+    }
+
+    /**
+     * A module claiming the Studio panel for itself.
+     *
+     * The declaration is deliberately small. A shell owner renames the panel and
+     * decides which of the other screens stay reachable from its menu; it does
+     * not get to restyle anything, because a module that could would be a module
+     * that can break the console it is running inside.
+     *
+     * A claim with no brand is not a claim. Without it there is nothing to put
+     * where the platform name was, and a half-applied takeover — module menu,
+     * platform name — is worse than none.
+     *
+     * @return StudioShellConfig|null
+     */
+    private static function studioShell(mixed $raw): ?array
+    {
+        if (!\is_array($raw)) {
+            return null;
+        }
+
+        $brand = self::nullableString($raw['brand'] ?? null);
+
+        if ($brand === null) {
+            return null;
+        }
+
+        return [
+            'brand' => $brand,
+            'subtitle' => self::nullableString($raw['subtitle'] ?? null),
+            'home_route' => self::nullableString($raw['home_route'] ?? null),
+            'keep' => self::stringList($raw['keep'] ?? null),
+            // Route name => sidebar section heading. A shell owner that keeps a
+            // platform screen can also say where it belongs in its own menu,
+            // because "Media" filed under a heading called Content next to a
+            // heading called Hosting reads as two products bolted together.
+            'regroup' => self::stringMap($raw['regroup'] ?? null),
+        ];
     }
 
     private static function nullableString(mixed $raw): ?string
