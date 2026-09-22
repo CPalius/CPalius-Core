@@ -56,6 +56,9 @@ services:
     Modules\Forum\Account\:
         resource: '../../Account/'
 
+    Modules\Forum\Rebuild\:
+        resource: '../../Rebuild/'
+
     Modules\Forum\Portal\:
         resource: '../../Portal/'
 

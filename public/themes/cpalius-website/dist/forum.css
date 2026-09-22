@@ -2246,12 +2246,20 @@
 .forum-postbit__title--bold { font-weight: 700; }
 .forum-postbit__title--badge { font-weight: 600; }
 .forum-post__signature {
-  margin-top: 16px;
+  margin: 16px 20px 0;
   padding-top: 12px;
   border-top: 1px dashed var(--slw-border);
   font-size: var(--fs-xs);
   color: var(--slw-text-muted);
   font-style: italic;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .forum-post__signature {
+    margin-inline: 16px;
+  }
 }
 .forum-thread-notice--deleted {
   background: color-mix(in srgb, var(--cp-danger, #c0392b) 10%, white);
@@ -2948,9 +2956,15 @@ blockquote.cp-quote-post-0,
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 12px 0 0;
+  margin: 12px 20px 0;
   padding: 0;
   list-style: none;
+}
+
+@media (max-width: 600px) {
+  .forum-attachments {
+    margin-inline: 16px;
+  }
 }
 .forum-attachments__img {
   max-width: 180px;

@@ -11,6 +11,7 @@ use App\Core\Mail\CpMailerService;
 use App\Core\Security\CaptchaService;
 use App\Core\Security\Flood\FloodService;
 use App\Core\Security\Password\PasswordChanger;
+use App\Core\Security\Http\LoginTargetPath;
 use App\Core\Security\Service\LoginDefenseService;
 use App\Entity\User;
 use App\Repository\UserRepository;
@@ -65,13 +66,17 @@ final class AccountController extends AbstractController
             return $this->redirectToRoute('theme_cpalius_website_home');
         }
 
-        // Keep an existing target_path; otherwise use same-origin referer or the account landing.
+        // Keep a navigable target_path; poll/JSON URLs and the login door itself are dropped.
         $targetPathKey = '_security.main.target_path';
         $session = $request->getSession();
-        if (!$session->has($targetPathKey)) {
+        $existing = $session->get($targetPathKey);
+        if (!\is_string($existing) || !LoginTargetPath::isNavigable($existing)) {
+            $referer = $this->sameOriginReferer($request);
             $session->set(
                 $targetPathKey,
-                $this->sameOriginReferer($request) ?? $this->generateUrl($this->landingResolver->routeName()),
+                ($referer !== null && LoginTargetPath::isNavigable($referer))
+                    ? $referer
+                    : $this->generateUrl($this->landingResolver->routeName()),
             );
         }
 

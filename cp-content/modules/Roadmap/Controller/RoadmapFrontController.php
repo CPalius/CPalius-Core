@@ -42,6 +42,7 @@ final class RoadmapFrontController extends AbstractController
             'nativeEntries' => $view['nativeEntries'],
             'moduleTimeline' => $view['moduleTimeline'],
             'moduleTunnelRows' => $view['moduleTunnelRows'],
+            'tunnelPaired' => $view['tunnelPaired'],
             'blogItems' => $view['blogItems'],
             'forumItems' => $view['forumItems'],
             'recentCount' => $view['recentCount'],

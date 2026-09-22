@@ -33,4 +33,21 @@ final class QueryCounterTest extends TestCase
         $this->expectException(MaxQueriesExceededException::class);
         $counter->increment('cp_nodes');
     }
+
+    public function testSuspendIgnoresApplicationReads(): void
+    {
+        $counter = new QueryCounter(maxQueriesPerTable: 2);
+        $counter->suspend();
+        for ($i = 0; $i < 20; ++$i) {
+            $counter->increment('cp_forum_posts');
+        }
+        $counter->resume();
+
+        self::assertSame([], $counter->getCounts());
+
+        $counter->increment('cp_forum_posts');
+        $counter->increment('cp_forum_posts');
+        $this->expectException(MaxQueriesExceededException::class);
+        $counter->increment('cp_forum_posts');
+    }
 }

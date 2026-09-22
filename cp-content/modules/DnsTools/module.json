@@ -1,0 +1,16 @@
+{
+    "name": "DnsTools",
+    "version": "1.0.0",
+    "description": "Public DNS, network and mail diagnostic tools with per-page SEO, rate limits and SSRF-safe probes.",
+    "author": "CPalius",
+    "bundle": "Modules\\DnsTools\\DnsToolsModule",
+    "core_version": "^2.0",
+    "requires": {
+        "Seo": "^1.0"
+    },
+    "conflicts": {},
+    "provides": [
+        "dns-tools",
+        "dns-lookup"
+    ]
+}

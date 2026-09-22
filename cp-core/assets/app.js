@@ -17,4 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.querySelector('[data-aacp-security]')) {
         import('./aacp-security.js');
     }
+
+    if (document.querySelector('[data-cp-rebuild]')) {
+        import('./studio-rebuild.js');
+    }
 });

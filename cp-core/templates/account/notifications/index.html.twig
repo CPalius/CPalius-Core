@@ -37,7 +37,13 @@
         <ul class="forum-list" style="list-style: none; padding: 0; margin: 0;">
             {% for n in notifications %}
                 <li style="padding: var(--sp-md) 0; border-bottom: 1px solid var(--slw-border, #e5e5e5); {% if not n.read %}font-weight: 600;{% endif %}">
-                    <div>{{ ('notification.event.' ~ n.eventKey)|trans(n.data) }}</div>
+                    <div>
+                        {% if n.url %}
+                            <a href="{{ n.url }}">{{ n.text }}</a>
+                        {% else %}
+                            {{ n.text }}
+                        {% endif %}
+                    </div>
                     <div style="font-size: var(--fs-sm); color: var(--slw-text-muted); margin-top: var(--sp-xs);">
                         {{ n.createdAt|date('d.m.Y H:i') }}
                         {% if n.data.title is defined %} — {{ n.data.title }}{% endif %}

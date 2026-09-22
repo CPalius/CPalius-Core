@@ -37,6 +37,8 @@ final class RoadmapFeedService
      * @return array{
      *     nativeEntries: list<RoadmapEntry>,
      *     moduleTimeline: list<RoadmapFeedItem>,
+     *     moduleTunnelRows: list<array{blog: ?RoadmapFeedItem, forum: ?RoadmapFeedItem}>,
+     *     tunnelPaired: bool,
      *     blogItems: list<RoadmapFeedItem>,
      *     forumItems: list<RoadmapFeedItem>,
      *     recentCount: int,
@@ -82,6 +84,7 @@ final class RoadmapFeedService
         );
 
         $moduleTunnelRows = $this->buildTunnelRows($blogItems, $forumItems);
+        $tunnelPaired = $blogItems !== [] && $forumItems !== [];
 
         $since = (new \DateTimeImmutable('today'))->modify('-6 days');
         $recentCount = $this->countRecentAcrossSources($locale, $since);
@@ -90,6 +93,7 @@ final class RoadmapFeedService
             'nativeEntries' => $nativeEntries,
             'moduleTimeline' => $moduleTimeline,
             'moduleTunnelRows' => $moduleTunnelRows,
+            'tunnelPaired' => $tunnelPaired,
             'blogItems' => $blogItems,
             'forumItems' => $forumItems,
             'recentCount' => $recentCount,

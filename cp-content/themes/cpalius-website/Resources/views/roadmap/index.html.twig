@@ -112,63 +112,43 @@
 
                 {% if moduleTunnelRows is empty %}
                     <p class="roadmap-module-block__empty">{{ 'site.roadmap.modules.tunnel_empty'|trans }}</p>
-                {% else %}
+                {% elseif tunnelPaired|default(false) %}
                     <div class="roadmap-tunnel roadmap-tunnel--paired" aria-label="{{ 'site.roadmap.modules.title'|trans }}">
                         {% for row in moduleTunnelRows %}
                             <div class="roadmap-tunnel__row">
                                 <div class="roadmap-tunnel__side roadmap-tunnel__side--left">
                                     {% if row.blog %}
-                                        {% set item = row.blog %}
-                                        <article class="roadmap-tunnel__card roadmap-tunnel__card--blog">
-                                            <h6 class="roadmap-tunnel__title"><a href="{{ item.url }}">{{ item.title }}</a></h6>
-                                            {% if item.excerpt %}
-                                                <p class="roadmap-tunnel__excerpt">{{ item.excerpt|slice(0, 48) }}{% if item.excerpt|length > 48 %}…{% endif %}</p>
-                                            {% endif %}
-                                            <div class="roadmap-tunnel__meta">
-                                                <time datetime="{{ item.occurredAt|date('c') }}">{{ item.occurredAt|date('d.m.Y') }}</time>
-                                            </div>
-                                        </article>
+                                        {% include '@Theme/roadmap/partials/_tunnel_card.html.twig' with { item: row.blog } %}
                                     {% endif %}
                                 </div>
 
                                 <div class="roadmap-tunnel__axis">
                                     {% set nodeItem = row.blog|default(row.forum) %}
                                     {% if nodeItem %}
-                                        <div class="roadmap-tunnel__node">
-                                            {% if nodeItem.authorAvatarUrl %}
-                                                <img class="roadmap-tunnel__avatar" src="{{ nodeItem.authorAvatarUrl }}" alt="">
-                                            {% else %}
-                                                {% include '@Theme/forum/partials/_avatar.html.twig' with {
-                                                    name: nodeItem.authorName|default(nodeItem.badge|default('?')),
-                                                    size: 'sm'
-                                                } %}
-                                            {% endif %}
-                                            {% if row.blog and row.forum %}
-                                                <span class="roadmap-tunnel__badge roadmap-tunnel__badge--split" title="Blog + Forum">
-                                                    <i class="bi bi-newspaper"></i><i class="bi bi-chat-dots"></i>
-                                                </span>
-                                            {% else %}
-                                                <span class="roadmap-tunnel__badge roadmap-tunnel__badge--{{ nodeItem.source }}">
-                                                    <i class="bi {{ nodeItem.icon|default('bi-circle') }}"></i>
-                                                </span>
-                                            {% endif %}
-                                        </div>
+                                        {% include '@Theme/roadmap/partials/_tunnel_node.html.twig' with {
+                                            nodeItem: nodeItem,
+                                            split: row.blog and row.forum
+                                        } %}
                                     {% endif %}
                                 </div>
 
                                 <div class="roadmap-tunnel__side roadmap-tunnel__side--right">
                                     {% if row.forum %}
-                                        {% set item = row.forum %}
-                                        <article class="roadmap-tunnel__card roadmap-tunnel__card--forum">
-                                            <h6 class="roadmap-tunnel__title"><a href="{{ item.url }}">{{ item.title }}</a></h6>
-                                            {% if item.excerpt %}
-                                                <p class="roadmap-tunnel__excerpt">{{ item.excerpt|slice(0, 48) }}{% if item.excerpt|length > 48 %}…{% endif %}</p>
-                                            {% endif %}
-                                            <div class="roadmap-tunnel__meta">
-                                                <time datetime="{{ item.occurredAt|date('c') }}">{{ item.occurredAt|date('d.m.Y') }}</time>
-                                            </div>
-                                        </article>
+                                        {% include '@Theme/roadmap/partials/_tunnel_card.html.twig' with { item: row.forum } %}
                                     {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="roadmap-tunnel roadmap-tunnel--single" aria-label="{{ 'site.roadmap.modules.title'|trans }}">
+                        {% for item in moduleTimeline %}
+                            <div class="roadmap-tunnel__row">
+                                <div class="roadmap-tunnel__axis">
+                                    {% include '@Theme/roadmap/partials/_tunnel_node.html.twig' with { nodeItem: item, split: false } %}
+                                </div>
+                                <div class="roadmap-tunnel__side">
+                                    {% include '@Theme/roadmap/partials/_tunnel_card.html.twig' with { item: item } %}
                                 </div>
                             </div>
                         {% endfor %}

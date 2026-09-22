@@ -58,7 +58,10 @@ function initAacpDashboard(root) {
 
     async function refresh() {
         try {
-            const response = await fetch(url, { headers: { Accept: 'application/json' } });
+            const response = await fetch(url, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                redirect: 'manual',
+            });
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
@@ -401,7 +404,10 @@ function initTelemetry(root) {
 
     async function poll() {
         try {
-            const response = await fetch(`${feedUrl}?after_id=${lastId}`, { headers: { Accept: 'application/json' } });
+            const response = await fetch(`${feedUrl}?after_id=${lastId}`, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                redirect: 'manual',
+            });
             if (!response.ok) {
                 return;
             }

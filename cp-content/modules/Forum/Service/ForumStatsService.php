@@ -129,7 +129,7 @@ final class ForumStatsService
         $this->entityManager->flush();
     }
 
-    public function syncTopic(ForumTopic $topic): void
+    public function syncTopic(ForumTopic $topic, bool $cascadeSection = true, bool $flush = true): void
     {
         $buckets = ['visible' => 0, 'moderated' => 0, 'deleted' => 0];
         foreach ($this->postRepository->countBucketsByTopic($topic) as $state => $count) {
@@ -146,6 +146,11 @@ final class ForumStatsService
             $topic->setLastPosterName($lastPost->getPosterName());
             $topic->setLastPostId($lastPost->getId());
             $topic->setLastPostDate($lastPost->getCreatedAt());
+        } else {
+            $topic->setLastPoster(null);
+            $topic->setLastPosterName(null);
+            $topic->setLastPostId(null);
+            $topic->setLastPostDate(null);
         }
 
         $firstPost = $this->postRepository->findFirstByTopic($topic);
@@ -155,8 +160,13 @@ final class ForumStatsService
         }
 
         $topic->touch();
-        $this->entityManager->flush();
-        $this->syncSection($topic->getSection());
+        if ($flush) {
+            $this->entityManager->flush();
+        }
+
+        if ($cascadeSection) {
+            $this->syncSection($topic->getSection());
+        }
     }
 
     public function recountAll(?ForumSection $only = null): int
@@ -185,51 +195,335 @@ final class ForumStatsService
         return \count($sections);
     }
 
-    private function recountUserAndBoardStats(): void
+    /**
+     * One member. COUNT(*) is the point — this is the repair tool.
+     */
+    public function recountUserById(int $userId, bool $flush = true): bool
     {
+        $user = $this->entityManager->find(User::class, $userId);
+        if (!$user instanceof User) {
+            return false;
+        }
+
+        $conn = $this->entityManager->getConnection();
+        $visible = ForumDiscussionState::Visible->value;
+        $row = $conn->fetchAssociative(
+            'SELECT
+                (SELECT COUNT(*)
+                 FROM cp_forum_posts p
+                 INNER JOIN cp_forum_topics t ON t.id = p.topic_id
+                 WHERE p.author_id = :uid
+                   AND p.discussion_state = :visible
+                   AND t.discussion_state = :visible
+                   AND t.moved_to_topic_id IS NULL) AS post_count,
+                (SELECT COUNT(*)
+                 FROM cp_forum_topics t
+                 WHERE t.first_poster_id = :uid
+                   AND t.discussion_state = :visible
+                   AND t.moved_to_topic_id IS NULL) AS topic_count,
+                (SELECT MAX(p.created_at)
+                 FROM cp_forum_posts p
+                 INNER JOIN cp_forum_topics t ON t.id = p.topic_id
+                 WHERE p.author_id = :uid
+                   AND p.discussion_state = :visible
+                   AND t.discussion_state = :visible) AS last_posted_at',
+            ['uid' => $userId, 'visible' => $visible],
+        ) ?: [];
+
+        $stats = $this->userStatsRepository->findOneByUser($user);
+        if (!$stats instanceof ForumUserStats) {
+            $stats = new ForumUserStats($user);
+            $this->entityManager->persist($stats);
+        }
+
+        $stats->setPostCount((int) ($row['post_count'] ?? 0));
+        $stats->setTopicCount((int) ($row['topic_count'] ?? 0));
+        $stats->setLastPostedAt(
+            isset($row['last_posted_at']) && $row['last_posted_at'] !== null
+                ? new \DateTimeImmutable((string) $row['last_posted_at'])
+                : null,
+        );
+        if ($flush) {
+            $this->entityManager->flush();
+        }
+
+        return true;
+    }
+
+    /**
+     * One SQL pass for a topic id page. Rebuild must not walk posts per topic.
+     *
+     * @param list<int> $ids
+     */
+    public function rebuildTopicsByIds(array $ids): int
+    {
+        $ids = $this->positiveIds($ids);
+        if ($ids === []) {
+            return 0;
+        }
+
+        $list = implode(',', $ids);
+        $visible = ForumDiscussionState::Visible->value;
+        $held = ForumDiscussionState::Moderated->value;
+        $deleted = ForumDiscussionState::Deleted->value;
         $conn = $this->entityManager->getConnection();
 
-        $userRows = $conn->fetchAllAssociative(
-            'SELECT u.id AS user_id,
-                    COALESCE(p.visible_posts, 0) AS post_count,
-                    COALESCE(t.visible_topics, 0) AS topic_count,
-                    p.last_posted_at
+        $conn->executeStatement(
+            "UPDATE cp_forum_topics t
+             LEFT JOIN (
+                SELECT topic_id,
+                       SUM(discussion_state = '{$visible}') AS vis,
+                       SUM(discussion_state = '{$held}') AS held,
+                       SUM(discussion_state = '{$deleted}') AS del
+                FROM cp_forum_posts
+                WHERE topic_id IN ({$list})
+                GROUP BY topic_id
+             ) b ON b.topic_id = t.id
+             LEFT JOIN (
+                SELECT topic_id, id AS last_id, author_id, poster_name, created_at
+                FROM (
+                    SELECT topic_id, id, author_id, poster_name, created_at,
+                           ROW_NUMBER() OVER (PARTITION BY topic_id ORDER BY created_at DESC, id DESC) AS rn
+                    FROM cp_forum_posts
+                    WHERE topic_id IN ({$list}) AND discussion_state = '{$visible}'
+                ) ranked
+                WHERE rn = 1
+             ) lastp ON lastp.topic_id = t.id
+             LEFT JOIN (
+                SELECT topic_id, id AS first_id, body
+                FROM (
+                    SELECT topic_id, id, body,
+                           ROW_NUMBER() OVER (PARTITION BY topic_id ORDER BY created_at ASC, id ASC) AS rn
+                    FROM cp_forum_posts
+                    WHERE topic_id IN ({$list})
+                ) ranked
+                WHERE rn = 1
+             ) firstp ON firstp.topic_id = t.id
+             SET t.post_count = COALESCE(b.vis, 0),
+                 t.post_count_held = COALESCE(b.held, 0),
+                 t.post_count_deleted = COALESCE(b.del, 0),
+                 t.last_post_id = lastp.last_id,
+                 t.last_poster_id = lastp.author_id,
+                 t.last_poster_name = lastp.poster_name,
+                 t.last_post_date = lastp.created_at,
+                 t.first_post_id = firstp.first_id,
+                 t.preview = LEFT(firstp.body, 128),
+                 t.updated_at = CURRENT_TIMESTAMP
+             WHERE t.id IN ({$list})",
+        );
+
+        return \count($ids);
+    }
+
+    /**
+     * Tree roll-up for a section id page: one grouped UPDATE, not one COUNT per node.
+     *
+     * @param list<int> $ids
+     */
+    public function rebuildSectionsByIds(array $ids): int
+    {
+        $ids = $this->positiveIds($ids);
+        if ($ids === []) {
+            return 0;
+        }
+
+        $list = implode(',', $ids);
+        $visible = ForumDiscussionState::Visible->value;
+        $held = ForumDiscussionState::Moderated->value;
+        $deleted = ForumDiscussionState::Deleted->value;
+        $conn = $this->entityManager->getConnection();
+
+        $conn->executeStatement(
+            "UPDATE cp_forum_sections s
+             LEFT JOIN (
+                SELECT a.id AS section_id,
+                       COALESCE(SUM(t.discussion_state = '{$visible}' AND t.moved_to_topic_id IS NULL), 0) AS vis_t,
+                       COALESCE(SUM(t.discussion_state = '{$held}' AND t.moved_to_topic_id IS NULL), 0) AS held_t,
+                       COALESCE(SUM(t.discussion_state = '{$deleted}' AND t.moved_to_topic_id IS NULL), 0) AS del_t
+                FROM cp_forum_sections a
+                INNER JOIN cp_forum_sections d ON d.id = a.id
+                    OR d.parent_path LIKE CONCAT(COALESCE(NULLIF(a.parent_path, ''), CONCAT('/', a.id, '/')), '%')
+                LEFT JOIN cp_forum_topics t ON t.section_id = d.id
+                WHERE a.id IN ({$list})
+                GROUP BY a.id
+             ) tc ON tc.section_id = s.id
+             LEFT JOIN (
+                SELECT a.id AS section_id,
+                       COALESCE(SUM(p.discussion_state = '{$visible}' AND t.discussion_state = '{$visible}' AND t.moved_to_topic_id IS NULL), 0) AS vis_p,
+                       COALESCE(SUM(p.discussion_state = '{$held}' AND t.discussion_state <> '{$deleted}' AND t.moved_to_topic_id IS NULL), 0) AS held_p,
+                       COALESCE(SUM(p.discussion_state = '{$deleted}' OR (t.discussion_state = '{$deleted}' AND t.moved_to_topic_id IS NULL)), 0) AS del_p
+                FROM cp_forum_sections a
+                INNER JOIN cp_forum_sections d ON d.id = a.id
+                    OR d.parent_path LIKE CONCAT(COALESCE(NULLIF(a.parent_path, ''), CONCAT('/', a.id, '/')), '%')
+                LEFT JOIN cp_forum_posts p ON p.section_id = d.id
+                LEFT JOIN cp_forum_topics t ON t.id = p.topic_id
+                WHERE a.id IN ({$list})
+                GROUP BY a.id
+             ) pc ON pc.section_id = s.id
+             LEFT JOIN (
+                SELECT ancestor_id, last_post_id, last_post_at, last_poster_id, last_poster_name, last_topic_id, last_topic_title
+                FROM (
+                    SELECT a.id AS ancestor_id,
+                           p.id AS last_post_id,
+                           p.created_at AS last_post_at,
+                           p.author_id AS last_poster_id,
+                           p.poster_name AS last_poster_name,
+                           t.id AS last_topic_id,
+                           t.title AS last_topic_title,
+                           ROW_NUMBER() OVER (PARTITION BY a.id ORDER BY p.created_at DESC, p.id DESC) AS rn
+                    FROM cp_forum_sections a
+                    INNER JOIN cp_forum_sections d ON d.id = a.id
+                        OR d.parent_path LIKE CONCAT(COALESCE(NULLIF(a.parent_path, ''), CONCAT('/', a.id, '/')), '%')
+                    INNER JOIN cp_forum_posts p ON p.section_id = d.id
+                    INNER JOIN cp_forum_topics t ON t.id = p.topic_id
+                    WHERE a.id IN ({$list})
+                      AND p.discussion_state = '{$visible}'
+                      AND t.discussion_state = '{$visible}'
+                      AND t.moved_to_topic_id IS NULL
+                ) ranked
+                WHERE rn = 1
+             ) lp ON lp.ancestor_id = s.id
+             SET s.topic_count = COALESCE(tc.vis_t, 0),
+                 s.topic_count_held = COALESCE(tc.held_t, 0),
+                 s.topic_count_deleted = COALESCE(tc.del_t, 0),
+                 s.post_count = COALESCE(pc.vis_p, 0),
+                 s.post_count_held = COALESCE(pc.held_p, 0),
+                 s.post_count_deleted = COALESCE(pc.del_p, 0),
+                 s.last_topic_id = lp.last_topic_id,
+                 s.last_topic_title = lp.last_topic_title,
+                 s.last_post_id = lp.last_post_id,
+                 s.last_post_at = lp.last_post_at,
+                 s.last_poster_id = lp.last_poster_id,
+                 s.last_poster_name = lp.last_poster_name,
+                 s.updated_at = CURRENT_TIMESTAMP
+             WHERE s.id IN ({$list})",
+        );
+
+        return \count($ids);
+    }
+
+    /**
+     * @param list<int> $ids
+     */
+    public function rebuildUsersByIds(array $ids): int
+    {
+        $ids = $this->positiveIds($ids);
+        if ($ids === []) {
+            return 0;
+        }
+
+        $list = implode(',', $ids);
+        $visible = ForumDiscussionState::Visible->value;
+        $conn = $this->entityManager->getConnection();
+
+        $conn->executeStatement(
+            "INSERT INTO cp_forum_user_stats (user_id, post_count, topic_count, like_received, warning_points, last_posted_at, updated_at)
+             SELECT u.id,
+                    COALESCE(p.visible_posts, 0),
+                    COALESCE(t.visible_topics, 0),
+                    COALESCE(s.like_received, 0),
+                    COALESCE(s.warning_points, 0),
+                    p.last_posted_at,
+                    CURRENT_TIMESTAMP
              FROM cp_users u
+             LEFT JOIN cp_forum_user_stats s ON s.user_id = u.id
              LEFT JOIN (
                 SELECT p.author_id AS user_id,
-                       SUM(p.discussion_state = :visible AND t.discussion_state = :visible AND t.moved_to_topic_id IS NULL) AS visible_posts,
-                       MAX(CASE WHEN p.discussion_state = :visible AND t.discussion_state = :visible THEN p.created_at END) AS last_posted_at
+                       SUM(p.discussion_state = '{$visible}' AND t.discussion_state = '{$visible}' AND t.moved_to_topic_id IS NULL) AS visible_posts,
+                       MAX(CASE WHEN p.discussion_state = '{$visible}' AND t.discussion_state = '{$visible}' THEN p.created_at END) AS last_posted_at
                 FROM cp_forum_posts p
                 INNER JOIN cp_forum_topics t ON t.id = p.topic_id
-                WHERE p.author_id IS NOT NULL
+                WHERE p.author_id IN ({$list})
                 GROUP BY p.author_id
              ) p ON p.user_id = u.id
              LEFT JOIN (
                 SELECT first_poster_id AS user_id,
-                       SUM(discussion_state = :visible AND moved_to_topic_id IS NULL) AS visible_topics
+                       SUM(discussion_state = '{$visible}' AND moved_to_topic_id IS NULL) AS visible_topics
                 FROM cp_forum_topics
-                WHERE first_poster_id IS NOT NULL
+                WHERE first_poster_id IN ({$list})
                 GROUP BY first_poster_id
              ) t ON t.user_id = u.id
-             WHERE p.user_id IS NOT NULL OR t.user_id IS NOT NULL',
-            ['visible' => ForumDiscussionState::Visible->value],
+             WHERE u.id IN ({$list})
+             ON DUPLICATE KEY UPDATE
+                post_count = VALUES(post_count),
+                topic_count = VALUES(topic_count),
+                last_posted_at = VALUES(last_posted_at),
+                updated_at = VALUES(updated_at)",
         );
 
-        foreach ($userRows as $row) {
-            $user = $this->entityManager->find(User::class, (int) $row['user_id']);
-            if (!$user instanceof User) {
-                continue;
+        return \count($ids);
+    }
+
+    /**
+     * @param list<int|string> $ids
+     *
+     * @return list<int>
+     */
+    private function positiveIds(array $ids): array
+    {
+        $out = [];
+        foreach ($ids as $id) {
+            $n = (int) $id;
+            if ($n > 0) {
+                $out[] = $n;
             }
-            $stats = $this->userStatsRepository->findOneByUser($user);
-            if (!$stats instanceof ForumUserStats) {
-                $stats = new ForumUserStats($user);
-                $this->entityManager->persist($stats);
-            }
-            $stats->setPostCount((int) $row['post_count']);
-            $stats->setTopicCount((int) $row['topic_count']);
-            $stats->setLastPostedAt(
-                $row['last_posted_at'] !== null ? new \DateTimeImmutable((string) $row['last_posted_at']) : null,
+        }
+
+        return array_values(array_unique($out));
+    }
+
+    public function recountBoardStats(): void
+    {
+        $this->recountUserAndBoardStats(boardOnly: true);
+    }
+
+    private function recountUserAndBoardStats(bool $boardOnly = false): void
+    {
+        $conn = $this->entityManager->getConnection();
+
+        if (!$boardOnly) {
+            $userRows = $conn->fetchAllAssociative(
+                'SELECT u.id AS user_id,
+                        COALESCE(p.visible_posts, 0) AS post_count,
+                        COALESCE(t.visible_topics, 0) AS topic_count,
+                        p.last_posted_at
+                 FROM cp_users u
+                 LEFT JOIN (
+                    SELECT p.author_id AS user_id,
+                           SUM(p.discussion_state = :visible AND t.discussion_state = :visible AND t.moved_to_topic_id IS NULL) AS visible_posts,
+                           MAX(CASE WHEN p.discussion_state = :visible AND t.discussion_state = :visible THEN p.created_at END) AS last_posted_at
+                    FROM cp_forum_posts p
+                    INNER JOIN cp_forum_topics t ON t.id = p.topic_id
+                    WHERE p.author_id IS NOT NULL
+                    GROUP BY p.author_id
+                 ) p ON p.user_id = u.id
+                 LEFT JOIN (
+                    SELECT first_poster_id AS user_id,
+                           SUM(discussion_state = :visible AND moved_to_topic_id IS NULL) AS visible_topics
+                    FROM cp_forum_topics
+                    WHERE first_poster_id IS NOT NULL
+                    GROUP BY first_poster_id
+                 ) t ON t.user_id = u.id
+                 WHERE p.user_id IS NOT NULL OR t.user_id IS NOT NULL',
+                ['visible' => ForumDiscussionState::Visible->value],
             );
+
+            foreach ($userRows as $row) {
+                $user = $this->entityManager->find(User::class, (int) $row['user_id']);
+                if (!$user instanceof User) {
+                    continue;
+                }
+                $stats = $this->userStatsRepository->findOneByUser($user);
+                if (!$stats instanceof ForumUserStats) {
+                    $stats = new ForumUserStats($user);
+                    $this->entityManager->persist($stats);
+                }
+                $stats->setPostCount((int) $row['post_count']);
+                $stats->setTopicCount((int) $row['topic_count']);
+                $stats->setLastPostedAt(
+                    $row['last_posted_at'] !== null ? new \DateTimeImmutable((string) $row['last_posted_at']) : null,
+                );
+            }
         }
 
         $boardRows = $conn->fetchAllAssociative(

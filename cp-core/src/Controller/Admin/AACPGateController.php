@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Core\Security\Gate\AacpGate;
+use App\Core\Security\Http\LoginTargetPath;
 use App\Entity\User;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -110,6 +111,10 @@ final class AACPGateController
         // "//evil.host" and "/\evil.host" are both read as protocol-relative URLs
         // by browsers, and neither starts with a second slash by accident.
         if (str_starts_with($candidate, '//') || str_starts_with($candidate, '/\\')) {
+            return '/aacp';
+        }
+
+        if (!LoginTargetPath::isNavigable($candidate)) {
             return '/aacp';
         }
 

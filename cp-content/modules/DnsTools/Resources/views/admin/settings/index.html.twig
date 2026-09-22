@@ -1,0 +1,38 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'dnstools.settings.header'|trans }}{% endblock %}
+
+{% block body %}
+    {% include '@DnsToolsModule/admin/_nav.html.twig' %}
+    <form method="post" action="{{ path('admin_dnstools_update') }}" class="space-y-sp-sm">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_dnstools_settings') }}">
+
+        <twig:studio:card title="{{ 'dnstools.settings.card'|trans }}">
+            <p class="mb-sp-sm text-fs-sm text-neutral-600">{{ 'dnstools.settings.help'|trans }}</p>
+            <p class="mb-sp-sm text-fs-sm text-neutral-600">{{ 'dnstools.settings.mail_help'|trans }}</p>
+            <div class="grid gap-4 md:grid-cols-2">
+                {% for definition in definitions %}
+                    {% set value = values[definition.key]|default(null) %}
+                    <div>
+                        {% if definition.type in ['checkbox', 'boolean'] %}
+                            <label class="mt-1 flex items-center gap-2">
+                                <input type="checkbox" name="settings[{{ definition.key }}]" value="1" {{ value ? 'checked' : '' }}>
+                                <span class="text-fs-sm text-neutral-700">{{ definition.label|trans }}</span>
+                            </label>
+                        {% elseif definition.type == 'password' %}
+                            <label class="form-label">{{ definition.label|trans }}</label>
+                            <input type="password" name="settings[{{ definition.key }}]" value="" autocomplete="new-password" class="form-control" placeholder="••••">
+                        {% else %}
+                            <label class="form-label">{{ definition.label|trans }}</label>
+                            <input type="text" name="settings[{{ definition.key }}]" value="{{ value }}" class="form-control">
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </twig:studio:card>
+
+        <div>
+            <button type="submit" class="btn btn-primary">{{ 'dnstools.settings.save'|trans }}</button>
+        </div>
+    </form>
+{% endblock %}

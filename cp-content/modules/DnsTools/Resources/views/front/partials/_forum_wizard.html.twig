@@ -1,0 +1,14 @@
+<div class="dnstools-wizard" data-dnstools-wizard hidden>
+    <div class="dnstools-wizard__backdrop" data-wizard-close></div>
+    <div class="dnstools-wizard__panel" role="dialog" aria-modal="true" aria-labelledby="dnstools-wizard-title">
+        <h2 id="dnstools-wizard-title">{{ 'dnstools.forum.wizard.title'|trans }}</h2>
+        <p>{{ 'dnstools.forum.wizard.lead'|trans }}</p>
+        <p class="dnstools-wizard__topic"><strong>{{ 'dnstools.forum.wizard.topic_title'|trans }}:</strong> <span data-wizard-title></span></p>
+        <div class="dnstools-wizard__boards">
+            {% for board in forumBoards %}
+                <button type="button" class="dnstools-wizard__board" data-wizard-board="{{ board.slug }}">{{ board.title }}</button>
+            {% endfor %}
+        </div>
+        <button type="button" class="dnstools-wizard__cancel" data-wizard-close>{{ 'dnstools.forum.wizard.cancel'|trans }}</button>
+    </div>
+</div>

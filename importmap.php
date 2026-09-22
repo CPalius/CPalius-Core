@@ -76,6 +76,10 @@ $core = [
         'path' => './cp-core/assets/studio-dashboard.js',
         'entrypoint' => true,
     ],
+    'studio-rebuild' => [
+        'path' => './cp-core/assets/studio-rebuild.js',
+        'entrypoint' => true,
+    ],
     'sortablejs' => [
         'version' => '1.15.7',
     ],

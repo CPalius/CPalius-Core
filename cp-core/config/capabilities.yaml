@@ -51,3 +51,7 @@ capabilities:
     # (QueryScopeApplier denies with 1 = 0), but the aggregate media total, the
     # module KPIs and the whole Studio navigation map were.
     - admin.dashboard.view
+    # Batched COUNT(*) recounts (forum counters, ACL cleanup, blog category
+    # counts). Separate from admin.dashboard.view so an editor who can see the
+    # desk cannot rewrite the live counters.
+    - admin.rebuild.run

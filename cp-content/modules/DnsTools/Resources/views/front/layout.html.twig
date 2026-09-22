@@ -1,0 +1,9 @@
+{% extends dnsToolsParentLayout %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    {% include '@DnsToolsModule/front/partials/_styles.html.twig' %}
+{% endblock %}
+
+{% block content %}{% block dnstools_main %}{% endblock %}{% endblock %}
+{% block body %}{{ block('dnstools_main') }}{% endblock %}

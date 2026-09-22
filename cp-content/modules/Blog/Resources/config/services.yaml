@@ -54,6 +54,9 @@ services:
     Modules\Blog\Studio\:
         resource: '../../Studio/'
 
+    Modules\Blog\Rebuild\:
+        resource: '../../Rebuild/'
+
     Modules\Blog\Portal\:
         resource: '../../Portal/'
 

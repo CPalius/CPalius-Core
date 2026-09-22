@@ -23,6 +23,7 @@ use App\Core\Plugin\PluginRegistry;
 use App\Core\Plugin\PluginToggleRepository;
 use App\Core\Queue\QueueStatusService;
 use App\Core\Security\Flood\FloodService;
+use App\Core\Security\Http\LoginTargetPath;
 use App\Core\Security\Repository\TelemetryLogRepository;
 use App\Core\Security\Service\IpBanService;
 use App\Core\Settings\SettingSecretCodec;
@@ -466,8 +467,12 @@ final class AACPController
      */
     #[Route('/aacp/system/metrics', name: 'aacp_system_metrics', methods: ['GET'])]
     #[IsGranted('system.aacp.access')]
-    public function systemMetrics(): Response
+    public function systemMetrics(Request $request): Response
     {
+        if (LoginTargetPath::isBrowserDocument($request)) {
+            return new RedirectResponse('/aacp');
+        }
+
         $health = $this->buildHealthReport();
         $system = $this->buildSystemReport();
         $healthy = $health['dbConnected'] && $health['quarantinedModuleCount'] === 0;
@@ -490,7 +495,7 @@ final class AACPController
      * Cache rebuild console (GET only); three POST actions run CacheRebuildManager jobs.
      */
     #[Route('/aacp/system/cache-rebuild', name: 'aacp_cache_rebuild', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.performance_cp_care', icon: 'heroicons:arrow-path', panel: 'aacp', priority: 83, capability: 'system.aacp.access', parent: 'aacp_hub_maintenance')]
+    #[CpAdminMenu(label: 'aacp.menu.performance_cp_care', icon: 'heroicons:arrow-path', panel: 'aacp', priority: 84, capability: 'system.aacp.access', parent: 'aacp_hub_maintenance')]
     #[IsGranted('system.aacp.access')]
     public function cacheRebuild(): Response
     {

@@ -1,0 +1,9 @@
+<article class="roadmap-tunnel__card roadmap-tunnel__card--{{ item.source }}">
+    <h6 class="roadmap-tunnel__title"><a href="{{ item.url }}">{{ item.title }}</a></h6>
+    {% if item.excerpt %}
+        <p class="roadmap-tunnel__excerpt">{{ item.excerpt|slice(0, 48) }}{% if item.excerpt|length > 48 %}…{% endif %}</p>
+    {% endif %}
+    <div class="roadmap-tunnel__meta">
+        <time datetime="{{ item.occurredAt|date('c') }}">{{ item.occurredAt|date('d.m.Y') }}</time>
+    </div>
+</article>

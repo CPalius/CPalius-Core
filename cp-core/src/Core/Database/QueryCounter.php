@@ -26,9 +26,25 @@ final class QueryCounter
     /** @var array<string, int> table name => SELECT count in this request */
     private array $countsByTable = [];
 
+    /** Nested suspend() calls; increment() is a no-op while this is above zero. */
+    private int $suspended = 0;
+
     public function __construct(
         private readonly int $maxQueriesPerTable = 10,
     ) {
+    }
+
+    /**
+     * Rebuild / import / update: many honest reads of one table, not a lazy-load loop.
+     */
+    public function suspend(): void
+    {
+        ++$this->suspended;
+    }
+
+    public function resume(): void
+    {
+        $this->suspended = max(0, $this->suspended - 1);
     }
 
     /**
@@ -36,6 +52,10 @@ final class QueryCounter
      */
     public function increment(string $table): void
     {
+        if ($this->suspended > 0) {
+            return;
+        }
+
         $normalized = strtolower($table);
         if (in_array($normalized, self::IGNORED_TABLES, true)) {
             return;

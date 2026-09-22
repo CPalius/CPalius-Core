@@ -172,3 +172,6 @@ blog.widget.social_twitter_url: "Author Card Twitter URL"
 
 blog.plugin.widget: "Blog widget (recent posts & tags)"
 blog.plugin.archive: "Blog archive (year/month)"
+
+blog.rebuild.categories: "Rebuild blog categories"
+blog.rebuild.categories_desc: "Recount published posts in each category."

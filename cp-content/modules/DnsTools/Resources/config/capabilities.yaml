@@ -1,0 +1,3 @@
+capabilities:
+    - dnstools.manage
+    - dnstools.query

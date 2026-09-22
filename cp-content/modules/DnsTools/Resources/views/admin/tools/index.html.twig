@@ -1,0 +1,53 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'dnstools.menu.tools'|trans }}{% endblock %}
+{% block header %}{{ 'dnstools.menu.tools'|trans }}{% endblock %}
+
+{% block body %}
+    {% include '@DnsToolsModule/admin/_nav.html.twig' %}
+
+    <twig:studio:card title="{{ 'dnstools.tools.list_help'|trans }}">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-fs-sm">
+                <thead>
+                    <tr class="border-b text-neutral-500">
+                        <th class="py-2 pr-3">{{ 'dnstools.table.tool'|trans }}</th>
+                        <th class="py-2 pr-3">{{ 'dnstools.tools.category'|trans }}</th>
+                        <th class="py-2 pr-3">{{ 'dnstools.tools.status'|trans }}</th>
+                        <th class="py-2 pr-3">SEO</th>
+                        <th class="py-2"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tool in tools %}
+                        <tr class="border-b border-neutral-100">
+                            <td class="py-2 pr-3">
+                                <strong>{{ tool.title }}</strong>
+                                <div class="text-neutral-500">{{ tool.slug }}</div>
+                            </td>
+                            <td class="py-2 pr-3">{{ categories[tool.category]|trans }}</td>
+                            <td class="py-2 pr-3">
+                                {% if tool.enabled %}
+                                    <span class="text-green-700">{{ 'dnstools.tools.enabled'|trans }}</span>
+                                {% else %}
+                                    <span class="text-red-700">{{ 'dnstools.tools.disabled'|trans }}</span>
+                                {% endif %}
+                                {% if tool.featured %} · {{ 'dnstools.tools.featured'|trans }}{% endif %}
+                            </td>
+                            <td class="py-2 pr-3 max-w-xs truncate text-neutral-600">{{ tool.description }}</td>
+                            <td class="py-2 text-right whitespace-nowrap">
+                                <form method="post" action="{{ path('admin_dnstools_tools_toggle', {slug: tool.slug}) }}" class="inline">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_dnstools_toggle_' ~ tool.slug) }}">
+                                    <button type="submit" class="btn btn-sm btn-neutral">
+                                        {{ tool.enabled ? 'dnstools.tools.disable'|trans : 'dnstools.tools.enable'|trans }}
+                                    </button>
+                                </form>
+                                <a class="btn btn-sm btn-primary" href="{{ path('admin_dnstools_tools_edit', {slug: tool.slug}) }}">{{ 'dnstools.tools.edit'|trans }}</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </twig:studio:card>
+{% endblock %}

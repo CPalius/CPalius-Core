@@ -1,0 +1,63 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.rebuild.header'|trans }}{% endblock %}
+
+{% block javascripts %}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'studio-rebuild']) }}
+    <script{{ csp_nonce_attr() }} src="{{ cp_asset('studio-rebuild.js') }}" defer></script>
+{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md"
+         data-cp-rebuild
+         data-cp-rebuild-csrf="{{ csrfToken }}"
+         data-i18n-progress="{{ 'studio.rebuild.progress'|trans({percent: '{percent}', done: '{done}', total: '{total}'}) }}"
+         data-i18n-done="{{ 'studio.rebuild.done'|trans }}"
+         data-i18n-failed="{{ 'studio.rebuild.error'|trans }}"
+         data-i18n-request-failed="{{ 'studio.rebuild.request_failed'|trans({error: '{error}'}) }}"
+         data-i18n-not-json="{{ 'studio.rebuild.not_json'|trans({status: '{status}'}) }}">
+
+        <p class="text-fs-xs text-slate-500 font-mono">{{ 'aacp.rebuild.intro'|trans }}</p>
+
+        {% if jobs is not empty %}
+            <twig:cp:card title="{{ 'aacp.rebuild.all'|trans }}">
+                <p class="mb-sp-xs text-fs-xs text-slate-500">{{ 'aacp.rebuild.all_desc'|trans }}</p>
+                <button type="button"
+                        class="btn btn-primary disabled:cursor-wait disabled:opacity-60"
+                        data-rebuild-all>
+                    {{ 'aacp.rebuild.all_action'|trans }}
+                </button>
+            </twig:cp:card>
+        {% endif %}
+
+        {% if jobs is empty %}
+            <p class="text-fs-sm text-slate-500">{{ 'studio.rebuild.empty'|trans }}</p>
+        {% else %}
+            <div class="overflow-hidden rounded-xl border border-white/10 divide-y divide-white/10">
+                {% for job in jobs %}
+                    <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                         data-rebuild-job
+                         data-rebuild-id="{{ job.id }}"
+                         data-rebuild-url="{{ job.runUrl }}"
+                         data-rebuild-total="{{ job.total }}">
+                        <div class="min-w-0 flex-1">
+                            <h2 class="text-fs-sm font-semibold text-slate-100">{{ job.name|trans }}</h2>
+                            <p class="mt-0.5 text-fs-xs text-slate-500">{{ job.description|trans }}</p>
+                            <div class="mt-3 hidden" data-rebuild-progress-wrap>
+                                <div class="h-1.5 overflow-hidden rounded-full bg-white/10">
+                                    <div class="h-full w-0 rounded-full bg-primary-500 transition-[width] duration-200" data-rebuild-bar></div>
+                                </div>
+                                <p class="mt-1 text-fs-xs tabular-nums text-slate-500" data-rebuild-status></p>
+                            </div>
+                        </div>
+                        <button type="button"
+                                class="btn btn-sm btn-primary shrink-0 disabled:cursor-wait disabled:opacity-60"
+                                data-rebuild-run>
+                            {{ 'studio.rebuild.now'|trans }}
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

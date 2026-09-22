@@ -16,11 +16,11 @@ final class SameOriginAuthenticationSuccessHandler extends DefaultAuthentication
     {
         $target = parent::determineTargetUrl($request);
 
-        if ($this->isSameOrigin($request, $target)) {
+        if ($this->isSameOrigin($request, $target) && LoginTargetPath::isNavigable($target)) {
             return $target;
         }
 
-        $this->logger?->warning('Refused an off-origin post-login redirect.', [
+        $this->logger?->warning('Refused a post-login redirect.', [
             'target' => $target,
             'origin' => $request->getSchemeAndHttpHost(),
         ]);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
+use App\Core\Security\Http\LoginTargetPath;
 use App\Core\Security\Repository\TelemetryLogRepository;
 use App\Core\Security\Service\IpBanService;
 use App\Core\Settings\SettingsRegistry;
@@ -46,8 +47,12 @@ final class AACPTelemetryController
 
     #[Route('/aacp/telemetry/live-feed', name: 'aacp_telemetry_live_feed', methods: ['GET'])]
     #[IsGranted('system.aacp.access')]
-    public function liveFeed(Request $request): JsonResponse
+    public function liveFeed(Request $request): Response
     {
+        if (LoginTargetPath::isBrowserDocument($request)) {
+            return new RedirectResponse('/aacp');
+        }
+
         $afterId = $request->query->getInt('after_id', 0);
         $after = $afterId > 0 ? $afterId : null;
         $securityOn = (bool) $this->settingsRegistry->get('telemetry.security_enabled', false);

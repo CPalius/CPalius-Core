@@ -1,0 +1,60 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ presented[app.request.locale].title|default(tool.slug) }}{% endblock %}
+{% block header %}{{ presented[app.request.locale].title|default(tool.slug) }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_dnstools_tools_index') }}" class="btn btn-sm btn-neutral">{{ 'dnstools.tools.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    {% include '@DnsToolsModule/admin/_nav.html.twig' %}
+
+    <form method="post" class="space-y-sp-sm">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_dnstools_tool_' ~ tool.slug) }}">
+
+        <twig:studio:card title="{{ 'dnstools.tools.visibility'|trans }}">
+            <p class="mb-sp-sm text-fs-sm text-neutral-600">{{ tool.slug }} · {{ tool.category }}</p>
+            <div class="grid gap-3 md:grid-cols-3">
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" name="enabled" value="1" {{ row.enabled ? 'checked' : '' }}>
+                    <span>{{ 'dnstools.tools.enabled'|trans }}</span>
+                </label>
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" name="featured" value="1" {{ row.featured ? 'checked' : '' }}>
+                    <span>{{ 'dnstools.tools.featured'|trans }}</span>
+                </label>
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" name="is_new" value="1" {{ row.is_new ? 'checked' : '' }}>
+                    <span>{{ 'dnstools.badge.new'|trans }}</span>
+                </label>
+            </div>
+        </twig:studio:card>
+
+        {% for locale in locales %}
+            {% set copy = presented[locale.code] %}
+            <twig:studio:card title="{{ locale.nativeName }} ({{ locale.code }})">
+                <div class="grid gap-4">
+                    <div>
+                        <label class="form-label">{{ 'dnstools.tools.field.title'|trans }}</label>
+                        <input type="text" name="locales[{{ locale.code }}][title]" value="{{ copy.title }}" class="form-control" maxlength="160">
+                    </div>
+                    <div>
+                        <label class="form-label">{{ 'dnstools.tools.field.subtitle'|trans }}</label>
+                        <input type="text" name="locales[{{ locale.code }}][subtitle]" value="{{ copy.subtitle }}" class="form-control" maxlength="220">
+                    </div>
+                    <div>
+                        <label class="form-label">{{ 'dnstools.tools.field.description'|trans }}</label>
+                        <textarea name="locales[{{ locale.code }}][description]" rows="3" class="form-control" maxlength="400">{{ copy.description }}</textarea>
+                    </div>
+                    <div>
+                        <label class="form-label">{{ 'dnstools.tools.field.keywords'|trans }}</label>
+                        <input type="text" name="locales[{{ locale.code }}][keywords]" value="{{ copy.keywords }}" class="form-control" maxlength="250">
+                    </div>
+                </div>
+            </twig:studio:card>
+        {% endfor %}
+
+        <button type="submit" class="btn btn-primary">{{ 'dnstools.tools.save'|trans }}</button>
+    </form>
+{% endblock %}

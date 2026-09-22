@@ -46,7 +46,7 @@ final class AACPLogController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.logs.menu', icon: 'heroicons:document-text', panel: 'aacp', priority: 84, capability: 'system.logs.manage', parent: 'aacp_hub_maintenance')]
+    #[CpAdminMenu(label: 'aacp.logs.menu', icon: 'heroicons:document-text', panel: 'aacp', priority: 85, capability: 'system.logs.manage', parent: 'aacp_hub_maintenance')]
     public function index(Request $request): Response
     {
         $filters = [

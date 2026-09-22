@@ -1,0 +1,55 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'dnstools.menu.pages'|trans }}{% endblock %}
+{% block header %}{{ 'dnstools.menu.pages'|trans }}{% endblock %}
+
+{% block body %}
+    {% include '@DnsToolsModule/admin/_nav.html.twig' %}
+
+    <form method="post" class="space-y-sp-sm">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_dnstools_pages') }}">
+
+        <twig:studio:card title="{{ 'dnstools.forum.settings'|trans }}">
+            <p class="mb-sp-sm text-fs-sm text-neutral-600">{{ 'dnstools.forum.settings_help'|trans }}</p>
+            <label class="mb-3 flex items-center gap-2">
+                <input type="checkbox" name="forum_enabled" value="1" {{ forumEnabled ? 'checked' : '' }}>
+                <span>{{ 'dnstools.setting.forum_enabled'|trans }}</span>
+            </label>
+            <label class="form-label">{{ 'dnstools.setting.forum_section'|trans }}</label>
+            {% if boards is not empty %}
+                <select name="forum_section" class="form-control">
+                    <option value="">{{ 'dnstools.forum.section_none'|trans }}</option>
+                    {% for board in boards %}
+                        <option value="{{ board.slug }}" {{ forumSection == board.slug ? 'selected' : '' }}>{{ board.title }} ({{ board.slug }})</option>
+                    {% endfor %}
+                </select>
+            {% else %}
+                <input type="text" name="forum_section" value="{{ forumSection }}" class="form-control" placeholder="dns-destek">
+            {% endif %}
+        </twig:studio:card>
+
+        {% for page, byLocale in pages %}
+            <twig:studio:card title="{{ ('dnstools.seo.' ~ page ~ '.title')|trans }}">
+                {% for locale in locales %}
+                    <fieldset class="mb-4 grid gap-3">
+                        <legend class="font-semibold">{{ locale.nativeName }}</legend>
+                        <div>
+                            <label class="form-label">{{ 'dnstools.tools.field.title'|trans }}</label>
+                            <input type="text" name="pages[{{ page }}][{{ locale.code }}][title]" value="{{ byLocale[locale.code].title }}" class="form-control" maxlength="160">
+                        </div>
+                        <div>
+                            <label class="form-label">{{ 'dnstools.tools.field.description'|trans }}</label>
+                            <textarea name="pages[{{ page }}][{{ locale.code }}][description]" rows="3" class="form-control" maxlength="400">{{ byLocale[locale.code].description }}</textarea>
+                        </div>
+                        <div>
+                            <label class="form-label">{{ 'dnstools.tools.field.keywords'|trans }}</label>
+                            <input type="text" name="pages[{{ page }}][{{ locale.code }}][keywords]" value="{{ byLocale[locale.code].keywords }}" class="form-control" maxlength="250">
+                        </div>
+                    </fieldset>
+                {% endfor %}
+            </twig:studio:card>
+        {% endfor %}
+
+        <button type="submit" class="btn btn-primary">{{ 'dnstools.settings.save'|trans }}</button>
+    </form>
+{% endblock %}

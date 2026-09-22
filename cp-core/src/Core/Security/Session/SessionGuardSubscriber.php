@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Security\Session;
 
 use App\Core\Security\Entity\SystemTelemetryLog;
+use App\Core\Security\Http\LoginTargetPath;
 use App\Core\Security\RoleConfigManager;
 use App\Core\Security\Service\SecurityEventRecorder;
 use App\Core\Security\TwoFactor\TwoFactorService;
@@ -12,8 +13,10 @@ use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
@@ -92,7 +95,7 @@ final class SessionGuardSubscriber implements EventSubscriberInterface
             $reason = $this->violation($session, $request, $user);
             if ($reason !== null) {
                 $this->terminate($session, $request, $user, $reason);
-                $event->setResponse(new RedirectResponse($this->loginPath($request).'?session_expired='.$reason));
+                $event->setResponse($this->expiredResponse($request, $reason));
 
                 return;
             }
@@ -217,6 +220,19 @@ final class SessionGuardSubscriber implements EventSubscriberInterface
 
         return \in_array(TwoFactorService::PRIVILEGED_CAPABILITY, $capabilities, true)
             || \in_array('*', $capabilities, true);
+    }
+
+    /**
+     * A poll following a 302 to /login is stored as the next login target and
+     * floods telemetry. fetch() callers get 401 instead.
+     */
+    private function expiredResponse(Request $request, string $reason): Response
+    {
+        if (LoginTargetPath::isMachineRequest($request)) {
+            return new JsonResponse(['error' => 'session_expired', 'reason' => $reason], Response::HTTP_UNAUTHORIZED);
+        }
+
+        return new RedirectResponse($this->loginPath($request).'?session_expired='.$reason);
     }
 
     /**

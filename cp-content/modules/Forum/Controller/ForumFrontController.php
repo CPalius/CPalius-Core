@@ -342,14 +342,15 @@ final class ForumFrontController extends AbstractController
         }
 
         $draft = $this->draftService->newTopicDraft($user, $section);
+        $prefillTitle = mb_substr(trim((string) $request->query->get('title')), 0, 180);
 
         return $this->render('@Theme/forum/new_topic.html.twig', $this->newTopicViewData(
             $section,
             $prefixes,
             [
-                'title' => $draft?->getTitle() ?? '',
+                'title' => $prefillTitle !== '' ? $prefillTitle : ($draft?->getTitle() ?? ''),
                 'description' => '',
-                'body' => $draft?->getBody() ?? '',
+                'body' => $prefillTitle !== '' ? '' : ($draft?->getBody() ?? ''),
                 'isPrivate' => false,
                 'prefixId' => null,
                 'contentLocale' => $contentLocale,

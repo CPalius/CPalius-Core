@@ -37,7 +37,7 @@ final class SeoFrontController
         '/sitemap-{source}-{locale}.xml',
         name: 'seo_sitemap_source',
         methods: ['GET'],
-        requirements: ['source' => 'pages|blog|forum|roadmap', 'locale' => '%cpalius.locales_pattern%'],
+        requirements: ['source' => '[a-z0-9]+', 'locale' => '%cpalius.locales_pattern%'],
     )]
     public function sitemapSource(string $source, string $locale): Response
     {

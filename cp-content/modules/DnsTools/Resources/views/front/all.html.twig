@@ -1,0 +1,47 @@
+{% extends '@DnsToolsModule/front/layout.html.twig' %}
+
+{% block title %}{{ pageCopy.title }}{% endblock %}
+{% block meta_description %}{{ pageCopy.description }}{% endblock %}
+{% block meta_keywords %}{{ pageCopy.keywords }}{% endblock %}
+
+{% block dnstools_main %}
+<div class="dnstools-page">
+    <header class="dnstools-hero">
+        <ul class="dnstools-crumb">
+            <li><a href="{{ path('theme_cpalius_website_home') }}">{{ 'dnstools.breadcrumb.home'|trans }}</a></li>
+            <li>/</li>
+            <li><a href="{{ path('dnstools_index') }}">{{ 'dnstools.seo.index.title'|trans }}</a></li>
+            <li>/</li>
+            <li>{{ pageCopy.title }}</li>
+        </ul>
+        <h1>{{ pageCopy.title }}</h1>
+        <p>{{ pageCopy.description }}</p>
+    </header>
+
+    {% for id, label in categories %}
+        {% if toolsByCategory[id] is defined and toolsByCategory[id] is not empty %}
+            <section class="dnstools-section" id="{{ id }}">
+                <h2>{{ label|trans }}</h2>
+                <table class="dnstools-table">
+                    <thead>
+                        <tr>
+                            <th>{{ 'dnstools.table.tool'|trans }}</th>
+                            <th>{{ 'dnstools.table.description'|trans }}</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tool in toolsByCategory[id] %}
+                            <tr>
+                                <td><i class="bi {{ tool.icon }}"></i> <strong>{{ tool.title }}</strong></td>
+                                <td>{{ tool.description }}</td>
+                                <td><a class="dnstools-btn" href="{{ path('dnstools_tool', {slug: tool.slug}) }}">{{ 'dnstools.action.use'|trans }}</a></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endblock %}

@@ -172,3 +172,6 @@ blog.widget.social_twitter_url: "Yazar Kartı Twitter Adresi"
 
 blog.plugin.widget: "Blog Widget (Son Yazılar & Etiketler)"
 blog.plugin.archive: "Blog Arşivi (Yıl/Ay)"
+
+blog.rebuild.categories: "Blog kategorilerini yeniden oluştur"
+blog.rebuild.categories_desc: "Her kategorideki yayınlanmış yazıları yeniden sayar."

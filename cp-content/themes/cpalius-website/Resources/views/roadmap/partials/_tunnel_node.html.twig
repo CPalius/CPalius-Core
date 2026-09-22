@@ -1,0 +1,19 @@
+<div class="roadmap-tunnel__node">
+    {% if nodeItem.authorAvatarUrl %}
+        <img class="roadmap-tunnel__avatar" src="{{ nodeItem.authorAvatarUrl }}" alt="">
+    {% else %}
+        {% include '@Theme/forum/partials/_avatar.html.twig' with {
+            name: nodeItem.authorName|default(nodeItem.badge|default('?')),
+            size: 'sm'
+        } %}
+    {% endif %}
+    {% if split|default(false) %}
+        <span class="roadmap-tunnel__badge roadmap-tunnel__badge--split" title="Blog + Forum">
+            <i class="bi bi-newspaper"></i><i class="bi bi-chat-dots"></i>
+        </span>
+    {% else %}
+        <span class="roadmap-tunnel__badge roadmap-tunnel__badge--{{ nodeItem.source }}">
+            <i class="bi {{ nodeItem.icon|default('bi-circle') }}"></i>
+        </span>
+    {% endif %}
+</div>

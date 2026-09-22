@@ -1,0 +1,16 @@
+inbound_webhooks:
+    dnstools.inbound-mail:
+        secret_setting: dnstools.mail_inbox_webhook_secret
+        header: X-CP-Webhook-Signature
+        signature: hmac_sha256
+        max_body: 65536
+
+homepage_modes:
+    dnstools:
+        route: dnstools_index
+        label: dnstools.homepage.mode
+        priority: 40
+
+studio:
+    quick_links:
+        - { label_key: dnstools.studio.link_settings, route: admin_dnstools_index, icon: heroicons:globe-alt }

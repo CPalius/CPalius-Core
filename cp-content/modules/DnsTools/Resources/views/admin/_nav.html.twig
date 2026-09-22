@@ -1,0 +1,5 @@
+<nav class="mb-sp-md flex flex-wrap gap-2">
+    <a href="{{ path('admin_dnstools_index') }}" class="btn btn-sm {{ app.request.attributes.get('_route') == 'admin_dnstools_index' ? 'btn-primary' : 'btn-neutral' }}">{{ 'dnstools.menu.settings'|trans }}</a>
+    <a href="{{ path('admin_dnstools_tools_index') }}" class="btn btn-sm {{ app.request.attributes.get('_route') starts with 'admin_dnstools_tools' and app.request.attributes.get('_route') != 'admin_dnstools_tools_pages' ? 'btn-primary' : 'btn-neutral' }}">{{ 'dnstools.menu.tools'|trans }}</a>
+    <a href="{{ path('admin_dnstools_tools_pages') }}" class="btn btn-sm {{ app.request.attributes.get('_route') == 'admin_dnstools_tools_pages' ? 'btn-primary' : 'btn-neutral' }}">{{ 'dnstools.menu.pages'|trans }}</a>
+</nav>

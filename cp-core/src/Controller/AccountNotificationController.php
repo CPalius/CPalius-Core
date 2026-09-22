@@ -26,14 +26,27 @@ final class AccountNotificationController extends AbstractController
     }
 
     #[Route('/hesap/bildirimler', name: 'account_notifications', methods: ['GET'])]
-    public function index(): Response
+    public function index(NotificationInboxPresenter $presenter): Response
     {
         $user = $this->requireUser();
         $rows = $this->notifications->findForUser($user, 50);
         $unread = $this->notifications->countUnread($user);
 
+        $notifications = [];
+        foreach ($rows as $row) {
+            $presented = $presenter->toArray($row);
+            $notifications[] = [
+                'id' => $row->getId(),
+                'read' => $row->isRead(),
+                'text' => $presented['text'],
+                'url' => $presented['url'],
+                'createdAt' => $row->getCreatedAt(),
+                'data' => $row->getData(),
+            ];
+        }
+
         return $this->render('account/notifications/index.html.twig', [
-            'notifications' => $rows,
+            'notifications' => $notifications,
             'unread' => $unread,
         ]);
     }

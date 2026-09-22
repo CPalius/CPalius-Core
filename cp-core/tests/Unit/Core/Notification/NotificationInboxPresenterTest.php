@@ -57,6 +57,36 @@ final class NotificationInboxPresenterTest extends TestCase
         self::assertSame('/account_notifications', $presenter->redirectTarget($notification));
     }
 
+    public function testForumThreadReplyUsesForumMessageKey(): void
+    {
+        $seen = [];
+        $translator = $this->createMock(TranslatorInterface::class);
+        $translator->method('trans')->willReturnCallback(
+            static function (string $id, array $params = []) use (&$seen): string {
+                $seen[] = $id;
+                if ($id === 'forum.notifications.msg.thread_reply') {
+                    return $params['name'].' · '.$params['topic'];
+                }
+
+                return $id;
+            },
+        );
+
+        $urls = $this->createMock(UrlGeneratorInterface::class);
+        $urls->method('generate')->willReturn('/hesap/bildirimler');
+
+        $presenter = new NotificationInboxPresenter($translator, $urls);
+        $user = $this->createMock(User::class);
+        $notification = new Notification($user, 'forum.thread_reply', [
+            'from_username' => 'Ada',
+            'topic_title' => 'Yol haritası',
+        ]);
+
+        self::assertSame('Ada · Yol haritası', $presenter->text($notification));
+        self::assertContains('forum.notifications.msg.thread_reply', $seen);
+        self::assertNotContains('notification.event.forum.thread_reply', $seen);
+    }
+
     public function testDestinationPrefersRelativeDataUrl(): void
     {
         $translator = $this->createMock(TranslatorInterface::class);

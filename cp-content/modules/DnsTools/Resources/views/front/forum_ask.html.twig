@@ -1,0 +1,33 @@
+{% extends '@DnsToolsModule/front/layout.html.twig' %}
+
+{% block title %}{{ 'dnstools.forum.wizard.title'|trans }}{% endblock %}
+{% block meta_description %}{{ 'dnstools.forum.wizard.lead'|trans }}{% endblock %}
+
+{% block dnstools_main %}
+<div class="dnstools-page">
+    <header class="dnstools-hero">
+        <ul class="dnstools-crumb">
+            <li><a href="{{ path('theme_cpalius_website_home') }}">{{ 'dnstools.breadcrumb.home'|trans }}</a></li>
+            <li>/</li>
+            <li><a href="{{ path('dnstools_index') }}">{{ 'dnstools.seo.index.title'|trans }}</a></li>
+            <li>/</li>
+            <li>{{ 'dnstools.forum.wizard.title'|trans }}</li>
+        </ul>
+        <h1>{{ 'dnstools.forum.wizard.title'|trans }}</h1>
+        <p>{{ 'dnstools.forum.wizard.lead'|trans }}</p>
+        {% if title %}
+            <p><strong>{{ 'dnstools.forum.wizard.topic_title'|trans }}:</strong> {{ title }}</p>
+        {% endif %}
+    </header>
+
+    <div class="dnstools-grid">
+        {% for board in boards %}
+            <a class="dnstools-card" href="{{ path('forum_new_topic', {sectionSlug: board.slug, title: title}) }}">
+                <i class="bi bi-chat-left-text"></i>
+                <h3>{{ board.title }}</h3>
+                <p>{{ 'dnstools.forum.wizard.choose'|trans }}</p>
+            </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

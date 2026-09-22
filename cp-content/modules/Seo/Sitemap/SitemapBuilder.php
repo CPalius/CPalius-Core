@@ -7,11 +7,8 @@ namespace Modules\Seo\Sitemap;
 use App\Core\Localization\LocaleProvider;
 use App\Core\Settings\SettingsRegistry;
 use Modules\Seo\Contract\SeoSitemapSourceInterface;
-use Modules\Seo\Sitemap\Source\BlogSitemapSource;
-use Modules\Seo\Sitemap\Source\ForumSitemapSource;
-use Modules\Seo\Sitemap\Source\PagesSitemapSource;
-use Modules\Seo\Sitemap\Source\RoadmapSitemapSource;
 use Psr\Cache\CacheItemPoolInterface;
+use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
@@ -20,17 +17,24 @@ final class SitemapBuilder
     /** @var list<SeoSitemapSourceInterface> */
     private readonly array $sources;
 
+    /**
+     * @param iterable<SeoSitemapSourceInterface> $sources
+     */
     public function __construct(
-        PagesSitemapSource $pages,
-        BlogSitemapSource $blog,
-        ForumSitemapSource $forum,
-        RoadmapSitemapSource $roadmap,
+        #[TaggedIterator('cpalius.seo.sitemap_source')]
+        iterable $sources,
         private readonly LocaleProvider $locales,
         private readonly SettingsRegistry $settings,
         private readonly CacheInterface $cache,
         private readonly SitemapXmlRenderer $xml,
     ) {
-        $this->sources = [$pages, $blog, $forum, $roadmap];
+        $collected = [];
+        foreach ($sources as $source) {
+            if ($source instanceof SeoSitemapSourceInterface) {
+                $collected[] = $source;
+            }
+        }
+        $this->sources = $collected;
     }
 
     public function indexXml(string $indexLocPrefix): string

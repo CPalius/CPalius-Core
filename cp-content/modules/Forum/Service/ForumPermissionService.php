@@ -509,6 +509,24 @@ final class ForumPermissionService
         return $map;
     }
 
+    /**
+     * Drop the locale matrix cache after a repair so the next request reads SQL.
+     *
+     * @param list<string> $locales
+     */
+    public function flushPermissionCaches(array $locales): void
+    {
+        $this->runtime = [];
+        $this->userOverrideRuntime = [];
+        foreach ($locales as $locale) {
+            $code = trim($locale);
+            if ($code === '') {
+                continue;
+            }
+            $this->invalidateCache($code);
+        }
+    }
+
     private function invalidateCache(string $locale): void
     {
         unset($this->runtime[$locale]);

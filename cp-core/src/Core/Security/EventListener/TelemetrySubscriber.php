@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Security\EventListener;
 
 use App\Core\Security\Dto\ThreatResult;
+use App\Core\Security\Http\LoginTargetPath;
 use App\Core\Security\Repository\TelemetryLogRepository;
 use App\Core\Security\Service\ThreatAnalyzer;
 use App\Core\Settings\SettingsRegistry;
@@ -115,6 +116,10 @@ final class TelemetrySubscriber implements EventSubscriberInterface
         }
 
         if (\in_array($path, self::SKIP_PATHS, true)) {
+            return false;
+        }
+
+        if (LoginTargetPath::isMachineRequest($request)) {
             return false;
         }
 

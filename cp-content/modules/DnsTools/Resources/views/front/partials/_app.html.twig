@@ -1,0 +1,407 @@
+<script{{ csp_nonce_attr() }}>
+(function () {
+    const root = document.querySelector('[data-dnstools]');
+    if (!root) return;
+
+    const form = root.querySelector('[data-dnstools-form]');
+    const status = root.querySelector('[data-dnstools-status]');
+    const results = root.querySelector('[data-dnstools-results]');
+    const community = root.querySelector('[data-dnstools-community]');
+    const api = root.getAttribute('data-api');
+    const token = root.getAttribute('data-token');
+    const forumSearch = root.getAttribute('data-forum-search') || '';
+    const forumCompose = root.getAttribute('data-forum-compose') || '';
+    const forumAskPage = root.getAttribute('data-forum-ask') || '';
+    const toolTitle = root.getAttribute('data-tool-title') || '';
+    let forumBoards = [];
+    try {
+        forumBoards = JSON.parse(root.getAttribute('data-forum-boards') || '[]');
+    } catch (error) {
+        forumBoards = [];
+    }
+    const wizard = document.querySelector('[data-dnstools-wizard]');
+    const i18n = {{ dnstools_result_i18n()|json_encode|raw }};
+    const fields = i18n.fields || {};
+    const values = i18n.values || {};
+    const labels = {
+        loading: {{ 'dnstools.status.loading'|trans|json_encode|raw }},
+        error: {{ 'dnstools.status.error'|trans|json_encode|raw }},
+        empty: {{ 'dnstools.status.empty'|trans|json_encode|raw }},
+        forumLead: {{ 'dnstools.forum.lead'|trans|json_encode|raw }},
+        forumShare: {{ 'dnstools.forum.share'|trans|json_encode|raw }},
+        forumAsk: {{ 'dnstools.forum.ask_field'|trans|json_encode|raw }}
+    };
+    const askableValues = { not_found: true, warning: true, invalid: true, missing: true, unsigned: true, blacklisted: true, poor: true, fail: true, softfail: true };
+    const skipKeys = { tool: true, token: true };
+    const inbox = root.querySelector('[data-dnstools-inbox]');
+    const inboxAddress = root.querySelector('[data-inbox-address]');
+    const inboxWait = root.querySelector('[data-inbox-wait]');
+    const inboxCopy = root.querySelector('[data-inbox-copy]');
+    const inboxRefresh = root.querySelector('[data-inbox-refresh]');
+    const inboxLabels = {
+        opening: {{ 'dnstools.inbox.opening'|trans|json_encode|raw }},
+        waiting: {{ 'dnstools.inbox.waiting'|trans|json_encode|raw }},
+        expired: {{ 'dnstools.inbox.expired'|trans|json_encode|raw }},
+        pasteOnly: {{ 'dnstools.inbox.paste_only'|trans|json_encode|raw }},
+        copied: {{ 'dnstools.inbox.copied'|trans|json_encode|raw }}
+    };
+    let inboxTimer = null;
+    let inboxToken = '';
+
+    function showStatus(text, isError) {
+        if (!status) return;
+        status.hidden = !text;
+        status.textContent = text || '';
+        status.classList.toggle('is-error', Boolean(isError));
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function fieldLabel(key) {
+        return fields[key] || String(key).replace(/_/g, ' ');
+    }
+
+    function valueText(value) {
+        if (value === null || value === undefined || value === '') {
+            return values.empty || '—';
+        }
+        if (typeof value === 'boolean') {
+            return values[value ? 'yes' : 'no'] || (value ? 'yes' : 'no');
+        }
+        if (typeof value === 'string' && values[value]) {
+            return values[value];
+        }
+        return String(value);
+    }
+
+    function renderNode(value) {
+        if (value === null || value === undefined || value === '') {
+            return '<em>' + escapeHtml(values.empty || '—') + '</em>';
+        }
+        if (typeof value === 'boolean') {
+            return escapeHtml(valueText(value));
+        }
+        if (typeof value === 'number') {
+            return String(value);
+        }
+        if (typeof value === 'string') {
+            const mapped = values[value];
+            if (mapped) {
+                return escapeHtml(mapped);
+            }
+            if (value.length > 180 || value.includes('\n')) {
+                return '<pre class="dnstools-pre">' + escapeHtml(value) + '</pre>';
+            }
+            return escapeHtml(value);
+        }
+        if (Array.isArray(value)) {
+            if (value.length === 0) {
+                return '<em>' + escapeHtml(values.empty || '—') + '</em>';
+            }
+            if (value.every((item) => typeof item !== 'object' || item === null)) {
+                return escapeHtml(value.map((item) => valueText(item)).join(', '));
+            }
+            return value.map((item) => renderNode(item)).join('');
+        }
+
+        const keys = Object.keys(value).filter((key) => !skipKeys[key]);
+        const cached = value.cached === true;
+        let html = '';
+        if (Object.prototype.hasOwnProperty.call(value, 'cached')) {
+            html += '<p class="dnstools-cache">' + escapeHtml(cached ? values.cached_yes : values.cached_no) + '</p>';
+        }
+        const rows = keys.filter((key) => key !== 'cached').map((key) => (
+            '<tr><th>' + escapeHtml(fieldLabel(key)) + '</th><td>' + renderNode(value[key]) + fieldAsk(key, value[key]) + '</td></tr>'
+        )).join('');
+        return html + '<table class="dnstools-table"><tbody>' + rows + '</tbody></table>';
+    }
+
+    function isAskable(key, value) {
+        if (typeof value === 'boolean') {
+            if (key === 'axfr_open') return value === true;
+            if (key === 'ok' || key === 'enabled' || key === 'forward_confirmed' || key === 'logo_https') return value === false;
+        }
+        if (typeof value === 'number' && key === 'listed_count') return value > 0;
+        if (typeof value === 'string') {
+            if (askableValues[value]) return true;
+            return /p\s*=\s*none/i.test(value);
+        }
+        return false;
+    }
+
+    function topicHref(slug, title) {
+        if (!forumCompose || !slug) {
+            return forumAskPage ? (forumAskPage + (forumAskPage.indexOf('?') === -1 ? '?' : '&') + 'title=' + encodeURIComponent(title)) : '';
+        }
+        const base = forumCompose.replace('__SLUG__', encodeURIComponent(slug));
+        return base + (base.indexOf('?') === -1 ? '?' : '&') + 'title=' + encodeURIComponent(title);
+    }
+
+    function closeWizard() {
+        if (wizard) wizard.hidden = true;
+    }
+
+    function openWizard(title) {
+        const clean = String(title || '').trim();
+        if (!clean) return;
+        if (forumBoards.length === 1) {
+            window.location.href = topicHref(forumBoards[0].slug, clean);
+            return;
+        }
+        if (!wizard || forumBoards.length === 0) {
+            if (forumAskPage) {
+                window.location.href = forumAskPage + (forumAskPage.indexOf('?') === -1 ? '?' : '&') + 'title=' + encodeURIComponent(clean);
+            }
+            return;
+        }
+        wizard.dataset.title = clean;
+        const label = wizard.querySelector('[data-wizard-title]');
+        if (label) label.textContent = clean;
+        wizard.hidden = false;
+    }
+
+    function fieldAsk(key, value) {
+        if (forumBoards.length === 0 && !forumAskPage) return '';
+        if (!isAskable(key, value)) return '';
+        const target = targetValue();
+        const title = [toolTitle, fieldLabel(key), target].filter(Boolean).join(' — ');
+        return ' <button type="button" class="dnstools-ask" data-forum-title="' + escapeHtml(title) + '">' + escapeHtml(labels.forumAsk) + '</button>';
+    }
+
+    function targetValue() {
+        if (!form) return '';
+        const field = form.querySelector('[name="q"]') || form.querySelector('[name="domain"]') || form.querySelector('[name="left"]');
+        return field && field.value ? String(field.value).trim() : '';
+    }
+
+    function renderCommunity(payload) {
+        const pack = payload.community && typeof payload.community === 'object' ? payload.community : {};
+        if (!community || pack.enabled === false) {
+            return;
+        }
+        const hints = Array.isArray(pack.hints) ? pack.hints : [];
+        const actions = hints.map((hint) => {
+            const title = hint && (hint.title || hint.query) ? String(hint.title || hint.query) : '';
+            if (!title) return '';
+            return '<button type="button" class="dnstools-btn dnstools-btn--ghost" data-forum-title="' + escapeHtml(title) + '">' + escapeHtml(String(hint.label || '')) + '</button>';
+        }).join('');
+        let share = '';
+        if (pack.share && (pack.share.title || pack.share.href)) {
+            const title = String(pack.share.title || '');
+            share = '<button type="button" class="dnstools-btn" data-forum-title="' + escapeHtml(title) + '">' + escapeHtml(String(pack.share.label || labels.forumShare)) + '</button>';
+        }
+        if (!actions && !share) {
+            return;
+        }
+        community.hidden = false;
+        community.innerHTML = '<p>' + escapeHtml(pack.lead || labels.forumLead) + '</p><div class="dnstools-community-actions">' + actions + share + '</div>';
+    }
+
+    function formatWait(seconds) {
+        const left = Math.max(0, parseInt(seconds, 10) || 0);
+        const m = String(Math.floor(left / 60)).padStart(2, '0');
+        const s = String(left % 60).padStart(2, '0');
+        return inboxLabels.waiting + ' · ' + m + ':' + s;
+    }
+
+    function setInboxPanel(data) {
+        const pack = data && typeof data === 'object' ? data : {};
+        if (inboxAddress) {
+            inboxAddress.textContent = pack.address || (pack.inbox_ready === false ? inboxLabels.pasteOnly : inboxLabels.opening);
+        }
+        if (inboxCopy) {
+            inboxCopy.hidden = !pack.address;
+        }
+        if (inboxWait) {
+            if (pack.status === 'waiting') {
+                inboxWait.textContent = formatWait(pack.expires_in);
+            } else if (pack.status === 'expired') {
+                inboxWait.textContent = inboxLabels.expired;
+            } else if (pack.status === 'paste_only') {
+                inboxWait.textContent = inboxLabels.pasteOnly;
+            } else {
+                inboxWait.textContent = '';
+            }
+        }
+        const hiddenToken = form ? form.querySelector('[name="token"]') : null;
+        if (hiddenToken && pack.token) {
+            hiddenToken.value = pack.token;
+            inboxToken = pack.token;
+        }
+        if (pack.status === 'waiting' && pack.token) {
+            startInboxPoll(pack.token);
+        }
+    }
+
+    function stopInboxPoll() {
+        if (inboxTimer) {
+            window.clearInterval(inboxTimer);
+            inboxTimer = null;
+        }
+    }
+
+    function startInboxPoll(currentToken) {
+        stopInboxPoll();
+        inboxToken = currentToken;
+        inboxTimer = window.setInterval(() => {
+            pollInbox(currentToken);
+        }, 8000);
+    }
+
+    async function postTool(fields) {
+        const body = new FormData();
+        Object.keys(fields).forEach((key) => body.set(key, fields[key]));
+        body.set('_token', token || '');
+        const response = await fetch(api, {
+            method: 'POST',
+            body,
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        return response.json();
+    }
+
+    async function openInbox() {
+        if (!api) return;
+        showStatus(labels.loading, false);
+        try {
+            const payload = await postTool({ action: 'open' });
+            if (!payload.ok) {
+                showStatus(payload.error || labels.error, true);
+                setInboxPanel({ status: 'paste_only', inbox_ready: false });
+                return;
+            }
+            showStatus('', false);
+            setInboxPanel(payload.data || {});
+        } catch (error) {
+            showStatus(labels.error, true);
+        }
+    }
+
+    async function pollInbox(currentToken) {
+        if (!api || !currentToken) return;
+        try {
+            const payload = await postTool({ action: 'poll', token: currentToken });
+            if (!payload.ok) return;
+            const data = payload.data || {};
+            if (data.status === 'waiting' || data.status === 'expired' || data.status === 'paste_only') {
+                setInboxPanel(data);
+                if (data.status !== 'waiting') stopInboxPoll();
+                return;
+            }
+            stopInboxPoll();
+            setInboxPanel({ address: data.address, status: 'scored' });
+            showStatus('', false);
+            if (results) {
+                results.hidden = false;
+                results.innerHTML = renderNode(data);
+            }
+            renderCommunity(payload);
+        } catch (error) {
+        }
+    }
+
+    async function submit(event) {
+        event.preventDefault();
+        if (!form || !api) return;
+        const body = new FormData(form);
+        body.set('_token', token || '');
+        const raw = String(body.get('q') || '').trim();
+        if (inbox) {
+            body.set('action', raw ? 'score' : 'open');
+        }
+        showStatus(labels.loading, false);
+        if (results) {
+            results.hidden = true;
+            results.innerHTML = '';
+        }
+        if (community) {
+            community.hidden = true;
+            community.innerHTML = '';
+        }
+        try {
+            const response = await fetch(api, {
+                method: 'POST',
+                body,
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const payload = await response.json();
+            if (!payload.ok) {
+                showStatus(payload.error || labels.error, true);
+                return;
+            }
+            const data = payload.data || {};
+            if (inbox && (data.status === 'waiting' || data.status === 'paste_only' || data.status === 'expired')) {
+                showStatus('', false);
+                setInboxPanel(data);
+                return;
+            }
+            showStatus('', false);
+            if (inbox) stopInboxPoll();
+            if (results) {
+                results.hidden = false;
+                results.innerHTML = renderNode(data);
+            }
+            renderCommunity(payload);
+        } catch (error) {
+            showStatus(labels.error, true);
+        }
+    }
+
+    if (form) {
+        form.addEventListener('submit', submit);
+    }
+    if (inbox) {
+        openInbox();
+        if (inboxRefresh) {
+            inboxRefresh.addEventListener('click', (event) => {
+                event.preventDefault();
+                stopInboxPoll();
+                openInbox();
+            });
+        }
+        if (inboxCopy) {
+            inboxCopy.addEventListener('click', async (event) => {
+                event.preventDefault();
+                const value = inboxAddress ? inboxAddress.textContent : '';
+                if (!value) return;
+                try {
+                    await navigator.clipboard.writeText(value);
+                    if (inboxWait) inboxWait.textContent = inboxLabels.copied;
+                } catch (error) {
+                }
+            });
+        }
+    }
+
+    document.addEventListener('click', (event) => {
+        const ask = event.target.closest('[data-forum-title]');
+        if (ask) {
+            event.preventDefault();
+            openWizard(ask.getAttribute('data-forum-title') || '');
+            return;
+        }
+        if (event.target.closest('[data-wizard-close]')) {
+            closeWizard();
+            return;
+        }
+        const board = event.target.closest('[data-wizard-board]');
+        if (board && wizard) {
+            event.preventDefault();
+            const href = topicHref(board.getAttribute('data-wizard-board') || '', wizard.dataset.title || '');
+            if (href) window.location.href = href;
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeWizard();
+    });
+})();
+</script>

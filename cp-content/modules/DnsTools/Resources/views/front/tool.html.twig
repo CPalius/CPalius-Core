@@ -1,0 +1,126 @@
+{% extends '@DnsToolsModule/front/layout.html.twig' %}
+
+{% block title %}{{ tool.title }}{% endblock %}
+{% block meta_description %}{{ tool.description }}{% endblock %}
+{% block meta_keywords %}{{ tool.keywords }}{% endblock %}
+
+{% block dnstools_main %}
+<div class="dnstools-page" data-dnstools data-api="{{ apiUrl }}" data-token="{{ csrf_token('dnstools_query') }}" data-tool-title="{{ tool.title }}"{% if forumSearchUrl %} data-forum-search="{{ forumSearchUrl }}"{% endif %}{% if forumComposeUrl %} data-forum-compose="{{ forumComposeUrl }}"{% endif %}{% if forumBoards is defined and forumBoards|length > 0 %} data-forum-boards="{{ forumBoards|json_encode|e('html_attr') }}" data-forum-ask="{{ path('dnstools_forum_ask') }}"{% endif %}>
+    <header class="dnstools-hero">
+        <ul class="dnstools-crumb">
+            <li><a href="{{ path('theme_cpalius_website_home') }}">{{ 'dnstools.breadcrumb.home'|trans }}</a></li>
+            <li>/</li>
+            <li><a href="{{ path('dnstools_index') }}">{{ 'dnstools.seo.index.title'|trans }}</a></li>
+            <li>/</li>
+            <li>{{ tool.title }}</li>
+        </ul>
+        <h1><i class="bi {{ tool.icon }}"></i> {{ tool.title }}</h1>
+        <p>{{ tool.subtitle }}</p>
+        <p>{{ tool.description }}</p>
+
+        <form class="dnstools-search" data-dnstools-form data-slug="{{ tool.slug }}">
+            <div class="dnstools-fields" style="grid-column: 1 / -1;">
+                {% if tool.input == 'none' %}
+                    <p>{{ 'dnstools.input.none_help'|trans }}</p>
+                {% elseif tool.input == 'inbox' %}
+                    <div class="dnstools-inbox" data-dnstools-inbox>
+                        <p>{{ 'dnstools.inbox.lead'|trans }}</p>
+                        <div class="dnstools-inbox__row">
+                            <code data-inbox-address>{{ 'dnstools.inbox.opening'|trans }}</code>
+                            <button type="button" class="dnstools-btn" data-inbox-copy hidden>{{ 'dnstools.inbox.copy'|trans }}</button>
+                            <button type="button" class="dnstools-btn dnstools-btn--ghost" data-inbox-refresh>{{ 'dnstools.inbox.refresh'|trans }}</button>
+                        </div>
+                        <p class="dnstools-inbox__wait" data-inbox-wait></p>
+                    </div>
+                    <input type="hidden" name="action" value="open">
+                    <input type="hidden" name="token" value="">
+                    <label>{{ 'dnstools.inbox.or_paste'|trans }}
+                        <textarea name="q" placeholder="{{ 'dnstools.input.raw_mail'|trans }}"></textarea>
+                    </label>
+                {% elseif tool.input == 'text' %}
+                    <label>{{ tool.placeholderKey()|trans }}
+                        <textarea name="q" required placeholder="{{ tool.placeholderKey()|trans }}"></textarea>
+                    </label>
+                {% elseif tool.input == 'dual' %}
+                    <label>{{ 'dnstools.input.left'|trans }}
+                        <input type="text" name="left" required placeholder="{{ 'dnstools.input.domain'|trans }}">
+                    </label>
+                    <label>{{ 'dnstools.input.right'|trans }}
+                        <input type="text" name="right" required placeholder="{{ 'dnstools.input.domain'|trans }}">
+                    </label>
+                {% elseif tool.input == 'ports' %}
+                    <label>{{ 'dnstools.input.host'|trans }}
+                        <input type="text" name="q" required placeholder="{{ 'dnstools.input.host'|trans }}">
+                    </label>
+                    <label>{{ 'dnstools.input.ports'|trans }}
+                        <input type="text" name="ports" placeholder="80, 443, 25">
+                    </label>
+                {% elseif tool.input == 'generate' and tool.slug == 'dns-generator' %}
+                    <label>{{ 'dnstools.input.domain'|trans }}
+                        <input type="text" name="domain" required>
+                    </label>
+                    <label>TTL <input type="number" name="ttl" value="3600" min="60" max="86400"></label>
+                    <label>A <input type="text" name="a" placeholder="203.0.113.10"></label>
+                    <label>AAAA <input type="text" name="aaaa" placeholder="2001:db8::1"></label>
+                    <label>MX <input type="text" name="mx_server" placeholder="mail.example.com"></label>
+                    <label>MX priority <input type="number" name="mx_priority" value="10"></label>
+                    <label>NS1 <input type="text" name="ns1"></label>
+                    <label>NS2 <input type="text" name="ns2"></label>
+                    <label>SPF <input type="text" name="spf" placeholder="v=spf1 mx a -all"></label>
+                    <label>DMARC <input type="text" name="dmarc" placeholder="v=DMARC1; p=none"></label>
+                    <label>DKIM selector <input type="text" name="dkim_selector" value="default"></label>
+                    <label>DKIM public key <input type="text" name="dkim_value"></label>
+                {% elseif tool.input == 'generate' and tool.slug == 'dmarc-generator' %}
+                    <label>{{ 'dnstools.input.domain'|trans }} <input type="text" name="domain" required></label>
+                    <label>{{ 'dnstools.input.policy'|trans }}
+                        <select name="policy">
+                            <option value="none">none</option>
+                            <option value="quarantine">quarantine</option>
+                            <option value="reject">reject</option>
+                        </select>
+                    </label>
+                    <label>RUA <input type="email" name="rua" placeholder="dmarc@example.com"></label>
+                {% elseif tool.input == 'generate' and tool.slug == 'dkim-generator' %}
+                    <label>{{ 'dnstools.input.domain'|trans }} <input type="text" name="domain" required></label>
+                    <label>{{ 'dnstools.input.selector'|trans }} <input type="text" name="selector" value="default"></label>
+                    <label>{{ 'dnstools.input.public_key'|trans }} <textarea name="public_key" required></textarea></label>
+                {% elseif tool.input == 'generate' and tool.slug == 'bimi-generator' %}
+                    <label>{{ 'dnstools.input.domain'|trans }} <input type="text" name="domain" required></label>
+                    <label>{{ 'dnstools.input.logo_url'|trans }} <input type="url" name="logo_url" required placeholder="https://example.com/logo.svg"></label>
+                    <label>{{ 'dnstools.input.authority_url'|trans }} <input type="url" name="authority_url" placeholder="https://example.com/vmc.pem"></label>
+                {% else %}
+                    <label>{{ tool.placeholderKey()|trans }}
+                        <input type="text" name="q" autocomplete="off" spellcheck="false" required placeholder="{{ tool.placeholderKey()|trans }}">
+                    </label>
+                    {% if tool.slug == 'dkim-checker' %}
+                        <label>{{ 'dnstools.input.selector'|trans }}
+                            <input type="text" name="selector" value="default">
+                        </label>
+                    {% endif %}
+                {% endif %}
+            </div>
+            <button class="dnstools-btn" type="submit" style="grid-column: 1 / -1;">
+                <i class="bi bi-play-circle"></i> {{ 'dnstools.action.run'|trans }}
+            </button>
+        </form>
+    </header>
+
+    <div class="dnstools-status" data-dnstools-status hidden></div>
+    <div class="dnstools-results" data-dnstools-results hidden></div>
+    <div class="dnstools-community" data-dnstools-community hidden></div>
+
+    {% if related|length > 1 %}
+        <nav class="dnstools-related" aria-label="{{ 'dnstools.related'|trans }}">
+            {% for item in related %}
+                {% if item.slug != tool.slug %}
+                    <a href="{{ path('dnstools_tool', {slug: item.slug}) }}">{{ item.title }}</a>
+                {% endif %}
+            {% endfor %}
+        </nav>
+    {% endif %}
+    {% if forumBoards is defined and forumBoards|length > 0 %}
+        {% include '@DnsToolsModule/front/partials/_forum_wizard.html.twig' %}
+    {% endif %}
+</div>
+{% include '@DnsToolsModule/front/partials/_app.html.twig' %}
+{% endblock %}

@@ -71,6 +71,26 @@ final class SameOriginAuthenticationSuccessHandlerTest extends TestCase
         self::assertSame(self::ORIGIN.'/hesap/profil', $response->getTargetUrl());
     }
 
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function nonNavigableTargets(): iterable
+    {
+        yield 'live-feed poll' => ['/aacp/telemetry/live-feed?after_id=6301'];
+        yield 'absolute live-feed' => [self::ORIGIN.'/aacp/telemetry/live-feed?after_id=6301'];
+        yield 'inbox pulse' => ['/hesap/nabiz'];
+        yield 'system metrics' => ['/aacp/system/metrics'];
+        yield 'login door' => ['/login?session_expired=idle_timeout'];
+    }
+
+    #[DataProvider('nonNavigableTargets')]
+    public function testJsonOrAuthDoorTargetFallsBackToTheDefault(string $target): void
+    {
+        $response = $this->authenticate(sessionTarget: $target);
+
+        self::assertSame(self::ORIGIN.self::DEFAULT_PATH, $response->getTargetUrl());
+    }
+
     private function authenticate(?string $targetPathParameter = null, ?string $sessionTarget = null): RedirectResponse
     {
         $request = Request::create(self::ORIGIN.'/login', 'POST', $targetPathParameter !== null ? ['_target_path' => $targetPathParameter] : []);

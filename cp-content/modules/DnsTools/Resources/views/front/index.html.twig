@@ -1,0 +1,60 @@
+{% extends '@DnsToolsModule/front/layout.html.twig' %}
+
+{% block title %}{{ pageCopy.title }}{% endblock %}
+{% block meta_description %}{{ pageCopy.description }}{% endblock %}
+{% block meta_keywords %}{{ pageCopy.keywords }}{% endblock %}
+
+{% block dnstools_main %}
+<div class="dnstools-page" data-dnstools data-api="{{ quickTool ? path('dnstools_api', {slug: quickTool.slug}) : '' }}" data-token="{{ csrf_token('dnstools_query') }}"{% if quickTool %} data-tool-title="{{ quickTool.title }}"{% endif %}{% if forumSearchUrl %} data-forum-search="{{ forumSearchUrl }}"{% endif %}{% if forumComposeUrl %} data-forum-compose="{{ forumComposeUrl }}"{% endif %}{% if forumBoards is defined and forumBoards|length > 0 %} data-forum-boards="{{ forumBoards|json_encode|e('html_attr') }}" data-forum-ask="{{ path('dnstools_forum_ask') }}"{% endif %}>
+    <header class="dnstools-hero">
+        <ul class="dnstools-crumb">
+            <li><a href="{{ path('theme_cpalius_website_home') }}">{{ 'dnstools.breadcrumb.home'|trans }}</a></li>
+            <li>/</li>
+            <li>{{ pageCopy.title }}</li>
+        </ul>
+        <h1>{{ 'dnstools.hero.title'|trans }}</h1>
+        <p>{{ 'dnstools.hero.lead'|trans }}</p>
+
+        {% if quickTool %}
+        <form class="dnstools-search" data-dnstools-form data-slug="{{ quickTool.slug }}">
+            <input type="text" name="q" autocomplete="off" spellcheck="false" placeholder="{{ 'dnstools.input.domain'|trans }}" required>
+            <button class="dnstools-btn" type="submit"><i class="bi bi-search"></i> {{ 'dnstools.action.query'|trans }}</button>
+        </form>
+        {% endif %}
+    </header>
+
+    <div class="dnstools-status" data-dnstools-status hidden></div>
+    <div class="dnstools-results" data-dnstools-results hidden></div>
+    <div class="dnstools-community" data-dnstools-community hidden></div>
+
+    <section class="dnstools-section">
+        <h2>{{ 'dnstools.section.featured'|trans }}</h2>
+        <div class="dnstools-grid">
+            {% for tool in featured %}
+                <a class="dnstools-card" href="{{ path('dnstools_tool', {slug: tool.slug}) }}">
+                    {% if tool.isNew %}<span class="dnstools-badge">{{ 'dnstools.badge.new'|trans }}</span>{% endif %}
+                    <i class="bi {{ tool.icon }}"></i>
+                    <h3>{{ tool.title }}</h3>
+                    <p>{{ tool.subtitle }}</p>
+                </a>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="dnstools-section">
+        <h2>{{ 'dnstools.section.browse'|trans }}</h2>
+        <p><a class="dnstools-btn dnstools-btn--ghost" href="{{ path('dnstools_all') }}">{{ 'dnstools.action.all'|trans }} ({{ toolCount }})</a></p>
+    </section>
+
+    <div class="dnstools-stats">
+        <div class="dnstools-stat"><strong>{{ toolCount }}+</strong><span>{{ 'dnstools.stat.tools'|trans }}</span></div>
+        <div class="dnstools-stat"><strong>100%</strong><span>{{ 'dnstools.stat.free'|trans }}</span></div>
+        <div class="dnstools-stat"><strong>7/24</strong><span>{{ 'dnstools.stat.uptime'|trans }}</span></div>
+        <div class="dnstools-stat"><strong>SEO</strong><span>{{ 'dnstools.stat.seo'|trans }}</span></div>
+    </div>
+    {% if forumBoards is defined and forumBoards|length > 0 %}
+        {% include '@DnsToolsModule/front/partials/_forum_wizard.html.twig' %}
+    {% endif %}
+</div>
+{% include '@DnsToolsModule/front/partials/_app.html.twig' %}
+{% endblock %}

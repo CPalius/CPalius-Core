@@ -1,0 +1,47 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Modules\DnsTools\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    Modules\DnsTools\Catalog\:
+        resource: '../../Catalog/'
+        exclude:
+            - '../../Catalog/ToolDefinition.php'
+            - '../../Catalog/PresentedTool.php'
+            - '../../Catalog/ResultLabels.php'
+
+    Modules\DnsTools\Security\:
+        resource: '../../Security/'
+
+    Modules\DnsTools\Service\:
+        resource: '../../Service/'
+
+    Modules\DnsTools\Seo\:
+        resource: '../../Seo/'
+
+    Modules\DnsTools\Seo\DnsToolsSeoProvider:
+        tags: ['cpalius.seo.page_provider']
+
+    Modules\DnsTools\Seo\DnsToolsSitemapSource:
+        tags: ['cpalius.seo.sitemap_source']
+
+    Modules\DnsTools\Service\DnsToolsSearchProvider:
+        tags: ['cpalius.search.provider']
+
+    Modules\DnsTools\Twig\:
+        resource: '../../Twig/'
+
+    Modules\DnsTools\Api\:
+        resource: '../../Api/'
+
+    Modules\DnsTools\Service\ForumBridge:
+        arguments:
+            $hierarchy: '@?Modules\Forum\Service\ForumSectionHierarchyService'
+
+    Modules\DnsTools\Service\InboxPollTask:
+        arguments:
+            $projectDir: '%kernel.project_dir%'

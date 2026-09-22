@@ -6159,6 +6159,41 @@ a.slw-sidebar-profile__name:hover {
   opacity: 0.45;
 }
 
+.roadmap-tunnel--single::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 17px;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--cp-accent), var(--cp-primary), var(--cp-gold));
+  opacity: 0.45;
+}
+
+.roadmap-tunnel--single .roadmap-tunnel__row {
+  grid-template-columns: 36px minmax(0, 1fr);
+}
+
+.roadmap-tunnel--single .roadmap-tunnel__side {
+  display: flex;
+  justify-content: stretch;
+}
+
+.roadmap-tunnel--single .roadmap-tunnel__card--blog,
+.roadmap-tunnel--single .roadmap-tunnel__card--forum {
+  text-align: left;
+  border-right: 0;
+}
+
+.roadmap-tunnel--single .roadmap-tunnel__card--blog {
+  border-left: 3px solid var(--cp-accent);
+  background: linear-gradient(270deg, rgba(74, 173, 228, 0.05), var(--cp-white));
+}
+
+.roadmap-tunnel--single .roadmap-tunnel__card--blog .roadmap-tunnel__meta {
+  justify-content: flex-start;
+}
+
 .roadmap-tunnel__row {
   position: relative;
   display: grid;

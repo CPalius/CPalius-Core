@@ -16,4 +16,5 @@ return [
   Modules\Showcase\ShowcaseModule::class,
   Modules\Messages\MessagesModule::class,
   Modules\Ai\AiModule::class,
+  Modules\DnsTools\DnsToolsModule::class,
 ];
