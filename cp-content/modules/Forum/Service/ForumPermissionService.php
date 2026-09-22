@@ -26,6 +26,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * Node × group permission matrix and 4-layer deny-wins resolver.
  *
  * Resolve order: user override → groups at this node (deny wins) → parent path → default.
+ * Independent of the core user capability overlay (CPaliusVoter): this layer is
+ * section ACL, not module capability strings.
  */
 final class ForumPermissionService
 {

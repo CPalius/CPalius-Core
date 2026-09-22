@@ -19,7 +19,7 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
      */
     protected function tables(): array
     {
-        return [];
+        return ['cp_seo_redirects'];
     }
 
     public function install(ModuleInstallContext $context): void

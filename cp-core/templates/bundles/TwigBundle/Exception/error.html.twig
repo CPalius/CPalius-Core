@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('tr') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'error.generic.title'|trans }} — {{ cp_app_name|default('CPalius') }}</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" href="/CPalius.png">
+    <link rel="stylesheet" href="/themes/cpalius-website/dist/style.css">
+</head>
+<body>
+    <section class="section" id="error-generic">
+        <div class="container container-narrow">
+            <span class="section-label">{{ status_code|default(500) }}</span>
+            <h1 class="post-hero-title">{{ 'error.generic.heading'|trans }}</h1>
+            <p class="section-desc">{{ 'error.generic.body'|trans }}</p>
+            <p>
+                <a class="btn btn-primary" href="/">{{ 'error.generic.home'|trans }}</a>
+            </p>
+        </div>
+    </section>
+</body>
+</html>

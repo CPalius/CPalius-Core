@@ -17,6 +17,8 @@ use App\Core\Security\Password\PasswordChanger;
 use App\Core\Security\Password\PasswordPolicy;
 use App\Core\Security\RoleCapabilityPresenter;
 use App\Core\Security\RoleConfigManager;
+use App\Core\Security\UserCapabilityOverridePresenter;
+use App\Core\Security\UserCapabilityOverrideWriter;
 use App\Core\Security\UserRoleGuardService;
 use App\Entity\User;
 use App\Form\DTO\ProfileFormModel;
@@ -52,6 +54,8 @@ final class AACPUserController extends AbstractController
         private readonly RoleConfigManager $roleConfigManager,
         private readonly UserRoleGuardService $userRoleGuard,
         private readonly RoleCapabilityPresenter $roleCapabilityPresenter,
+        private readonly UserCapabilityOverridePresenter $overridePresenter,
+        private readonly UserCapabilityOverrideWriter $overrideWriter,
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly PasswordPolicy $passwordPolicy,
         private readonly PasswordChanger $passwordChanger,
@@ -295,6 +299,57 @@ final class AACPUserController extends AbstractController
     }
 
     /**
+     * Sparse overlay only. Roles stay on the user form; this never writes YAML.
+     */
+    #[Route('/aacp/users/{id}/overrides', name: 'aacp_users_overrides', methods: ['POST'], requirements: ['id' => '\d+'])]
+    #[IsGranted('system.users.manage', message: 'You are not allowed to edit users.', statusCode: 403)]
+    public function saveOverrides(int $id, Request $request): Response
+    {
+        $user = $this->findUserOrFail($id);
+
+        if (!$this->isCsrfTokenValid('aacp_user_overrides_'.$user->getId(), (string) $request->request->get('_token'))) {
+            throw new BadRequestHttpException($this->translator->trans('aacp.users.invalid_csrf'));
+        }
+
+        $submitted = $request->request->all('overrides');
+        $errors = $this->overrideWriter->replace(
+            $user,
+            \is_array($submitted) ? $submitted : [],
+            $this->getUser() instanceof User ? $this->getUser() : null,
+        );
+
+        if ($errors !== []) {
+            foreach ($errors as $key) {
+                $this->addFlash('error', $this->translator->trans($key));
+            }
+        } else {
+            $this->addFlash('success', $this->translator->trans('aacp.users.overrides.saved'));
+        }
+
+        return $this->redirectToRoute('aacp_users_edit', ['id' => $user->getId()]);
+    }
+
+    #[Route('/aacp/users/{id}/overrides/reset', name: 'aacp_users_overrides_reset', methods: ['POST'], requirements: ['id' => '\d+'])]
+    #[IsGranted('system.users.manage', message: 'You are not allowed to edit users.', statusCode: 403)]
+    public function resetOverrides(int $id, Request $request): Response
+    {
+        $user = $this->findUserOrFail($id);
+
+        if (!$this->isCsrfTokenValid('aacp_user_overrides_reset_'.$user->getId(), (string) $request->request->get('_token'))) {
+            throw new BadRequestHttpException($this->translator->trans('aacp.users.invalid_csrf'));
+        }
+
+        $this->overrideWriter->reset(
+            $user,
+            $this->getUser() instanceof User ? $this->getUser() : null,
+        );
+
+        $this->addFlash('success', $this->translator->trans('aacp.users.overrides.reset'));
+
+        return $this->redirectToRoute('aacp_users_edit', ['id' => $user->getId()]);
+    }
+
+    /**
      * Hard delete (User is not soft-deletable); self-delete is always blocked.
      */
     #[Route('/aacp/users/{id}/delete', name: 'aacp_users_delete', methods: ['POST'], requirements: ['id' => '\d+'])]
@@ -524,11 +579,14 @@ final class AACPUserController extends AbstractController
             $selectedRoles = [];
         }
 
+        $actor = $this->getUser() instanceof User ? $this->getUser() : null;
+
         return $this->render('aacp/users/form.html.twig', [
             'user' => $user,
             'form' => $form,
             'roleCatalog' => $this->roleCapabilityPresenter->buildRoleCatalog(),
             'effectiveSummary' => $this->roleCapabilityPresenter->summarizeSelectedRoles($selectedRoles),
+            'overrideView' => ($isEdit && $user instanceof User) ? $this->overridePresenter->build($user, $actor) : null,
             'roleLabels' => $this->userRoleGuard->roleLabelMap(),
             'isEdit' => $isEdit,
         ]);

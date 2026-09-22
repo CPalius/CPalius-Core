@@ -11,16 +11,20 @@ use App\Core\Hook\HookDispatcherInterface;
 use App\Core\Resource\ResourceRegistry;
 use App\Core\Security\CapabilityRegistry;
 use App\Core\Security\EntityAccessManager;
+use App\Core\Security\Entity\UserCapabilityOverride;
 use App\Core\Security\OwnableInterface;
 use App\Core\Security\RoleConfigManager;
+use App\Core\Security\UserCapabilityOverridePolicy;
+use App\Core\Security\UserCapabilityOverrideStore;
 use App\Entity\User;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
 /**
  * Single gate for authorization: is_granted('capability', $subject) — never ROLE_* checks.
- * Flow: registry (abstain if unknown) → role capabilities → ".own" vs OwnableInterface
- * → T1.4 per-record grant → T1.5 Access event (last-resort imperative extension point).
+ * Flow: registry (abstain if unknown) → user overlay deny (wins) → role
+ * capabilities → overlay grant → ".own" vs OwnableInterface → T1.4
+ * per-record grant → T1.5 Access event.
  */
 final class CPaliusVoter extends Voter
 {
@@ -33,6 +37,8 @@ final class CPaliusVoter extends Voter
         private readonly EntityAccessManager $entityAccessManager,
         private readonly ResourceRegistry $resourceRegistry,
         private readonly HookDispatcherInterface $hooks,
+        private readonly UserCapabilityOverrideStore $userOverrides,
+        private readonly UserCapabilityOverridePolicy $overridePolicy,
     ) {
     }
 
@@ -58,9 +64,19 @@ final class CPaliusVoter extends Voter
             return false;
         }
 
-        $grantedCapabilities = $this->roleConfigManager->getCapabilitiesForRoles($user->getCpaliusRoles());
+        $overlay = $this->userOverrides->forUser($user->getId());
+        $effect = $overlay[$attribute] ?? null;
 
-        if (in_array($attribute, $grantedCapabilities, true)) {
+        // Deny wins over role union, record grants and Access events.
+        if ($effect === UserCapabilityOverride::EFFECT_DENY) {
+            return false;
+        }
+
+        $grantedCapabilities = $this->roleConfigManager->getCapabilitiesForRoles($user->getCpaliusRoles());
+        $grantedByOverlay = $effect === UserCapabilityOverride::EFFECT_GRANT
+            && $this->overridePolicy->canGrant($attribute);
+
+        if (in_array($attribute, $grantedCapabilities, true) || $grantedByOverlay) {
             return str_ends_with($attribute, self::OWN_SUFFIX) ? $this->isOwnedBy($subject, $user) : true;
         }
 

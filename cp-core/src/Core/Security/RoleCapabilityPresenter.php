@@ -58,6 +58,16 @@ final class RoleCapabilityPresenter
     }
 
     /**
+     * Every registered capability, grouped the same way the role preview is.
+     *
+     * @return array<string, list<string>>
+     */
+    public function allGrouped(): array
+    {
+        return $this->groupByModule($this->capabilityRegistry->all());
+    }
+
+    /**
      * @param list<string> $capabilities
      *
      * @return array<string, list<string>>

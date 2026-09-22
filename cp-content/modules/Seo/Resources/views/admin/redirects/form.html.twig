@@ -1,0 +1,46 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ (redirect ? 'studio.seo.redirects.edit_header' : 'studio.seo.redirects.create_header')|trans }}{% endblock %}
+
+{% block body %}
+    <twig:studio:card>
+        <form method="post" action="{{ redirect ? path('admin_seo_redirects_edit', {id: redirect.id}) : path('admin_seo_redirects_create') }}" class="space-y-4">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_seo_redirects') }}">
+
+            <div>
+                <label for="source_path" class="form-label">{{ 'studio.seo.redirects.field.source'|trans }}</label>
+                <div class="flex items-center gap-2">
+                    <span class="text-fs-sm text-neutral-500">/</span>
+                    <input type="text" id="source_path" name="source_path" value="{{ values.sourcePath }}" required
+                           placeholder="tr/eski-yazi" class="form-control" autocomplete="off">
+                </div>
+                <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.seo.redirects.field.source_hint'|trans }}</p>
+            </div>
+
+            <div>
+                <label for="target_url" class="form-label">{{ 'studio.seo.redirects.field.target'|trans }}</label>
+                <input type="text" id="target_url" name="target_url" value="{{ values.targetUrl }}" required
+                       placeholder="/tr/yeni-yazi" class="form-control" autocomplete="off">
+                <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.seo.redirects.field.target_hint'|trans }}</p>
+            </div>
+
+            <div>
+                <label for="status_code" class="form-label">{{ 'studio.seo.redirects.field.status'|trans }}</label>
+                <select id="status_code" name="status_code" class="form-select">
+                    <option value="301" {{ values.statusCode == 301 ? 'selected' : '' }}>{{ 'studio.seo.redirects.status.301'|trans }}</option>
+                    <option value="302" {{ values.statusCode == 302 ? 'selected' : '' }}>{{ 'studio.seo.redirects.status.302'|trans }}</option>
+                </select>
+            </div>
+
+            <label class="flex items-center gap-2">
+                <input type="checkbox" name="is_active" value="1" {{ values.isActive ? 'checked' : '' }}>
+                <span class="text-fs-sm text-neutral-700">{{ 'studio.seo.redirects.field.active'|trans }}</span>
+            </label>
+
+            <div class="flex items-center gap-3">
+                <button type="submit" class="btn btn-primary">{{ 'studio.seo.redirects.save'|trans }}</button>
+                <a href="{{ path('admin_seo_redirects_index') }}" class="text-fs-sm text-neutral-500 hover:text-neutral-800">{{ 'studio.seo.redirects.cancel'|trans }}</a>
+            </div>
+        </form>
+    </twig:studio:card>
+{% endblock %}

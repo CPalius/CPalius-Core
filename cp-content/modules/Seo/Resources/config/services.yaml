@@ -40,6 +40,9 @@ services:
     Modules\Seo\EventSubscriber\:
         resource: '../../EventSubscriber/'
 
+    Modules\Seo\Repository\:
+        resource: '../../Repository/'
+
     Modules\Seo\Provider\ForumSeoProvider:
         arguments:
             $sectionRepository: '@?Modules\Forum\Repository\ForumSectionRepository'

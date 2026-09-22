@@ -24,6 +24,14 @@ final class SeoRobotsHeaderSubscriber implements EventSubscriberInterface
             return;
         }
 
+        $response = $event->getResponse();
+        $status = $response->getStatusCode();
+        if ($status === 404 || $status === 403) {
+            $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+
+            return;
+        }
+
         $path = $event->getRequest()->getPathInfo();
         if (
             !str_starts_with($path, '/admin')
@@ -35,6 +43,6 @@ final class SeoRobotsHeaderSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $event->getResponse()->headers->set('X-Robots-Tag', 'noindex, nofollow');
+        $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
     }
 }
