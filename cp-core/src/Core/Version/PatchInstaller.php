@@ -186,15 +186,8 @@ final class PatchInstaller
         // that was running a second ago. In prod Symfony never rebuilds them on
         // its own, so leaving this to a second click would mean every request in
         // between runs NEW files against an OLD container.
-        try {
-            $this->cache->clearSymfonyCache();
-            $log[] = 'Caches cleared; the next request rebuilds against the new code.';
-        } catch (\Throwable $e) {
-            // Not fatal and deliberately not a rollback: the files are correct
-            // and consistent, and a cache an operator can delete over FTP is a
-            // far better place to be than a restored older version.
-            $log[] = 'WARNING: cache could not be cleared ('.$e->getMessage()
-                .'). Delete cp-core/var/cache/<env> by hand before using the site.';
+        foreach ($this->cache->afterCodeUpdate() as $line) {
+            $log[] = $line;
         }
 
         $this->record($manifest);

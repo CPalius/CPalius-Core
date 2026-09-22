@@ -27,15 +27,21 @@ final class CpImportMapExtension extends AbstractExtension
         return [
             new TwigFunction('importmap', $this->importmap(...), ['is_safe' => ['html']]),
             new TwigFunction('cp_asset', $this->asset(...)),
+            // Symfony docs call this asset(). The Asset component is not
+            // installed, so an unknown function 500s the page. Same helper.
+            new TwigFunction('asset', $this->asset(...)),
         ];
     }
 
     /**
-     * Digested public URL for a mapped asset. Unknown paths return the logical path instead of throwing.
+     * Digested public URL for a mapped asset. Unknown paths become a
+     * root-relative URL (public/js/foo.js → /js/foo.js) rather than a
+     * relative one that breaks on /aacp/rebuild, or a SyntaxError.
      */
     public function asset(string $logicalPath): string
     {
-        return $this->assetMapper->getPublicPath($logicalPath) ?? $logicalPath;
+        return $this->assetMapper->getPublicPath($logicalPath)
+            ?? '/'.ltrim($logicalPath, '/');
     }
 
     /**

@@ -3,8 +3,9 @@
 {% block header %}{{ 'studio.rebuild.header'|trans }}{% endblock %}
 
 {% block javascripts %}
-    {{ importmap(['app', 'studio-quick-cache-clear', 'studio-rebuild']) }}
-    <script{{ csp_nonce_attr() }} src="{{ cp_asset('studio-rebuild.js') }}" defer></script>
+    {{ importmap(['app', 'studio-quick-cache-clear']) }}
+    {# Unhashed public/ file: AssetMapper hashes are not in the update zip. #}
+    <script{{ csp_nonce_attr() }} src="/js/studio-rebuild.js" defer></script>
 {% endblock %}
 
 {% block body %}

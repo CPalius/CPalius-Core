@@ -31,7 +31,10 @@ use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
  *   2. update hooks    — data fixes the schema change implies
  *   3. module upgrades — each module's own upgrade(), now that core is current
  *   4. config import   — declarative state, after the code that understands it
- *   5. cache rebuild   — last, so nothing is serving stale metadata
+ *   5. cache rebuild   — last: wipe the compiled container, then dump
+ *                        AssetMapper hashes. The zip is a git snapshot;
+ *                        public/assets is gitignored, so without the dump
+ *                        every new importmap entrypoint 404s.
  *
  * RESUMABILITY
  * Every stage records its own progress (the migration table, the hook ledger,
@@ -386,8 +389,6 @@ final class UpdateRunner
 
         try {
             $this->cache->clearSymfonyCache();
-
-            return UpdateStepResult::applied(self::STEP_CACHE, $this->t('cache.done'));
         } catch (\Throwable $e) {
             $this->logger?->error('cp:update could not clear the cache.', ['exception' => $e]);
 
@@ -395,6 +396,19 @@ final class UpdateRunner
             // clear by hand, and the schema and data work already succeeded.
             return UpdateStepResult::failed(self::STEP_CACHE, $e->getMessage());
         }
+
+        $compiled = $this->cache->compileMappedAssets();
+        $details = $compiled['output'] !== '' ? [$compiled['output']] : [];
+
+        if (!$compiled['success']) {
+            $this->logger?->error('cp:update could not compile frontend assets.', [
+                'output' => $compiled['output'],
+            ]);
+
+            return UpdateStepResult::failed(self::STEP_CACHE, $this->t('cache.assets_failed'), $details);
+        }
+
+        return UpdateStepResult::applied(self::STEP_CACHE, $this->t('cache.done'), $details);
     }
 
     private static function shortVersion(string $version): string

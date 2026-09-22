@@ -229,13 +229,13 @@ final class CoreUpdater
         // Only now is the tree consistent again.
         $this->clearMarker();
 
-        // The compiled container, the Twig cache and the translation catalogues
-        // on disk all describe the code that was running a second ago. In prod
-        // Symfony never rebuilds them on its own, so leaving this to a second
-        // click would mean every request in between runs NEW files against an
-        // OLD container — which is not "slightly stale", it is a 500 on a site
-        // whose admin panel is the thing that would have offered the button to
-        // fix it. Clearing here closes that window.
+        // The compiled container, the Twig cache, the translation catalogues
+        // and the AssetMapper dump on disk all describe the code that was
+        // running a second ago. In prod Symfony never rebuilds them on its
+        // own. Leaving this to a second click would mean every request in
+        // between runs NEW files against an OLD container — and new importmap
+        // hashes that the zip never contained, because public/assets is
+        // gitignored. afterCodeUpdate() closes both windows.
         //
         // Not fatal on failure, and deliberately not a rollback: the files are
         // correct and consistent, and a cache an operator can delete over FTP is
@@ -390,14 +390,7 @@ final class CoreUpdater
      */
     private function clearCacheReporting(): string
     {
-        try {
-            $this->cache->clearSymfonyCache();
-
-            return 'Caches cleared; the next request rebuilds against the current code.';
-        } catch (\Throwable $e) {
-            return 'WARNING: cache could not be cleared ('.$e->getMessage()
-                .'). Delete cp-core/var/cache/<env> by hand before using the site.';
-        }
+        return implode(' ', $this->cache->afterCodeUpdate());
     }
 
     private function markerPath(): string

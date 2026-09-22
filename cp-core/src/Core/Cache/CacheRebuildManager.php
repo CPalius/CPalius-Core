@@ -320,21 +320,98 @@ final class CacheRebuildManager
     }
 
     /**
-     * Run `tailwind:build` synchronously via Process (no messenger/queue — YAGNI).
+     * Tailwind CSS plus the AssetMapper dump. The dump is the one WordPress
+     * never needs: their zip already contains built JS. Ours is a git
+     * archive, public/assets is gitignored, and a new importmap entrypoint
+     * 404s until this runs on the live tree.
      *
      * @return array{success: bool, output: string}
      */
     public function rebuildAssets(): array
     {
+        $tailwind = $this->runConsoleCommand(['tailwind:build'], 120);
+        $mapped = $this->compileMappedAssets();
+
+        return [
+            'success' => $tailwind['success'] && $mapped['success'],
+            'output' => trim($tailwind['output'].PHP_EOL.$mapped['output']),
+        ];
+    }
+
+    /**
+     * Write hashed files into public/assets so importmap URLs resolve after
+     * a zip overwrite. A separate PHP process, because the HTTP request that
+     * just landed the files still holds the old compiled container.
+     *
+     * @return array{success: bool, output: string}
+     */
+    public function compileMappedAssets(): array
+    {
+        // UpdateRunner tests use the real manager; compiling here would write
+        // public/assets on every hook assertion and take tens of seconds.
+        if ($this->environment === 'test') {
+            return [
+                'success' => true,
+                'output' => self::OK.'asset-map:compile skipped (test).',
+            ];
+        }
+
+        $result = $this->runConsoleCommand(['asset-map:compile'], 180);
+
+        if ($result['success']) {
+            $result['output'] = $this->ok('aacp.cache_rebuild.log.assets_compiled').PHP_EOL.$result['output'];
+        }
+
+        return $result;
+    }
+
+    /**
+     * What CoreUpdater and PatchInstaller run the moment new files are on
+     * disk: wipe the compiled container, then dump the importmap so the next
+     * request is not a 404 for a hash the archive never contained.
+     *
+     * @return list<string>
+     */
+    public function afterCodeUpdate(): array
+    {
+        $log = [];
+
+        try {
+            $this->clearSymfonyCache();
+            $log[] = 'Caches cleared; the next request rebuilds against the current code.';
+        } catch (\Throwable $e) {
+            $log[] = 'WARNING: cache could not be cleared ('.$e->getMessage()
+                .'). Delete cp-core/var/cache/<env> by hand before using the site.';
+        }
+
+        try {
+            $compiled = $this->compileMappedAssets();
+            $log[] = $compiled['success']
+                ? 'Frontend assets compiled (importmap hashes written to public/assets).'
+                : 'WARNING: frontend assets could not be compiled. New panel JS may 404 until AACP rebuilds assets. '.$compiled['output'];
+        } catch (\Throwable $e) {
+            $log[] = 'WARNING: frontend assets could not be compiled ('.$e->getMessage().').';
+        }
+
+        return $log;
+    }
+
+    /**
+     * @param list<string> $arguments
+     *
+     * @return array{success: bool, output: string}
+     */
+    private function runConsoleCommand(array $arguments, int $timeout): array
+    {
         // PHP_BINARY may be php-fpm (no CLI args). PhpExecutableFinder picks the real CLI binary.
         $phpBinary = (new PhpExecutableFinder())->find() ?: 'php';
 
         $process = new Process(
-            [$phpBinary, $this->projectDir.'/cp-core/bin/console', 'tailwind:build', '--env='.$this->environment],
+            [$phpBinary, $this->projectDir.'/cp-core/bin/console', ...$arguments, '--env='.$this->environment],
             $this->projectDir,
             null,
             null,
-            120,
+            $timeout,
         );
 
         try {
