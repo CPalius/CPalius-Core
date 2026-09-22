@@ -1,6 +1,6 @@
 {
     "name": "Forum",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "description": "CPalius forum module: sections, topics and posts.",
     "author": "CPalius",
     "bundle": "Modules\\Forum\\ForumModule",

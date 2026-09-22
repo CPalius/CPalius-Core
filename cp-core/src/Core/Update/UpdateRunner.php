@@ -269,38 +269,52 @@ final class UpdateRunner
             $dirName = $module['dirName'];
             $installed = $this->lifecycle->installedVersion($dirName);
             $target = $module['version'];
-
-            // Never installed, or already current. The first case belongs to
-            // activation, the second needs nothing.
-            if ($installed === null || $target === '' || $target === 'unknown' || version_compare($installed, $target, '>=')) {
-                continue;
-            }
-
-            $label = sprintf('%s %s → %s', $module['name'], $installed, $target);
-
-            if ($dryRun) {
-                $details[] = $label;
-
-                continue;
-            }
+            $versionNeedsUpgrade = $installed !== null
+                && $target !== ''
+                && $target !== 'unknown'
+                && version_compare($installed, $target, '<');
 
             $manifest = ModuleManifest::fromDirectory($this->modulesDir.'/'.$dirName);
 
             if (!$manifest instanceof ModuleManifest) {
-                $failures[] = sprintf('%s — module.json could not be read', $label);
+                if ($versionNeedsUpgrade) {
+                    $failures[] = sprintf('%s — module.json could not be read', $dirName);
+                }
 
                 continue;
             }
 
-            $outcome = $this->lifecycle->onActivated($manifest);
+            $label = sprintf('%s %s → %s', $module['name'], $installed ?? '—', $target);
 
-            if (($outcome['message'] ?? null) !== null) {
-                $failures[] = sprintf('%s — %s', $label, (string) $outcome['message']);
+            if ($dryRun) {
+                if ($versionNeedsUpgrade) {
+                    $details[] = $label;
+                }
 
                 continue;
             }
 
-            $details[] = $label;
+            if ($versionNeedsUpgrade) {
+                $outcome = $this->lifecycle->onActivated($manifest);
+
+                if (($outcome['message'] ?? null) !== null) {
+                    $failures[] = sprintf('%s — %s', $label, (string) $outcome['message']);
+                } else {
+                    $details[] = $label;
+                }
+            }
+
+            // New .sql files can arrive in a core zip while module.json stays
+            // put. applyPendingSql is incremental; a version-bump upgrade()
+            // that already ran the same files is a no-op here.
+            try {
+                $ran = $this->lifecycle->applyPendingSql($manifest);
+                if ($ran > 0) {
+                    $details[] = sprintf('%s — %d sql', $module['name'], $ran);
+                }
+            } catch (\Throwable $e) {
+                $failures[] = sprintf('%s — sql: %s', $module['name'], $e->getMessage());
+            }
         }
 
         if ($failures !== []) {

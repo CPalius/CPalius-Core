@@ -22,9 +22,9 @@ final class ForumBanGuardListener implements EventSubscriberInterface
 {
     public function __construct(
         private readonly ForumBanService $banService,
-        private readonly ForumAccessService $accessService,
         private readonly Security $security,
         private readonly Environment $twig,
+        private readonly ?ForumAccessService $accessService = null,
     ) {
     }
 
@@ -67,7 +67,7 @@ final class ForumBanGuardListener implements EventSubscriberInterface
 
         if ($ban === null) {
             $actor = $user instanceof User ? $user : null;
-            $filter = $this->accessService->matchingFilterForUser($actor, $ip);
+            $filter = $this->accessService?->matchingFilterForUser($actor, $ip);
             if ($filter !== null) {
                 $event->setController(fn (): Response => $this->bannedResponse(
                     $filter->getReason() ?? '',

@@ -65,6 +65,17 @@ final class ModuleLifecycleManager
     }
 
     /**
+     * Apply unapplied Resources/migrations/*.sql even when module.json did not
+     * move. A core zip can drop a new .sql next to an unchanged manifest;
+     * upgrade() only runs on a version bump, so those files would otherwise
+     * sit until someone toggled the module.
+     */
+    public function applyPendingSql(ModuleManifest $manifest): int
+    {
+        return $this->buildContext($manifest)->applyPendingSqlMigrations();
+    }
+
+    /**
      * Called when a module is deactivated WITH data removal requested.
      * Plain deactivation never touches data; the caller decides.
      *
