@@ -15,4 +15,5 @@ return [
   Modules\Whitepaper\WhitepaperModule::class,
   Modules\Showcase\ShowcaseModule::class,
   Modules\Messages\MessagesModule::class,
+  Modules\Ai\AiModule::class,
 ];

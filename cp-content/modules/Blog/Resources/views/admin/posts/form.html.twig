@@ -119,6 +119,24 @@
                     {{ form_row(form.isFeatured) }}
                     {{ form_row(form.commentsEnabled) }}
 
+                    {% if form.autoTranslate is defined %}
+                        {% if post and ai_auto_translate is defined and ai_auto_translate.on_edit|default(false) %}
+                            {% if missingTranslationLocales|default([]) is empty and existingTranslationLocales|default([]) is not empty %}
+                                <p class="text-fs-xs text-neutral-500">{{ 'ai.form.already_exists_node'|trans({'locales': existingTranslationLocales|join(', ')}) }}</p>
+                                {% do form.autoTranslate.setRendered %}
+                            {% else %}
+                                {{ form_row(form.autoTranslate) }}
+                                {% if existingTranslationLocales|default([]) is not empty %}
+                                    <p class="text-fs-xs text-neutral-500">{{ 'ai.form.already_exists_node'|trans({'locales': existingTranslationLocales|join(', ')}) }}</p>
+                                {% endif %}
+                            {% endif %}
+                        {% elseif not post and ai_auto_translate is defined and ai_auto_translate.on_create|default(true) %}
+                            {{ form_row(form.autoTranslate) }}
+                        {% else %}
+                            {% do form.autoTranslate.setRendered %}
+                        {% endif %}
+                    {% endif %}
+
                     {% if post %}
                         <div class="border-t border-neutral-200 pt-sp-sm">
                             <twig:studio:badge status="{{ post.status }}" />

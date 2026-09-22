@@ -37,9 +37,10 @@
                     <button type="button" class="navbar-search__toggle" id="navSearchToggle" aria-label="{{ 'website.nav.search_toggle_aria'|trans }}" aria-expanded="false" aria-controls="navSearchForm">
                         <i class="bi bi-search"></i>
                     </button>
-                    <form class="navbar-search__form" id="navSearchForm" action="{{ path('site_search', {_locale: app.request.locale}) }}" method="get" role="search">
-                        <input type="search" name="q" class="navbar-search__input" value="{{ app.request.query.get('q', '') }}" placeholder="{{ 'website.nav.search_placeholder'|trans }}" aria-label="{{ 'website.nav.search_aria'|trans }}">
+                    <form class="navbar-search__form" id="navSearchForm" action="{{ path('site_search', {_locale: app.request.locale}) }}" method="get" role="search" data-live-url="{{ path('site_search_live', {_locale: app.request.locale}) }}" data-live-empty="{{ 'site.search.live_empty'|trans }}" data-live-more="{{ 'site.search.more'|trans }}">
+                        <input type="search" name="q" class="navbar-search__input" value="{{ app.request.query.get('q', '') }}" placeholder="{{ 'website.nav.search_placeholder'|trans }}" aria-label="{{ 'website.nav.search_aria'|trans }}" autocomplete="off">
                     </form>
+                    <div class="navbar-search__live" id="navSearchLive" hidden></div>
                 </div>
 
                 {% set currentUser = cp_user() %}
@@ -82,7 +83,7 @@
                                                 <strong>{{ 'website.nav.notifications'|trans }}</strong>
                                                 <span data-inbox-unread-label>{% if navUnread > 0 %}{{ 'notification.inbox.desc'|trans({count: navUnread}) }}{% endif %}</span>
                                             </div>
-                                            <div class="navbar-notif-box__list" data-inbox-list>
+                                            <div class="navbar-notif-box__list" data-inbox-list data-inbox-empty="{{ 'notification.inbox.empty'|trans }}">
                                                 {% for n in navNotifs %}
                                                     <a href="{{ n.url }}" class="navbar-notif-box__item {{ n.unread ? 'is-unread' : '' }}" data-inbox-id="{{ n.id }}">
                                                         <span class="navbar-notif-box__icon"><i class="bi bi-{{ n.icon }}"></i></span>

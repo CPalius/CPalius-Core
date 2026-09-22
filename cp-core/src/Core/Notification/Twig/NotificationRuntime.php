@@ -44,7 +44,7 @@ final class NotificationRuntime implements RuntimeExtensionInterface
         }
 
         $out = [];
-        foreach ($this->notifications->findForUserExceptEventPrefix(
+        foreach ($this->notifications->findUnreadForUserExceptEventPrefix(
             $user,
             NotificationInboxPulseChannel::EXCLUDE_PREFIX,
             $limit,

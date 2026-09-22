@@ -18,6 +18,7 @@ use App\Repository\AssetRepository;
 use App\Repository\LocaleRepository;
 use App\Repository\NodeRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Modules\Pages\Event\PageCreatedEvent;
 use Modules\Pages\Field\PageFieldNormalizer;
 use Modules\Pages\Field\PageFieldPresets;
 use Modules\Pages\Field\PageFieldType;
@@ -32,6 +33,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -58,6 +60,7 @@ final class PageAdminController extends AbstractController
         private readonly TranslatorInterface $translator,
         private readonly OriginCachePurger $originCachePurger,
         private readonly SettingsRegistry $settingsRegistry,
+        private readonly EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -107,7 +110,7 @@ final class PageAdminController extends AbstractController
             $this->applyPresetToDto($dto, $preset, $targetLocale);
         }
 
-        $form = $this->createForm(PageType::class, $dto);
+        $form = $this->createPageForm($dto, $translationGroupId === null);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -129,6 +132,13 @@ final class PageAdminController extends AbstractController
             $this->entityManager->flush();
             $this->purgePageCache($node);
 
+            if ($dto->autoTranslate && $translationGroupId === null) {
+                $this->eventDispatcher->dispatch(
+                    new PageCreatedEvent($node, true),
+                    PageCreatedEvent::NAME,
+                );
+            }
+
             $this->addFlash('success', $this->translator->trans('pages.flash.created', ['title' => $node->getTitle()]));
 
             return $this->redirectToRoute('admin_pages_index');
@@ -145,7 +155,7 @@ final class PageAdminController extends AbstractController
 
         $previousSlug = $node->getSlug();
         $dto = $this->buildDtoFromNode($node);
-        $form = $this->createForm(PageType::class, $dto);
+        $form = $this->createPageForm($dto, $this->allowEditTranslate(), true);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -166,6 +176,10 @@ final class PageAdminController extends AbstractController
 
             $this->entityManager->flush();
             $this->purgePageCache($node, $previousSlug);
+
+            if ($dto->autoTranslate && $this->allowEditTranslate()) {
+                $this->requestTranslation($node);
+            }
 
             $this->addFlash('success', $this->translator->trans('pages.flash.updated', ['title' => $node->getTitle()]));
 
@@ -228,6 +242,8 @@ final class PageAdminController extends AbstractController
      */
     private function formViewData(FormInterface $form, PageFormModel $dto, string $locale, ?Uuid $translationGroupId, ?Node $page): array
     {
+        $existing = $page instanceof Node ? $this->siblingLocales($page) : [];
+
         return [
             'page' => $page,
             'form' => $form,
@@ -239,7 +255,72 @@ final class PageAdminController extends AbstractController
             'fieldGroups' => $this->fieldGroupsForLocale($locale),
             'fieldTypeChoices' => PageFieldType::choices(),
             'presets' => PageFieldPresets::all($this->translator, $locale),
+            'existingTranslationLocales' => $existing,
+            'missingTranslationLocales' => $page instanceof Node ? $this->missingTranslationLocales($page, $existing) : [],
         ];
+    }
+
+    private function createPageForm(PageFormModel $dto, bool $includeAutoTranslate = false, bool $autoTranslateEdit = false): FormInterface
+    {
+        return $this->createForm(PageType::class, $dto, [
+            'include_auto_translate' => $includeAutoTranslate,
+            'auto_translate_edit' => $autoTranslateEdit,
+        ]);
+    }
+
+    private function allowEditTranslate(): bool
+    {
+        return (string) $this->settingsRegistry->get('ai.allow_edit_translate', '0') === '1'
+            && (string) $this->settingsRegistry->get('ai.enabled', '1') === '1';
+    }
+
+    private function requestTranslation(Node $node): void
+    {
+        $existing = $this->siblingLocales($node);
+        if ($this->missingTranslationLocales($node, $existing) === []) {
+            $this->addFlash('warning', $this->translator->trans('ai.flash.already_exists_node'));
+
+            return;
+        }
+
+        $this->eventDispatcher->dispatch(
+            new PageCreatedEvent($node, true),
+            PageCreatedEvent::TRANSLATE,
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function siblingLocales(Node $node): array
+    {
+        $locales = [];
+        foreach (array_keys($this->buildTranslationsMap($node)) as $code) {
+            if ($code !== $node->getLocale()) {
+                $locales[] = $code;
+            }
+        }
+
+        return $locales;
+    }
+
+    /**
+     * @param list<string> $existingLocales
+     *
+     * @return list<string>
+     */
+    private function missingTranslationLocales(Node $node, array $existingLocales): array
+    {
+        $source = $node->getLocale();
+        $missing = [];
+        foreach ($this->localeProvider->getCodes() as $code) {
+            if ($code === $source || \in_array($code, $existingLocales, true)) {
+                continue;
+            }
+            $missing[] = $code;
+        }
+
+        return $missing;
     }
 
     private function resolveSlugForCreate(PageFormModel $dto, string $locale): string

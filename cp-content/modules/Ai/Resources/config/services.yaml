@@ -1,0 +1,32 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Modules\Ai\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    Modules\Ai\Service\:
+        resource: '../../Service/'
+
+    Modules\Ai\Publisher\:
+        resource: '../../Publisher/'
+
+    Modules\Ai\EventSubscriber\:
+        resource: '../../EventSubscriber/'
+
+    Modules\Ai\Twig\:
+        resource: '../../Twig/'
+
+    Modules\Ai\Publisher\ForumAiPublisher:
+        arguments:
+            $topicService: '@?Modules\Forum\Service\ForumTopicService'
+            $sectionRepository: '@?Modules\Forum\Repository\ForumSectionRepository'
+            $hierarchy: '@?Modules\Forum\Service\ForumSectionHierarchyService'
+            $topicRepository: '@?Modules\Forum\Repository\ForumTopicRepository'
+
+    Modules\Ai\Publisher\BlogAiPublisher:
+        arguments:
+            $categoryRepository: '@?App\Repository\CategoryRepository'
+            $tagRepository: '@?App\Repository\TagRepository'

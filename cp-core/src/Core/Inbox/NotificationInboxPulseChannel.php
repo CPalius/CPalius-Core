@@ -36,7 +36,7 @@ final class NotificationInboxPulseChannel implements InboxPulseChannelInterface
     public function pulse(User $user): array
     {
         $items = [];
-        foreach ($this->notifications->findForUserExceptEventPrefix($user, self::EXCLUDE_PREFIX, 6) as $row) {
+        foreach ($this->notifications->findUnreadForUserExceptEventPrefix($user, self::EXCLUDE_PREFIX, 6) as $row) {
             $items[] = $this->presenter->toArray($row);
         }
 

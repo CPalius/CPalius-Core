@@ -1,0 +1,60 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.ai.settings.header'|trans }}{% endblock %}
+
+{% block body %}
+    <form method="post" action="{{ path('admin_ai_update') }}" class="space-y-sp-sm">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_ai_settings') }}">
+
+        <twig:studio:card title="{{ 'studio.ai.quickstart.title'|trans }}">
+            <p class="mb-sp-sm text-fs-sm text-neutral-600">{{ 'studio.ai.quickstart.lead'|trans }}</p>
+            <ol class="mb-0 list-decimal space-y-2 pl-5 text-fs-sm text-neutral-700">
+                <li>{{ 'studio.ai.quickstart.step1'|trans }}</li>
+                <li>{{ 'studio.ai.quickstart.step2'|trans }}</li>
+                <li>{{ 'studio.ai.quickstart.step3'|trans }}</li>
+                <li>{{ 'studio.ai.quickstart.step4'|trans }}</li>
+                <li>{{ 'studio.ai.quickstart.step5'|trans }}</li>
+            </ol>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'studio.ai.card.provider'|trans }}">
+            <p class="mb-sp-sm text-fs-sm text-neutral-600">{{ 'studio.ai.card.provider_help'|trans }}</p>
+            <div class="grid gap-4 md:grid-cols-2">
+                {% for definition in definitions %}
+                    {% set value = values[definition.key]|default(null) %}
+                    <div class="{{ definition.type in ['textarea', 'password'] ? 'md:col-span-2' : '' }}">
+                        {% if definition.type in ['checkbox', 'boolean'] %}
+                            <label class="mt-1 flex items-center gap-2">
+                                <input type="checkbox" name="settings[{{ definition.key }}]" value="1" {{ value ? 'checked' : '' }}>
+                                <span class="text-fs-sm text-neutral-700">{{ definition.label|trans }}</span>
+                            </label>
+                            {% if definition.key == 'ai.allow_edit_translate' %}
+                                <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.ai.field.allow_edit_translate_help'|trans }}</p>
+                            {% endif %}
+                        {% else %}
+                            <label class="form-label">{{ definition.label|trans }}</label>
+                            {% if definition.type == 'select' %}
+                                <select name="settings[{{ definition.key }}]" class="form-select">
+                                    {% for optionValue, optionLabel in definition.variants %}
+                                        <option value="{{ optionValue }}" {{ value == optionValue ? 'selected' : '' }}>{{ optionLabel|trans }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% elseif definition.type == 'password' %}
+                                <input type="password" name="settings[{{ definition.key }}]" value="" class="form-control" autocomplete="new-password" placeholder="{{ value ? 'studio.ai.field.api_key_set'|trans : 'studio.ai.field.api_key_empty'|trans }}">
+                                <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.ai.field.api_key_hint'|trans }}</p>
+                            {% elseif definition.type == 'textarea' %}
+                                <textarea name="settings[{{ definition.key }}]" class="form-control" rows="3">{{ value }}</textarea>
+                            {% else %}
+                                <input type="text" name="settings[{{ definition.key }}]" value="{{ value }}" class="form-control">
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </twig:studio:card>
+
+        <div>
+            <button type="submit" class="btn btn-primary">{{ 'studio.ai.settings.save'|trans }}</button>
+        </div>
+    </form>
+{% endblock %}

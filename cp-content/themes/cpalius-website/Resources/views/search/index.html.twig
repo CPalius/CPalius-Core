@@ -12,10 +12,11 @@
             <h1 class="section-title">{{ term ? 'site.search.title_query'|trans({'term': term}) : 'site.search.title_default'|trans }}</h1>
         </div>
 
-        <form class="site-search-form fade-in" action="{{ path('site_search', {_locale: app.request.locale}) }}" method="get" role="search">
+        <form class="site-search-form fade-in" action="{{ path('site_search', {_locale: app.request.locale}) }}" method="get" role="search" data-live-url="{{ path('site_search_live', {_locale: app.request.locale}) }}" data-live-empty="{{ 'site.search.live_empty'|trans }}" data-live-more="{{ 'site.search.more'|trans }}">
             <label class="visually-hidden" for="site-search-q">{{ 'website.nav.search_aria'|trans }}</label>
             <input id="site-search-q" type="search" name="q" value="{{ term }}" placeholder="{{ 'website.nav.search_placeholder'|trans }}" autocomplete="off">
             <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> {{ 'site.search.submit'|trans }}</button>
+            <div class="navbar-search__live site-search-live" id="siteSearchLive" hidden></div>
         </form>
 
         {% if term == '' %}

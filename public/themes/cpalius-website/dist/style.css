@@ -33,26 +33,62 @@
   --cp-success: #27AE60;
   --cp-danger: #C0392B;
 
-  /* Golden Ratio Typography Scale */
+  /*
+    Golden Ratio Typography Scale — fluid above --fs-md.
+
+    These were fixed pixels, which is what actually broke the site on a phone:
+    a 72px hero and a 46px section title do not fit 360px however many media
+    queries the components carry, and every page reaching for a token inherited
+    the problem at once.
+
+    Each clamp() is built so its vw term reaches the old value at a 1200px
+    viewport — the container maximum. At desktop width the rendering is
+    unchanged to the pixel; only narrower viewports scale down, and the floor
+    stops them before the text gets small enough to hurt.
+
+    Body sizes (xs/sm/base/md) stay fixed on purpose: 15px body text is already
+    right on a phone, and scaling it with the viewport would make it worse.
+  */
   --fs-xs: 11px;
   --fs-sm: 13px;
   --fs-base: 15px;
   --fs-md: 17px;
-  --fs-lg: 22px;
-  --fs-xl: 28px;
-  --fs-2xl: 36px;
-  --fs-3xl: 46px;
-  --fs-4xl: 58px;
-  --fs-hero: 72px;
+  --fs-lg: clamp(18px, 1.84vw, 22px);
+  --fs-xl: clamp(21px, 2.34vw, 28px);
+  --fs-2xl: clamp(25px, 3vw, 36px);
+  --fs-3xl: clamp(29px, 3.84vw, 46px);
+  --fs-4xl: clamp(33px, 4.84vw, 58px);
+  --fs-hero: clamp(38px, 6vw, 72px);
 
-  /* Golden Ratio Spacing */
+  /* Golden Ratio Spacing — same rule: identical at 1200px, fluid below it.
+     The small steps stay fixed; they are gaps inside components, not page
+     rhythm, and shrinking them further only makes things touch. */
   --sp-xs: 10px;
   --sp-sm: 16px;
-  --sp-md: 26px;
-  --sp-lg: 42px;
-  --sp-xl: 68px;
-  --sp-2xl: 110px;
-  --sp-3xl: 178px;
+  --sp-md: clamp(18px, 2.17vw, 26px);
+  --sp-lg: clamp(26px, 3.5vw, 42px);
+  --sp-xl: clamp(38px, 5.67vw, 68px);
+  --sp-2xl: clamp(54px, 9.17vw, 110px);
+  --sp-3xl: clamp(72px, 14.84vw, 178px);
+
+  /*
+    Typefaces — one variable per role, and nothing in this theme writes a font
+    stack literally any more.
+
+    The panel's font manager (AACP → Appearance → Fonts) regenerates
+    /fonts/fonts.css, which redefines exactly these four on :root. That file is
+    linked after this one, so an operator's choice wins without needing
+    !important and without a rule here having to know it was overridden. The
+    values below are the stacks the theme shipped with, so an installation that
+    never opens that screen renders exactly as before.
+
+    Each stack keeps its own fallbacks: a chosen family that fails to load has
+    to land on something with the right proportions, not on Times.
+  */
+  --cp-font-body: 'Roboto', 'Segoe UI', Arial, sans-serif;
+  --cp-font-heading: 'Roboto Condensed', 'Arial Narrow', Arial, sans-serif;
+  --cp-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Courier New', monospace;
+  --cp-font-serif: Georgia, 'Times New Roman', 'Liberation Serif', serif;
 
   /* Layout */
   --container-max: 1200px;
@@ -84,7 +120,7 @@ html {
 }
 
 body {
-  font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+  font-family: var(--cp-font-body);
   font-size: var(--fs-base);
   line-height: 1.618;
   color: var(--cp-text);
@@ -110,7 +146,7 @@ ul, ol {
 
 /* ---- Typography ---- */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Roboto Condensed', 'Arial Narrow', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-weight: 700;
   line-height: 1.2;
   color: var(--cp-dark);
@@ -315,7 +351,7 @@ p {
   align-items: center;
   gap: 10px;
   padding: 14px 32px;
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: var(--fs-sm);
   font-weight: 700;
   text-transform: uppercase;
@@ -383,7 +419,7 @@ p {
   border: 1px solid rgba(255,255,255,0.25);
   color: rgba(255,255,255,0.7);
   margin: 4px;
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
 }
 
 .badge-filled {
@@ -474,7 +510,7 @@ p {
   padding-bottom: var(--sp-sm);
   margin-bottom: var(--sp-sm);
   border-bottom: 1px solid rgba(255,255,255,0.08);
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -483,7 +519,7 @@ p {
 
 .code-block pre {
   margin: 0;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-family: var(--cp-font-mono);
   font-size: 13px;
   line-height: 1.7;
   color: #C5D0DC;
@@ -561,7 +597,7 @@ p {
 .navbar-menu li a {
   display: block;
   padding: 0 14px;
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
@@ -644,6 +680,7 @@ p {
 .navbar-search {
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .navbar-search__toggle {
@@ -675,7 +712,7 @@ p {
 }
 
 .navbar-search.open .navbar-search__form {
-  width: 200px;
+  width: 240px;
   opacity: 1;
   margin-left: 8px;
 }
@@ -701,6 +738,70 @@ p {
   background: rgba(255,255,255,0.1);
 }
 
+.navbar-search__live {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(70vh, 28rem);
+  overflow: auto;
+  padding: 8px;
+  background: #101828;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+  z-index: 80;
+}
+
+.navbar-search__live[hidden] {
+  display: none !important;
+}
+
+.navbar-search__live-group + .navbar-search__live-group {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.navbar-search__live-label {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+}
+
+.navbar-search__live-hit {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--cp-white);
+  text-decoration: none;
+}
+
+.navbar-search__live-hit:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.navbar-search__live-hit small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+}
+
+.navbar-search__live-more,
+.navbar-search__live-empty {
+  display: block;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.55);
+}
+
+.navbar-search__live-more:hover {
+  color: var(--cp-white);
+}
+
 /* ---- Auth buttons (logged out) ---- */
 .navbar-auth {
   display: flex;
@@ -713,7 +814,7 @@ p {
   align-items: center;
   height: 34px;
   padding: 0 16px;
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
@@ -806,7 +907,7 @@ p {
 }
 
 .navbar-user__name {
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -1375,7 +1476,7 @@ p {
 }
 
 .hero-label {
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
@@ -1403,7 +1504,7 @@ p {
 }
 
 .hero-subtitle {
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: var(--fs-xl);
   font-weight: 400;
   color: var(--cp-steel-light);
@@ -1582,7 +1683,7 @@ p {
 }
 
 .folder-tree-header span {
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -1601,7 +1702,7 @@ p {
 .folder-tree-dot.green { background: #28C840; }
 
 .folder-tree pre {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-family: var(--cp-font-mono);
   font-size: 13px;
   line-height: 1.8;
   color: #C5D0DC;
@@ -1660,7 +1761,7 @@ p {
 }
 
 .arch-card-content code {
-  font-family: 'Consolas', monospace;
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   background: rgba(74, 173, 228, 0.1);
   color: var(--cp-accent-light);
@@ -1715,7 +1816,7 @@ p {
   justify-content: center;
   background: var(--cp-accent);
   color: var(--cp-white);
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: var(--fs-xl);
   font-weight: 700;
   z-index: 2;
@@ -1865,7 +1966,7 @@ p {
   padding: var(--sp-sm) var(--sp-md);
   text-align: left;
   color: var(--cp-white);
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: var(--fs-sm);
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -1905,7 +2006,7 @@ p {
 }
 
 .cp-resource-block pre {
-  font-family: 'Consolas', 'Monaco', monospace;
+  font-family: var(--cp-font-mono);
   font-size: 13px;
   line-height: 1.7;
   color: #C5D0DC;
@@ -1966,7 +2067,7 @@ p {
 }
 
 .security-card .code-inline {
-  font-family: 'Consolas', monospace;
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   background: var(--cp-light);
   padding: 2px 8px;
@@ -2055,7 +2156,7 @@ p {
 }
 
 .stat-number {
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: var(--fs-4xl);
   font-weight: 700;
   color: var(--cp-accent);
@@ -3048,7 +3149,7 @@ p {
   align-items: baseline;
   gap: var(--sp-xs);
   padding: var(--sp-xs) var(--sp-sm);
-  font-family: 'Courier New', monospace;
+  font-family: var(--cp-font-mono);
   color: var(--cp-lighter);
   text-decoration: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -3107,7 +3208,7 @@ p {
   line-height: 1.6;
   margin-top: var(--sp-md);
   border-left: 3px solid var(--cp-accent);
-  font-family: 'Courier New', monospace;
+  font-family: var(--cp-font-mono);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -3150,7 +3251,7 @@ p {
   --slw-ctype-makale: #2da44e;
   --slw-ctype-proje: #6e7781;
   --slw-ctype-yazilim: #58a6ff;
-  --slw-font-mono: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+  --slw-font-mono: var(--cp-font-mono);
   --slw-shadow-sm: 0 1px 2px rgba(0, 0, 0, .04);
   --slw-shadow-md: 0 2px 8px rgba(0, 0, 0, .06), 0 1px 2px rgba(0, 0, 0, .04);
   --slw-shadow-lg: 0 8px 24px rgba(0, 0, 0, .08);
@@ -3168,7 +3269,7 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -3198,7 +3299,7 @@ p {
   border-radius: 4px;
   border: 1px solid color-mix(in srgb, var(--slw-ctype) 25%, var(--slw-border));
   background: color-mix(in srgb, var(--slw-ctype) 5%, white);
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -3234,7 +3335,7 @@ p {
   flex-wrap: wrap;
   align-items: center;
   gap: 0 8px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   color: var(--slw-text-faint);
 }
@@ -3283,7 +3384,7 @@ p {
 .slw-term-window__dots i:nth-child(3) { background: #28c840; }
 
 .slw-term-window__title {
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   color: rgba(255, 255, 255, 0.5);
   flex: 1;
@@ -3299,7 +3400,7 @@ p {
 
 .slw-term-window__code {
   margin: 0;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: 0.9375rem;
   color: rgba(255, 255, 255, 0.9);
   line-height: 1.65;
@@ -3328,13 +3429,13 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   color: rgba(255, 255, 255, 0.85);
 }
 
 .slw-ide-panel__lang {
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: 0.625rem;
   text-transform: uppercase;
   color: var(--slw-terminal);
@@ -3350,7 +3451,7 @@ p {
 }
 
 .slw-ide-panel__lines {
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: 0.625rem;
   color: rgba(255, 255, 255, 0.3);
 }
@@ -3365,7 +3466,7 @@ p {
   padding: 20px;
   overflow-x: auto;
   background: var(--slw-accent);
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: 0.8125rem;
   line-height: 1.7;
   counter-reset: slw-line;
@@ -3392,7 +3493,7 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: 0.6875rem;
   color: rgba(255, 255, 255, 0.6);
   background: rgba(255, 255, 255, 0.08);
@@ -3471,7 +3572,7 @@ a.slw-sidebar-profile__name:hover {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-weight: 500;
   font-size: 0.6875rem;
   padding: 2px 8px;
@@ -3557,7 +3658,7 @@ a.slw-sidebar-profile__name:hover {
 .slw-related-list__item time {
   display: block;
   margin-top: 2px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: 0.625rem;
   color: var(--slw-text-faint);
 }
@@ -3642,7 +3743,7 @@ a.slw-sidebar-profile__name:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: 0.6875rem;
   color: var(--slw-text-faint);
   margin-bottom: 8px;
@@ -3652,7 +3753,7 @@ a.slw-sidebar-profile__name:hover {
 .blog-card__title--editorial,
 .blog-card--makale .slw-feed-card__title,
 .blog-list-item--makale .blog-list-item__title {
-  font-family: Georgia, 'Times New Roman', 'Liberation Serif', serif;
+  font-family: var(--cp-font-serif);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -3710,7 +3811,7 @@ a.slw-sidebar-profile__name:hover {
   justify-content: center;
   margin: 4px 0 10px;
   padding: 8px 14px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -3738,7 +3839,7 @@ a.slw-sidebar-profile__name:hover {
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   font-weight: 600;
   color: #fff;
@@ -3754,7 +3855,7 @@ a.slw-sidebar-profile__name:hover {
 }
 
 .blog-card-yazilim__more {
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   color: var(--slw-ctype-yazilim);
   text-decoration: none;
@@ -3774,7 +3875,7 @@ a.slw-sidebar-profile__name:hover {
 
 .blog-card--not .slw-feed-card__body,
 .blog-list-item--not .blog-list-item__body {
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
 }
 
 .blog-card--not .slw-feed-card__title a,
@@ -3866,7 +3967,7 @@ a.slw-sidebar-profile__name:hover {
 }
 
 .post-hero--makale .post-hero-title {
-  font-family: Georgia, 'Times New Roman', 'Liberation Serif', serif;
+  font-family: var(--cp-font-serif);
 }
 
 .post-hero--proje {
@@ -3925,7 +4026,7 @@ a.slw-sidebar-profile__name:hover {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -3958,7 +4059,7 @@ a.slw-sidebar-profile__name:hover {
 
 .project-meta-card__key,
 .software-spec-card__key {
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -3987,7 +4088,7 @@ a.slw-sidebar-profile__name:hover {
 }
 
 .software-release-banner__label {
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -4045,7 +4146,7 @@ a.slw-sidebar-profile__name:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   color: var(--slw-text-faint);
   margin-bottom: var(--sp-sm);
@@ -4903,7 +5004,7 @@ a.slw-sidebar-profile__name:hover {
 .blog-hero__feature-date {
   font-size: 0.75rem;
   color: #8fa0ae;
-  font-family: var(--slw-font-mono, ui-monospace, monospace);
+  font-family: var(--cp-font-mono);
 }
 
 .blog-featured-strip {
@@ -5009,7 +5110,7 @@ a.slw-sidebar-profile__name:hover {
 
 .blog-featured-slide__author {
   font-size: 0.72rem;
-  font-family: var(--slw-font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-family: var(--cp-font-mono);
   color: #9ec5e0;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -5018,7 +5119,7 @@ a.slw-sidebar-profile__name:hover {
 }
 
 .blog-featured-slide__type {
-  font-family: var(--slw-font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-family: var(--cp-font-mono);
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -5042,7 +5143,7 @@ a.slw-sidebar-profile__name:hover {
 .blog-featured-slide__placeholder-label {
   position: relative;
   z-index: 0;
-  font-family: var(--slw-font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-family: var(--cp-font-mono);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -5139,7 +5240,7 @@ a.slw-sidebar-profile__name:hover {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--slw-terminal-dim, #238636);
-  font-family: var(--slw-font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-family: var(--cp-font-mono);
 }
 
 .blog-taxonomy__title {
@@ -5184,7 +5285,7 @@ a.slw-sidebar-profile__name:hover {
 }
 
 .blog-taxonomy__path {
-  font-family: var(--slw-font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-family: var(--cp-font-mono);
   font-size: 0.78rem;
   color: #4aade4;
   letter-spacing: 0.02em;
@@ -5206,7 +5307,7 @@ a.slw-sidebar-profile__name:hover {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  font-family: var(--slw-font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-family: var(--cp-font-mono);
   font-size: 0.72rem;
   color: var(--slw-text-faint, #848d97);
 }
@@ -5300,7 +5401,7 @@ a.slw-sidebar-profile__name:hover {
 
 .blog-taxonomy__leaf-count {
   flex-shrink: 0;
-  font-family: var(--slw-font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-family: var(--cp-font-mono);
   font-size: 0.7rem;
   font-weight: 600;
   color: var(--slw-text-faint, #848d97);
@@ -6345,7 +6446,7 @@ a.slw-sidebar-profile__name:hover {
   border: 1px solid rgba(255,255,255,0.18);
   border-radius: 4px;
   color: rgba(255,255,255,0.7);
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.6px;
@@ -6370,7 +6471,7 @@ a.slw-sidebar-profile__name:hover {
    ================================================ */
 code.code-inline,
 .code-inline {
-  font-family: 'JetBrains Mono', 'Consolas', ui-monospace, monospace;
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   background: rgba(74, 173, 228, 0.10);
   padding: 2px 7px;
@@ -6413,7 +6514,7 @@ code.code-inline,
 }
 
 .manifesto-block h3 {
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: clamp(18px, 2vw, 24px);
   margin-bottom: var(--sp-md);
   display: flex;
@@ -6454,7 +6555,7 @@ code.code-inline,
 }
 
 .manifesto-code code {
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--cp-font-mono);
   background: transparent;
   color: inherit;
   border: 0;
@@ -6489,7 +6590,7 @@ code.code-inline,
 
 .whitepaper-hero h1 {
   max-width: 920px;
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: clamp(28px, 4vw, 44px);
   line-height: 1.2;
   color: var(--cp-white);
@@ -6574,7 +6675,7 @@ code.code-inline,
 }
 
 .whitepaper-section h2 {
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: clamp(22px, 2.4vw, 30px);
   color: var(--cp-white);
   margin-bottom: var(--sp-md);
@@ -6608,7 +6709,7 @@ code.code-inline,
 }
 
 .whitepaper-body code {
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--cp-font-mono);
   font-size: 0.9em;
 }
 
@@ -6679,9 +6780,43 @@ code.code-inline,
 
 .site-search-form {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--sp-sm);
   max-width: 720px;
   margin-bottom: var(--sp-lg);
+  position: relative;
+}
+
+.site-search-form .site-search-live {
+  top: calc(100% + 6px);
+  left: 0;
+  right: auto;
+  width: min(720px, 100%);
+  background: var(--cp-white);
+  border-color: var(--cp-border);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+}
+
+.site-search-form .navbar-search__live-label,
+.site-search-form .navbar-search__live-more,
+.site-search-form .navbar-search__live-empty {
+  color: var(--cp-text-muted);
+}
+
+.site-search-form .navbar-search__live-hit {
+  color: var(--cp-text);
+}
+
+.site-search-form .navbar-search__live-hit:hover {
+  background: var(--cp-bg, #f5f6fa);
+}
+
+.site-search-form .navbar-search__live-hit small {
+  color: var(--cp-text-muted);
+}
+
+.site-search-form .navbar-search__live-group + .navbar-search__live-group {
+  border-top-color: var(--cp-border);
 }
 
 .site-search-form input[type="search"] {
@@ -6908,7 +7043,7 @@ code.code-inline,
 .blog-comment__meta time {
   font-size: var(--fs-xs);
   color: var(--slw-text-muted);
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
 }
 
 .blog-comment__body {
@@ -7003,5 +7138,147 @@ code.code-inline,
 @media (max-width: 640px) {
   .blog-comments__replies {
     margin-left: 1.25rem;
+  }
+}
+
+
+/* ================================================================
+   MOBILE HARDENING
+   ----------------------------------------------------------------
+   Kept as one block at the end of the file on purpose: these are the
+   cross-cutting rules, and they have to win over the per-component
+   rules above without anybody having to raise specificity.
+
+   Why this instead of Bootstrap: the components in this theme already
+   carry their own breakpoints. What they did not have was a type and
+   spacing scale that shrinks (see the clamp() tokens at the top of
+   this file) and a floor under the things that overflow no matter how
+   a component is laid out — long URLs, wide tables, code blocks and
+   embeds. A grid framework does not supply either of those.
+
+   Breakpoints used across this theme, largest first. New rules should
+   pick from this list rather than inventing another width:
+     1100px  wide-desktop shelves collapse
+      900px  tablet: side rails and multi-column rows stack
+      720px  small tablet / large phone
+      600px  phone: single column
+      420px  narrow phone: drop optional chrome
+   ================================================================ */
+
+/* ---- 1. Overflow floor --------------------------------------
+   A flex or grid child defaults to min-width:auto, so one long word
+   or one wide table pushes the whole track past the viewport. The
+   symptom on a phone is a page that scrolls sideways, or — because
+   body has overflow-x:hidden — content quietly cut off at the edge. */
+.grid-golden-major,
+.grid-golden-minor {
+  min-width: 0;
+}
+
+/* ---- 2. Unbreakable strings in written content ---------------
+   A pasted link with no spaces in it is the single most common cause
+   of a blown-out mobile layout on a forum or a blog. anywhere (not
+   break-word) so the break can also happen mid-URL. */
+.post-body,
+.forum-post__body,
+.blog-comment__body,
+.whitepaper-body,
+.whitepaper-article,
+.roadmap-detail-body,
+.manifesto-content,
+.arch-card-content,
+.slw-feed-card__body,
+.forum-search-post__body,
+.forum-notif-item__body {
+  overflow-wrap: anywhere;
+}
+
+/* ---- 3. Tables inside written content ------------------------
+   An author's table has no idea how wide the screen is. Scroll it
+   instead of letting it decide the page width. Layout tables in the
+   theme's own markup are untouched: this only reaches content areas. */
+.post-body table,
+.forum-post__body table,
+.whitepaper-body table,
+.roadmap-detail-body table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---- 4. Code ------------------------------------------------- */
+.post-body pre,
+.forum-post__body pre,
+.whitepaper-body pre,
+.roadmap-detail-body pre {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.post-body code,
+.forum-post__body code,
+.whitepaper-body code,
+.roadmap-detail-body code {
+  overflow-wrap: anywhere;
+}
+
+/* ---- 5. Embeds ------------------------------------------------
+   img already has max-width:100% near the top of this file; iframes
+   and the rest do not inherit that. */
+iframe,
+video,
+embed,
+object {
+  max-width: 100%;
+}
+
+.post-body iframe,
+.forum-post__body iframe,
+.whitepaper-body iframe,
+.roadmap-detail-body iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+}
+
+/* ---- 6. Touch targets ----------------------------------------
+   Only where the pointer is actually coarse, so a mouse user does not
+   get phone-sized buttons. 40px is the practical floor for a thumb. */
+@media (pointer: coarse) {
+  .btn,
+  .navbar-toggle,
+  .forum-tool-btn,
+  .forum-filters__item,
+  .pagination a,
+  .pagination span {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ---- 7. Phone ------------------------------------------------- */
+@media (max-width: 600px) {
+  /* Headings set in the display face run long; let them break rather
+     than reach past the gutter. */
+  h1, h2, h3,
+  .section-title,
+  .hero-title {
+    overflow-wrap: break-word;
+  }
+
+  /* Anything the theme lays out as side-by-side halves. */
+  .grid-golden {
+    flex-direction: column;
+  }
+
+  .grid-golden-major,
+  .grid-golden-minor {
+    flex: 1 1 auto;
+    max-width: 100%;
   }
 }

@@ -2455,6 +2455,7 @@ site.search.empty_prompt: "Type a keyword. Results come from blog posts, forum t
 site.search.no_results: "No results found for \"{term}\"."
 site.search.results_count: "{count} results"
 site.search.more: "View all"
+site.search.live_empty: "No matching content."
 site.search.source.blog: "Blog"
 site.search.source.pages: "Pages"
 site.search.source.forum: "Forum"

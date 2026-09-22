@@ -68,6 +68,12 @@ final class PostFormModel
     public bool $seoNoindex = false;
 
     /**
+     * When true, Ai (if loaded) publishes siblings in the other active locales.
+     * The original is flushed first; a failed translation never rolls it back.
+     */
+    public bool $autoTranslate = false;
+
+    /**
      * Selected category ids; first becomes the primary Node::$category.
      *
      * @var list<int>

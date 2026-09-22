@@ -467,3 +467,39 @@ document.querySelectorAll('[data-forum-editor]').forEach((el) => {
 });
 
 window.CPaliusForumEditor = { init: initForumEditor };
+
+function syncTitlePrefixChip() {
+    const select = document.querySelector('[data-title-prefix-select]');
+    const chip = document.querySelector('[data-title-prefix-chip]');
+    if (!select || !chip) {
+        return;
+    }
+
+    const option = select.options[select.selectedIndex];
+    const label = option && option.value ? (option.getAttribute('data-label') || option.textContent || '') : '';
+    if (label === '') {
+        chip.hidden = true;
+        chip.textContent = '';
+        chip.removeAttribute('style');
+        chip.className = 'forum-prefix forum-prefix--default';
+        return;
+    }
+
+    const cssClass = option.getAttribute('data-class') || '';
+    const color = option.getAttribute('data-color') || '';
+    chip.hidden = false;
+    chip.textContent = label;
+    chip.className = 'forum-prefix ' + (cssClass !== '' ? cssClass : 'forum-prefix--default');
+    if (cssClass === '' && color !== '') {
+        chip.style.background = 'color-mix(in srgb, ' + color + ' 15%, white)';
+        chip.style.color = color;
+    } else {
+        chip.removeAttribute('style');
+    }
+}
+
+const titlePrefixSelect = document.querySelector('[data-title-prefix-select]');
+if (titlePrefixSelect) {
+    titlePrefixSelect.addEventListener('change', syncTitlePrefixChip);
+    syncTitlePrefixChip();
+}

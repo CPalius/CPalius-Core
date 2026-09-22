@@ -2455,6 +2455,7 @@ site.search.empty_prompt: "Aramak istediğiniz kelimeyi yazın. Sonuçlar blog y
 site.search.no_results: "\"{term}\" için sonuç bulunamadı."
 site.search.results_count: "{count} sonuç"
 site.search.more: "Tümünü gör"
+site.search.live_empty: "Eşleşen içerik yok."
 site.search.source.blog: "Blog"
 site.search.source.pages: "Sayfalar"
 site.search.source.forum: "Forum"

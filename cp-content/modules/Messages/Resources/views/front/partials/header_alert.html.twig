@@ -14,7 +14,7 @@
             <strong>{{ 'messages.nav.inbox'|trans }}</strong>
             <span data-inbox-unread-label>{% if channel.unread|default(0) > 0 %}{{ 'messages.inbox.unread_count'|trans({count: channel.unread}) }}{% endif %}</span>
         </div>
-        <div class="navbar-notif-box__list" data-inbox-list>
+        <div class="navbar-notif-box__list" data-inbox-list data-inbox-empty="{{ 'messages.inbox.empty'|trans }}">
             {% for n in channel.items|default([]) %}
                 <a href="{{ n.url }}" class="navbar-notif-box__item {{ n.unread ? 'is-unread' : '' }}" data-inbox-id="{{ n.id }}">
                     <span class="navbar-notif-box__icon"><i class="bi bi-{{ n.icon|default('envelope') }}"></i></span>

@@ -14,6 +14,8 @@ use Modules\Forum\Event\ForumPostCreatedEvent;
 use Modules\Forum\Event\ForumPostDislikedEvent;
 use Modules\Forum\Event\ForumPostLikedEvent;
 use Modules\Forum\Event\ForumReputationGivenEvent;
+use Modules\Forum\Event\ForumTopicCreatedEvent;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -44,6 +46,26 @@ final class ForumDomainDispatcher
             'section' => $topic->getSection(),
             'is_first_post' => $isFirstPost,
         ]));
+    }
+
+    public function dispatchTopicCreated(ForumTopic $topic, ForumPost $openingPost, User $author, Request $request, bool $autoTranslate): void
+    {
+        if (!$autoTranslate) {
+            return;
+        }
+
+        $this->eventDispatcher->dispatch(
+            new ForumTopicCreatedEvent($topic, $openingPost, $author, $request, true),
+            ForumTopicCreatedEvent::NAME,
+        );
+    }
+
+    public function dispatchTopicTranslate(ForumTopic $topic, ForumPost $openingPost, User $author, Request $request): void
+    {
+        $this->eventDispatcher->dispatch(
+            new ForumTopicCreatedEvent($topic, $openingPost, $author, $request, true),
+            'forum.topic.translate',
+        );
     }
 
     public function dispatchQuote(ForumPost $post, ForumTopic $topic, User $author, ForumPost $quotedPost, User $quotedAuthor): void

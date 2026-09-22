@@ -21,6 +21,7 @@ use Modules\Forum\Repository\ForumPostVoteRepository;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\String\Slugger\AsciiSlugger;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Thread create, reply, move, merge, and delete — Forum Engine service layer.
@@ -53,12 +54,19 @@ final class ForumTopicService
         Request $request,
         ?ForumTopicPrefix $prefix = null,
         ?string $contentLocale = null,
+        bool $autoTranslate = false,
+        ?Uuid $translationGroupId = null,
     ): ForumTopic {
         $locale = $contentLocale !== null && $contentLocale !== '' ? $contentLocale : $section->getLocale();
         $home = $this->sectionRepository->findLocaleSibling($section, $locale) ?? $section;
 
         $topic = new ForumTopic($home, $title, $this->posterLabel($author));
         $topic->setLocale($locale);
+        if ($translationGroupId instanceof Uuid) {
+            $topic->joinTranslationGroup($translationGroupId);
+        } else {
+            $topic->assignToNewTranslationGroup();
+        }
         $topic->setSlug($this->generateTopicSlug($title));
         $topic->setDescription($description !== '' ? $description : null);
         $topic->setPrefix($prefix);
@@ -96,6 +104,8 @@ final class ForumTopicService
             $this->domainDispatcher->dispatchPostCreated($post, $topic, $author, true);
             $this->invalidatePublicCache();
         }
+
+        $this->domainDispatcher->dispatchTopicCreated($topic, $post, $author, $request, $autoTranslate);
 
         return $topic;
     }
@@ -344,6 +354,19 @@ final class ForumTopicService
 
         $this->entityManager->flush();
         $this->invalidatePublicCache();
+    }
+
+    public function ensureTranslationGroup(ForumTopic $topic): Uuid
+    {
+        $groupId = $topic->ensureTranslationGroup();
+        $this->entityManager->flush();
+
+        return $groupId;
+    }
+
+    public function requestTranslation(ForumTopic $topic, ForumPost $opening, User $author, Request $request): void
+    {
+        $this->domainDispatcher->dispatchTopicTranslate($topic, $opening, $author, $request);
     }
 
     /**

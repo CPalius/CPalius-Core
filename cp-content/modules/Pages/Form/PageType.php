@@ -178,6 +178,18 @@ final class PageType extends AbstractType
                 ],
             ])
         ;
+
+        if ($options['include_auto_translate']) {
+            $isEdit = (bool) $options['auto_translate_edit'];
+            $builder->add('autoTranslate', CheckboxType::class, [
+                'label' => $isEdit ? 'ai.form.auto_translate_edit_node' : 'ai.form.auto_translate',
+                'required' => false,
+                'help' => $isEdit ? 'ai.form.auto_translate_edit_help' : 'ai.form.auto_translate_help',
+                'attr' => [
+                    'class' => 'form-check-input h-4 w-4 text-primary-600 focus:ring-primary-600',
+                ],
+            ]);
+        }
     }
 
     public function configureOptions(OptionsResolver $resolver): void
@@ -185,6 +197,11 @@ final class PageType extends AbstractType
         $resolver->setDefaults([
             'data_class' => PageFormModel::class,
             'csrf_token_id' => 'admin_page_form',
+            'include_auto_translate' => false,
+            'auto_translate_edit' => false,
         ]);
+
+        $resolver->setAllowedTypes('include_auto_translate', 'bool');
+        $resolver->setAllowedTypes('auto_translate_edit', 'bool');
     }
 }

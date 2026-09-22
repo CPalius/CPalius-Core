@@ -3,69 +3,296 @@
 {% block header %}{{ 'blog.posts.header'|trans }}{% endblock %}
 
 {% block header_actions %}
-    <a href="{{ path('admin_posts_create') }}" class="btn btn-sm btn-primary">
+    <a href="{{ path('admin_posts_create', {locale: currentLocale}) }}" class="btn btn-sm btn-primary" data-posts-create>
         {{ 'blog.posts.create_action'|trans }}
     </a>
 {% endblock %}
 
 {% block body %}
-    <twig:studio:card padded="{{ false }}">
-        <twig:studio:table headers="{{ [
-            'blog.posts.column.title'|trans,
-            'blog.posts.column.type'|trans,
-            'blog.posts.column.status'|trans,
-            'blog.posts.column.updated_at'|trans,
-            '',
-        ] }}" empty="{{ posts is empty }}" emptyText="{{ 'blog.posts.empty'|trans }}">
-            <twig:block name="rows">
-                {% for post in posts %}
-                    <tr>
-                        <td>
-                            <a href="{{ path('admin_posts_edit', {id: post.id}) }}" class="font-medium text-neutral-900 hover:text-primary-600">
-                                {{ post.title }}
-                            </a>
-                            <p class="text-fs-xs text-neutral-500">/{{ post.locale }}/{{ post.slug }}</p>
-                        </td>
-                        <td>
-                            <span class="badge badge-neutral">
-                                {{ blog_post_sub_type_label(post.getDataValue('post_sub_type', 'makale')) }}
-                            </span>
-                        </td>
-                        <td>
-                            <twig:studio:badge status="{{ post.status }}" />
-                        </td>
-                        <td class="text-fs-xs text-neutral-500">
-                            {{ post.updatedAt|date('d.m.Y H:i') }}
-                        </td>
-                        <td class="text-right">
-                            <div class="flex items-center justify-end gap-2">
-                                <a href="{{ path('admin_posts_edit', {id: post.id}) }}" class="btn btn-sm btn-neutral">
-                                    {{ 'aacp.users.edit_action'|trans }}
-                                </a>
+    <div data-posts-list>
+        <form method="get" action="{{ path('admin_posts_index') }}" data-posts-toolbar class="mb-sp-sm flex items-center gap-2" style="max-width:100%; overflow:visible;">
+            <input type="hidden" name="locale" value="{{ currentLocale }}" data-posts-locale-field>
 
-                                {% if post.status != 'published' %}
-                                    <form method="post" action="{{ path('admin_posts_publish', {id: post.id}) }}">
-                                        <input type="hidden" name="_token" value="{{ csrf_token('admin_post_form') }}">
-                                        <button type="submit" class="btn btn-sm !bg-success-600 !text-white hover:!bg-success-700">
-                                            {{ 'blog.posts.publish'|trans }}
-                                        </button>
-                                    </form>
-                                {% endif %}
-
-                                <form method="post" action="{{ path('admin_posts_delete', {id: post.id}) }}"
-                                      onsubmit="return confirm({{ 'blog.posts.delete_confirm'|trans|json_encode|raw }});">
-                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_post_form') }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        {{ 'aacp.cron.delete'|trans }}
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
+            <div class="flex min-w-0 items-center gap-1 overflow-x-auto" style="flex:1 1 auto;" data-posts-locales>
+                {% for locale in locales %}
+                    <a href="{{ path('admin_posts_index', localeSwitchParams|merge({locale: locale.code})) }}"
+                       data-locale="{{ locale.code }}"
+                       class="whitespace-nowrap rounded-md px-3 py-1.5 text-fs-sm font-medium {{ locale.code == currentLocale and not isSearch
+                           ? 'bg-primary-50 text-primary-700'
+                           : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900' }}">
+                        {{ locale.nativeName }}
+                    </a>
                 {% endfor %}
-            </twig:block>
-        </twig:studio:table>
-    </twig:studio:card>
+            </div>
 
-    <twig:studio:pagination result="{{ posts }}" route="admin_posts_index" />
+            <div style="width:14rem; flex:0 0 14rem;">
+                <input id="posts-search"
+                       type="search"
+                       name="q"
+                       value="{{ filters.q }}"
+                       maxlength="80"
+                       autocomplete="off"
+                       placeholder="{{ 'blog.posts.search.placeholder'|trans }}"
+                       aria-label="{{ 'blog.posts.search.placeholder'|trans }}"
+                       class="form-control !px-3 !py-1.5"
+                       data-posts-search>
+            </div>
+
+            <details class="group" data-posts-filter {% if hasActiveFilters %}open{% endif %} style="position:relative; flex:0 0 auto;">
+                <summary class="btn btn-sm btn-neutral cursor-pointer list-none {{ hasActiveFilters ? '!border-primary-200 !bg-primary-50 !text-primary-700' : '' }}" data-posts-filter-btn style="list-style:none;">
+                    {{ 'blog.posts.filter.toggle'|trans }}
+                    <span class="ms-1 inline-block h-1.5 w-1.5 rounded-full bg-primary-600" data-posts-filter-dot {% if not hasActiveFilters %}hidden{% endif %}></span>
+                </summary>
+
+                <div class="rounded-xl border border-neutral-200 bg-white p-3 shadow-[0px_13px_30px_10px_rgba(46,45,116,0.08)]" style="position:absolute; right:0; top:calc(100% + 0.5rem); z-index:30; width:16rem; max-width:calc(100vw - 2rem);">
+                    <div class="space-y-2">
+                        <div>
+                            <label class="form-label" for="filter-author">{{ 'blog.posts.filter.author'|trans }}</label>
+                            <select id="filter-author" name="author" class="form-control !py-1.5">
+                                <option value="">{{ 'blog.posts.filter.all_authors'|trans }}</option>
+                                {% for author in authors %}
+                                    <option value="{{ author.id }}" {{ filters.author == author.id ? 'selected' : '' }}>
+                                        {{ author.username ?: author.email }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="form-label" for="filter-date-from">{{ 'blog.posts.filter.date_from'|trans }}</label>
+                            <input id="filter-date-from" type="date" name="date_from" value="{{ filters.date_from }}" class="form-control !py-1.5">
+                        </div>
+
+                        <div>
+                            <label class="form-label" for="filter-date-to">{{ 'blog.posts.filter.date_to'|trans }}</label>
+                            <input id="filter-date-to" type="date" name="date_to" value="{{ filters.date_to }}" class="form-control !py-1.5">
+                        </div>
+
+                        <div>
+                            <label class="form-label" for="filter-category">{{ 'blog.posts.filter.category'|trans }}</label>
+                            <select id="filter-category" name="category" class="form-control !py-1.5" data-posts-category>
+                                <option value="">{{ 'blog.posts.filter.all_categories'|trans }}</option>
+                                {% for category in categories %}
+                                    <option value="{{ category.id }}" {{ filters.category == category.id ? 'selected' : '' }}>
+                                        {{ category.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="form-label" for="filter-type">{{ 'blog.posts.filter.type'|trans }}</label>
+                            <select id="filter-type" name="type" class="form-control !py-1.5">
+                                <option value="">{{ 'blog.posts.filter.all_types'|trans }}</option>
+                                {% for label, value in subTypes %}
+                                    <option value="{{ value }}" {{ filters.type == value ? 'selected' : '' }}>{{ label|trans }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="form-label" for="filter-status">{{ 'blog.posts.filter.status'|trans }}</label>
+                            <select id="filter-status" name="status" class="form-control !py-1.5">
+                                <option value="">{{ 'blog.posts.filter.all_statuses'|trans }}</option>
+                                {% for status in statuses %}
+                                    <option value="{{ status }}" {{ filters.status == status ? 'selected' : '' }}>
+                                        {{ ('blog.posts.form.status.' ~ status)|trans }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="flex items-center gap-2 pt-1">
+                            <button type="submit" class="btn btn-sm btn-primary">{{ 'blog.posts.filter.apply'|trans }}</button>
+                            <a href="{{ path('admin_posts_index', {locale: currentLocale}) }}" class="btn btn-sm btn-neutral" data-posts-reset {% if not hasActiveFilters %}hidden{% endif %}>
+                                {{ 'blog.posts.filter.reset'|trans }}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </details>
+        </form>
+
+        {% include '@BlogModule/admin/posts/_results.html.twig' %}
+    </div>
+
+    <script{{ csp_nonce_attr() }}>
+    (function () {
+        var root = document.querySelector('[data-posts-list]');
+        if (!root) return;
+
+        var toolbar = root.querySelector('[data-posts-toolbar]');
+        var search = root.querySelector('[data-posts-search]');
+        var localeField = root.querySelector('[data-posts-locale-field]');
+        var timer = null;
+        var inflight = null;
+
+        function results() {
+            return root.querySelector('[data-posts-results]');
+        }
+
+        function isListUrl(href) {
+            try {
+                var u = new URL(href, window.location.origin);
+                return /\/admin\/posts\/?$/.test(u.pathname) || /\/admin\/posts\/list\/?$/.test(u.pathname);
+            } catch (err) {
+                return false;
+            }
+        }
+
+        function applyMeta(box) {
+            if (!box) return;
+            var locale = box.getAttribute('data-locale') || '';
+            var isSearch = box.getAttribute('data-is-search') === '1';
+            var hasFilters = box.getAttribute('data-has-filters') === '1';
+            var createUrl = box.getAttribute('data-create-url') || '';
+
+            if (localeField) localeField.value = locale;
+            root.querySelectorAll('[data-posts-locales] a[data-locale]').forEach(function (link) {
+                var on = link.getAttribute('data-locale') === locale && !isSearch;
+                link.className = 'whitespace-nowrap rounded-md px-3 py-1.5 text-fs-sm font-medium ' +
+                    (on ? 'bg-primary-50 text-primary-700' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900');
+            });
+
+            var btn = root.querySelector('[data-posts-filter-btn]');
+            var dot = root.querySelector('[data-posts-filter-dot]');
+            var reset = root.querySelector('[data-posts-reset]');
+            if (btn) {
+                btn.classList.toggle('!border-primary-200', hasFilters);
+                btn.classList.toggle('!bg-primary-50', hasFilters);
+                btn.classList.toggle('!text-primary-700', hasFilters);
+            }
+            if (dot) {
+                if (hasFilters) dot.removeAttribute('hidden');
+                else dot.setAttribute('hidden', '');
+            }
+            if (reset) {
+                reset.href = toolbar.action + (locale ? ('?locale=' + encodeURIComponent(locale)) : '');
+                if (hasFilters) reset.removeAttribute('hidden');
+                else reset.setAttribute('hidden', '');
+            }
+
+            var create = document.querySelector('[data-posts-create]');
+            if (create && createUrl) create.setAttribute('href', createUrl);
+
+            var source = box.querySelector('[data-posts-category-options]');
+            var target = root.querySelector('[data-posts-category]');
+            if (source && target) target.innerHTML = source.innerHTML;
+        }
+
+        function refreshLocaleHrefs() {
+            var u;
+            try { u = new URL(formUrl(), window.location.origin); } catch (err) { return; }
+            u.searchParams.delete('q');
+            u.searchParams.delete('category');
+            u.searchParams.delete('page');
+            root.querySelectorAll('[data-posts-locales] a[data-locale]').forEach(function (link) {
+                var next = new URL(u.toString());
+                next.searchParams.set('locale', link.getAttribute('data-locale') || '');
+                link.href = next.pathname + next.search;
+            });
+        }
+
+        function syncFormFromUrl(url) {
+            var u;
+            try { u = new URL(url, window.location.origin); } catch (err) { return; }
+            var params = u.searchParams;
+            if (localeField) localeField.value = params.get('locale') || localeField.value;
+            if (search && document.activeElement !== search) search.value = params.get('q') || '';
+            ['author', 'date_from', 'date_to', 'category', 'type', 'status'].forEach(function (name) {
+                var el = toolbar.elements.namedItem(name);
+                if (el && 'value' in el) el.value = params.get(name) || '';
+            });
+        }
+
+        function load(url, push) {
+            if (inflight) inflight.abort();
+            inflight = new AbortController();
+            var box = results();
+            if (box) box.style.opacity = '0.55';
+
+            fetch(url, {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' },
+                signal: inflight.signal
+            }).then(function (res) {
+                if (!res.ok) throw new Error('list');
+                return res.text();
+            }).then(function (html) {
+                var wrap = document.createElement('div');
+                wrap.innerHTML = html.trim();
+                var next = wrap.querySelector('[data-posts-results]') || wrap.firstElementChild;
+                var current = results();
+                if (next && current) {
+                    current.replaceWith(next);
+                    applyMeta(next);
+                    syncFormFromUrl(url);
+                    refreshLocaleHrefs();
+                }
+                if (push) history.pushState({ postsList: true }, '', url);
+            }).catch(function (err) {
+                if (err && err.name === 'AbortError') return;
+                window.location.href = url;
+            }).then(function () {
+                var box = results();
+                if (box) box.style.opacity = '';
+            });
+        }
+
+        function formUrl() {
+            var data = new FormData(toolbar);
+            var params = new URLSearchParams();
+            data.forEach(function (value, key) {
+                if (value === '' || value === null) return;
+                params.set(key, String(value));
+            });
+            var qs = params.toString();
+            return toolbar.action + (qs ? ('?' + qs) : '');
+        }
+
+        toolbar.addEventListener('submit', function (e) {
+            e.preventDefault();
+            load(formUrl(), true);
+        });
+
+        if (search) {
+            search.addEventListener('input', function () {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(function () {
+                    load(formUrl(), true);
+                }, 280);
+            });
+        }
+
+        root.addEventListener('click', function (e) {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            var link = e.target.closest('a');
+            if (!link || !root.contains(link) || !isListUrl(link.href)) return;
+            e.preventDefault();
+            if (link.hasAttribute('data-locale') && search) search.value = '';
+            load(link.href, true);
+        });
+
+        root.addEventListener('submit', function (e) {
+            var form = e.target;
+            if (!form || form === toolbar || form.method.toLowerCase() !== 'post') return;
+            e.preventDefault();
+            fetch(form.action, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+                body: new FormData(form)
+            }).then(function (res) {
+                if (!res.ok) throw new Error('action');
+                load(window.location.href, false);
+            }).catch(function () {
+                form.submit();
+            });
+        });
+
+        window.addEventListener('popstate', function () {
+            load(window.location.href, false);
+        });
+    })();
+    </script>
 {% endblock %}

@@ -91,6 +91,29 @@ class NotificationRepository extends ServiceEntityRepository
         return $rows;
     }
 
+    /**
+     * Header flyout only — read rows belong on the full inbox page.
+     *
+     * @return list<Notification>
+     */
+    public function findUnreadForUserExceptEventPrefix(User $user, string $excludePrefix, int $limit = 50): array
+    {
+        /** @var list<Notification> $rows */
+        $rows = $this->createQueryBuilder('n')
+            ->andWhere('n.user = :user')
+            ->andWhere('n.readAt IS NULL')
+            ->andWhere('n.eventKey NOT LIKE :prefix')
+            ->setParameter('user', $user)
+            ->setParameter('prefix', $excludePrefix.'%')
+            ->orderBy('n.createdAt', 'DESC')
+            ->addOrderBy('n.id', 'DESC')
+            ->setMaxResults(max(1, min(100, $limit)))
+            ->getQuery()
+            ->getResult();
+
+        return $rows;
+    }
+
     public function latestIdExceptEventPrefix(User $user, string $excludePrefix): int
     {
         return (int) $this->createQueryBuilder('n')

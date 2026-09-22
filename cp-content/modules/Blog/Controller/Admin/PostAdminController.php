@@ -11,7 +11,10 @@ use App\Core\Localization\LocaleProvider;
 use App\Core\OriginCache\OriginCachePurger;
 use App\Core\Pagination\Paginator;
 use App\Core\Security\QueryScopeApplier;
+use App\Core\Settings\SettingsRegistry;
+use App\Core\Taxonomy\Entity\Term;
 use App\Entity\Node;
+use App\Entity\NodeFieldIndex;
 use App\Entity\User;
 use App\Repository\AssetRepository;
 use App\Repository\CategoryRepository;
@@ -19,16 +22,20 @@ use App\Repository\LocaleRepository;
 use App\Repository\NodeRepository;
 use App\Repository\TagRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
+use Modules\Blog\Event\BlogArticleCreatedEvent;
 use Modules\Blog\Form\DTO\PostFormModel;
 use Modules\Blog\Form\PostType;
 use Modules\Blog\PostSubType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -56,11 +63,13 @@ final class PostAdminController extends AbstractController
         private readonly LocaleProvider $localeProvider,
         private readonly TranslatorInterface $translator,
         private readonly OriginCachePurger $originCachePurger,
+        private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly SettingsRegistry $settingsRegistry,
     ) {
     }
 
     /**
-     * List posts; QueryScopeApplier adds author=:me for .own-only users (Law 6.2).
+     * List posts in one locale, or all locales when q is set. QueryScopeApplier adds author=:me for .own-only users (Law 6.2).
      */
     #[Route('', name: 'index', methods: ['GET'])]
     #[CpAdminMenu(label: 'studio.blog.menu', icon: 'heroicons:document-text', panel: 'studio', priority: 20, capability: 'node.post.view.own|node.post.view.any', group: 'studio.group.content')]
@@ -71,19 +80,57 @@ final class PostAdminController extends AbstractController
             throw $this->createAccessDeniedException($this->translator->trans('blog.posts.error.view_denied'));
         }
 
+        $locale = $this->localeProvider->resolve($request->query->getString('locale') ?: null);
+        $filters = $this->listFilters($request, $locale);
+        $isSearch = $filters['q'] !== '';
+
         $qb = $this->nodeRepository->createQueryBuilder('n')
             ->andWhere('n.type = :type')
             ->andWhere('n.deletedAt IS NULL')
             ->setParameter('type', self::NODE_TYPE)
             ->orderBy('n.updatedAt', 'DESC');
 
+        if ($isSearch) {
+            $escaped = addcslashes($filters['q'], '%_\\');
+            $qb->andWhere('(LOWER(n.title) LIKE LOWER(:q) OR LOWER(n.slug) LIKE LOWER(:q))')
+                ->setParameter('q', '%'.$escaped.'%');
+        } else {
+            $qb->andWhere('n.locale = :locale')
+                ->setParameter('locale', $locale);
+        }
+
+        $this->applyListFilters($qb, $filters);
         $this->queryScopeApplier->apply($qb, 'n', 'node.post.view', 'author');
 
-        $result = $this->paginator->paginate($qb, $request->query->getInt('page', 1), self::ADMIN_PER_PAGE);
+        $queryParams = $this->listQueryParams($locale, $filters);
+        $localeSwitchParams = $queryParams;
+        unset($localeSwitchParams['category'], $localeSwitchParams['q']);
 
-        return $this->render('@BlogModule/admin/posts/index.html.twig', [
-            'posts' => $result,
-        ]);
+        $view = [
+            'posts' => $this->paginator->paginate($qb, $request->query->getInt('page', 1), self::ADMIN_PER_PAGE),
+            'locales' => $this->localeProvider->getLocales(),
+            'currentLocale' => $locale,
+            'filters' => $filters,
+            'queryParams' => $queryParams,
+            'localeSwitchParams' => $localeSwitchParams,
+            'authors' => $this->listAuthors(),
+            'categories' => $this->categoryRepository->findByLocale($locale),
+            'subTypes' => PostSubType::choices(),
+            'statuses' => [
+                Node::STATUS_DRAFT,
+                Node::STATUS_PUBLISHED,
+                Node::STATUS_SCHEDULED,
+            ],
+            'hasActiveFilters' => $this->hasActiveFilters($filters),
+            'isSearch' => $isSearch,
+            'createUrl' => $this->generateUrl('admin_posts_create', ['locale' => $locale]),
+        ];
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->render('@BlogModule/admin/posts/_results.html.twig', $view);
+        }
+
+        return $this->render('@BlogModule/admin/posts/index.html.twig', $view);
     }
 
     /**
@@ -94,6 +141,197 @@ final class PostAdminController extends AbstractController
     public function list(Request $request): Response
     {
         return $this->index($request);
+    }
+
+    /**
+     * @return array{
+     *     q: string,
+     *     author: int|null,
+     *     category: int|null,
+     *     type: string,
+     *     status: string,
+     *     date_from: string,
+     *     date_to: string
+     * }
+     */
+    private function listFilters(Request $request, string $locale): array
+    {
+        $subType = $request->query->getString('type');
+        $status = $request->query->getString('status');
+        $categoryId = $this->positiveIntOrNull($request->query->get('category'));
+        if ($categoryId !== null) {
+            $category = $this->categoryRepository->find($categoryId);
+            if (!$category instanceof Term || $category->getLocale() !== $locale) {
+                $categoryId = null;
+            }
+        }
+
+        return [
+            'q' => $this->normalizeSearchQuery($request->query->get('q')),
+            'author' => $this->positiveIntOrNull($request->query->get('author')),
+            'category' => $categoryId,
+            'type' => PostSubType::isValid($subType) ? $subType : '',
+            'status' => \in_array($status, [Node::STATUS_DRAFT, Node::STATUS_PUBLISHED, Node::STATUS_SCHEDULED], true) ? $status : '',
+            'date_from' => $this->normalizeDateQuery($request->query->get('date_from')),
+            'date_to' => $this->normalizeDateQuery($request->query->get('date_to')),
+        ];
+    }
+
+    /**
+     * @param array{q: string, author: int|null, category: int|null, type: string, status: string, date_from: string, date_to: string} $filters
+     */
+    private function applyListFilters(QueryBuilder $qb, array $filters): void
+    {
+        if ($filters['author'] !== null) {
+            $qb->andWhere('IDENTITY(n.author) = :authorId')
+                ->setParameter('authorId', $filters['author']);
+        }
+
+        if ($filters['category'] !== null) {
+            $qb->innerJoin('n.categories', 'filterCategory')
+                ->andWhere('filterCategory.id = :categoryId')
+                ->setParameter('categoryId', $filters['category']);
+        }
+
+        if ($filters['type'] !== '') {
+            $qb->innerJoin(NodeFieldIndex::class, 'nfi', 'WITH', 'nfi.node = n AND nfi.fieldName = :subTypeField')
+                ->andWhere('nfi.valueString = :subType')
+                ->setParameter('subTypeField', 'post_sub_type')
+                ->setParameter('subType', $filters['type']);
+        }
+
+        if ($filters['status'] !== '') {
+            $qb->andWhere('n.status = :status')
+                ->setParameter('status', $filters['status']);
+        }
+
+        $from = $this->parseDayStart($filters['date_from']);
+        if ($from instanceof \DateTimeImmutable) {
+            $qb->andWhere('n.updatedAt >= :dateFrom')
+                ->setParameter('dateFrom', $from);
+        }
+
+        $to = $this->parseDayEnd($filters['date_to']);
+        if ($to instanceof \DateTimeImmutable) {
+            $qb->andWhere('n.updatedAt <= :dateTo')
+                ->setParameter('dateTo', $to);
+        }
+    }
+
+    /**
+     * @param array{q: string, author: int|null, category: int|null, type: string, status: string, date_from: string, date_to: string} $filters
+     *
+     * @return array<string, int|string>
+     */
+    private function listQueryParams(string $locale, array $filters): array
+    {
+        $params = ['locale' => $locale];
+        foreach (['q', 'author', 'category', 'type', 'status', 'date_from', 'date_to'] as $key) {
+            $value = $filters[$key];
+            if ($value === null || $value === '') {
+                continue;
+            }
+            $params[$key] = $value;
+        }
+
+        return $params;
+    }
+
+    /**
+     * Extra filters only — search is not a "filter panel" state.
+     *
+     * @param array{q: string, author: int|null, category: int|null, type: string, status: string, date_from: string, date_to: string} $filters
+     */
+    private function hasActiveFilters(array $filters): bool
+    {
+        return $filters['author'] !== null
+            || $filters['category'] !== null
+            || $filters['type'] !== ''
+            || $filters['status'] !== ''
+            || $filters['date_from'] !== ''
+            || $filters['date_to'] !== '';
+    }
+
+    /**
+     * @return list<User>
+     */
+    private function listAuthors(): array
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('a')
+            ->distinct()
+            ->from(User::class, 'a')
+            ->innerJoin(Node::class, 'n', 'WITH', 'n.author = a')
+            ->andWhere('n.type = :type')
+            ->andWhere('n.deletedAt IS NULL')
+            ->setParameter('type', self::NODE_TYPE)
+            ->orderBy('a.username', 'ASC')
+            ->addOrderBy('a.email', 'ASC');
+
+        $this->queryScopeApplier->apply($qb, 'n', 'node.post.view', 'author');
+
+        return $qb->getQuery()->getResult();
+    }
+
+    private function positiveIntOrNull(mixed $raw): ?int
+    {
+        if (!is_numeric($raw)) {
+            return null;
+        }
+
+        $id = (int) $raw;
+
+        return $id > 0 ? $id : null;
+    }
+
+    private function normalizeSearchQuery(mixed $raw): string
+    {
+        $value = trim((string) $raw);
+        if ($value === '') {
+            return '';
+        }
+
+        if (mb_strlen($value) > 80) {
+            $value = mb_substr($value, 0, 80);
+        }
+
+        return $value;
+    }
+
+    private function normalizeDateQuery(mixed $raw): string
+    {
+        $value = trim((string) $raw);
+        if ($value === '' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) !== 1) {
+            return '';
+        }
+
+        return $value;
+    }
+
+    private function parseDayStart(string $value): ?\DateTimeImmutable
+    {
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable($value.' 00:00:00');
+        } catch (\Exception) {
+            return null;
+        }
+    }
+
+    private function parseDayEnd(string $value): ?\DateTimeImmutable
+    {
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable($value.' 23:59:59');
+        } catch (\Exception) {
+            return null;
+        }
     }
 
     /**
@@ -108,7 +346,7 @@ final class PostAdminController extends AbstractController
         $targetLocale = $this->localeProvider->resolve(trim((string) $request->query->get('locale')));
 
         $dto = new PostFormModel();
-        $form = $this->createPostForm($dto);
+        $form = $this->createPostForm($dto, $translationGroupId === null);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -129,20 +367,19 @@ final class PostAdminController extends AbstractController
             $this->entityManager->flush();
             $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
+            if ($dto->autoTranslate && $translationGroupId === null) {
+                $this->eventDispatcher->dispatch(
+                    new BlogArticleCreatedEvent($node, true),
+                    BlogArticleCreatedEvent::NAME,
+                );
+            }
+
             $this->addFlash('success', $this->translator->trans('blog.posts.flash.created', ['title' => $node->getTitle()]));
 
             return $this->redirectToRoute('admin_posts_index');
         }
 
-        return $this->render('@BlogModule/admin/posts/form.html.twig', [
-            'post' => null,
-            'form' => $form,
-            'featuredImageUrl' => $this->resolveAssetUrl($dto->featuredImageAssetId),
-            'activeLocales' => $this->localeRepository->findActive(),
-            'currentLocale' => $targetLocale,
-            'translations' => [],
-            'translationGroupId' => $translationGroupId,
-        ]);
+        return $this->render('@BlogModule/admin/posts/form.html.twig', $this->formViewData($form, $dto, $targetLocale, $translationGroupId, null));
     }
 
     #[Route('/{id}/edit', name: 'edit', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
@@ -152,7 +389,7 @@ final class PostAdminController extends AbstractController
         $this->assertOwnOrAny('node.post.edit', $node, $this->translator->trans('blog.posts.error.edit_denied'));
 
         $dto = $this->buildDtoFromNode($node);
-        $form = $this->createPostForm($dto);
+        $form = $this->createPostForm($dto, $this->allowEditTranslate(), true);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -169,20 +406,16 @@ final class PostAdminController extends AbstractController
             $this->entityManager->flush();
             $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
+            if ($dto->autoTranslate && $this->allowEditTranslate()) {
+                $this->requestTranslation($node);
+            }
+
             $this->addFlash('success', $this->translator->trans('blog.posts.flash.updated', ['title' => $node->getTitle()]));
 
             return $this->redirectToRoute('admin_posts_index');
         }
 
-        return $this->render('@BlogModule/admin/posts/form.html.twig', [
-            'post' => $node,
-            'form' => $form,
-            'featuredImageUrl' => $this->resolveAssetUrl($dto->featuredImageAssetId),
-            'activeLocales' => $this->localeRepository->findActive(),
-            'currentLocale' => $node->getLocale(),
-            'translations' => $this->buildTranslationsMap($node),
-            'translationGroupId' => $node->getTranslationGroupId(),
-        ]);
+        return $this->render('@BlogModule/admin/posts/form.html.twig', $this->formViewData($form, $dto, $node->getLocale(), $node->getTranslationGroupId(), $node));
     }
 
     /**
@@ -206,7 +439,7 @@ final class PostAdminController extends AbstractController
     /**
      * Build PostType with locale-aware category choices injected by the controller.
      */
-    private function createPostForm(PostFormModel $dto): FormInterface
+    private function createPostForm(PostFormModel $dto, bool $includeAutoTranslate = false, bool $autoTranslateEdit = false): FormInterface
     {
         $categories = $this->categoryRepository->findByLocale($this->localeProvider->getDefaultCode());
         $categoryChoices = [];
@@ -216,7 +449,84 @@ final class PostAdminController extends AbstractController
 
         return $this->createForm(PostType::class, $dto, [
             'category_choices' => $categoryChoices,
+            'include_auto_translate' => $includeAutoTranslate,
+            'auto_translate_edit' => $autoTranslateEdit,
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formViewData(FormInterface $form, PostFormModel $dto, string $locale, ?Uuid $translationGroupId, ?Node $post): array
+    {
+        $existing = $post instanceof Node ? $this->siblingLocales($post) : [];
+
+        return [
+            'post' => $post,
+            'form' => $form,
+            'featuredImageUrl' => $this->resolveAssetUrl($dto->featuredImageAssetId),
+            'activeLocales' => $this->localeRepository->findActive(),
+            'currentLocale' => $locale,
+            'translations' => $post instanceof Node ? $this->buildTranslationsMap($post) : [],
+            'translationGroupId' => $translationGroupId,
+            'existingTranslationLocales' => $existing,
+            'missingTranslationLocales' => $post instanceof Node ? $this->missingTranslationLocales($post, $existing) : [],
+        ];
+    }
+
+    private function allowEditTranslate(): bool
+    {
+        return (string) $this->settingsRegistry->get('ai.allow_edit_translate', '0') === '1'
+            && (string) $this->settingsRegistry->get('ai.enabled', '1') === '1';
+    }
+
+    private function requestTranslation(Node $node): void
+    {
+        $existing = $this->siblingLocales($node);
+        if ($this->missingTranslationLocales($node, $existing) === []) {
+            $this->addFlash('warning', $this->translator->trans('ai.flash.already_exists_node'));
+
+            return;
+        }
+
+        $this->eventDispatcher->dispatch(
+            new BlogArticleCreatedEvent($node, true),
+            BlogArticleCreatedEvent::TRANSLATE,
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function siblingLocales(Node $node): array
+    {
+        $locales = [];
+        foreach (array_keys($this->buildTranslationsMap($node)) as $code) {
+            if ($code !== $node->getLocale()) {
+                $locales[] = $code;
+            }
+        }
+
+        return $locales;
+    }
+
+    /**
+     * @param list<string> $existingLocales
+     *
+     * @return list<string>
+     */
+    private function missingTranslationLocales(Node $node, array $existingLocales): array
+    {
+        $source = $node->getLocale();
+        $missing = [];
+        foreach ($this->localeProvider->getCodes() as $code) {
+            if ($code === $source || \in_array($code, $existingLocales, true)) {
+                continue;
+            }
+            $missing[] = $code;
+        }
+
+        return $missing;
     }
 
     private function resolveSlugForCreate(PostFormModel $dto, string $locale): string
@@ -347,6 +657,28 @@ final class PostAdminController extends AbstractController
     }
 
     /**
+     * EntityType submits Term objects; findByIds() and find() speak ids.
+     *
+     * @param list<mixed> $values
+     *
+     * @return list<int>
+     */
+    private function normalizeCategoryIds(array $values): array
+    {
+        $ids = [];
+        foreach ($values as $value) {
+            if ($value instanceof Term) {
+                $value = $value->getId();
+            }
+            if (is_numeric($value) && (int) $value > 0) {
+                $ids[] = (int) $value;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
      * Sync categories/tags from the DTO; first category becomes the primary.
      */
     private function syncTaxonomy(PostFormModel $dto, Node $node): void
@@ -355,11 +687,12 @@ final class PostAdminController extends AbstractController
             $node->removeCategory($existing);
         }
 
-        if ($dto->categoryIds !== []) {
-            foreach ($this->categoryRepository->findByIds($dto->categoryIds) as $category) {
+        $categoryIds = $this->normalizeCategoryIds($dto->categoryIds);
+        if ($categoryIds !== []) {
+            foreach ($this->categoryRepository->findByIds($categoryIds) as $category) {
                 $node->addCategory($category);
             }
-            $node->setCategory($this->categoryRepository->find($dto->categoryIds[0]));
+            $node->setCategory($this->categoryRepository->find($categoryIds[0]));
         } else {
             $node->setCategory(null);
         }
@@ -455,6 +788,10 @@ final class PostAdminController extends AbstractController
         $this->entityManager->flush();
         $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
+        if ($request->isXmlHttpRequest()) {
+            return new JsonResponse(['ok' => true]);
+        }
+
         $this->addFlash('success', $this->translator->trans('blog.posts.flash.published', ['title' => $node->getTitle()]));
 
         return $this->redirectToRoute('admin_posts_index');
@@ -471,6 +808,10 @@ final class PostAdminController extends AbstractController
         $node->softDelete();
         $this->entityManager->flush();
         $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
+
+        if ($request->isXmlHttpRequest()) {
+            return new JsonResponse(['ok' => true]);
+        }
 
         $this->addFlash('success', $this->translator->trans('blog.posts.flash.trashed', ['title' => $node->getTitle()]));
 

@@ -79,6 +79,8 @@ final class MessageThreadRepository extends ServiceEntityRepository
     }
 
     /**
+     * Unread threads for the header flyout. Read conversations stay on the inbox page.
+     *
      * @return list<MessageThread>
      */
     public function recentForPulse(User $user, int $limit = 6): array
@@ -94,6 +96,7 @@ final class MessageThreadRepository extends ServiceEntityRepository
             ->andWhere('me.user = :user')
             ->andWhere('me.hidden = false')
             ->andWhere('me.archived = false')
+            ->andWhere('me.unreadCount > 0')
             ->setParameter('user', $user)
             ->orderBy('t.lastMessageAt', 'DESC')
             ->setMaxResults(max(1, min(20, $limit)))

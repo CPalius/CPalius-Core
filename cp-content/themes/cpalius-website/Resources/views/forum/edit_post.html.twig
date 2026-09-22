@@ -49,6 +49,25 @@
             {% endif %}
         </div>
 
+        {% if isFirstPost and ai_auto_translate is defined and ai_auto_translate.on_edit|default(false) %}
+            {% if missingTranslationLocales|default([]) is empty and existingTranslationLocales|default([]) is not empty %}
+                <div class="forum-field">
+                    <p class="forum-field-hint">{{ 'ai.form.already_exists'|trans({'locales': existingTranslationLocales|join(', ')}) }}</p>
+                </div>
+            {% else %}
+                <div class="forum-field">
+                    <label class="forum-checkbox">
+                        <input type="checkbox" name="auto_translate" value="1">
+                        {{ 'ai.form.auto_translate_edit'|trans }}
+                    </label>
+                    <p class="forum-field-hint">{{ 'ai.form.auto_translate_edit_help'|trans }}</p>
+                    {% if existingTranslationLocales|default([]) is not empty %}
+                        <p class="forum-field-hint">{{ 'ai.form.already_exists'|trans({'locales': existingTranslationLocales|join(', ')}) }}</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endif %}
+
         <div class="forum-form__actions">
             <input type="hidden" name="_token" value="{{ csrf_token('forum_edit_post') }}">
             <button type="submit" class="btn btn-primary btn-sm">{{ 'forum.action.update'|trans }}</button>

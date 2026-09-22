@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Entity;
 
+use App\Core\Localization\Contract\TranslatableInterface;
+use App\Core\Localization\Contract\TranslatableTrait;
 use App\Entity\User;
 use Doctrine\ORM\Mapping as ORM;
 use Modules\Forum\ForumDiscussionState;
@@ -27,8 +29,11 @@ use Modules\Forum\Repository\ForumTopicRepository;
 #[ORM\Index(columns: ['locale'], name: 'idx_forum_topic_locale')]
 #[ORM\Index(columns: ['section_id', 'discussion_state', 'sticky', 'last_post_date'], name: 'idx_forum_topic_section_list')]
 #[ORM\Index(columns: ['deleted_by_id'], name: 'idx_forum_topic_deleted_by')]
-class ForumTopic
+#[ORM\UniqueConstraint(name: 'uniq_forum_topic_translation_group_locale', columns: ['translation_group_id', 'locale'])]
+class ForumTopic implements TranslatableInterface
 {
+    use TranslatableTrait;
+
     public const MODE_NORMAL = 0;
     public const MODE_PRIVATE = 1;
 

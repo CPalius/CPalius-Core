@@ -307,6 +307,7 @@ final class ForumFrontController extends AbstractController
             $description = trim((string) $request->request->get('description'));
             $body = trim((string) $request->request->get('body'));
             $isPrivate = $request->request->getBoolean('private');
+            $autoTranslate = $request->request->getBoolean('auto_translate');
             $prefix = $this->resolvePrefix($request, 'prefix_id', $section);
 
             if ($title === '' || $body === '') {
@@ -318,6 +319,7 @@ final class ForumFrontController extends AbstractController
                     compact('title', 'description', 'body', 'isPrivate') + [
                         'prefixId' => $prefix?->getId(),
                         'contentLocale' => $contentLocale,
+                        'autoTranslate' => $autoTranslate,
                     ],
                 ));
             }
@@ -332,6 +334,7 @@ final class ForumFrontController extends AbstractController
                 $request,
                 $prefix,
                 $contentLocale,
+                $autoTranslate,
             );
             $this->finishPublishedTopic($topic, $user, $request, $section);
 
@@ -350,6 +353,7 @@ final class ForumFrontController extends AbstractController
                 'isPrivate' => false,
                 'prefixId' => null,
                 'contentLocale' => $contentLocale,
+                'autoTranslate' => false,
             ],
         ));
     }
@@ -610,6 +614,21 @@ final class ForumFrontController extends AbstractController
             }
 
             $this->topicService->updatePost($post, $user, $body, $isFirstPost ? $topicTitle : null);
+
+            $allowEditTranslate = (string) $this->settingsRegistry->get('ai.allow_edit_translate', '0') === '1'
+                && (string) $this->settingsRegistry->get('ai.enabled', '1') === '1';
+            if ($user instanceof User && $isFirstPost && $allowEditTranslate && $request->request->getBoolean('auto_translate')) {
+                $opening = $this->postRepository->findFirstByTopic($post->getTopic()) ?? $post;
+                $this->topicService->ensureTranslationGroup($post->getTopic());
+                $existingLocales = $this->topicRepository->findSiblingLocales($post->getTopic());
+                $missing = $this->missingTranslationLocales($post->getTopic(), $existingLocales);
+                if ($missing === []) {
+                    $this->addFlash('warning', $this->translator->trans('ai.flash.already_exists'));
+                } else {
+                    $this->topicService->requestTranslation($post->getTopic(), $opening, $user, $request);
+                }
+            }
+
             $this->addFlash('success', $this->translator->trans('site.forum.edit_post.updated'));
 
             return $this->redirectToRoute('forum_topic', $this->topicRouteParams($post->getTopic()));
@@ -959,20 +978,40 @@ final class ForumFrontController extends AbstractController
         $section = $post->getSection();
         $windowMinutes = $this->topicService->editWindowMinutes($post);
         $deadline = $post->getCreatedAt()->getTimestamp() + ($windowMinutes * 60);
+        $topic = $post->getTopic();
+        $existingTranslationLocales = $isFirstPost ? $this->topicRepository->findSiblingLocales($topic) : [];
 
         return [
             'post' => $post,
-            'topic' => $post->getTopic(),
+            'topic' => $topic,
             'section' => $section,
             'isFirstPost' => $isFirstPost,
             'formValues' => $formValues,
             'attachmentsEnabled' => $this->composerUploadEnabled($section),
-            // A window nobody can see is a window that gets discovered by losing
-            // work to it. Moderators edit outside it, so the countdown is only
-            // meaningful for the author.
             'editWindowMinutes' => $windowMinutes,
             'editMinutesLeft' => max(0, (int) ceil(($deadline - time()) / 60)),
+            'existingTranslationLocales' => $existingTranslationLocales,
+            'missingTranslationLocales' => $isFirstPost ? $this->missingTranslationLocales($topic, $existingTranslationLocales) : [],
         ];
+    }
+
+    /**
+     * @param list<string> $existingLocales
+     *
+     * @return list<string>
+     */
+    private function missingTranslationLocales(ForumTopic $topic, array $existingLocales): array
+    {
+        $source = $topic->getLocale();
+        $missing = [];
+        foreach ($this->localeProvider->getCodes() as $code) {
+            if ($code === $source || \in_array($code, $existingLocales, true)) {
+                continue;
+            }
+            $missing[] = $code;
+        }
+
+        return $missing;
     }
 
     private function composerUploadEnabled(ForumSection $section): bool

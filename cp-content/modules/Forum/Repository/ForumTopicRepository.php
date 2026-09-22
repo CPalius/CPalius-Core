@@ -11,6 +11,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\ForumDiscussionState;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * @extends ServiceEntityRepository<ForumTopic>
@@ -535,6 +536,50 @@ final class ForumTopicRepository extends ServiceEntityRepository
             ->setFirstResult($offset)
             ->getQuery()
             ->getResult();
+    }
+
+    public function findTranslation(Uuid $groupId, string $locale): ?ForumTopic
+    {
+        return $this->findOneBy(['translationGroupId' => $groupId, 'locale' => $locale]);
+    }
+
+    public function findLocaleSibling(ForumTopic $topic, string $locale): ?ForumTopic
+    {
+        if ($topic->getLocale() === $locale) {
+            return $topic;
+        }
+
+        $groupId = $topic->getTranslationGroupId();
+        if (!$groupId instanceof Uuid) {
+            return null;
+        }
+
+        return $this->findTranslation($groupId, $locale);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function findSiblingLocales(ForumTopic $topic): array
+    {
+        $groupId = $topic->getTranslationGroupId();
+        if (!$groupId instanceof Uuid) {
+            return [];
+        }
+
+        $rows = $this->createQueryBuilder('t')
+            ->select('t.locale')
+            ->andWhere('t.translationGroupId = :groupId')
+            ->andWhere('t.locale != :locale')
+            ->setParameter('groupId', $groupId)
+            ->setParameter('locale', $topic->getLocale())
+            ->getQuery()
+            ->getScalarResult();
+
+        return array_values(array_filter(array_map(
+            static fn (array $row): string => (string) ($row['locale'] ?? ''),
+            $rows,
+        )));
     }
 
     private function canSeeAllPrivate(User $viewer): bool

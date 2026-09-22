@@ -1,0 +1,13 @@
+{
+    "name": "Ai",
+    "version": "1.0.0",
+    "description": "Optional AI translation: Forum topics and Blog posts can be published into the other active locales at create time.",
+    "author": "CPalius",
+    "bundle": "Modules\\Ai\\AiModule",
+    "core_version": "^2.0",
+    "requires": {},
+    "conflicts": {},
+    "provides": [
+        "ai-translation"
+    ]
+}

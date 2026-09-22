@@ -22,41 +22,40 @@
 <div class="forum-form fade-in">
     <div class="forum-form__title"><i class="bi bi-plus-circle"></i> {{ 'forum.new_topic.form_title'|trans }}</div>
     <form action="{{ path('forum_new_topic', {sectionSlug: section.slug}) }}" method="post" enctype="multipart/form-data" data-forum-draft data-draft-section="{{ section.id }}" data-draft-token="{{ csrf_token('forum_draft') }}" data-draft-url="{{ path('forum_draft_save') }}">
-        <div class="forum-field">
-            <label for="ft-title">{{ 'forum.field.title'|trans }}</label>
-            <input type="text" id="ft-title" name="title" value="{{ formValues.title }}" maxlength="255" required autofocus>
-        </div>
+        {% if prefixes is defined and prefixes is not empty %}
+            <div class="forum-field forum-field--headline">
+                <div class="forum-field--prefix">
+                    <label for="ft-prefix">{{ 'forum.field.prefix'|trans }}</label>
+                    <select id="ft-prefix" name="prefix_id" data-title-prefix-select>
+                        <option value="">{{ 'forum.field.prefix_none'|trans }}</option>
+                        {% for prefix in prefixes %}
+                            <option value="{{ prefix.id }}"
+                                    data-label="{{ prefix.label }}"
+                                    data-color="{{ prefix.color }}"
+                                    data-class="{{ prefix.cssClass|default('') }}"
+                                    {{ formValues.prefixId == prefix.id ? 'selected' : '' }}>{{ prefix.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="forum-field--title">
+                    <label for="ft-title">{{ 'forum.field.title'|trans }}</label>
+                    <div class="forum-title-combo">
+                        <span class="forum-prefix forum-prefix--default" data-title-prefix-chip hidden></span>
+                        <input type="text" id="ft-title" name="title" value="{{ formValues.title }}" maxlength="255" required autofocus>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="forum-field">
+                <label for="ft-title">{{ 'forum.field.title'|trans }}</label>
+                <input type="text" id="ft-title" name="title" value="{{ formValues.title }}" maxlength="255" required autofocus>
+            </div>
+        {% endif %}
 
         <div class="forum-field">
             <label for="ft-desc">{{ 'forum.field.description'|trans }} <span style="text-transform:none; font-weight:400;">{{ 'forum.field.optional'|trans }}</span></label>
             <input type="text" id="ft-desc" name="description" value="{{ formValues.description }}" maxlength="255">
         </div>
-
-        {% if prefixes is defined and prefixes is not empty %}
-            <div class="forum-field">
-                <label for="ft-prefix">{{ 'forum.field.prefix'|trans }} <span style="text-transform:none; font-weight:400;">{{ 'forum.field.optional'|trans }}</span></label>
-                <select id="ft-prefix" name="prefix_id">
-                    <option value="">{{ 'forum.field.prefix_none'|trans }}</option>
-                    {% for prefix in prefixes %}
-                        <option value="{{ prefix.id }}" {{ formValues.prefixId == prefix.id ? 'selected' : '' }}>{{ prefix.label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        {% endif %}
-
-        {% if contentLocales is defined and contentLocales|length > 1 %}
-            <div class="forum-field">
-                <label for="ft-content-locale">{{ 'forum.field.content_locale'|trans }}</label>
-                <select id="ft-content-locale" name="content_locale">
-                    {% for loc in contentLocales %}
-                        <option value="{{ loc.code }}" {{ (formValues.contentLocale|default(app.request.locale)) == loc.code ? 'selected' : '' }}>{{ loc.nativeName }} ({{ loc.code }})</option>
-                    {% endfor %}
-                </select>
-                <p class="forum-field-hint">{{ 'forum.field.content_locale_hint'|trans }}</p>
-            </div>
-        {% else %}
-            <input type="hidden" name="content_locale" value="{{ formValues.contentLocale|default(app.request.locale) }}">
-        {% endif %}
 
         <div class="forum-field forum-composer">
             <label>{{ 'forum.field.message'|trans }}</label>
@@ -111,6 +110,30 @@
                 {{ 'forum.new_topic.private_label'|trans }} <span class="hint">— {{ 'forum.new_topic.private_hint'|trans }}</span>
             </label>
         </div>
+
+        {% if ai_auto_translate is defined and ai_auto_translate.on_create|default(true) %}
+            <div class="forum-field">
+                <label class="forum-checkbox">
+                    <input type="checkbox" name="auto_translate" value="1" {{ formValues.autoTranslate|default(false) ? 'checked' : '' }}>
+                    {{ 'ai.form.auto_translate'|trans }}
+                </label>
+                <p class="forum-field-hint">{{ 'ai.form.auto_translate_help'|trans }}</p>
+            </div>
+        {% endif %}
+
+        {% if contentLocales is defined and contentLocales|length > 1 %}
+            <div class="forum-field">
+                <label for="ft-content-locale">{{ 'forum.field.content_locale'|trans }}</label>
+                <select id="ft-content-locale" name="content_locale">
+                    {% for loc in contentLocales %}
+                        <option value="{{ loc.code }}" {{ (formValues.contentLocale|default(app.request.locale)) == loc.code ? 'selected' : '' }}>{{ loc.nativeName }} ({{ loc.code }})</option>
+                    {% endfor %}
+                </select>
+                <p class="forum-field-hint">{{ 'forum.field.content_locale_hint'|trans }}</p>
+            </div>
+        {% else %}
+            <input type="hidden" name="content_locale" value="{{ formValues.contentLocale|default(app.request.locale) }}">
+        {% endif %}
 
         <div class="forum-form__actions">
             <input type="hidden" name="_token" value="{{ csrf_token('forum_new_topic') }}">

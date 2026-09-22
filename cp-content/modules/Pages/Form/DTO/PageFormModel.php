@@ -58,6 +58,12 @@ final class PageFormModel
 
     public bool $seoNoindex = false;
 
+    /**
+     * When true, Ai (if loaded) publishes siblings in the other active locales.
+     * The original is flushed first; a failed translation never rolls it back.
+     */
+    public bool $autoTranslate = false;
+
     public ?int $featuredImageAssetId = null;
 
     public ?int $fieldGroupId = null;

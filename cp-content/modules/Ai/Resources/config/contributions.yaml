@@ -1,0 +1,3 @@
+studio:
+    quick_links:
+        - { label_key: studio.dashboard.link.ai, route: admin_ai_index, icon: heroicons:sparkles }
