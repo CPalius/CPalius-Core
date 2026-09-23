@@ -7,6 +7,10 @@ namespace App\Controller\Admin;
 use App\Core\Account\AccountIdentityChangeService;
 use App\Core\Account\AccountRegistrationService;
 use App\Core\Account\UserAvatarService;
+use App\Core\Localization\LocaleProvider;
+use App\Core\Localization\Service\UserLocaleResolver;
+use App\Core\Media\Exception\InvalidUploadException;
+use App\Core\Media\Exception\UnsupportedAssetTypeException;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Content\RichTextSanitizer;
 use App\Core\Field\FieldDefinitionRegistry;
@@ -15,6 +19,7 @@ use App\Core\Pagination\PaginatedResult;
 use App\Core\Pagination\Paginator;
 use App\Core\Security\Password\PasswordChanger;
 use App\Core\Security\Password\PasswordPolicy;
+use App\Core\Security\CapabilityLabeler;
 use App\Core\Security\RoleCapabilityPresenter;
 use App\Core\Security\RoleConfigManager;
 use App\Core\Security\UserCapabilityOverridePresenter;
@@ -68,6 +73,9 @@ final class AACPUserController extends AbstractController
         private readonly UserAvatarService $avatarService,
         private readonly FieldValuePersister $fieldValuePersister,
         private readonly FieldDefinitionRegistry $fieldDefinitions,
+        private readonly CapabilityLabeler $capabilityLabels,
+        private readonly LocaleProvider $localeProvider,
+        private readonly UserLocaleResolver $userLocale,
     ) {
     }
 
@@ -212,6 +220,7 @@ final class AACPUserController extends AbstractController
     public function create(Request $request): Response
     {
         $dto = new UserFormModel();
+        $dto->locale = $this->localeProvider->getDefaultCode();
         $form = $this->createUserForm($dto, isEdit: false, request: $request);
         $form->handleRequest($request);
 
@@ -257,6 +266,7 @@ final class AACPUserController extends AbstractController
     {
         $user = $this->findUserOrFail($id);
         $dto = UserFormModel::fromUser($user);
+        $dto->locale = $this->userLocale->resolve($user);
         $form = $this->createUserForm($dto, isEdit: true, request: $request);
         if ($form->has('fields')) {
             $form->get('fields')->setData($this->currentUserFieldValues($user));
@@ -377,6 +387,49 @@ final class AACPUserController extends AbstractController
         return $this->redirectToRoute('aacp_users');
     }
 
+    #[Route('/aacp/users/{id}/avatar', name: 'aacp_users_avatar', methods: ['POST'], requirements: ['id' => '\d+'])]
+    #[IsGranted('system.users.manage')]
+    public function uploadAvatar(int $id, Request $request): Response
+    {
+        $user = $this->findUserOrFail($id);
+
+        if (!$this->isCsrfTokenValid('aacp_user_avatar_'.$user->getId(), (string) $request->request->get('_token'))) {
+            throw new BadRequestHttpException($this->translator->trans('aacp.users.invalid_csrf'));
+        }
+
+        $file = $request->files->get('avatar');
+        if ($file === null) {
+            $this->addFlash('error', $this->translator->trans('account.profile.avatar_missing'));
+
+            return $this->redirectToRoute('aacp_users_edit', ['id' => $user->getId()]);
+        }
+
+        try {
+            $this->avatarService->upload($user, $file);
+            $this->addFlash('success', $this->translator->trans('account.profile.avatar_updated'));
+        } catch (InvalidUploadException|UnsupportedAssetTypeException) {
+            $this->addFlash('error', $this->translator->trans('account.profile.avatar_invalid'));
+        }
+
+        return $this->redirectToRoute('aacp_users_edit', ['id' => $user->getId()]);
+    }
+
+    #[Route('/aacp/users/{id}/avatar/remove', name: 'aacp_users_avatar_remove', methods: ['POST'], requirements: ['id' => '\d+'])]
+    #[IsGranted('system.users.manage')]
+    public function removeAvatar(int $id, Request $request): Response
+    {
+        $user = $this->findUserOrFail($id);
+
+        if (!$this->isCsrfTokenValid('aacp_user_avatar_remove_'.$user->getId(), (string) $request->request->get('_token'))) {
+            throw new BadRequestHttpException($this->translator->trans('aacp.users.invalid_csrf'));
+        }
+
+        $this->avatarService->remove($user);
+        $this->addFlash('success', $this->translator->trans('account.profile.avatar_removed'));
+
+        return $this->redirectToRoute('aacp_users_edit', ['id' => $user->getId()]);
+    }
+
     /**
      * My profile for the signed-in admin (CKEditor bio); linked from header dropdown, not sidebar.
      */
@@ -455,6 +508,7 @@ final class AACPUserController extends AbstractController
             'role_choices' => $roleChoices,
             'is_edit' => $isEdit,
             'field_locale' => $request->getLocale(),
+            'locale_choices' => $this->localeChoices(),
         ]);
     }
 
@@ -510,6 +564,13 @@ final class AACPUserController extends AbstractController
         $user->setStatus($dto->status);
         $user->setFirstName(trim((string) $dto->firstName));
         $user->setLastName(trim((string) $dto->lastName));
+        $user->setLocation(trim((string) $dto->location));
+        $user->setBio($this->richTextSanitizer->sanitize((string) $dto->bio));
+        $user->setCustomTitle(trim((string) $dto->customTitle));
+        $user->setCustomTitleColor((string) $dto->customTitleColor);
+        $user->setCustomTitleStyle((string) $dto->customTitleStyle);
+        $user->setCustomTitleIcon(trim((string) $dto->customTitleIcon));
+        $this->userLocale->remember($user, $dto->locale);
         $user->setCpaliusRoles($dto->roles);
 
         $plainPassword = trim((string) $dto->plainPassword);
@@ -587,9 +648,39 @@ final class AACPUserController extends AbstractController
             'roleCatalog' => $this->roleCapabilityPresenter->buildRoleCatalog(),
             'effectiveSummary' => $this->roleCapabilityPresenter->summarizeSelectedRoles($selectedRoles),
             'overrideView' => ($isEdit && $user instanceof User) ? $this->overridePresenter->build($user, $actor) : null,
+            'capabilityLabels' => $this->capabilityLabels->map($this->allCapabilityNames()),
+            'avatarUrl' => $user instanceof User ? $this->avatarService->resolveUrl($user) : null,
             'roleLabels' => $this->userRoleGuard->roleLabelMap(),
             'isEdit' => $isEdit,
         ]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function allCapabilityNames(): array
+    {
+        $names = [];
+        foreach ($this->roleCapabilityPresenter->allGrouped() as $capabilities) {
+            foreach ($capabilities as $capability) {
+                $names[] = $capability;
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function localeChoices(): array
+    {
+        $choices = [];
+        foreach ($this->localeProvider->getLocales() as $locale) {
+            $choices[$locale->nativeName !== '' ? $locale->nativeName : $locale->name] = $locale->code;
+        }
+
+        return $choices;
     }
 
     /**

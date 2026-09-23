@@ -11,9 +11,10 @@ use App\Core\Migrate\MigrationOption;
 use App\Core\Migrate\MigrationOptionResolver;
 use App\Core\Migrate\MigrationRow;
 use App\Core\Migrate\MigrationSourceInterface;
+use App\Core\Migrate\Source\ForeignDatabase;
 use Doctrine\ORM\EntityManagerInterface;
-use Modules\Importer\Source\Wordpress\WxrAuthorSource;
-use Modules\Importer\Source\Wordpress\WxrReader;
+use Modules\Importer\Migration\ImportedAccountEmail;
+use Modules\Importer\Source\Wordpress\WordpressOrigin;
 
 /**
  * WordPress authors become CPalius users.
@@ -22,20 +23,26 @@ use Modules\Importer\Source\Wordpress\WxrReader;
  * as a login string, and there is nothing to resolve that against until the
  * authors are in the map.
  *
- * An author with no email address is skipped rather than invented for. The
- * account would be unrecoverable — no password came across, and password reset
- * is the only way in — so it would be an account nobody can ever use, occupying
- * the name of someone who might later register properly.
+ * An author with no usable address still becomes an account (placeholder
+ * @invalid.invalid) so their posts keep a profile. They cannot reset a
+ * password until an admin gives them a real address.
  */
 final class WordpressAuthorMigration implements ConfigurableMigrationInterface
 {
     public const ID = 'wordpress.authors';
 
+    /** @var array<string, string> */
+    private readonly array $options;
+
+    /**
+     * @param array<string, string> $options
+     */
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly string $file = '',
-        private readonly string $role = 'member',
+        array $options = [],
+        private readonly ?ForeignDatabase $suppliedDatabase = null,
     ) {
+        $this->options = $options;
     }
 
     public function id(): string
@@ -56,36 +63,29 @@ final class WordpressAuthorMigration implements ConfigurableMigrationInterface
     public function options(): array
     {
         return [
-            MigrationOption::file('file', 'Path to the WordPress WXR export file'),
+            ...WordpressOrigin::commonOptions(),
             MigrationOption::optional('role', 'CPalius role for imported accounts', 'member'),
         ];
     }
 
     public function withOptions(array $values): static
     {
-        $resolved = MigrationOptionResolver::resolve($this->options(), $values);
-
-        return new static($this->entityManager, $resolved['file'], $resolved['role']);
+        return new static($this->entityManager, MigrationOptionResolver::resolve($this->options(), $values), $this->suppliedDatabase);
     }
 
     public function source(): MigrationSourceInterface
     {
-        return new WxrAuthorSource($this->reader());
+        return $this->origin()->authors();
     }
 
     public function destination(): MigrationDestinationInterface
     {
-        return new UserDestination($this->entityManager, [$this->role]);
+        return new UserDestination($this->entityManager, [$this->options['role'] ?? 'member']);
     }
 
     public function transform(MigrationRow $row): ?MigrationRow
     {
-        $email = trim($row->getString('email'));
-
-        if ($email === '' || !filter_var($email, \FILTER_VALIDATE_EMAIL)) {
-            return null;
-        }
-
+        $email = ImportedAccountEmail::resolve($row->getString('email'), 'wordpress', $row->sourceId);
         $display = trim($row->getString('displayName'));
         $login = trim($row->getString('login'));
 
@@ -97,15 +97,12 @@ final class WordpressAuthorMigration implements ConfigurableMigrationInterface
             'importedFrom' => 'wordpress',
             'wordpressLogin' => $login,
             'wordpressId' => trim($row->getString('wpId')),
+            'emailPlaceholder' => ImportedAccountEmail::isPlaceholder($email) ? '1' : '',
         ]);
     }
 
-    private function reader(): WxrReader
+    private function origin(): WordpressOrigin
     {
-        if ($this->file === '') {
-            throw new \LogicException('This migration has not been configured; pass -o file=<export.xml>.');
-        }
-
-        return new WxrReader($this->file);
+        return new WordpressOrigin($this->entityManager, $this->options, $this->suppliedDatabase);
     }
 }

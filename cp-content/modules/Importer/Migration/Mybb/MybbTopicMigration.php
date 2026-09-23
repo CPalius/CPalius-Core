@@ -7,6 +7,7 @@ namespace Modules\Importer\Migration\Mybb;
 use App\Core\Migrate\ConfigurableMigrationInterface;
 use App\Core\Migrate\MigrationDestinationInterface;
 use App\Core\Migrate\MigrationLookup;
+use App\Core\Migrate\MigrationOption;
 use App\Core\Migrate\MigrationOptionResolver;
 use App\Core\Migrate\MigrationRow;
 use App\Core\Migrate\MigrationSourceInterface;
@@ -61,7 +62,10 @@ final class MybbTopicMigration implements ConfigurableMigrationInterface
 
     public function options(): array
     {
-        return DatabaseOptions::all('mybb_');
+        return [
+            ...DatabaseOptions::all('mybb_'),
+            MigrationOption::optional('locale', 'Locale the imported board belongs to', 'en'),
+        ];
     }
 
     public function withOptions(array $values): static
@@ -105,6 +109,7 @@ final class MybbTopicMigration implements ConfigurableMigrationInterface
         return $row->withData([
             'sectionId' => $sectionId,
             'title' => trim($row->getString('subject')),
+            'locale' => $this->options['locale'] ?? 'en',
             'posterName' => trim($row->getString('username')),
             'authorUserId' => $userId === '' || $userId === '0'
                 ? ''
@@ -142,6 +147,6 @@ final class MybbTopicMigration implements ConfigurableMigrationInterface
             throw new \LogicException('This migration has not been configured; fill in the source database fields.');
         }
 
-        return ForeignDatabase::fromOptions($this->options, 'mybb_');
+        return DatabaseOptions::connect($this->options, 'mybb_', $this->entityManager->getConnection());
     }
 }

@@ -42,6 +42,8 @@ final class ModulePackageContractTest extends TestCase
             $this->projectDir.'/cp-core/config/active_modules.php',
             "<?php\nreturn [Modules\\Demo\\DemoModule::class];\n",
         );
+        mkdir($this->projectDir.'/cp-content/modules/Demo/Resources/assets', 0775, true);
+        file_put_contents($this->projectDir.'/cp-content/modules/Demo/Resources/assets/demo.js', "console.log('demo');\n");
         file_put_contents(
             $this->projectDir.'/cp-content/modules/Demo/Resources/config/importmap.php',
             "<?php\nreturn ['demo-admin' => ['path' => 'Resources/assets/demo.js', 'entrypoint' => true]];\n",
@@ -49,8 +51,25 @@ final class ModulePackageContractTest extends TestCase
 
         $merged = ModuleImportmapLoader::merge(['app' => ['path' => './cp-core/assets/app.js']], $this->projectDir);
 
-        self::assertSame('./demo.js', $merged['demo-admin']['path']);
+        self::assertSame('./cp-content/modules/Demo/Resources/assets/demo.js', $merged['demo-admin']['path']);
         self::assertTrue($merged['demo-admin']['entrypoint']);
+        self::assertArrayHasKey('app', $merged);
+    }
+
+    public function testImportmapSkipsEntriesWhoseFileIsMissing(): void
+    {
+        file_put_contents(
+            $this->projectDir.'/cp-core/config/active_modules.php',
+            "<?php\nreturn [Modules\\Demo\\DemoModule::class];\n",
+        );
+        file_put_contents(
+            $this->projectDir.'/cp-content/modules/Demo/Resources/config/importmap.php',
+            "<?php\nreturn ['demo-admin' => ['path' => 'Resources/assets/missing.js', 'entrypoint' => true]];\n",
+        );
+
+        $merged = ModuleImportmapLoader::merge(['app' => ['path' => './cp-core/assets/app.js']], $this->projectDir);
+
+        self::assertArrayNotHasKey('demo-admin', $merged);
         self::assertArrayHasKey('app', $merged);
     }
 

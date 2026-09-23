@@ -150,6 +150,6 @@ final class XenforoSectionMigration implements ConfigurableMigrationInterface
             throw new \LogicException('This migration has not been configured; fill in the source database fields.');
         }
 
-        return ForeignDatabase::fromOptions($this->options, 'xf_');
+        return DatabaseOptions::connect($this->options, 'xf_', $this->entityManager->getConnection());
     }
 }

@@ -67,6 +67,14 @@ final class ModuleImportmapLoader
 
                 if (isset($entry['path']) && \is_string($entry['path'])) {
                     $entry['path'] = self::resolvePath($dirName, $entry['path']);
+                    // asset-map:compile --env=prod dies if an importmap path is
+                    // listed but the file is absent (or the mapper path was not
+                    // registered). A disabled/partially-copied module must not
+                    // take the whole rebuild down.
+                    $absolute = $projectDir.'/'.ltrim($entry['path'], './');
+                    if (!is_file($absolute)) {
+                        continue;
+                    }
                 }
 
                 $core[$name] = $entry;

@@ -7,6 +7,7 @@ namespace Modules\Importer\Migration\Xenforo;
 use App\Core\Migrate\ConfigurableMigrationInterface;
 use App\Core\Migrate\MigrationDestinationInterface;
 use App\Core\Migrate\MigrationLookup;
+use App\Core\Migrate\MigrationOption;
 use App\Core\Migrate\MigrationOptionResolver;
 use App\Core\Migrate\MigrationRow;
 use App\Core\Migrate\MigrationSourceInterface;
@@ -60,7 +61,10 @@ final class XenforoTopicMigration implements ConfigurableMigrationInterface
 
     public function options(): array
     {
-        return DatabaseOptions::all('xf_');
+        return [
+            ...DatabaseOptions::all('xf_'),
+            MigrationOption::optional('locale', 'Locale the imported board belongs to', 'en'),
+        ];
     }
 
     public function withOptions(array $values): static
@@ -104,6 +108,9 @@ final class XenforoTopicMigration implements ConfigurableMigrationInterface
         return $row->withData([
             'sectionId' => $sectionId,
             'title' => trim($row->getString('title')),
+            // Carried so a second run with a different locale updates topics
+            // in place instead of leaving them on the language first chosen.
+            'locale' => $this->options['locale'] ?? 'en',
             'posterName' => trim($row->getString('username')),
             'authorUserId' => $userId === '' || $userId === '0'
                 ? ''
@@ -134,6 +141,6 @@ final class XenforoTopicMigration implements ConfigurableMigrationInterface
             throw new \LogicException('This migration has not been configured; fill in the source database fields.');
         }
 
-        return ForeignDatabase::fromOptions($this->options, 'xf_');
+        return DatabaseOptions::connect($this->options, 'xf_', $this->entityManager->getConnection());
     }
 }

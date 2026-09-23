@@ -11,25 +11,30 @@ use App\Core\Migrate\MigrationOption;
 use App\Core\Migrate\MigrationOptionResolver;
 use App\Core\Migrate\MigrationRow;
 use App\Core\Migrate\MigrationSourceInterface;
+use App\Core\Migrate\Source\ForeignDatabase;
 use Doctrine\ORM\EntityManagerInterface;
-use Modules\Importer\Source\Wordpress\WxrReader;
+use Modules\Importer\Source\Wordpress\WordpressOrigin;
 use Modules\Importer\Source\Wordpress\WxrTermSource;
 
 /**
  * WordPress tags become terms in the blog_tag vocabulary.
- *
- * Flat by definition — WordPress tags have no hierarchy — so unlike categories
- * there is no parent to resolve.
  */
 final class WordpressTagMigration implements ConfigurableMigrationInterface
 {
     public const ID = 'wordpress.tags';
 
+    /** @var array<string, string> */
+    private readonly array $options;
+
+    /**
+     * @param array<string, string> $options
+     */
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly string $file = '',
-        private readonly string $locale = 'en',
+        array $options = [],
+        private readonly ?ForeignDatabase $suppliedDatabase = null,
     ) {
+        $this->options = $options;
     }
 
     public function id(): string
@@ -50,26 +55,24 @@ final class WordpressTagMigration implements ConfigurableMigrationInterface
     public function options(): array
     {
         return [
-            MigrationOption::file('file', 'Path to the WordPress WXR export file'),
+            ...WordpressOrigin::commonOptions(),
             MigrationOption::optional('locale', 'Locale the imported terms belong to', 'en'),
         ];
     }
 
     public function withOptions(array $values): static
     {
-        $resolved = MigrationOptionResolver::resolve($this->options(), $values);
-
-        return new static($this->entityManager, $resolved['file'], $resolved['locale']);
+        return new static($this->entityManager, MigrationOptionResolver::resolve($this->options(), $values), $this->suppliedDatabase);
     }
 
     public function source(): MigrationSourceInterface
     {
-        return new WxrTermSource($this->reader(), WxrTermSource::TAXONOMY_TAG);
+        return $this->origin()->terms(WxrTermSource::TAXONOMY_TAG);
     }
 
     public function destination(): MigrationDestinationInterface
     {
-        return new TermDestination($this->entityManager, 'blog_tag', 'Blog tags', $this->locale);
+        return new TermDestination($this->entityManager, 'blog_tag', 'Blog tags', $this->options['locale'] ?? 'en');
     }
 
     public function transform(MigrationRow $row): MigrationRow
@@ -77,19 +80,15 @@ final class WordpressTagMigration implements ConfigurableMigrationInterface
         return $row->withData([
             'name' => trim($row->getString('name')),
             'slug' => trim($row->getString('slug')),
-            'locale' => $this->locale,
+            'locale' => $this->options['locale'] ?? 'en',
             'description' => trim($row->getString('description')),
             'importedFrom' => 'wordpress',
             'wordpressTermId' => trim($row->getString('wpTermId')),
         ]);
     }
 
-    private function reader(): WxrReader
+    private function origin(): WordpressOrigin
     {
-        if ($this->file === '') {
-            throw new \LogicException('This migration has not been configured; pass -o file=<export.xml>.');
-        }
-
-        return new WxrReader($this->file);
+        return new WordpressOrigin($this->entityManager, $this->options, $this->suppliedDatabase);
     }
 }

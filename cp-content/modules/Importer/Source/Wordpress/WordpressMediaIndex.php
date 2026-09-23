@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Importer\Source\Wordpress;
 
 use App\Core\Migrate\MigrationLookup;
+use App\Core\Migrate\MigrationSourceInterface;
 use App\Entity\Asset;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -39,7 +40,7 @@ final class WordpressMediaIndex
     private ?array $byAttachmentId = null;
 
     public function __construct(
-        private readonly WxrReader $reader,
+        private readonly MigrationSourceInterface $attachments,
         private readonly MigrationLookup $lookup,
         private readonly EntityManagerInterface $entityManager,
         private readonly string $migrationId,
@@ -125,8 +126,11 @@ final class WordpressMediaIndex
         $this->byPath = [];
         $this->byAttachmentId = [];
         $urlPath = new UrlPath();
+        /** @var list<array{0: int, 1: string}> $pending */
+        $pending = [];
+        $assetIds = [];
 
-        foreach ((new WxrAttachmentSource($this->reader))->rows() as $row) {
+        foreach ($this->attachments->rows() as $row) {
             $assetId = $this->lookup->findInt($this->migrationId, $row->sourceId);
 
             if ($assetId === null) {
@@ -141,26 +145,50 @@ final class WordpressMediaIndex
                 continue;
             }
 
-            $publicUrl = $this->publicUrl($assetId);
+            $pending[] = [$assetId, $this->normalise($relative)];
+            $assetIds[$assetId] = true;
+        }
 
-            if ($publicUrl !== null) {
-                $this->byPath[$this->normalise($relative)] = $publicUrl;
+        $assets = $this->assetsById(array_keys($assetIds));
+
+        foreach ($pending as [$assetId, $relative]) {
+            $asset = $assets[$assetId] ?? null;
+
+            if ($asset === null) {
+                continue;
             }
+
+            $this->byPath[$relative] = '/uploads/'.trim($asset->getPath(), '/').'/'.$asset->getFilename();
         }
     }
 
     /**
-     * Assets are written into public/uploads by AssetManager, so the served URL
-     * is the storage key with the mount point in front of it.
+     * One IN() for every imported attachment, not find() inside the loop —
+     * the first post would otherwise read cp_assets once per picture and trip
+     * Law 6.1 the same way the map did.
+     *
+     * @param list<int> $ids
+     *
+     * @return array<int, Asset>
      */
-    private function publicUrl(int $assetId): ?string
+    private function assetsById(array $ids): array
     {
-        $asset = $this->entityManager->find(Asset::class, $assetId);
-
-        if ($asset === null) {
-            return null;
+        if ($ids === []) {
+            return [];
         }
 
-        return '/uploads/'.trim($asset->getPath(), '/').'/'.$asset->getFilename();
+        /** @var list<Asset> $assets */
+        $assets = $this->entityManager->getRepository(Asset::class)->findBy(['id' => $ids]);
+        $found = [];
+
+        foreach ($assets as $asset) {
+            $id = $asset->getId();
+
+            if ($id !== null) {
+                $found[$id] = $asset;
+            }
+        }
+
+        return $found;
     }
 }

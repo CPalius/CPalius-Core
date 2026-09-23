@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Importer\Migration\Xenforo;
 
+use App\Core\Media\AssetManager;
 use App\Core\Migrate\ConfigurableMigrationInterface;
 use App\Core\Migrate\Destination\UserDestination;
 use App\Core\Migrate\MigrationDestinationInterface;
@@ -16,6 +17,9 @@ use App\Core\Migrate\Source\ForeignDatabase;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Importer\Markup\BbCodeConverter;
 use Modules\Importer\Migration\DatabaseOptions;
+use Modules\Importer\Migration\ImportedAccountEmail;
+use Modules\Importer\Source\ForumDataFolder;
+use Modules\Importer\Source\LocalAssetIntake;
 
 /**
  * XenForo members become CPalius users.
@@ -24,9 +28,10 @@ use Modules\Importer\Migration\DatabaseOptions;
  * user_id, and there is nothing to resolve that against until the users exist.
  *
  * Passwords are not carried over — see UserDestination for why re-hashing a
- * foreign hash is worse than making everyone reset. A member with no address,
- * or one XenForo marked as a spam-cleaned shell, is skipped rather than turned
- * into an account nobody can recover.
+ * foreign hash is worse than making everyone reset. A member with no usable
+ * address still becomes an account (placeholder @invalid.invalid) so their
+ * posts keep a profile link. They cannot reset a password until an admin
+ * gives them a real address.
  */
 final class XenforoUserMigration implements ConfigurableMigrationInterface
 {
@@ -42,6 +47,7 @@ final class XenforoUserMigration implements ConfigurableMigrationInterface
         private readonly EntityManagerInterface $entityManager,
         array $options = [],
         private readonly ?ForeignDatabase $suppliedDatabase = null,
+        private readonly ?AssetManager $assetManager = null,
     ) {
         $this->options = $options;
     }
@@ -71,7 +77,7 @@ final class XenforoUserMigration implements ConfigurableMigrationInterface
 
     public function withOptions(array $values): static
     {
-        return new static($this->entityManager, MigrationOptionResolver::resolve($this->options(), $values), $this->suppliedDatabase);
+        return new static($this->entityManager, MigrationOptionResolver::resolve($this->options(), $values), $this->suppliedDatabase, $this->assetManager);
     }
 
     public function source(): MigrationSourceInterface
@@ -100,25 +106,43 @@ final class XenforoUserMigration implements ConfigurableMigrationInterface
 
     public function transform(MigrationRow $row): ?MigrationRow
     {
-        $email = trim($row->getString('email'));
-
-        if ($email === '' || !filter_var($email, \FILTER_VALIDATE_EMAIL)) {
-            return null;
-        }
-
+        $email = ImportedAccountEmail::resolve($row->getString('email'), 'xenforo', $row->sourceId);
         $username = trim($row->getString('username'));
         $signature = $row->getString('signature');
-
-        return $row->withData([
+        $avatarId = $this->importAvatar((int) $row->sourceId);
+        $data = [
             'email' => $email,
             'username' => $username,
             'importedFrom' => 'xenforo',
             'xenforoUserId' => $row->sourceId,
             'xenforoState' => trim($row->getString('user_state')),
+            'emailPlaceholder' => ImportedAccountEmail::isPlaceholder($email) ? '1' : '',
             // Signatures are BBCode like everything else a forum stores.
             'signature' => $signature === '' ? '' : (new BbCodeConverter())->convert($signature),
             'website' => trim($row->getString('website')),
-        ]);
+        ];
+
+        if ($avatarId !== null) {
+            $data['avatar_asset_id'] = $avatarId;
+        }
+
+        return $row->withData($data);
+    }
+
+    private function importAvatar(int $userId): ?int
+    {
+        if ($this->assetManager === null || $userId < 1) {
+            return null;
+        }
+
+        $files = ForumDataFolder::fromOption($this->options['data'] ?? '');
+        $path = $files?->xenforoAvatar($userId);
+
+        if ($path === null) {
+            return null;
+        }
+
+        return (new LocalAssetIntake($this->entityManager, $this->assetManager))->store($path, $userId.'.jpg');
     }
 
     private function database(): ForeignDatabase
@@ -133,6 +157,6 @@ final class XenforoUserMigration implements ConfigurableMigrationInterface
             throw new \LogicException('This migration has not been configured; fill in the source database fields.');
         }
 
-        return ForeignDatabase::fromOptions($this->options, 'xf_');
+        return DatabaseOptions::connect($this->options, 'xf_', $this->entityManager->getConnection());
     }
 }

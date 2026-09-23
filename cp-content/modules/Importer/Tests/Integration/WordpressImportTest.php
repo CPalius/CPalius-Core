@@ -83,18 +83,17 @@ final class WordpressImportTest extends IntegrationTestCase
     {
         $report = $this->runner()->run($this->chain()[0], false);
 
-        self::assertSame(1, $report->created());
-        // The author with no email is skipped, not invented for: no password
-        // came across, so an account with no address could never be recovered.
-        self::assertSame(1, $report->skipped());
+        self::assertSame(2, $report->created());
+        self::assertSame(0, $report->skipped());
 
         /** @var list<User> $users */
         $users = $this->em()->getRepository(User::class)->findBy([], ['id' => 'ASC']);
-        self::assertCount(1, $users);
+        self::assertCount(2, $users);
         self::assertSame('admin@eski.example', $users[0]->getEmail());
         self::assertSame('Site Yöneticisi', $users[0]->getUsername());
         self::assertSame('Ali', $users[0]->getFirstName());
         self::assertStringStartsWith('!imported-', $users[0]->getPassword());
+        self::assertSame('imported-wordpress-nomail@invalid.invalid', $users[1]->getEmail());
     }
 
     public function testCategoriesKeepTheirHierarchyOnASecondRun(): void
@@ -233,7 +232,7 @@ final class WordpressImportTest extends IntegrationTestCase
 
         $this->em()->clear();
         self::assertCount(0, $this->em()->getRepository(Node::class)->findBy([]));
-        self::assertCount(1, $this->em()->getRepository(User::class)->findBy([]));
+        self::assertCount(2, $this->em()->getRepository(User::class)->findBy([]));
         self::assertNotCount(0, $this->em()->getRepository(Term::class)->findBy([]));
     }
 
@@ -254,12 +253,62 @@ final class WordpressImportTest extends IntegrationTestCase
         }
     }
 
-    public function testAMissingRequiredOptionIsRefusedByName(): void
+    public function testAnUnconfiguredImportIsRefused(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessageMatches('/Missing required option.*file/s');
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/WXR|\.sql|database/');
 
-        (new WordpressAuthorMigration($this->em()))->withOptions([]);
+        (new WordpressAuthorMigration($this->em()))->withOptions([])->source();
+    }
+
+    public function testASqlDumpIsNotOpenedAsXml(): void
+    {
+        $path = sys_get_temp_dir().'/cpalius-wp-'.bin2hex(random_bytes(6)).'.sql';
+        file_put_contents($path, "-- MySQL dump\nCREATE TABLE wp_users (ID int);\n");
+
+        try {
+            $origin = new \Modules\Importer\Source\Wordpress\WordpressOrigin($this->em(), ['file' => $path]);
+            self::assertTrue($origin->isDatabase());
+            self::assertSame($path, $origin->dumpPath());
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    public function testAWordpressDatabaseBecomesAuthorsAndPosts(): void
+    {
+        $source = \Doctrine\DBAL\DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
+        $source->executeStatement('CREATE TABLE wp_users (ID INTEGER PRIMARY KEY, user_login TEXT, user_email TEXT, display_name TEXT)');
+        $source->executeStatement('CREATE TABLE wp_posts (ID INTEGER PRIMARY KEY, post_author INTEGER, post_date TEXT, post_content TEXT, post_title TEXT, post_excerpt TEXT, post_status TEXT, post_name TEXT, post_type TEXT, guid TEXT, post_parent INTEGER, menu_order INTEGER)');
+        $source->executeStatement('CREATE TABLE wp_terms (term_id INTEGER PRIMARY KEY, name TEXT, slug TEXT)');
+        $source->executeStatement('CREATE TABLE wp_term_taxonomy (term_taxonomy_id INTEGER PRIMARY KEY, term_id INTEGER, taxonomy TEXT, description TEXT, parent INTEGER)');
+        $source->executeStatement('CREATE TABLE wp_term_relationships (object_id INTEGER, term_taxonomy_id INTEGER)');
+        $source->insert('wp_users', ['ID' => 1, 'user_login' => 'editor', 'user_email' => 'editor@wp.test', 'display_name' => 'Editör']);
+        $source->insert('wp_terms', ['term_id' => 1, 'name' => 'Haber', 'slug' => 'haber']);
+        $source->insert('wp_term_taxonomy', ['term_taxonomy_id' => 1, 'term_id' => 1, 'taxonomy' => 'category', 'description' => '', 'parent' => 0]);
+        $source->insert('wp_posts', ['ID' => 10, 'post_author' => 1, 'post_date' => '2024-01-02 10:00:00', 'post_content' => 'Merhaba SQL', 'post_title' => 'Veritabanı yazısı', 'post_excerpt' => '', 'post_status' => 'publish', 'post_name' => 'veritabani-yazisi', 'post_type' => 'post', 'guid' => 'http://eski.test/?p=10', 'post_parent' => 0, 'menu_order' => 0]);
+        $source->insert('wp_term_relationships', ['object_id' => 10, 'term_taxonomy_id' => 1]);
+
+        $db = \App\Core\Migrate\Source\ForeignDatabase::wrap($source, 'wp_');
+        $em = $this->em();
+        $runner = $this->runner();
+        $lookup = $this->lookup();
+
+        $runner->run(new WordpressAuthorMigration($em, [], $db), false);
+        $runner->run(new WordpressCategoryMigration($em, $lookup, [], $db), false);
+        $runner->run(new WordpressTagMigration($em, [], $db), false);
+        $runner->run(new WordpressPostMigration($em, $this->slugGenerator(), $lookup, [], $db), false);
+        $this->em()->clear();
+
+        $user = $this->em()->getRepository(User::class)->findOneBy(['email' => 'editor@wp.test']);
+        self::assertSame('Editör', $user?->getUsername());
+        $node = $this->em()->getRepository(Node::class)->findOneBy(['title' => 'Veritabanı yazısı']);
+        self::assertNotNull($node);
+        self::assertStringContainsString('Merhaba SQL', (string) ($node->getData()['body'] ?? ''));
+        self::assertSame(['haber'], array_map(
+            static fn (Term $t): string => $t->getSlug(),
+            $node->getCategories()->toArray(),
+        ));
     }
 
     public function testAMistypedOptionIsRefusedRatherThanIgnored(): void

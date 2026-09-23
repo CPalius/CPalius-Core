@@ -7,6 +7,7 @@ namespace Modules\Forum\Service;
 use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use App\Repository\UserRepository;
+use Modules\Importer\Markup\BbCodeConverter;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -39,6 +40,7 @@ final class ForumBodyPresenter
         private readonly TranslatorInterface $translator,
         private readonly UserRepository $userRepository,
         private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly ForumSmilieCatalog $smilies,
     ) {
     }
 
@@ -55,6 +57,11 @@ final class ForumBodyPresenter
             return '';
         }
 
+        // Already-imported XenForo / MyBB posts still carry tags the first
+        // converter did not know ([USER], [IMG width="…"]). Rewrite those
+        // without re-escaping the HTML that did convert.
+        $html = (new BbCodeConverter())->rewriteInHtml($html);
+
         $previous = libxml_use_internal_errors(true);
         $dom = new \DOMDocument();
         $wrapped = '<div id="cp-forum-body">'.$html.'</div>';
@@ -67,6 +74,7 @@ final class ForumBodyPresenter
             return $html;
         }
 
+        $this->replaceSmilies($dom, $root);
         $this->prepareImages($root);
         $this->linkifyTextNodes($dom, $root, $topicId);
         if ($this->embedsEnabled() || $this->unfurlEnabled()) {
@@ -79,6 +87,40 @@ final class ForumBodyPresenter
         }
 
         return $out;
+    }
+
+    /**
+     * XenForo (and the composer picker) store ":)" in the post. Swap it here
+     * so imported threads match the old board without rewriting every row.
+     */
+    private function replaceSmilies(\DOMDocument $dom, \DOMElement $root): void
+    {
+        $xpath = new \DOMXPath($dom);
+        $nodes = $xpath->query('.//text()', $root);
+
+        if (!$nodes instanceof \DOMNodeList) {
+            return;
+        }
+
+        $targets = [];
+        foreach ($nodes as $node) {
+            if ($node instanceof \DOMText && !$this->isInside($node, self::OPAQUE_TAGS)) {
+                $targets[] = $node;
+            }
+        }
+
+        foreach ($targets as $node) {
+            $html = $this->smilies->replace($node->textContent);
+
+            if ($html === null) {
+                continue;
+            }
+
+            $fragment = $this->fragment($dom, $html);
+            if ($fragment instanceof \DOMDocumentFragment && $node->parentNode instanceof \DOMNode) {
+                $node->parentNode->replaceChild($fragment, $node);
+            }
+        }
     }
 
     /**
@@ -210,6 +252,9 @@ final class ForumBodyPresenter
         }
         foreach ($images as $img) {
             if (!$img instanceof \DOMElement) {
+                continue;
+            }
+            if (str_contains($img->getAttribute('class'), 'forum-smilie')) {
                 continue;
             }
             if ($this->isInside($img, ['blockquote', 'pre', 'code'])) {

@@ -16,12 +16,13 @@ final class UserCapabilityOverridePresenter
         private readonly UserCapabilityOverrideStore $store,
         private readonly UserCapabilityOverridePolicy $policy,
         private readonly RoleConfigManager $roleConfig,
+        private readonly CapabilityLabeler $labels,
     ) {
     }
 
     /**
      * @return array{
-     *     groups: list<array{module: string, rows: list<array{capability: string, effect: string, roleHas: bool, grantable: bool, deniable: bool, overridden: bool}>, overrideCount: int}>,
+     *     groups: list<array{module: string, rows: list<array{capability: string, label: string, effect: string, roleHas: bool, grantable: bool, deniable: bool, overridden: bool}>, overrideCount: int}>,
      *     overrideCount: int
      * }
      */
@@ -50,6 +51,7 @@ final class UserCapabilityOverridePresenter
 
                 $rows[] = [
                     'capability' => $capability,
+                    'label' => $this->labels->label($capability),
                     'effect' => $effect,
                     'roleHas' => isset($roleCaps[$capability]),
                     'grantable' => $this->policy->canGrant($capability),

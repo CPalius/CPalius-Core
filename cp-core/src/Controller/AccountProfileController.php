@@ -8,6 +8,7 @@ use App\Core\Account\AccountIdentityChangeService;
 use App\Core\Account\AccountLandingResolver;
 use App\Core\Account\AccountProfileExtensionInterface;
 use App\Core\Account\UserAvatarService;
+use App\Core\Field\FieldValuePersister;
 use App\Core\Localization\LocaleProvider;
 use App\Core\Localization\Service\UserLocaleResolver;
 use App\Core\Media\Exception\InvalidUploadException;
@@ -57,6 +58,7 @@ final class AccountProfileController extends AbstractController
         private readonly AccountIdentityChangeService $identityChanges,
         private readonly UserLocaleResolver $userLocale,
         private readonly LocaleProvider $localeProvider,
+        private readonly FieldValuePersister $fieldValuePersister,
         #[TaggedIterator('cpalius.account.profile_extension')]
         private readonly iterable $profileExtensions = [],
     ) {
@@ -71,7 +73,18 @@ final class AccountProfileController extends AbstractController
         $dto->locale = $this->userLocale->resolve($user);
         $form = $this->createForm(AccountProfileType::class, $dto, [
             'locale_choices' => $this->localeChoices(),
+            'field_locale' => $request->getLocale(),
         ]);
+        if ($form->has('fields')) {
+            $data = $user->getFieldableData();
+            $prefill = [];
+            foreach ($form->get('fields')->all() as $name => $child) {
+                if (\array_key_exists($name, $data)) {
+                    $prefill[$name] = $data[$name];
+                }
+            }
+            $form->get('fields')->setData($prefill);
+        }
         foreach ($this->profileExtensions as $extension) {
             foreach ($extension->valuesFromUser($user) as $field => $value) {
                 if ($form->has($field)) {
@@ -252,7 +265,13 @@ final class AccountProfileController extends AbstractController
     {
         $user->setFirstName(trim($dto->firstName));
         $user->setLastName(trim($dto->lastName));
+        $user->setLocation(trim($dto->location));
         $this->userLocale->remember($user, $dto->locale);
+
+        if ($form->has('fields')) {
+            $submitted = $form->get('fields')->getData();
+            $this->fieldValuePersister->persist($user, \is_array($submitted) ? $submitted : []);
+        }
 
         foreach ($this->profileExtensions as $extension) {
             $extension->saveToUser($user, $form);

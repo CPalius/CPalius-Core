@@ -56,6 +56,7 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
             'cp_forum_topic_prefixes',
             'cp_forum_bans',
             'cp_forum_user_ranks',
+            'cp_forum_smilies',
             'cp_forum_node_permissions',
             'cp_forum_sections',
         ];

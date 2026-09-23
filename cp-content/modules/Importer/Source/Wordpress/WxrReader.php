@@ -383,6 +383,10 @@ final class WxrReader
             throw new \RuntimeException(sprintf('WXR file "%s" does not exist or cannot be read.', $this->path));
         }
 
+        if (WordpressOrigin::looksLikeSqlDump($this->path)) {
+            throw new \RuntimeException('That file is a SQL dump, not a WordPress WXR export. Choose it as the SQL dump (or fill in the remote database), not as the WXR file.');
+        }
+
         // LIBXML_NONET refuses network fetches for external entities, and no
         // DTD is loaded: an export is a file from somewhere else, and parsing
         // one must not become a way to make this server issue requests or read

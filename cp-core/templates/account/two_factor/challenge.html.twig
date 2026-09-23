@@ -1,6 +1,6 @@
 {% extends '@Theme/account/layout.html.twig' %}
 
-{% block title %}{{ 'account.two_factor.challenge_title'|trans }}{% endblock %}
+{% block title %}{{ (loginEmail|default(false) ? 'account.two_factor.login_email_title' : 'account.two_factor.challenge_title')|trans }}{% endblock %}
 
 {% block forum_breadcrumbs %}
     <nav class="forum-nav fade-in" aria-label="{{ 'account.nav_aria'|trans }}">
@@ -17,11 +17,11 @@
 
 {% block forum_content %}
 <div class="forum-header fade-in" style="text-align:center; max-width: 420px; margin: 0 auto var(--sp-lg);">
-    <span class="section-label">{{ 'account.two_factor.label'|trans }}</span>
-    <h1 class="section-title">{{ 'account.two_factor.challenge_heading'|trans }}</h1>
+            <span class="section-label">{{ (loginEmail|default(false) ? 'account.two_factor.login_email_label' : 'account.two_factor.label')|trans }}</span>
+    <h1 class="section-title">{{ (loginEmail|default(false) ? 'account.two_factor.login_email_heading' : 'account.two_factor.challenge_heading')|trans }}</h1>
     <p class="forum-header__desc" style="margin: 0 auto;">
         {% if usesEmail|default(false) %}
-            {{ 'account.two_factor.challenge_desc_email'|trans({'email': maskedEmail|default('')}) }}
+            {{ (loginEmail|default(false) ? 'account.two_factor.login_email_desc' : 'account.two_factor.challenge_desc_email')|trans({'email': maskedEmail|default('')}) }}
         {% else %}
             {{ 'account.two_factor.challenge_desc'|trans }}
         {% endif %}
@@ -70,8 +70,10 @@
     {% endif %}
 
     <p style="margin-top: var(--sp-md); text-align:center; font-size: var(--fs-sm); color: var(--slw-text-muted);">
-        {{ 'account.two_factor.recovery_remaining'|trans({'count': recoveryRemaining}) }}
-        <br>
+        {% if not loginEmail|default(false) %}
+            {{ 'account.two_factor.recovery_remaining'|trans({'count': recoveryRemaining}) }}
+            <br>
+        {% endif %}
         <a href="{{ path('admin_logout') }}" style="color: var(--cp-accent); text-decoration: underline;">{{ 'account.two_factor.sign_out'|trans }}</a>
     </p>
 </div>

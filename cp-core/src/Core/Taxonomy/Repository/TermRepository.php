@@ -44,6 +44,47 @@ class TermRepository extends ServiceEntityRepository
         return $rows;
     }
 
+    /**
+     * Roots of a vocabulary for one locale, children already loaded.
+     *
+     * The blog category strip walks root.children. Loading the terms first
+     * and then asking each root for its children is an N+1 on cp_terms —
+     * eleven roots trip Law 6.1. One JOIN FETCH initialises the collection.
+     *
+     * @return list<Term>
+     */
+    public function findTreeByVocabulary(Vocabulary $vocabulary, string $locale): array
+    {
+        /** @var list<Term> $rows */
+        $rows = $this->createQueryBuilder('t')
+            ->addSelect('p', 'c')
+            ->leftJoin('t.parent', 'p')
+            ->leftJoin('t.children', 'c')
+            ->andWhere('t.vocabulary = :vocabulary')
+            ->andWhere('t.locale = :locale')
+            ->setParameter('vocabulary', $vocabulary)
+            ->setParameter('locale', $locale)
+            ->orderBy('t.weight', 'ASC')
+            ->addOrderBy('t.name', 'ASC')
+            ->addOrderBy('c.weight', 'ASC')
+            ->addOrderBy('c.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $unique = [];
+        foreach ($rows as $term) {
+            $id = $term->getId();
+            if ($id !== null) {
+                $unique[$id] = $term;
+            }
+        }
+
+        return array_values(array_filter(
+            $unique,
+            static fn (Term $term): bool => $term->getParent() === null,
+        ));
+    }
+
     public function findOneBySlug(Vocabulary $vocabulary, string $slug, string $locale): ?Term
     {
         return $this->findOneBy(['vocabulary' => $vocabulary, 'slug' => $slug, 'locale' => $locale]);

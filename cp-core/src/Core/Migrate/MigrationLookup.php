@@ -21,9 +21,21 @@ use App\Core\Migrate\Map\MigrationMapInterface;
  */
 final class MigrationLookup
 {
+    /**
+     * Rows a dry-run batch has already "imported" in memory. Consulted first
+     * so a later step (topics after sections) can resolve parents that were
+     * not written to the persistent map.
+     */
+    private ?MigrationMapInterface $preview = null;
+
     public function __construct(
         private readonly MigrationMapInterface $map,
     ) {
+    }
+
+    public function previewThrough(?MigrationMapInterface $map): void
+    {
+        $this->preview = $map;
     }
 
     /**
@@ -34,6 +46,11 @@ final class MigrationLookup
     {
         if (trim($sourceId) === '') {
             return null;
+        }
+
+        $preview = $this->preview?->find($migrationId, $sourceId);
+        if ($preview !== null) {
+            return $preview->destinationId;
         }
 
         return $this->map->find($migrationId, $sourceId)?->destinationId;

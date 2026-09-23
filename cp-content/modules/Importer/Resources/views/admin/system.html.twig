@@ -28,7 +28,7 @@
                       class="mt-sp-xs flex flex-wrap items-center gap-2">
                     <input type="hidden" name="_token" value="{{ csrf_token }}">
                     <input type="file" name="export" required
-                           accept=".xml,.csv,.zip,.json,.txt"
+                           accept=".xml,.csv,.zip,.json,.txt,.sql,.gz,.sql.gz"
                            class="input max-w-md flex-1">
                     <button type="submit" class="btn btn-sm btn-neutral">{{ 'importer.upload.submit'|trans }}</button>
                 </form>
@@ -59,11 +59,70 @@
             </twig:studio:card>
 
             <twig:studio:card title="{{ 'importer.system.settings'|trans }}" padded="{{ true }}">
-                <form method="post" action="{{ path('admin_import_run', {system: system.id}) }}" class="space-y-sp-sm">
+                {% set optionNames = options|map(o => o.name) %}
+                {% set hasXmlSource = 'file' in optionNames and 'sqlDump' in optionNames %}
+                {% set hasDumpSource = 'sqlDump' in optionNames %}
+                {% set hasRemoteSource = 'dbHost' in optionNames %}
+                {% set xmlUploads = uploads|filter(u => not u.isDirectory and u.originalName matches '/\\.(xml|wxr)$/i') %}
+                {% set sqlUploads = uploads|filter(u => not u.isDirectory and u.originalName matches '/\\.sql(\\.[gG][zZ])?$/i') %}
+                {% set guessedKind = sourceKind|default('') %}
+                {% if guessedKind == '' and hasXmlSource %}
+                    {% if values.sqlDump|default('') != '' or values.dbName|default('') != '' or (values.file|default('') matches '/\\.sql/i') or (sqlUploads is not empty and xmlUploads is empty) %}
+                        {% set guessedKind = 'sql' %}
+                    {% else %}
+                        {% set guessedKind = 'xml' %}
+                    {% endif %}
+                {% elseif guessedKind == '' and hasDumpSource and hasRemoteSource %}
+                    {% set guessedKind = values.dbName|default('') != '' and values.sqlDump|default('') == '' ? 'remote' : 'dump' %}
+                {% endif %}
+
+                <form method="post" action="{{ path('admin_import_run', {system: system.id}) }}" class="space-y-sp-sm" data-import-source>
                     <input type="hidden" name="_token" value="{{ csrf_token }}">
 
+                    {% if hasXmlSource %}
+                        <fieldset class="rounded-lg border border-neutral-200 p-sp-sm">
+                            <legend class="px-1 text-fs-sm font-medium text-neutral-800">{{ 'importer.mode.title'|trans }}</legend>
+                            <p class="mb-2 text-fs-xs text-neutral-500">{{ 'importer.mode.help_xml'|trans }}</p>
+                            <label class="flex items-start gap-2 text-fs-sm text-neutral-800">
+                                <input type="radio" name="sourceKind" value="xml" class="mt-0.5" {{ guessedKind != 'sql' ? 'checked' : '' }}>
+                                <span>
+                                    <span class="font-medium">{{ 'importer.mode.xml'|trans }}</span>
+                                    <span class="block text-fs-xs text-neutral-500">{{ 'importer.mode.xml_help'|trans }}</span>
+                                </span>
+                            </label>
+                            <label class="mt-2 flex items-start gap-2 text-fs-sm text-neutral-800">
+                                <input type="radio" name="sourceKind" value="sql" class="mt-0.5" {{ guessedKind == 'sql' ? 'checked' : '' }}>
+                                <span>
+                                    <span class="font-medium">{{ 'importer.mode.sql'|trans }}</span>
+                                    <span class="block text-fs-xs text-neutral-500">{{ 'importer.mode.sql_help'|trans }}</span>
+                                </span>
+                            </label>
+                        </fieldset>
+                    {% elseif hasDumpSource and hasRemoteSource %}
+                        <fieldset class="rounded-lg border border-neutral-200 p-sp-sm">
+                            <legend class="px-1 text-fs-sm font-medium text-neutral-800">{{ 'importer.mode.title'|trans }}</legend>
+                            <p class="mb-2 text-fs-xs text-neutral-500">{{ 'importer.mode.help_sql'|trans }}</p>
+                            <label class="flex items-start gap-2 text-fs-sm text-neutral-800">
+                                <input type="radio" name="sourceKind" value="dump" class="mt-0.5" {{ guessedKind != 'remote' ? 'checked' : '' }}>
+                                <span>
+                                    <span class="font-medium">{{ 'importer.mode.dump'|trans }}</span>
+                                    <span class="block text-fs-xs text-neutral-500">{{ 'importer.mode.dump_help'|trans }}</span>
+                                </span>
+                            </label>
+                            <label class="mt-2 flex items-start gap-2 text-fs-sm text-neutral-800">
+                                <input type="radio" name="sourceKind" value="remote" class="mt-0.5" {{ guessedKind == 'remote' ? 'checked' : '' }}>
+                                <span>
+                                    <span class="font-medium">{{ 'importer.mode.remote'|trans }}</span>
+                                    <span class="block text-fs-xs text-neutral-500">{{ 'importer.mode.remote_help'|trans }}</span>
+                                </span>
+                            </label>
+                        </fieldset>
+                    {% endif %}
+
+                    {% set saved = saved|default({}) %}
                     {% for option in options %}
                         {% set current = values[option.name]|default(option.default ?? '') %}
+                        {% set hasSaved = saved[option.name] is defined and saved[option.name] != '' %}
                         {# Uploads that can satisfy this field: a file option
                            offers files, a directory option offers unpacked
                            archives. Matching on the declared kind rather than
@@ -72,10 +131,27 @@
                         {% set choices = option.kind == 'directory'
                             ? uploads|filter(u => u.isDirectory)
                             : (option.kind == 'file' ? uploads|filter(u => not u.isDirectory) : []) %}
+                        {% if option.name == 'file' and xmlUploads is not empty %}
+                            {% set choices = xmlUploads %}
+                        {% elseif option.name == 'sqlDump' and sqlUploads is not empty %}
+                            {% set choices = sqlUploads %}
+                        {% endif %}
+                        {% set groups = '' %}
+                        {% if option.name == 'file' and hasXmlSource %}
+                            {% set groups = 'xml' %}
+                        {% elseif option.name == 'sqlDump' %}
+                            {% set groups = hasXmlSource ? 'sql' : 'dump' %}
+                        {% elseif option.name in ['dbHost', 'dbName', 'dbUser', 'dbPassword'] %}
+                            {% set groups = hasXmlSource ? 'sql' : 'remote' %}
+                        {% elseif option.name == 'prefix' and (hasXmlSource or (hasDumpSource and hasRemoteSource)) %}
+                            {% set groups = hasXmlSource ? 'sql' : 'dump,remote' %}
+                        {% endif %}
+                        {% set optionLabelKey = 'importer.option.' ~ option.name %}
+                        {% set optionLabel = optionLabelKey|trans %}
 
-                        <div>
+                        <div data-import-field{% if groups != '' %} data-import-groups="{{ groups }}"{% endif %}>
                             <label for="opt-{{ option.name }}" class="block text-fs-sm font-medium text-neutral-800">
-                                {{ option.name }}
+                                {{ optionLabel != optionLabelKey ? optionLabel : option.name }}
                                 {% if option.required %}<span class="text-danger-600">*</span>{% endif %}
                             </label>
 
@@ -96,20 +172,59 @@
                                    {# A secret is never rendered back into the page; it is
                                       retyped rather than shown in a screenshot. #}
                                    value="{{ option.isSecret ? '' : current }}"
-                                   {% if option.required %}required{% endif %}
-                                   placeholder="{{ option.default ?? '' }}"
+                                   {% if option.required and not hasSaved %}required{% endif %}
+                                   placeholder="{{ option.isSecret and hasSaved ? 'importer.source.saved_secret'|trans : (option.default ?? '') }}"
                                    autocomplete="off"
                                    class="input mt-1 w-full">
-                            <p class="mt-1 text-fs-xs text-neutral-500">{{ option.description }}</p>
+                            <p class="mt-1 text-fs-xs text-neutral-500">
+                                {{ option.description }}
+                                {% if hasSaved %}
+                                    <span class="block">{{ 'importer.source.remembered'|trans }}</span>
+                                {% endif %}
+                            </p>
                         </div>
                     {% endfor %}
+
+                    {% if migrations|length > 1 %}
+                        <fieldset data-import-steps class="rounded-lg border border-neutral-200 p-sp-sm">
+                            <legend class="px-1 text-fs-sm font-medium text-neutral-800">{{ 'importer.steps.title'|trans }}</legend>
+                            <p class="mb-2 text-fs-xs text-neutral-500">{{ 'importer.steps.help'|trans }}</p>
+                            <input type="hidden" name="steps_present" value="1">
+                            {% set selectedSteps = selectedSteps|default([]) %}
+                            {% set allSteps = selectedSteps is empty %}
+                            {% for migration in migrations %}
+                                {% set labelKey = 'importer.migration.' ~ migration.id|replace({'.': '_'}) %}
+                                {% set label = labelKey|trans %}
+                                <label class="mt-1 flex items-start gap-2 text-fs-sm text-neutral-800">
+                                    <input type="checkbox"
+                                           name="steps[]"
+                                           value="{{ migration.id }}"
+                                           class="mt-0.5"
+                                           data-depends-on="{{ migration.dependsOn|default([])|join(',') }}"
+                                           {{ allSteps or migration.id in selectedSteps ? 'checked' : '' }}>
+                                    <span>
+                                        <span class="font-medium">{{ label != labelKey ? label : migration.label }}</span>
+                                        {% if migration.imported > 0 %}
+                                            <span class="block text-fs-xs text-neutral-500">{{ 'importer.index.already'|trans({'count': migration.imported}) }}</span>
+                                        {% endif %}
+                                    </span>
+                                </label>
+                            {% endfor %}
+                        </fieldset>
+                    {% endif %}
 
                     <div>
                         <label for="limit" class="block text-fs-sm font-medium text-neutral-800">
                             {{ 'importer.system.limit'|trans }}
                         </label>
-                        <input type="number" id="limit" name="limit" min="1" max="2000"
-                               value="{{ limit|default(defaultLimit) }}" class="input mt-1 w-40">
+                        <input type="number" id="limit" name="limit" min="1" max="{{ maxLimit|default(100000) }}"
+                               value="{{ unlimited|default(false) ? defaultLimit : (limit|default(defaultLimit)) }}"
+                               class="input mt-1 w-40"
+                               {% if unlimited|default(false) %}disabled{% endif %}>
+                        <label class="mt-2 flex items-center gap-2 text-fs-sm text-neutral-700">
+                            <input type="checkbox" name="unlimited" value="1" {{ unlimited|default(false) ? 'checked' : '' }}>
+                            {{ 'importer.system.unlimited'|trans }}
+                        </label>
                         <p class="mt-1 text-fs-xs text-neutral-500">{{ 'importer.system.limit_help'|trans }}</p>
                     </div>
 
@@ -165,7 +280,7 @@
                 {% if not applied %}
                     <div class="rounded-lg border border-neutral-200 bg-neutral-50 px-sp-sm py-3 text-fs-sm text-neutral-600">
                         {{ 'importer.report.nothing_written'|trans }}
-                        {% if reports|length > 1 %}
+                        {% if reports|filter(report => report.skipped > 0)|length > 0 %}
                             <span class="block mt-1">{{ 'importer.report.dependent_note'|trans }}</span>
                         {% endif %}
                     </div>
@@ -208,7 +323,28 @@
                     {% endfor %}
                 </ol>
                 <p class="mt-sp-xs text-fs-xs text-neutral-500">{{ 'importer.system.steps_help'|trans }}</p>
+
+                {% if migrations|filter(m => m.imported > 0)|length > 0 %}
+                    <form method="post" action="{{ path('admin_import_run', {system: system.id}) }}"
+                          class="mt-sp-sm border-t border-neutral-200 pt-sp-sm"
+                          onsubmit="return confirm('{{ 'importer.system.rollback_confirm'|trans|e('js') }}');">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="mode" value="rollback">
+                        <button type="submit" class="btn btn-sm btn-danger">{{ 'importer.system.rollback'|trans }}</button>
+                        <p class="mt-2 text-fs-xs text-neutral-500">{{ 'importer.system.rollback_help'|trans }}</p>
+                    </form>
+                {% endif %}
             </twig:studio:card>
+
+            {% if saved is defined and saved is not empty %}
+                <twig:studio:card title="{{ 'importer.source.title'|trans }}" padded="{{ true }}">
+                    <p class="text-fs-xs text-neutral-500">{{ 'importer.source.help'|trans }}</p>
+                    <form method="post" action="{{ path('admin_import_source_forget', {system: system.id}) }}" class="mt-2">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-sm btn-neutral">{{ 'importer.source.forget'|trans }}</button>
+                    </form>
+                </twig:studio:card>
+            {% endif %}
 
             {% if command is defined and command %}
                 <twig:studio:card title="{{ 'importer.system.cli'|trans }}" padded="{{ true }}">

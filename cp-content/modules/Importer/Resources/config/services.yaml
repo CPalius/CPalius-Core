@@ -8,6 +8,8 @@ services:
     # MigrationRegistry picks them up without the core knowing this module.
     Modules\Importer\Migration\:
         resource: '../../Migration/'
+        bind:
+            $entityManager: '@App\Core\Migrate\ImportEntityManager'
 
     Modules\Importer\Controller\:
         resource: '../../Controller/'
@@ -23,6 +25,10 @@ services:
     # Split by environment so a test run cannot delete the exports a developer
     # uploaded while working — they are somebody's only copy often enough.
     Modules\Importer\Storage\ImportFileStore:
+        arguments:
+            $directory: '%kernel.project_dir%/cp-core/var/imports/%kernel.environment%'
+
+    Modules\Importer\Storage\ImportSourceStore:
         arguments:
             $directory: '%kernel.project_dir%/cp-core/var/imports/%kernel.environment%'
 

@@ -91,6 +91,42 @@ final class MigrateDestinationsTest extends IntegrationTestCase
         self::assertCount(1, $this->em()->getRepository(User::class)->findBy([]));
     }
 
+    public function testATakenUsernameIsSuffixedRatherThanHittingTheUniqueIndex(): void
+    {
+        $existing = new User('admin@example.test');
+        $existing->setPassword('x')->setStatus(User::STATUS_ACTIVE)->setUsername('Slaweally');
+        $this->em()->persist($existing);
+        $this->em()->flush();
+
+        $id = $this->users()->write(new MigrationRow('xf-1', [
+            'email' => 'member@eski.test',
+            'username' => 'Slaweally',
+        ]), null);
+
+        $imported = $this->em()->find(User::class, (int) $id);
+        self::assertNotNull($imported);
+        self::assertSame('Slaweally-2', $imported->getUsername());
+        self::assertSame('Slaweally', $existing->getUsername());
+        self::assertCount(2, $this->em()->getRepository(User::class)->findBy([]));
+    }
+
+    public function testRollbackDoesNotDeleteAnAccountThatAlreadyExistedHere(): void
+    {
+        $existing = new User('admin@example.test');
+        $existing->setPassword('real-hash')->setStatus(User::STATUS_ACTIVE);
+        $this->em()->persist($existing);
+        $this->em()->flush();
+        $id = (string) $existing->getId();
+
+        $this->users()->write(new MigrationRow('xf-1', [
+            'email' => 'admin@example.test',
+            'username' => 'admin',
+        ]), null);
+
+        self::assertFalse($this->users()->delete($id));
+        self::assertNotNull($this->em()->find(User::class, (int) $id));
+    }
+
     public function testAUserRowWithoutAnEmailIsRefused(): void
     {
         $this->expectException(\RuntimeException::class);

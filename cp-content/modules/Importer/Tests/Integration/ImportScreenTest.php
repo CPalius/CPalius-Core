@@ -43,6 +43,7 @@ final class ImportScreenTest extends IntegrationTestCase
         // Each test starts with an empty upload area: one test's upload showing
         // up in another's listing would make both of them lie.
         $this->clearUploads();
+        $this->clearSources();
 
         parent::setUp();
     }
@@ -50,6 +51,7 @@ final class ImportScreenTest extends IntegrationTestCase
     protected function tearDown(): void
     {
         $this->clearUploads();
+        $this->clearSources();
 
         foreach ($this->scratch as $path) {
             if (is_file($path)) {
@@ -61,6 +63,19 @@ final class ImportScreenTest extends IntegrationTestCase
         $this->controller = null;
 
         parent::tearDown();
+    }
+
+    private function clearSources(): void
+    {
+        $dir = $this->storeDirectory().'/sources';
+
+        if (!is_dir($dir)) {
+            return;
+        }
+
+        foreach (glob($dir.'/*.json') ?: [] as $file) {
+            @unlink($file);
+        }
     }
 
     private function clearUploads(): void
@@ -202,6 +217,8 @@ final class ImportScreenTest extends IntegrationTestCase
 
         // Not hard-coded in the template: these come from options().
         self::assertStringContainsString('options[file]', $html);
+        self::assertStringContainsString('options[sqlDump]', $html);
+        self::assertStringContainsString('options[dbHost]', $html);
         self::assertStringContainsString('options[uploads]', $html);
         self::assertStringContainsString('options[locale]', $html);
 
@@ -400,6 +417,29 @@ final class ImportScreenTest extends IntegrationTestCase
      * Symfony's voter: that the screen is guarded at all, and by the
      * capability the module actually ships.
      */
+    public function testASuccessfulRunRemembersTheSourceFieldsForTheNextVisit(): void
+    {
+        $controller = $this->boot();
+        $controller->run($this->post('dry', $this->wordpressOptions()), 'wordpress');
+
+        $html = (string) $controller->system('wordpress')->getContent();
+
+        self::assertStringContainsString(self::FIXTURE, $html);
+        self::assertStringContainsString('/admin/import/wordpress/source/forget', $html);
+    }
+
+    public function testRollbackFromTheScreenRemovesImportedRows(): void
+    {
+        $controller = $this->boot();
+        $controller->run($this->post('apply', $this->wordpressOptions()), 'wordpress');
+        $this->em()->clear();
+        self::assertSame(2, $this->rowsOf(Node::class));
+
+        $controller->run($this->post('rollback', $this->wordpressOptions()), 'wordpress');
+        $this->em()->clear();
+        self::assertSame(0, $this->rowsOf(Node::class));
+    }
+
     public function testTheScreenIsGuardedByTheCapabilityTheModuleShips(): void
     {
         $attributes = (new \ReflectionClass(ImportController::class))

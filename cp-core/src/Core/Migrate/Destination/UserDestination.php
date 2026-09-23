@@ -29,6 +29,11 @@ use Doctrine\ORM\EntityManagerInterface;
  * Email is the identity that matters here, so it is what uniqueness is checked
  * on: two source rows sharing an address are the same person, and a second
  * insert would hit the unique index mid-import.
+ *
+ * Usernames collide independently — the site owner is often already here under
+ * the same display name as XenForo user 1. A unique-index miss closes the
+ * EntityManager and every later row dies with "EntityManager is closed", so
+ * a taken name is suffixed rather than flushed into a constraint violation.
  */
 final class UserDestination implements MigrationDestinationInterface
 {
@@ -63,13 +68,14 @@ final class UserDestination implements MigrationDestinationInterface
             throw new \RuntimeException('A user row needs an "email"; it is the identity an imported account is matched and recovered by.');
         }
 
-        $user = $existingId === null ? null : $this->entityManager->find(User::class, (int) $existingId);
+        $em = $this->entityManager;
+        $user = $existingId === null ? null : $em->find(User::class, (int) $existingId);
 
         // Match an account that already exists under this address even when the
         // map has no record of it — a site that was half-imported by hand, or a
         // second migration bringing the same person across. Inserting anyway
         // would fail on the unique index partway through the run.
-        $user ??= $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+        $user ??= $em->getRepository(User::class)->findOneBy(['email' => $email]);
 
         if ($user === null) {
             $user = new User($email);
@@ -79,7 +85,7 @@ final class UserDestination implements MigrationDestinationInterface
             $user->setPassword('!imported-'.bin2hex(random_bytes(16)));
             $user->setStatus($this->defaultStatus);
             $user->setCpaliusRoles($this->defaultRoles);
-            $this->entityManager->persist($user);
+            $em->persist($user);
         } else {
             $user->setEmail($email);
         }
@@ -94,7 +100,7 @@ final class UserDestination implements MigrationDestinationInterface
 
         $username = trim($row->getString('username'));
         if ($username !== '') {
-            $user->setUsername($username);
+            $user->setUsername($this->uniqueUsername($username, $user));
         }
 
         $firstName = trim($row->getString('firstName'));
@@ -107,7 +113,7 @@ final class UserDestination implements MigrationDestinationInterface
             $user->setLastName($lastName);
         }
 
-        $this->entityManager->flush();
+        $em->flush();
 
         $id = $user->getId();
 
@@ -123,6 +129,13 @@ final class UserDestination implements MigrationDestinationInterface
         $user = $this->entityManager->find(User::class, (int) $destinationId);
 
         if ($user === null) {
+            return false;
+        }
+
+        // An import that matched an existing account by email must not delete
+        // that account on rollback — the map points at it, but the password
+        // was never replaced with the unusable imported marker.
+        if (!str_starts_with($user->getPassword(), '!imported-')) {
             return false;
         }
 
@@ -144,5 +157,42 @@ final class UserDestination implements MigrationDestinationInterface
         }
 
         return $data;
+    }
+
+    /**
+     * A display name already held by a different account becomes name-2,
+     * name-3, … rather than a unique-index miss that closes the manager.
+     */
+    private function uniqueUsername(string $wanted, User $for): string
+    {
+        $wanted = mb_substr($wanted, 0, 180);
+        $repository = $this->entityManager->getRepository(User::class);
+
+        if ($this->usernameIsFree($repository->findOneBy(['username' => $wanted]), $for)) {
+            return $wanted;
+        }
+
+        for ($n = 2; $n <= 99; ++$n) {
+            $suffix = '-'.$n;
+            $candidate = mb_substr($wanted, 0, 180 - \strlen($suffix)).$suffix;
+
+            if ($this->usernameIsFree($repository->findOneBy(['username' => $candidate]), $for)) {
+                return $candidate;
+            }
+        }
+
+        return mb_substr($wanted, 0, 171).'-'.bin2hex(random_bytes(4));
+    }
+
+    private function usernameIsFree(?User $holder, User $for): bool
+    {
+        if ($holder === null || $holder === $for) {
+            return true;
+        }
+
+        $holderId = $holder->getId();
+        $forId = $for->getId();
+
+        return $holderId !== null && $holderId === $forId;
     }
 }

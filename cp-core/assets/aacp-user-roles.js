@@ -20,11 +20,18 @@
     var fullAccessLabel = root.dataset.fullAccessLabel || 'Full access';
     var emptyLabel = root.dataset.emptyLabel || 'Select at least one role';
     var moduleLabels = {};
+    var capabilityLabels = {};
 
     try {
         moduleLabels = JSON.parse(root.dataset.moduleLabels || '{}');
     } catch (e) {
         moduleLabels = {};
+    }
+
+    try {
+        capabilityLabels = JSON.parse(root.dataset.capabilityLabels || '{}');
+    } catch (e) {
+        capabilityLabels = {};
     }
 
     function moduleLabel(key) {
@@ -91,7 +98,7 @@
             html += '<div><p class="mb-1 text-fs-xs font-semibold uppercase tracking-wide !text-slate-400">' + escapeHtml(moduleLabel(moduleKey)) + '</p>';
             html += '<ul class="space-y-0.5">';
             caps.forEach(function (cap) {
-                html += '<li class="font-mono text-fs-xs !text-slate-500">' + escapeHtml(cap) + '</li>';
+                html += '<li class="text-fs-xs !text-slate-400">' + escapeHtml(capabilityLabels[cap] || cap) + '</li>';
             });
             html += '</ul></div>';
         });

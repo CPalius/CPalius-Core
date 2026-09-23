@@ -8,6 +8,8 @@ use App\Core\Database\QueryCounter;
 use App\Core\Migrate\Map\ArrayMigrationMap;
 use App\Core\Migrate\Map\MigrationMapInterface;
 use App\Core\Migrate\Map\MigrationMapRecord;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -42,6 +44,12 @@ use Psr\Log\LoggerInterface;
  */
 final class MigrationRunner
 {
+    /**
+     * Shared across every dry-run() in one request so later migrations can
+     * resolve parents that this request already previewed.
+     */
+    private ?ArrayMigrationMap $dryRunLedger = null;
+
     public function __construct(
         private readonly MigrationMapInterface $map,
         private readonly ?LoggerInterface $logger = null,
@@ -50,11 +58,17 @@ final class MigrationRunner
          * newRow() for why a batch has to hand it a fresh budget per row.
          */
         private readonly ?QueryCounter $queryCounter = null,
+        private readonly ?MigrationLookup $lookup = null,
+        private readonly ?ManagerRegistry $doctrine = null,
     ) {
     }
 
     /**
-     * @param int|null $limit stop after this many source rows, for trying an import out on a handful
+     * @param int|null $limit stop after this many rows that still need work
+     *                        (created, updated, skipped or failed). Rows
+     *                        already imported and unchanged do not count, so
+     *                        a second web run with limit 200 continues rather
+     *                        than re-reading the same first 200 forever.
      */
     public function run(MigrationInterface $migration, bool $dryRun = false, ?int $limit = null): MigrationReport
     {
@@ -65,26 +79,32 @@ final class MigrationRunner
         $report = new MigrationReport($migration->id(), $dryRun);
         $map = $this->mapFor($migration, $dryRun);
         $destination = $migration->destination();
-        $seen = 0;
+        $worked = 0;
 
         foreach ($migration->source()->rows() as $row) {
-            if ($limit !== null && $seen >= $limit) {
+            if ($limit !== null && $worked >= $limit) {
                 $report->markLimitReached();
                 break;
             }
-            ++$seen;
             $this->newRow();
+
+            $unchangedBefore = $report->unchanged();
 
             try {
                 $this->importRow($migration, $destination, $map, $row, $dryRun, $report);
             } catch (\Throwable $e) {
                 // Law 2.2 for data: this row is lost, the run is not.
+                $this->recoverManager();
                 $report->recordFailure($row->sourceId, $e->getMessage());
                 $this->logger?->error('Migration row failed', [
                     'migration' => $migration->id(),
                     'sourceId' => $row->sourceId,
                     'exception' => $e,
                 ]);
+            }
+
+            if ($report->unchanged() === $unchangedBefore) {
+                ++$worked;
             }
         }
 
@@ -117,6 +137,7 @@ final class MigrationRunner
                 $this->map->forget($record->migrationId, $record->sourceId);
                 $report->recordUpdated();
             } catch (\Throwable $e) {
+                $this->recoverManager();
                 $report->recordFailure($record->sourceId, $e->getMessage());
                 $this->logger?->error('Migration rollback failed for a row', [
                     'migration' => $migration->id(),
@@ -179,6 +200,24 @@ final class MigrationRunner
         $this->queryCounter?->reset();
     }
 
+    /**
+     * A failed flush closes Doctrine's manager. Without this, every later row
+     * in the same request reports "The EntityManager is closed" and the rest
+     * of the import is lost.
+     */
+    private function recoverManager(): void
+    {
+        if ($this->doctrine === null) {
+            return;
+        }
+
+        $manager = $this->doctrine->getManager();
+
+        if ($manager instanceof EntityManagerInterface && !$manager->isOpen()) {
+            $this->doctrine->resetManager();
+        }
+    }
+
     private function importRow(
         MigrationInterface $migration,
         MigrationDestinationInterface $destination,
@@ -207,13 +246,17 @@ final class MigrationRunner
         if ($dryRun) {
             // Record into the throwaway map so a source that repeats a key
             // reports the second occurrence as an update, exactly as the real
-            // run would. Destination id is a placeholder: nothing reads it.
+            // run would. Destination id is a placeholder unless this row was
+            // already imported — later steps in the same dry-run batch look
+            // it up, so it must be non-empty.
             $map->record(new MigrationMapRecord(
                 $migration->id(),
                 $row->sourceId,
                 $checksum,
                 $destination->entityType(),
-                $existing->destinationId ?? '',
+                $existing !== null && $existing->destinationId !== ''
+                    ? $existing->destinationId
+                    : 'dry-run:'.$migration->id().':'.$row->sourceId,
             ));
 
             $existing === null ? $report->recordCreated() : $report->recordUpdated();
@@ -238,14 +281,29 @@ final class MigrationRunner
     /**
      * A dry run gets a scratch map seeded from the real one: it must see what
      * has already been imported (otherwise everything reads as "created") but
-     * must not write to it.
+     * must not write to it. One ledger is reused for every dry run() in the
+     * request so a later migration can look up rows this request previewed.
      */
     private function mapFor(MigrationInterface $migration, bool $dryRun): MigrationMapInterface
     {
         if (!$dryRun) {
+            $this->dryRunLedger = null;
+            $this->lookup?->previewThrough(null);
+
             return $this->map;
         }
 
-        return new ArrayMigrationMap($this->map->entries($migration->id()));
+        if ($this->dryRunLedger === null) {
+            $this->dryRunLedger = new ArrayMigrationMap();
+            $this->lookup?->previewThrough($this->dryRunLedger);
+        }
+
+        foreach ($this->map->entries($migration->id()) as $record) {
+            if ($this->dryRunLedger->find($record->migrationId, $record->sourceId) === null) {
+                $this->dryRunLedger->record($record);
+            }
+        }
+
+        return $this->dryRunLedger;
     }
 }

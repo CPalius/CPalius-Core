@@ -268,6 +268,9 @@ final class ForumStatsService
         $deleted = ForumDiscussionState::Deleted->value;
         $conn = $this->entityManager->getConnection();
 
+        $this->relinkOrphanedAuthorsForTopics($list);
+        $this->syncPosterNamesForTopics($list);
+
         $conn->executeStatement(
             "UPDATE cp_forum_topics t
              LEFT JOIN (
@@ -416,6 +419,9 @@ final class ForumStatsService
         $visible = ForumDiscussionState::Visible->value;
         $conn = $this->entityManager->getConnection();
 
+        $this->relinkOrphanedAuthorsForUsers($list);
+        $this->syncPosterNamesForUsers($list);
+
         $conn->executeStatement(
             "INSERT INTO cp_forum_user_stats (user_id, post_count, topic_count, like_received, warning_points, last_posted_at, updated_at)
              SELECT u.id,
@@ -452,6 +458,158 @@ final class ForumStatsService
         );
 
         return \count($ids);
+    }
+
+    /**
+     * Posts imported before their author landed have a name and no account.
+     * Match the stored name to a username so the postbit can link.
+     */
+    private function relinkOrphanedAuthorsForTopics(string $topicIds): void
+    {
+        $conn = $this->entityManager->getConnection();
+        $conn->executeStatement(
+            "UPDATE cp_forum_posts
+             SET author_id = (
+                SELECT u.id FROM cp_users u
+                WHERE u.username = cp_forum_posts.poster_name
+             )
+             WHERE topic_id IN ({$topicIds})
+               AND author_id IS NULL
+               AND poster_name <> ''
+               AND EXISTS (SELECT 1 FROM cp_users u WHERE u.username = cp_forum_posts.poster_name)",
+        );
+        $conn->executeStatement(
+            "UPDATE cp_forum_topics
+             SET first_poster_id = (
+                SELECT u.id FROM cp_users u
+                WHERE u.username = cp_forum_topics.first_poster_name
+             )
+             WHERE id IN ({$topicIds})
+               AND first_poster_id IS NULL
+               AND first_poster_name <> ''
+               AND EXISTS (SELECT 1 FROM cp_users u WHERE u.username = cp_forum_topics.first_poster_name)",
+        );
+    }
+
+    /**
+     * poster_name is a cache. A username change must land here or the postbit
+     * and topic lists keep showing the old one after rebuild.
+     */
+    private function syncPosterNamesForTopics(string $topicIds): void
+    {
+        $conn = $this->entityManager->getConnection();
+        $conn->executeStatement(
+            "UPDATE cp_forum_posts
+             SET poster_name = (
+                SELECT SUBSTR(u.username, 1, 100) FROM cp_users u
+                WHERE u.id = cp_forum_posts.author_id
+             )
+             WHERE topic_id IN ({$topicIds})
+               AND author_id IS NOT NULL
+               AND EXISTS (
+                    SELECT 1 FROM cp_users u
+                    WHERE u.id = cp_forum_posts.author_id
+                      AND u.username IS NOT NULL
+                      AND u.username <> ''
+               )",
+        );
+        $conn->executeStatement(
+            "UPDATE cp_forum_topics
+             SET first_poster_name = (
+                SELECT SUBSTR(u.username, 1, 100) FROM cp_users u
+                WHERE u.id = cp_forum_topics.first_poster_id
+             )
+             WHERE id IN ({$topicIds})
+               AND first_poster_id IS NOT NULL
+               AND EXISTS (
+                    SELECT 1 FROM cp_users u
+                    WHERE u.id = cp_forum_topics.first_poster_id
+                      AND u.username IS NOT NULL
+                      AND u.username <> ''
+               )",
+        );
+    }
+
+    private function relinkOrphanedAuthorsForUsers(string $userIds): void
+    {
+        $conn = $this->entityManager->getConnection();
+        $conn->executeStatement(
+            "UPDATE cp_forum_posts
+             SET author_id = (
+                SELECT u.id FROM cp_users u
+                WHERE u.username = cp_forum_posts.poster_name
+                  AND u.id IN ({$userIds})
+             )
+             WHERE author_id IS NULL
+               AND poster_name <> ''
+               AND EXISTS (
+                    SELECT 1 FROM cp_users u
+                    WHERE u.username = cp_forum_posts.poster_name
+                      AND u.id IN ({$userIds})
+               )",
+        );
+        $conn->executeStatement(
+            "UPDATE cp_forum_topics
+             SET first_poster_id = (
+                SELECT u.id FROM cp_users u
+                WHERE u.username = cp_forum_topics.first_poster_name
+                  AND u.id IN ({$userIds})
+             )
+             WHERE first_poster_id IS NULL
+               AND first_poster_name <> ''
+               AND EXISTS (
+                    SELECT 1 FROM cp_users u
+                    WHERE u.username = cp_forum_topics.first_poster_name
+                      AND u.id IN ({$userIds})
+               )",
+        );
+    }
+
+    private function syncPosterNamesForUsers(string $userIds): void
+    {
+        $conn = $this->entityManager->getConnection();
+        $conn->executeStatement(
+            "UPDATE cp_forum_posts
+             SET poster_name = (
+                SELECT SUBSTR(u.username, 1, 100) FROM cp_users u
+                WHERE u.id = cp_forum_posts.author_id
+             )
+             WHERE author_id IN ({$userIds})
+               AND EXISTS (
+                    SELECT 1 FROM cp_users u
+                    WHERE u.id = cp_forum_posts.author_id
+                      AND u.username IS NOT NULL
+                      AND u.username <> ''
+               )",
+        );
+        $conn->executeStatement(
+            "UPDATE cp_forum_topics
+             SET first_poster_name = (
+                SELECT SUBSTR(u.username, 1, 100) FROM cp_users u
+                WHERE u.id = cp_forum_topics.first_poster_id
+             )
+             WHERE first_poster_id IN ({$userIds})
+               AND EXISTS (
+                    SELECT 1 FROM cp_users u
+                    WHERE u.id = cp_forum_topics.first_poster_id
+                      AND u.username IS NOT NULL
+                      AND u.username <> ''
+               )",
+        );
+        $conn->executeStatement(
+            "UPDATE cp_forum_topics
+             SET last_poster_name = (
+                SELECT SUBSTR(u.username, 1, 100) FROM cp_users u
+                WHERE u.id = cp_forum_topics.last_poster_id
+             )
+             WHERE last_poster_id IN ({$userIds})
+               AND EXISTS (
+                    SELECT 1 FROM cp_users u
+                    WHERE u.id = cp_forum_topics.last_poster_id
+                      AND u.username IS NOT NULL
+                      AND u.username <> ''
+               )",
+        );
     }
 
     /**

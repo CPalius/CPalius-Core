@@ -64,6 +64,41 @@ forumEditorStyle.innerHTML = `
         max-width: 100%;
         height: auto;
     }
+    .forum .ck-content img.forum-smilie {
+        display: inline;
+        width: 22px;
+        height: 22px;
+        margin: 0 1px;
+        vertical-align: -4px;
+        border-radius: 0;
+    }
+    .forum-smilie-panel {
+        display: none;
+        position: absolute;
+        z-index: 40;
+        width: 280px;
+        max-height: 220px;
+        overflow: auto;
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+        grid-template-columns: repeat(8, 1fr);
+        gap: 4px;
+    }
+    .forum-smilie-panel.is-open { display: grid; }
+    .forum-smilie-panel button {
+        border: 0;
+        background: transparent;
+        padding: 4px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 20px;
+        line-height: 1;
+    }
+    .forum-smilie-panel button:hover { background: #f1f5f9; }
+    .forum-smilie-panel img { width: 22px; height: 22px; }
     .forum .ck-content .image {
         margin: 0.75em 0;
     }
@@ -195,6 +230,105 @@ function renderMentionItem(item) {
 }
 
 /**
+ * Smilie picker. Inserts Unicode or <img class="forum-smilie">; the
+ * catalog still replaces typed ":)" at display time.
+ */
+class ForumSmilies extends Plugin {
+    static get pluginName() {
+        return 'ForumSmilies';
+    }
+
+    init() {
+        const editor = this.editor;
+        const url = editor.config.get('forumSmiliesUrl') || '';
+
+        editor.ui.componentFactory.add('forumSmilies', (locale) => {
+            const button = new ButtonView(locale);
+            button.set({
+                label: 'Emoji',
+                tooltip: true,
+                withText: true,
+            });
+            button.on('execute', () => {
+                openSmiliePanel(editor, button, url);
+            });
+
+            return button;
+        });
+    }
+}
+
+let smiliePanel = null;
+let smilieItems = null;
+
+async function openSmiliePanel(editor, button, url) {
+    if (smilieItems === null && url !== '') {
+        try {
+            const response = await fetch(url, { credentials: 'same-origin' });
+            const payload = await response.json();
+            smilieItems = Array.isArray(payload.smilies) ? payload.smilies : [];
+        } catch {
+            smilieItems = [];
+        }
+    }
+
+    const items = smilieItems || [];
+    if (smiliePanel === null) {
+        smiliePanel = document.createElement('div');
+        smiliePanel.className = 'forum-smilie-panel';
+        document.body.appendChild(smiliePanel);
+        document.addEventListener('click', (event) => {
+            if (smiliePanel && !smiliePanel.contains(event.target) && event.target !== button.element) {
+                smiliePanel.classList.remove('is-open');
+            }
+        });
+    }
+
+    smiliePanel.innerHTML = '';
+    items.forEach((item) => {
+        const choice = document.createElement('button');
+        choice.type = 'button';
+        choice.title = item.title || '';
+        if (item.image) {
+            const img = document.createElement('img');
+            img.src = item.image;
+            img.alt = (item.codes && item.codes[0]) || '';
+            choice.appendChild(img);
+        } else {
+            choice.textContent = item.emoji || (item.codes && item.codes[0]) || '';
+        }
+        choice.addEventListener('click', () => {
+            insertSmilie(editor, item);
+            smiliePanel.classList.remove('is-open');
+            editor.editing.view.focus();
+        });
+        smiliePanel.appendChild(choice);
+    });
+
+    const rect = button.element.getBoundingClientRect();
+    smiliePanel.style.left = `${window.scrollX + rect.left}px`;
+    smiliePanel.style.top = `${window.scrollY + rect.bottom + 6}px`;
+    smiliePanel.classList.toggle('is-open');
+}
+
+function insertSmilie(editor, item) {
+    if (item.image) {
+        const view = editor.data.processor.toView(
+            `<img class="forum-smilie" src="${item.image}" alt="${(item.codes && item.codes[0]) || ''}" title="${item.title || ''}" width="22" height="22">`,
+        );
+        editor.model.insertContent(editor.data.toModel(view));
+        return;
+    }
+
+    const text = item.emoji || (item.codes && item.codes[0]) || '';
+    if (text !== '') {
+        editor.model.change((writer) => {
+            editor.model.insertContent(writer.createText(text));
+        });
+    }
+}
+
+/**
  * Spoiler block: stored as <div class="forum-spoiler"> so the sanitizer
  * (class on div) keeps it. Unlocking is a server-side rewrite, not CSS.
  */
@@ -283,6 +417,7 @@ async function initForumEditor(textarea) {
     const uploadToken = textarea.getAttribute('data-image-upload-token') || '';
     const sectionId = textarea.getAttribute('data-image-section') || '';
     const mentionUrl = textarea.getAttribute('data-mention-url') || '';
+    const smiliesUrl = textarea.getAttribute('data-smilies-url') || '';
     const uploadEnabled = uploadUrl !== '' && uploadToken !== '' && sectionId !== '';
 
     const plugins = [
@@ -319,6 +454,7 @@ async function initForumEditor(textarea) {
         Underline,
         Undo,
         ForumSpoiler,
+        ForumSmilies,
     ];
 
     if (uploadEnabled) {
@@ -329,6 +465,7 @@ async function initForumEditor(textarea) {
         plugins,
         language: 'tr',
         licenseKey: 'GPL',
+        forumSmiliesUrl: smiliesUrl,
         toolbar: {
             items: [
                 'undo', 'redo',
@@ -341,7 +478,7 @@ async function initForumEditor(textarea) {
                 '|',
                 'bulletedList', 'numberedList',
                 '|',
-                'link', 'insertImage', 'blockQuote', 'forumSpoiler', 'code', 'codeBlock',
+                'link', 'insertImage', 'forumSmilies', 'blockQuote', 'forumSpoiler', 'code', 'codeBlock',
                 '|',
                 'removeFormat',
             ],

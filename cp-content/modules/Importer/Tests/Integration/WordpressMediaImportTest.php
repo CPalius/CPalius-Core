@@ -214,13 +214,16 @@ final class WordpressMediaImportTest extends IntegrationTestCase
         self::assertCount(1, $this->em()->getRepository(Asset::class)->findBy([]));
     }
 
-    public function testTheUploadsDirectoryIsRequiredAndSaidSo(): void
+    public function testWithoutUploadsAttachmentsAreSkippedSoPostsCanStillImport(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessageMatches('/Missing required option.*uploads/s');
+        $report = $this->runner()->run(
+            (new WordpressAttachmentMigration($this->assetManager(), $this->em()))
+                ->withOptions(['file' => self::FIXTURE]),
+            false,
+        );
 
-        (new WordpressAttachmentMigration($this->assetManager(), $this->em()))
-            ->withOptions(['file' => self::FIXTURE]);
+        self::assertSame(0, $report->processed());
+        self::assertCount(0, $this->em()->getRepository(Asset::class)->findBy([]));
     }
 
     public function testAMissingFileIsReportedWithTheUrlAndTheDirectorySearched(): void

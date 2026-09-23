@@ -140,6 +140,6 @@ final class MybbSectionMigration implements ConfigurableMigrationInterface
             throw new \LogicException('This migration has not been configured; fill in the source database fields.');
         }
 
-        return ForeignDatabase::fromOptions($this->options, 'mybb_');
+        return DatabaseOptions::connect($this->options, 'mybb_', $this->entityManager->getConnection());
     }
 }

@@ -82,6 +82,14 @@
         </div>
         <p class="forum-field-hint" style="margin-top:-8px;">{{ 'account.register.password_hint'|trans }}</p>
 
+        {% if fieldsForm is defined and fieldsForm.fields is defined %}
+            <fieldset class="forum-form__section">
+                <legend>{{ 'account.profile.section_custom_fields'|trans }}</legend>
+                {{ form_widget(fieldsForm.fields) }}
+                {{ form_errors(fieldsForm.fields) }}
+            </fieldset>
+        {% endif %}
+
         {% if registrationConfig.termsRequired %}
             <div class="forum-field">
                 <label class="forum-checkbox">

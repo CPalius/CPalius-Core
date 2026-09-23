@@ -62,8 +62,19 @@ final class TwoFactorGuardSubscriberTest extends TestCase
             'security.flood_enabled' => true,
         ]);
 
+        $this->service = $this->makeService();
+
+        $this->twoFactorSession = new TwoFactorSession();
+        $this->session = new Session(new MockArraySessionStorage());
+        $this->session->start();
+        $this->user = SecurityTestDatabase::userWithId(42);
+    }
+
+    private function makeService(): TwoFactorService
+    {
         $cache = new ArrayAdapter(storeSerialized: false);
-        $this->service = new TwoFactorService(
+
+        return new TwoFactorService(
             $this->totp,
             $this->secretBox,
             $this->settings,
@@ -78,11 +89,6 @@ final class TwoFactorGuardSubscriberTest extends TestCase
             ),
             self::APP_SECRET,
         );
-
-        $this->twoFactorSession = new TwoFactorSession();
-        $this->session = new Session(new MockArraySessionStorage());
-        $this->session->start();
-        $this->user = SecurityTestDatabase::userWithId(42);
     }
 
     private function enroll(): void

@@ -141,7 +141,17 @@ final class ForumTopicDestination implements MigrationDestinationInterface
     {
         $id = trim($row->getString($key));
 
-        return $id === '' || !is_numeric($id) ? null : $this->entityManager->find(User::class, (int) $id);
+        if ($id !== '' && is_numeric($id)) {
+            $user = $this->entityManager->find(User::class, (int) $id);
+            if ($user instanceof User) {
+                return $user;
+            }
+        }
+
+        $nameKey = $key === 'lastPosterUserId' ? 'lastPosterName' : 'posterName';
+        $name = trim($row->getString($nameKey));
+
+        return $name === '' ? null : $this->entityManager->getRepository(User::class)->findOneBy(['username' => $name]);
     }
 
     /**

@@ -167,8 +167,48 @@ final class ForeignDatabase
     {
         foreach ($tables as $table) {
             if (!$this->hasTable($table)) {
-                throw new \RuntimeException(sprintf('Table "%s" is not in that database. Check the table prefix%s.', $this->table($table), $this->prefix === '' ? ' (none given)' : sprintf(' ("%s")', $this->prefix)));
+                throw new \RuntimeException($this->missingTableMessage($table));
             }
         }
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function tableNames(): array
+    {
+        try {
+            return $this->connection()->createSchemaManager()->listTableNames();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    private function missingTableMessage(string $table): string
+    {
+        $wanted = $this->table($table);
+        $hint = $this->prefix === '' ? ' (none given)' : sprintf(' ("%s")', $this->prefix);
+        $message = sprintf('Table "%s" is not in that database. Check the table prefix%s.', $wanted, $hint);
+        $names = $this->tableNames();
+
+        if ($names === []) {
+            return $message.' The database is empty — the host/name is probably not the old site, or upload a .sql dump instead of connecting remotely.';
+        }
+
+        $matches = [];
+        foreach ($names as $name) {
+            if (str_ends_with(strtolower($name), strtolower($table))) {
+                $prefix = substr($name, 0, -\strlen($table));
+                $matches[] = sprintf('%s (prefix "%s")', $name, $prefix);
+            }
+        }
+
+        if ($matches !== []) {
+            return $message.' Similar tables found: '.implode(', ', $matches).'.';
+        }
+
+        $sample = \array_slice($names, 0, 10);
+
+        return $message.' Tables in that database: '.implode(', ', $sample).(\count($names) > 10 ? '…' : '').'.';
     }
 }

@@ -11,33 +11,34 @@ use App\Core\Migrate\MigrationOption;
 use App\Core\Migrate\MigrationOptionResolver;
 use App\Core\Migrate\MigrationRow;
 use App\Core\Migrate\MigrationSourceInterface;
+use App\Core\Migrate\Source\ForeignDatabase;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Blog\Entity\BlogComment;
 use Modules\Blog\Migrate\BlogCommentDestination;
-use Modules\Importer\Source\Wordpress\WxrCommentSource;
-use Modules\Importer\Source\Wordpress\WxrReader;
+use Modules\Importer\Source\Wordpress\WordpressOrigin;
 
 /**
  * WordPress comments become blog comments on the posts they belonged to.
  *
- * Depends on the posts, obviously — a comment needs something to sit on — and
- * the post id is resolved through the map rather than by matching titles.
- *
- * A comment whose post was not imported is SKIPPED rather than failed. That is
- * the normal case rather than an error: the posts migration deliberately
- * leaves out auto-drafts and pages, and their comments have nowhere to go. A
- * failure per orphaned comment would bury the real problems in noise.
+ * A comment whose post was not imported is SKIPPED rather than failed.
  */
 final class WordpressCommentMigration implements ConfigurableMigrationInterface
 {
     public const ID = 'wordpress.comments';
 
+    /** @var array<string, string> */
+    private readonly array $options;
+
+    /**
+     * @param array<string, string> $options
+     */
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly MigrationLookup $lookup,
-        private readonly string $file = '',
-        private readonly string $postType = 'post',
+        array $options = [],
+        private readonly ?ForeignDatabase $suppliedDatabase = null,
     ) {
+        $this->options = $options;
     }
 
     public function id(): string
@@ -58,21 +59,19 @@ final class WordpressCommentMigration implements ConfigurableMigrationInterface
     public function options(): array
     {
         return [
-            MigrationOption::file('file', 'Path to the WordPress WXR export file'),
+            ...WordpressOrigin::commonOptions(),
             MigrationOption::optional('postType', 'WordPress post type whose comments to read', 'post'),
         ];
     }
 
     public function withOptions(array $values): static
     {
-        $resolved = MigrationOptionResolver::resolve($this->options(), $values);
-
-        return new static($this->entityManager, $this->lookup, $resolved['file'], $resolved['postType']);
+        return new static($this->entityManager, $this->lookup, MigrationOptionResolver::resolve($this->options(), $values), $this->suppliedDatabase);
     }
 
     public function source(): MigrationSourceInterface
     {
-        return new WxrCommentSource($this->reader(), $this->postType);
+        return $this->origin()->comments($this->options['postType'] ?? 'post');
     }
 
     public function destination(): MigrationDestinationInterface
@@ -105,11 +104,6 @@ final class WordpressCommentMigration implements ConfigurableMigrationInterface
         ]);
     }
 
-    /**
-     * WordPress writes "1" for approved, "0" for held, and the words "spam" and
-     * "trash". Anything else is treated as held for moderation by the
-     * destination, which is the safe direction.
-     */
     private function status(MigrationRow $row): string
     {
         return match (trim($row->getString('approved'))) {
@@ -120,12 +114,8 @@ final class WordpressCommentMigration implements ConfigurableMigrationInterface
         };
     }
 
-    private function reader(): WxrReader
+    private function origin(): WordpressOrigin
     {
-        if ($this->file === '') {
-            throw new \LogicException('This migration has not been configured; pass -o file=<export.xml>.');
-        }
-
-        return new WxrReader($this->file);
+        return new WordpressOrigin($this->entityManager, $this->options, $this->suppliedDatabase);
     }
 }

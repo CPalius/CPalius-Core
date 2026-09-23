@@ -122,7 +122,16 @@ final class ForumPostDestination implements MigrationDestinationInterface
     {
         $id = trim($row->getString('authorUserId'));
 
-        return $id === '' || !is_numeric($id) ? null : $this->entityManager->find(User::class, (int) $id);
+        if ($id !== '' && is_numeric($id)) {
+            $user = $this->entityManager->find(User::class, (int) $id);
+            if ($user instanceof User) {
+                return $user;
+            }
+        }
+
+        $name = trim($row->getString('posterName'));
+
+        return $name === '' ? null : $this->entityManager->getRepository(User::class)->findOneBy(['username' => $name]);
     }
 
     private function discussionState(MigrationRow $row): ForumDiscussionState

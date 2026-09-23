@@ -314,6 +314,13 @@ use App\Core\Annotation\CpSetting;
     group: 'security.twofactor',
 )]
 #[CpSetting(
+    key: 'security.login_email_code',
+    label: 'aacp.security.login_email_code',
+    type: 'checkbox',
+    default: true,
+    group: 'security.twofactor',
+)]
+#[CpSetting(
     key: 'security.aacp_gate_enabled',
     label: 'aacp.security.aacp_gate_enabled',
     type: 'checkbox',

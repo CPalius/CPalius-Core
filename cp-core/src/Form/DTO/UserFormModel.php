@@ -37,6 +37,23 @@ final class UserFormModel
     #[Assert\Length(max: 120, maxMessage: 'Soyad en fazla {{ limit }} karakter olabilir.')]
     public ?string $lastName = null;
 
+    #[Assert\Length(max: 120, maxMessage: 'Konum en fazla {{ limit }} karakter olabilir.')]
+    public ?string $location = null;
+
+    #[Assert\Length(max: 16)]
+    public string $locale = '';
+
+    public string $bio = '';
+
+    #[Assert\Length(max: 120)]
+    public ?string $customTitle = null;
+
+    public string $customTitleColor = '#64748b';
+
+    public string $customTitleStyle = 'plain';
+
+    public ?string $customTitleIcon = null;
+
     #[Assert\Choice(
         choices: [User::STATUS_ACTIVE, User::STATUS_INACTIVE, User::STATUS_BANNED],
         message: 'Invalid account status.',
@@ -57,6 +74,12 @@ final class UserFormModel
         $dto->username = $user->getUsername();
         $dto->firstName = $user->getFirstName() ?: null;
         $dto->lastName = $user->getLastName() ?: null;
+        $dto->location = $user->getLocation() !== '' ? $user->getLocation() : null;
+        $dto->bio = $user->getBio();
+        $dto->customTitle = $user->getCustomTitle() !== '' ? $user->getCustomTitle() : null;
+        $dto->customTitleColor = $user->getCustomTitleColor() !== '' ? $user->getCustomTitleColor() : '#64748b';
+        $dto->customTitleStyle = $user->getCustomTitleStyle();
+        $dto->customTitleIcon = $user->getCustomTitleIcon() !== '' ? $user->getCustomTitleIcon() : null;
         $dto->status = $user->getStatus();
         $dto->roles = $user->getCpaliusRoles();
 

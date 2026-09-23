@@ -312,14 +312,6 @@ final class MigrateCommand extends Command
         }
 
         if (!$apply) {
-            if (\count($reports) > 1) {
-                // A dry run writes no map, so a migration that resolves
-                // references through an earlier one finds nothing there and
-                // reports those rows as skipped. Saying so beats an operator
-                // concluding their comments will not import.
-                $io->note('Migrations that depend on another one under-report in a dry run: the rows they would link to do not exist yet, so they count as skipped.');
-            }
-
             $io->success('Dry run complete. Re-run with --apply to write.');
 
             return Command::SUCCESS;

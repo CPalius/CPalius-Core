@@ -2,7 +2,7 @@
 <div class="forum-postbit__name">
     {% if post.author %}
         <a href="{{ path('forum_profile', {username: post.author.profileSlug}) }}"
-           class="forum-mention" data-mention="{{ post.author.profileSlug }}">{{ post.posterName }}</a>
+           class="forum-mention" data-mention="{{ post.author.profileSlug }}">{{ post.author.publicDisplayName ?: post.posterName }}</a>
     {% else %}
         {{ post.posterName }}
     {% endif %}

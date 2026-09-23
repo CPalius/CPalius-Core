@@ -25,7 +25,17 @@
         {% endif %}
         <div class="forum-profile-card__meta">
             <span><i class="bi bi-calendar3"></i> {{ 'forum.meta.joined'|trans({'date': profileUser.createdAt|date('d.m.Y')}) }}</span>
+            {% if profileUser.location %}
+                <span><i class="bi bi-geo-alt"></i> {{ profileUser.location }}</span>
+            {% endif %}
         </div>
+        {% if profileUser.bio %}
+            <div class="forum-profile-card__bio">{{ profileUser.bio|raw }}</div>
+        {% endif %}
+        {% set profileFields = cp_fields(profileUser) %}
+        {% if profileFields %}
+            <div class="forum-profile-card__fields">{{ profileFields }}</div>
+        {% endif %}
         {% if canGiveRep %}
             <button type="button" class="btn btn-sm btn-outline" data-rep-open data-rep-user="{{ profileUser.profileSlug }}" data-rep-name="{{ profileUser.fullName }}">
                 <i class="bi bi-award"></i> {{ 'forum.action.give_rep'|trans }}

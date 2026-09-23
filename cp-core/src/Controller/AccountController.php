@@ -6,6 +6,8 @@ namespace App\Controller;
 
 use App\Core\Account\AccountLandingResolver;
 use App\Core\Account\AccountRegistrationService;
+use App\Core\Field\FieldValuePersister;
+use App\Core\Field\Form\FieldableFormBuilder;
 use App\Core\Localization\LocaleProvider;
 use App\Core\Mail\CpMailerService;
 use App\Core\Security\CaptchaService;
@@ -19,6 +21,9 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Form\Extension\Core\Type\FormType;
+use Symfony\Component\Form\FormFactoryInterface;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -54,6 +59,9 @@ final class AccountController extends AbstractController
         private readonly LocaleProvider $localeProvider,
         private readonly AccountLandingResolver $landingResolver,
         private readonly FloodService $flood,
+        private readonly FieldableFormBuilder $fieldableFormBuilder,
+        private readonly FieldValuePersister $fieldValuePersister,
+        private readonly FormFactoryInterface $formFactory,
         #[Autowire('%kernel.debug%')]
         private readonly bool $debug,
     ) {
@@ -100,6 +108,7 @@ final class AccountController extends AbstractController
         }
 
         $formValues = $this->registrationService->defaultFormValues();
+        $fieldsForm = $this->registrationFieldsForm($request);
 
         if ($request->isMethod('POST')) {
             $this->assertValidCsrf($request);
@@ -152,41 +161,54 @@ final class AccountController extends AbstractController
                 $user->setDataValue('locale', $formValues['locale']);
 
                 $this->entityManager->persist($user);
-                $this->entityManager->flush();
-
-                $deferLogin = $this->registrationService->applyPostRegistrationState($user);
-
-                if ($deferLogin) {
-                    $emailSent = $this->registrationService->sendVerificationEmail($user);
-
-                    // Approval-pending members get told so in their own language;
-                    // without it the only signal is an account that silently
-                    // refuses to log in.
-                    if ($this->registrationService->isAdminApprovalRequired()) {
-                        $this->registrationService->sendPendingApprovalEmail($user);
-                    }
-
-                    // Verification URL on screen is debug-only; in prod a null mailer must not skip proof of inbox.
-                    if ($this->debug
-                        && !$emailSent
-                        && $this->registrationService->isEmailVerificationRequired()
-                        && !$this->mailerService->canSend()
-                    ) {
-                        $verifyUrl = $this->registrationService->buildVerificationUrl($user);
-                        if ($verifyUrl !== null) {
-                            $this->addFlash('info', $this->translator->trans('account.register.verify_link_dev', ['url' => $verifyUrl]));
+                $fieldErrors = [];
+                if ($fieldsForm->has('fields')) {
+                    $submitted = $fieldsForm->get('fields')->getData();
+                    $fieldErrors = $this->fieldValuePersister->persist($user, \is_array($submitted) ? $submitted : []);
+                }
+                if ($fieldErrors !== []) {
+                    foreach ($fieldErrors as $violations) {
+                        foreach ($violations as $violation) {
+                            $this->addFlash('error', $this->translator->trans($violation));
                         }
                     }
+                } else {
+                    $this->entityManager->flush();
 
-                    return $this->redirectToRoute('account_register_pending');
+                    $deferLogin = $this->registrationService->applyPostRegistrationState($user);
+
+                    if ($deferLogin) {
+                        $emailSent = $this->registrationService->sendVerificationEmail($user);
+
+                        // Approval-pending members get told so in their own language;
+                        // without it the only signal is an account that silently
+                        // refuses to log in.
+                        if ($this->registrationService->isAdminApprovalRequired()) {
+                            $this->registrationService->sendPendingApprovalEmail($user);
+                        }
+
+                        // Verification URL on screen is debug-only; in prod a null mailer must not skip proof of inbox.
+                        if ($this->debug
+                            && !$emailSent
+                            && $this->registrationService->isEmailVerificationRequired()
+                            && !$this->mailerService->canSend()
+                        ) {
+                            $verifyUrl = $this->registrationService->buildVerificationUrl($user);
+                            if ($verifyUrl !== null) {
+                                $this->addFlash('info', $this->translator->trans('account.register.verify_link_dev', ['url' => $verifyUrl]));
+                            }
+                        }
+
+                        return $this->redirectToRoute('account_register_pending');
+                    }
+
+                    $this->registrationService->sendWelcomeEmail($user);
+
+                    $this->security->login($user, null, 'main');
+                    $this->addFlash('success', $this->translator->trans('account.register.welcome', ['fullName' => $user->getFullName()]));
+
+                    return $this->redirectToRoute($this->landingResolver->routeName());
                 }
-
-                $this->registrationService->sendWelcomeEmail($user);
-
-                $this->security->login($user, null, 'main');
-                $this->addFlash('success', $this->translator->trans('account.register.welcome', ['fullName' => $user->getFullName()]));
-
-                return $this->redirectToRoute($this->landingResolver->routeName());
             }
 
             foreach ($errors as $error) {
@@ -206,7 +228,20 @@ final class AccountController extends AbstractController
             ],
             'captchaEnabled' => $this->captchaService->enabledOnRegister(),
             'captchaConfig' => $this->captchaService->getWidgetConfig(),
+            'fieldsForm' => $fieldsForm,
         ]);
+    }
+
+    private function registrationFieldsForm(Request $request): FormInterface
+    {
+        $builder = $this->formFactory->createNamedBuilder('register', FormType::class, null, [
+            'csrf_protection' => false,
+        ]);
+        $this->fieldableFormBuilder->add($builder, 'user', $request->getLocale());
+        $form = $builder->getForm();
+        $form->handleRequest($request);
+
+        return $form;
     }
 
     #[Route('/hesap/kayit/beklemede', name: 'account_register_pending', methods: ['GET'])]

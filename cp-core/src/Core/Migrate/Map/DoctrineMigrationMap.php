@@ -19,6 +19,20 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 final class DoctrineMigrationMap implements MigrationMapInterface
 {
+    /**
+     * One SELECT per migration id, then every find() in this request is a
+     * hash lookup. A WordPress post resolves its author, categories, tags and
+     * every attachment from the map; asking findOneBy for each of those is
+     * the N+1 Law 6.1 exists to catch (cp_migration_map eleven times inside
+     * one row).
+     *
+     * @var array<string, array<string, MigrationMapEntry>>
+     */
+    private array $bySourceId = [];
+
+    /** @var array<string, true> */
+    private array $hydrated = [];
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
     ) {
@@ -44,6 +58,7 @@ final class DoctrineMigrationMap implements MigrationMapInterface
                 $record->destinationId,
             );
             $this->entityManager->persist($entry);
+            $this->bySourceId[$record->migrationId][$record->sourceId] = $entry;
         } else {
             $entry->refresh($record->checksum, $record->destinationType, $record->destinationId);
         }
@@ -60,14 +75,19 @@ final class DoctrineMigrationMap implements MigrationMapInterface
         }
 
         $this->entityManager->remove($entry);
+        unset($this->bySourceId[$migrationId][$sourceId]);
         $this->entityManager->flush();
     }
 
     public function entries(string $migrationId): array
     {
-        /** @var list<MigrationMapEntry> $entries */
-        $entries = $this->entityManager->getRepository(MigrationMapEntry::class)
-            ->findBy(['migrationId' => $migrationId], ['id' => 'DESC']);
+        $this->hydrate($migrationId);
+
+        $entries = array_values($this->bySourceId[$migrationId]);
+        usort(
+            $entries,
+            static fn (MigrationMapEntry $a, MigrationMapEntry $b): int => ($b->getId() ?? 0) <=> ($a->getId() ?? 0),
+        );
 
         return array_map($this->toRecord(...), $entries);
     }
@@ -114,11 +134,28 @@ final class DoctrineMigrationMap implements MigrationMapInterface
 
     private function entry(string $migrationId, string $sourceId): ?MigrationMapEntry
     {
-        /** @var MigrationMapEntry|null $entry */
-        $entry = $this->entityManager->getRepository(MigrationMapEntry::class)
-            ->findOneBy(['migrationId' => $migrationId, 'sourceId' => $sourceId]);
+        $this->hydrate($migrationId);
 
-        return $entry;
+        return $this->bySourceId[$migrationId][$sourceId] ?? null;
+    }
+
+    private function hydrate(string $migrationId): void
+    {
+        if (isset($this->hydrated[$migrationId])) {
+            return;
+        }
+
+        /** @var list<MigrationMapEntry> $entries */
+        $entries = $this->entityManager->getRepository(MigrationMapEntry::class)
+            ->findBy(['migrationId' => $migrationId]);
+
+        $this->bySourceId[$migrationId] = [];
+
+        foreach ($entries as $entry) {
+            $this->bySourceId[$migrationId][$entry->getSourceId()] = $entry;
+        }
+
+        $this->hydrated[$migrationId] = true;
     }
 
     private function toRecord(MigrationMapEntry $entry): MigrationMapRecord

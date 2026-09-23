@@ -12,38 +12,33 @@ use App\Core\Migrate\MigrationOption;
 use App\Core\Migrate\MigrationOptionResolver;
 use App\Core\Migrate\MigrationRow;
 use App\Core\Migrate\MigrationSourceInterface;
+use App\Core\Migrate\Source\ForeignDatabase;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Importer\Source\Wordpress\UploadsResolver;
-use Modules\Importer\Source\Wordpress\WxrAttachmentSource;
-use Modules\Importer\Source\Wordpress\WxrReader;
+use Modules\Importer\Source\Wordpress\WordpressOrigin;
 
 /**
  * WordPress attachments become assets.
  *
- * Runs before posts, because a post's body still points at the old site's URLs
- * until the assets exist to point at instead.
- *
- * A file that is not in the uploads directory is a FAILURE, not a skip. The
- * operator needs the list: a silently missing image is discovered months later
- * by a reader, and by then nobody remembers which export it came from. The
- * runner reports failures by source id and keeps going, so one missing file
- * costs one image rather than the import.
- *
- * Some uploads are refused by the asset allowlist — SVG most commonly, which
- * CPalius does not accept because it is a script-carrying format. Those also
- * surface as failures with the reason attached, which is the honest outcome:
- * the file genuinely did not come across.
+ * A file that is not in the uploads directory is a FAILURE, not a skip.
  */
 final class WordpressAttachmentMigration implements ConfigurableMigrationInterface
 {
     public const ID = 'wordpress.attachments';
 
+    /** @var array<string, string> */
+    private readonly array $options;
+
+    /**
+     * @param array<string, string> $options
+     */
     public function __construct(
         private readonly AssetManager $assetManager,
         private readonly EntityManagerInterface $entityManager,
-        private readonly string $file = '',
-        private readonly string $uploads = '',
+        array $options = [],
+        private readonly ?ForeignDatabase $suppliedDatabase = null,
     ) {
+        $this->options = $options;
     }
 
     public function id(): string
@@ -64,21 +59,38 @@ final class WordpressAttachmentMigration implements ConfigurableMigrationInterfa
     public function options(): array
     {
         return [
-            MigrationOption::file('file', 'Path to the WordPress WXR export file'),
-            MigrationOption::directory('uploads', 'The old site\'s wp-content/uploads folder — upload it as a .zip, or point at a path on the server'),
+            ...WordpressOrigin::commonOptions(),
+            MigrationOption::directory('uploads', 'The old site\'s wp-content/uploads folder — upload it as a .zip, or point at a path on the server', false),
         ];
     }
 
     public function withOptions(array $values): static
     {
-        $resolved = MigrationOptionResolver::resolve($this->options(), $values);
-
-        return new static($this->assetManager, $this->entityManager, $resolved['file'], $resolved['uploads']);
+        return new static($this->assetManager, $this->entityManager, MigrationOptionResolver::resolve($this->options(), $values), $this->suppliedDatabase);
     }
 
     public function source(): MigrationSourceInterface
     {
-        return new WxrAttachmentSource($this->reader());
+        if (trim($this->options['uploads'] ?? '') === '') {
+            return new class implements MigrationSourceInterface {
+                public function describe(): string
+                {
+                    return 'WordPress attachments (uploads folder not given)';
+                }
+
+                public function rows(): iterable
+                {
+                    return [];
+                }
+
+                public function count(): int
+                {
+                    return 0;
+                }
+            };
+        }
+
+        return $this->origin()->attachments();
     }
 
     public function destination(): MigrationDestinationInterface
@@ -109,19 +121,17 @@ final class WordpressAttachmentMigration implements ConfigurableMigrationInterfa
 
     private function resolver(): UploadsResolver
     {
-        if ($this->uploads === '') {
-            throw new \LogicException('This migration has not been configured; pass -o uploads=<path to wp-content/uploads>.');
+        $uploads = trim($this->options['uploads'] ?? '');
+
+        if ($uploads === '') {
+            throw new \RuntimeException('Attachments need the old wp-content/uploads folder. Upload it as a zip or set the uploads path. Posts and users can still import without it.');
         }
 
-        return new UploadsResolver($this->uploads);
+        return new UploadsResolver($uploads);
     }
 
-    private function reader(): WxrReader
+    private function origin(): WordpressOrigin
     {
-        if ($this->file === '') {
-            throw new \LogicException('This migration has not been configured; pass -o file=<export.xml>.');
-        }
-
-        return new WxrReader($this->file);
+        return new WordpressOrigin($this->entityManager, $this->options, $this->suppliedDatabase);
     }
 }

@@ -75,8 +75,17 @@
                 {{ form_row(form.username) }}
                 {{ form_row(form.firstName) }}
                 {{ form_row(form.lastName) }}
+                {{ form_row(form.location) }}
                 {{ form_row(form.locale) }}
             </fieldset>
+
+            {% if form.fields is defined %}
+                <fieldset class="forum-form__section">
+                    <legend>{{ 'account.profile.section_custom_fields'|trans }}</legend>
+                    {{ form_widget(form.fields) }}
+                    {{ form_errors(form.fields) }}
+                </fieldset>
+            {% endif %}
 
             <fieldset class="forum-form__section">
                 <legend>{{ 'account.profile.section_password'|trans }}</legend>

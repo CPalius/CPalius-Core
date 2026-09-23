@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Importer\Migration\Mybb;
 
+use App\Core\Media\AssetManager;
+use App\Core\Media\AssetUrlGenerator;
 use App\Core\Migrate\ConfigurableMigrationInterface;
 use App\Core\Migrate\MigrationDestinationInterface;
 use App\Core\Migrate\MigrationLookup;
@@ -15,7 +17,9 @@ use App\Core\Migrate\Source\ForeignDatabase;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Migrate\ForumPostDestination;
 use Modules\Importer\Markup\BbCodeConverter;
+use Modules\Importer\Markup\ForumAttachMarkup;
 use Modules\Importer\Migration\DatabaseOptions;
+use Modules\Importer\Source\LocalAssetIntake;
 
 /**
  * MyBB posts become forum posts.
@@ -37,6 +41,8 @@ final class MybbPostMigration implements ConfigurableMigrationInterface
         private readonly MigrationLookup $lookup,
         array $options = [],
         private readonly ?ForeignDatabase $suppliedDatabase = null,
+        private readonly ?AssetManager $assetManager = null,
+        private readonly ?AssetUrlGenerator $urls = null,
     ) {
         $this->options = $options;
     }
@@ -53,7 +59,7 @@ final class MybbPostMigration implements ConfigurableMigrationInterface
 
     public function dependsOn(): array
     {
-        return [MybbTopicMigration::ID, MybbUserMigration::ID];
+        return [MybbTopicMigration::ID, MybbUserMigration::ID, MybbAttachmentMigration::ID];
     }
 
     public function options(): array
@@ -63,7 +69,7 @@ final class MybbPostMigration implements ConfigurableMigrationInterface
 
     public function withOptions(array $values): static
     {
-        return new static($this->entityManager, $this->lookup, MigrationOptionResolver::resolve($this->options(), $values), $this->suppliedDatabase);
+        return new static($this->entityManager, $this->lookup, MigrationOptionResolver::resolve($this->options(), $values), $this->suppliedDatabase, $this->assetManager, $this->urls);
     }
 
     public function source(): MigrationSourceInterface
@@ -101,7 +107,7 @@ final class MybbPostMigration implements ConfigurableMigrationInterface
 
         return $row->withData([
             'topicId' => $topicId,
-            'body' => $this->bbcode()->convert($row->getString('message')),
+            'body' => $this->bbcode()->convert($this->attachMarkup()->rewrite($row->getString('message'))),
             'posterName' => trim($row->getString('username')),
             'authorUserId' => $userId === '' || $userId === '0'
                 ? ''
@@ -118,6 +124,15 @@ final class MybbPostMigration implements ConfigurableMigrationInterface
         return $this->bbcode ??= new BbCodeConverter();
     }
 
+    private function attachMarkup(): ForumAttachMarkup
+    {
+        return new ForumAttachMarkup(
+            $this->lookup,
+            new LocalAssetIntake($this->entityManager, $this->assetManager, $this->urls),
+            MybbAttachmentMigration::ID,
+        );
+    }
+
     private function database(): ForeignDatabase
     {
         if ($this->suppliedDatabase !== null) {
@@ -128,6 +143,6 @@ final class MybbPostMigration implements ConfigurableMigrationInterface
             throw new \LogicException('This migration has not been configured; fill in the source database fields.');
         }
 
-        return ForeignDatabase::fromOptions($this->options, 'mybb_');
+        return DatabaseOptions::connect($this->options, 'mybb_', $this->entityManager->getConnection());
     }
 }

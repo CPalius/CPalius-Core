@@ -32,7 +32,7 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 final class ImportFileStore
 {
     /** Extensions accepted for upload. Deliberately short. */
-    private const ALLOWED_EXTENSIONS = ['xml', 'csv', 'zip', 'json', 'txt'];
+    private const ALLOWED_EXTENSIONS = ['xml', 'csv', 'zip', 'json', 'txt', 'sql', 'gz'];
 
     private const MAX_UPLOAD_BYTES = 1073741824; // 1 GiB
 

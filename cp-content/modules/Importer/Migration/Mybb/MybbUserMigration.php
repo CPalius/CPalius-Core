@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Importer\Migration\Mybb;
 
+use App\Core\Media\AssetManager;
 use App\Core\Migrate\ConfigurableMigrationInterface;
 use App\Core\Migrate\Destination\UserDestination;
 use App\Core\Migrate\MigrationDestinationInterface;
@@ -16,6 +17,9 @@ use App\Core\Migrate\Source\ForeignDatabase;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Importer\Markup\BbCodeConverter;
 use Modules\Importer\Migration\DatabaseOptions;
+use Modules\Importer\Migration\ImportedAccountEmail;
+use Modules\Importer\Source\ForumDataFolder;
+use Modules\Importer\Source\LocalAssetIntake;
 
 /**
  * MyBB members become CPalius users.
@@ -38,6 +42,7 @@ final class MybbUserMigration implements ConfigurableMigrationInterface
         private readonly EntityManagerInterface $entityManager,
         array $options = [],
         private readonly ?ForeignDatabase $suppliedDatabase = null,
+        private readonly ?AssetManager $assetManager = null,
     ) {
         $this->options = $options;
     }
@@ -67,7 +72,7 @@ final class MybbUserMigration implements ConfigurableMigrationInterface
 
     public function withOptions(array $values): static
     {
-        return new static($this->entityManager, MigrationOptionResolver::resolve($this->options(), $values), $this->suppliedDatabase);
+        return new static($this->entityManager, MigrationOptionResolver::resolve($this->options(), $values), $this->suppliedDatabase, $this->assetManager);
     }
 
     public function source(): MigrationSourceInterface
@@ -81,7 +86,7 @@ final class MybbUserMigration implements ConfigurableMigrationInterface
             $database,
             $users.' u',
             'u.uid',
-            'u.uid, u.username, u.email, u.regdate, u.postnum, u.signature, u.website',
+            'u.uid, u.username, u.email, u.regdate, u.postnum, u.signature, u.website, u.avatar',
             '',
             500,
             sprintf('MyBB members in %s', $users),
@@ -95,22 +100,40 @@ final class MybbUserMigration implements ConfigurableMigrationInterface
 
     public function transform(MigrationRow $row): ?MigrationRow
     {
-        $email = trim($row->getString('email'));
-
-        if ($email === '' || !filter_var($email, \FILTER_VALIDATE_EMAIL)) {
-            return null;
-        }
-
+        $email = ImportedAccountEmail::resolve($row->getString('email'), 'mybb', $row->sourceId);
         $signature = $row->getString('signature');
-
-        return $row->withData([
+        $avatarId = $this->importAvatar($row->getString('avatar'));
+        $data = [
             'email' => $email,
             'username' => trim($row->getString('username')),
             'importedFrom' => 'mybb',
             'mybbUserId' => $row->sourceId,
+            'emailPlaceholder' => ImportedAccountEmail::isPlaceholder($email) ? '1' : '',
             'signature' => $signature === '' ? '' : (new BbCodeConverter())->convert($signature),
             'website' => trim($row->getString('website')),
-        ]);
+        ];
+
+        if ($avatarId !== null) {
+            $data['avatar_asset_id'] = $avatarId;
+        }
+
+        return $row->withData($data);
+    }
+
+    private function importAvatar(string $avatarField): ?int
+    {
+        if ($this->assetManager === null) {
+            return null;
+        }
+
+        $files = ForumDataFolder::fromOption($this->options['data'] ?? '');
+        $path = $files?->mybbAvatar($avatarField);
+
+        if ($path === null) {
+            return null;
+        }
+
+        return (new LocalAssetIntake($this->entityManager, $this->assetManager))->store($path, basename($path));
     }
 
     private function database(): ForeignDatabase
@@ -123,6 +146,6 @@ final class MybbUserMigration implements ConfigurableMigrationInterface
             throw new \LogicException('This migration has not been configured; fill in the source database fields.');
         }
 
-        return ForeignDatabase::fromOptions($this->options, 'mybb_');
+        return DatabaseOptions::connect($this->options, 'mybb_', $this->entityManager->getConnection());
     }
 }

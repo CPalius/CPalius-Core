@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Repository\UserRepository;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
+use Modules\Forum\Service\ForumSmilieCatalog;
 use Modules\Forum\Service\ForumSpoilerGate;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -49,7 +50,19 @@ final class ForumMentionController extends AbstractController
         private readonly UserAvatarService $avatarService,
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly ForumSpoilerGate $spoilerGate,
+        private readonly ForumSmilieCatalog $smilies,
     ) {
+    }
+
+    /**
+     * The composer picker. Not secret — the same set is already visible in
+     * every public post — but signed-in so a scraper cannot use it as a
+     * cheap "is this a forum" probe.
+     */
+    #[Route('/smilies', name: 'smilies', methods: ['GET'])]
+    public function smilies(): JsonResponse
+    {
+        return $this->json(['smilies' => $this->smilies->forEditor()]);
     }
 
     /**

@@ -43,7 +43,9 @@ final class TwoFactorController extends AbstractController
         $user = $this->currentUser();
         $session = $request->getSession();
 
-        if (!$this->twoFactor->isEnrolled($user)) {
+        $loginEmail = $this->twoFactor->needsLoginEmailChallenge($user);
+
+        if (!$this->twoFactor->isEnrolled($user) && !$loginEmail) {
             return $this->redirectToRoute('account_profile');
         }
 
@@ -51,7 +53,7 @@ final class TwoFactorController extends AbstractController
             return $this->redirectToRoute('account_profile');
         }
 
-        $usesEmail = $this->twoFactor->usesEmail($user);
+        $usesEmail = $this->twoFactor->usesEmail($user) || $loginEmail;
         $error = null;
         $notice = null;
 
@@ -59,8 +61,8 @@ final class TwoFactorController extends AbstractController
             $this->assertCsrf($request, 'account_two_factor');
 
             if ($usesEmail && $request->request->get('action') === 'resend') {
-                [$notice, $error] = $this->resend($request, $user);
-            } elseif ($this->twoFactor->verify($user, (string) $request->request->get('code', ''))) {
+                [$notice, $error] = $this->resend($request, $user, $loginEmail);
+            } elseif ($this->acceptChallengeCode($user, (string) $request->request->get('code', ''), $loginEmail)) {
                 $this->twoFactorSession->markVerified($session);
 
                 return $this->redirectToRoute('account_profile');
@@ -73,7 +75,9 @@ final class TwoFactorController extends AbstractController
         // visitor ask for it. A reload inside the code's lifetime does not
         // trigger another one — that is what hasPendingEmailCode() is for.
         if ($usesEmail && $error === null && !$this->twoFactor->hasPendingEmailCode($user)) {
-            $sent = $this->twoFactor->issueEmailCode($user, $request);
+            $sent = $loginEmail
+                ? $this->twoFactor->issueLoginEmailCode($user, $request)
+                : $this->twoFactor->issueEmailCode($user, $request);
 
             if ($sent) {
                 $notice = $this->translator->trans('account.two_factor.email_sent', ['minutes' => $this->twoFactor->emailCodeMinutes()]);
@@ -86,6 +90,7 @@ final class TwoFactorController extends AbstractController
             'error' => $error,
             'notice' => $notice,
             'usesEmail' => $usesEmail,
+            'loginEmail' => $loginEmail,
             'maskedEmail' => $usesEmail ? $this->maskEmail($user->getEmail()) : '',
             'resendWait' => $usesEmail ? $this->twoFactor->emailResendWait($user) : 0,
             'recoveryRemaining' => $this->twoFactor->recoveryCodesRemaining($user),
@@ -255,10 +260,17 @@ final class TwoFactorController extends AbstractController
         return true;
     }
 
+    private function acceptChallengeCode(User $user, string $code, bool $loginEmail): bool
+    {
+        return $loginEmail
+            ? $this->twoFactor->verifyLoginEmailCode($user, $code)
+            : $this->twoFactor->verify($user, $code);
+    }
+
     /**
      * @return array{0: string|null, 1: string|null} notice, then error
      */
-    private function resend(Request $request, User $user): array
+    private function resend(Request $request, User $user, bool $loginEmail = false): array
     {
         $wait = $this->twoFactor->emailResendWait($user);
 
@@ -266,7 +278,11 @@ final class TwoFactorController extends AbstractController
             return [null, $this->translator->trans('account.two_factor.resend_wait', ['seconds' => $wait])];
         }
 
-        if (!$this->twoFactor->issueEmailCode($user, $request)) {
+        $sent = $loginEmail
+            ? $this->twoFactor->issueLoginEmailCode($user, $request)
+            : $this->twoFactor->issueEmailCode($user, $request);
+
+        if (!$sent) {
             return [null, $this->translator->trans('account.two_factor.email_send_failed')];
         }
 

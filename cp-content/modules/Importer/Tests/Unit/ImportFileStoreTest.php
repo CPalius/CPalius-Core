@@ -96,6 +96,16 @@ final class ImportFileStoreTest extends TestCase
         self::assertSame('evil name.xml', $stored->originalName);
     }
 
+    public function testASqlDumpIsStoredAsAFile(): void
+    {
+        $stored = $this->store()->store($this->upload('forum.sql', "CREATE TABLE xf_node (node_id INT);\n"));
+
+        self::assertSame('forum.sql', $stored->originalName);
+        self::assertSame(StoredImport::KIND_FILE, $stored->kind);
+        self::assertStringEndsWith('.sql', $stored->path);
+        self::assertFileExists($stored->path);
+    }
+
     public function testAFileTypeThatIsNotAnExportIsRefused(): void
     {
         $this->expectException(\RuntimeException::class);

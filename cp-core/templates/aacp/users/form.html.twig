@@ -3,7 +3,7 @@
 {% block header %}{{ user ? 'aacp.users.form.header_edit'|trans : 'aacp.users.form.header_create'|trans }}{% endblock %}
 
 {% block javascripts %}
-    {{ importmap(['app', 'studio-quick-cache-clear', 'aacp-user-roles']) }}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'aacp-user-roles', 'cp-editor-init']) }}
 {% endblock %}
 
 {% block body %}
@@ -18,9 +18,21 @@
              blog: 'aacp.users.module.blog'|trans,
              forum: 'aacp.users.module.forum'|trans,
              roadmap: 'aacp.users.module.roadmap'|trans,
+             seo: 'aacp.users.module.seo'|trans,
+             messages: 'aacp.users.module.messages'|trans,
+             showcase: 'aacp.users.module.showcase'|trans,
+             pages: 'aacp.users.module.pages'|trans,
+             media: 'aacp.users.module.media'|trans,
+             menu: 'aacp.users.module.menu'|trans,
+             importer: 'aacp.users.module.importer'|trans,
+             ai: 'aacp.users.module.ai'|trans,
+             dnstools: 'aacp.users.module.dnstools'|trans,
+             hosting: 'aacp.users.module.hosting'|trans,
+             hcms: 'aacp.users.module.hcms'|trans,
          }|json_encode|e('html_attr') }}"
          data-full-access-label="{{ 'aacp.users.roles.full_access'|trans|e('html_attr') }}"
-         data-empty-label="{{ 'aacp.users.roles.preview_empty'|trans|e('html_attr') }}">
+         data-empty-label="{{ 'aacp.users.roles.preview_empty'|trans|e('html_attr') }}"
+         data-capability-labels="{{ capabilityLabels|default({})|json_encode|e('html_attr') }}">
         <div class="min-w-0 space-y-sp-md lg:w-[70%]">
             <twig:cp:card title="{{ 'aacp.users.form.section_account'|trans }}">
                 <div class="space-y-sp-sm">
@@ -34,11 +46,22 @@
                 <div class="space-y-sp-sm">
                     {{ form_row(form.firstName) }}
                     {{ form_row(form.lastName) }}
+                    {{ form_row(form.location) }}
+                    {{ form_row(form.locale) }}
+                    {{ form_row(form.customTitle) }}
+                    {{ form_row(form.customTitleColor) }}
+                    {{ form_row(form.customTitleStyle) }}
+                    {{ form_row(form.customTitleIcon) }}
                 </div>
+            </twig:cp:card>
+
+            <twig:cp:card title="{{ 'aacp.users.profile.section_bio'|trans }}">
+                {{ form_row(form.bio) }}
             </twig:cp:card>
 
             {% if form.fields is defined and form.fields|length > 0 %}
                 <twig:cp:card title="{{ 'aacp.users.form.section_custom_fields'|trans }}">
+                    <p class="mb-3 text-fs-xs !text-slate-500">{{ 'aacp.users.form.custom_fields_hint'|trans }}</p>
                     <div class="space-y-sp-sm">
                         {{ form_widget(form.fields) }}
                         {{ form_errors(form.fields) }}
@@ -64,7 +87,7 @@
                                     </p>
                                     <ul class="space-y-0.5">
                                         {% for capability in capabilities %}
-                                            <li class="font-mono text-fs-xs !text-slate-500">{{ capability }}</li>
+                                            <li class="text-fs-xs !text-slate-400">{{ capability|cp_capability }}</li>
                                         {% endfor %}
                                     </ul>
                                 </div>
@@ -76,6 +99,31 @@
         </div>
 
         <div class="min-w-0 space-y-sp-md lg:w-[30%]">
+            {% if user %}
+                <twig:cp:card title="{{ 'aacp.users.profile.section_avatar'|trans }}">
+                    <div class="mb-sp-xs">
+                        {% if avatarUrl %}
+                            <img src="{{ avatarUrl }}" class="max-h-40 rounded-lg" alt="">
+                        {% else %}
+                            {% include '@Theme/forum/partials/_avatar.html.twig' with {name: user.fullName, user: user, size: 'lg', square: true} %}
+                        {% endif %}
+                    </div>
+                    <form method="post" action="{{ path('aacp_users_avatar', {id: user.id}) }}" enctype="multipart/form-data">
+                        <input type="hidden" name="_token" value="{{ csrf_token('aacp_user_avatar_' ~ user.id) }}">
+                        <label class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5 w-full">
+                            {{ 'aacp.users.profile.select_avatar'|trans }}
+                            <input type="file" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" hidden onchange="this.form.submit()">
+                        </label>
+                    </form>
+                    {% if avatarUrl %}
+                        <form method="post" action="{{ path('aacp_users_avatar_remove', {id: user.id}) }}" class="mt-2">
+                            <input type="hidden" name="_token" value="{{ csrf_token('aacp_user_avatar_remove_' ~ user.id) }}">
+                            <button type="submit" class="btn btn-sm btn-ghost w-full">{{ 'account.profile.avatar_remove'|trans }}</button>
+                        </form>
+                    {% endif %}
+                </twig:cp:card>
+            {% endif %}
+
             <twig:cp:card title="{{ 'aacp.users.form.section_status'|trans }}">
                 <div class="space-y-sp-sm">
                     {{ form_row(form.status) }}
@@ -141,7 +189,8 @@
                                 {% for row in group.rows %}
                                     <div class="flex flex-col gap-1 rounded-md px-2 py-1.5 sm:flex-row sm:items-center sm:justify-between{{ row.overridden ? ' bg-primary-500/10' : '' }}">
                                         <div class="min-w-0">
-                                            <p class="font-mono text-fs-xs {{ row.overridden ? '!text-slate-200' : '!text-slate-500' }}">{{ row.capability }}</p>
+                                            <p class="text-fs-xs {{ row.overridden ? '!text-slate-200' : '!text-slate-300' }}">{{ row.label }}</p>
+                                            <p class="font-mono text-fs-xs !text-slate-600">{{ row.capability }}</p>
                                             <p class="text-fs-xs !text-slate-600">
                                                 {% if row.roleHas %}
                                                     {{ 'aacp.users.overrides.role_has'|trans }}

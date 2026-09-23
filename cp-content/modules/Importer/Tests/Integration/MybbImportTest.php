@@ -53,7 +53,7 @@ final class MybbImportTest extends IntegrationTestCase
 
         $connection = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
 
-        $connection->executeStatement('CREATE TABLE mybb_users (uid INTEGER PRIMARY KEY, username TEXT, email TEXT, regdate INTEGER, postnum INTEGER, signature TEXT, website TEXT)');
+        $connection->executeStatement('CREATE TABLE mybb_users (uid INTEGER PRIMARY KEY, username TEXT, email TEXT, regdate INTEGER, postnum INTEGER, signature TEXT, website TEXT, avatar TEXT)');
         $connection->executeStatement('CREATE TABLE mybb_forums (fid INTEGER PRIMARY KEY, pid INTEGER, name TEXT, description TEXT, type TEXT, disporder INTEGER, open INTEGER, linkto TEXT)');
         $connection->executeStatement('CREATE TABLE mybb_threads (tid INTEGER PRIMARY KEY, fid INTEGER, subject TEXT, uid INTEGER, username TEXT, dateline INTEGER, lastpost INTEGER, views INTEGER, replies INTEGER, sticky INTEGER, closed TEXT, visible INTEGER)');
         $connection->executeStatement('CREATE TABLE mybb_posts (pid INTEGER PRIMARY KEY, tid INTEGER, uid INTEGER, username TEXT, dateline INTEGER, message TEXT, visible INTEGER)');
@@ -109,17 +109,21 @@ final class MybbImportTest extends IntegrationTestCase
         $runner->run(new MybbPostMigration($em, $this->lookup(), [], $db), false);
     }
 
-    public function testMembersBecomeUsersAndOnesWithoutAnAddressAreSkipped(): void
+    public function testMembersBecomeUsersEvenWithoutAnAddress(): void
     {
         $report = $this->runner()->run(new MybbUserMigration($this->em(), [], $this->database()), false);
 
-        self::assertSame(1, $report->created());
-        self::assertSame(1, $report->skipped());
+        self::assertSame(2, $report->created());
+        self::assertSame(0, $report->skipped());
 
         /** @var User $user */
         $user = $this->em()->getRepository(User::class)->findOneBy(['email' => 'admin@mybb.test']);
         self::assertSame('admin', $user->getUsername());
         self::assertStringContainsString('<em>imza</em>', (string) ($user->getData()['signature'] ?? ''));
+
+        /** @var User $nomail */
+        $nomail = $this->em()->getRepository(User::class)->findOneBy(['username' => 'nomail']);
+        self::assertSame('imported-mybb-2@invalid.invalid', $nomail->getEmail());
     }
 
     /**

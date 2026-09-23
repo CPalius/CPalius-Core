@@ -131,12 +131,7 @@ class CategoryRepository
      */
     public function findTreeByLocale(string $locale): array
     {
-        $all = $this->terms->findByVocabulary($this->vocabulary(), $locale);
-
-        return array_values(array_filter(
-            $all,
-            static fn (Term $term): bool => $term->getParent() === null,
-        ));
+        return $this->terms->findTreeByVocabulary($this->vocabulary(), $locale);
     }
 
     /**

@@ -138,6 +138,13 @@ services:
     # told which one is "the map".
     App\Core\Migrate\Map\MigrationMapInterface: '@App\Core\Migrate\Map\DoctrineMigrationMap'
 
+    # Destinations and the map hold this for the life of a request. A failed
+    # flush closes the real manager; this wrapper reopens it so one bad row
+    # does not take the rest of the import with it.
+    App\Core\Migrate\Map\DoctrineMigrationMap:
+        arguments:
+            $entityManager: '@App\Core\Migrate\ImportEntityManager'
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
     App\Core\Module\ModuleRegistry:

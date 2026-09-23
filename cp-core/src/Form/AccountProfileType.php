@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Core\Account\AccountProfileExtensionInterface;
+use App\Core\Field\Form\FieldableFormBuilder;
 use App\Form\DTO\AccountProfileFormModel;
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 use Symfony\Component\Form\AbstractType;
@@ -23,6 +24,7 @@ final class AccountProfileType extends AbstractType
      * @param iterable<AccountProfileExtensionInterface> $extensions
      */
     public function __construct(
+        private readonly FieldableFormBuilder $fieldableFormBuilder,
         #[TaggedIterator('cpalius.account.profile_extension')]
         private readonly iterable $extensions = [],
     ) {
@@ -44,6 +46,10 @@ final class AccountProfileType extends AbstractType
             ])
             ->add('lastName', TextType::class, [
                 'label' => 'account.profile.last_name',
+                'required' => false,
+            ])
+            ->add('location', TextType::class, [
+                'label' => 'account.profile.location',
                 'required' => false,
             ])
             ->add('locale', ChoiceType::class, [
@@ -68,6 +74,8 @@ final class AccountProfileType extends AbstractType
         foreach ($this->extensions as $extension) {
             $extension->buildForm($builder);
         }
+
+        $this->fieldableFormBuilder->add($builder, 'user', (string) $options['field_locale']);
     }
 
     public function buildView(FormView $view, FormInterface $form, array $options): void
@@ -88,8 +96,10 @@ final class AccountProfileType extends AbstractType
             // the type constructible in isolation (form tests, a module reusing
             // it) without hard-coding a language list anywhere but the database.
             'locale_choices' => [],
+            'field_locale' => 'und',
         ]);
 
         $resolver->setAllowedTypes('locale_choices', 'array');
+        $resolver->setAllowedTypes('field_locale', 'string');
     }
 }

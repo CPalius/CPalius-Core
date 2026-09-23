@@ -9,7 +9,7 @@ framework:
                 allow_safe_elements: true
                 allow_static_elements: true
                 allow_elements:
-                    img: ['src', 'alt', 'width', 'height', 'class']
+                    img: ['src', 'alt', 'width', 'height', 'class', 'title']
                     a: ['href', 'title', 'target', 'rel']
                     blockquote: ['data-post', 'class']
                     div: ['class']

@@ -135,6 +135,6 @@ final class JoomlaCategoryMigration implements ConfigurableMigrationInterface
             throw new \LogicException('This migration has not been configured; fill in the source database fields.');
         }
 
-        return ForeignDatabase::fromOptions($this->options);
+        return DatabaseOptions::connect($this->options, '', $this->entityManager->getConnection());
     }
 }

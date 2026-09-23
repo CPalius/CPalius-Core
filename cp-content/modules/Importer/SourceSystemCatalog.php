@@ -132,14 +132,14 @@ final class SourceSystemCatalog
                 'XenForo',
                 'xenforo.',
                 'heroicons:chat-bubble-left-right',
-                ['importer.brings.users', 'importer.brings.threads', 'importer.brings.posts'],
+                ['importer.brings.users', 'importer.brings.threads', 'importer.brings.posts', 'importer.brings.smilies', 'importer.brings.media'],
             ),
             new SourceSystem(
                 'mybb',
                 'MyBB',
                 'mybb.',
                 'heroicons:chat-bubble-left-right',
-                ['importer.brings.users', 'importer.brings.threads', 'importer.brings.posts'],
+                ['importer.brings.users', 'importer.brings.threads', 'importer.brings.posts', 'importer.brings.media'],
             ),
             new SourceSystem(
                 'drupal',

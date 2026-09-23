@@ -85,7 +85,7 @@ final class TwoFactorGuardSubscriber implements EventSubscriberInterface
         $request = $event->getRequest();
 
         try {
-            if ($this->isAllowed($request) || !$this->twoFactor->isEnabledGlobally()) {
+            if ($this->isAllowed($request)) {
                 return;
             }
 
@@ -100,28 +100,40 @@ final class TwoFactorGuardSubscriber implements EventSubscriberInterface
 
             $session = $request->getSession();
 
-            if ($this->twoFactor->isEnrolled($user)) {
+            if ($this->twoFactor->isEnabledGlobally()) {
+                if ($this->twoFactor->isEnrolled($user)) {
+                    if ($this->twoFactorSession->isVerified($session)) {
+                        return;
+                    }
+
+                    $event->setResponse($this->challenge($request, self::CHALLENGE_PATH));
+
+                    return;
+                }
+
+                // An account whose sealed secret no longer opens is not an account
+                // without a second factor — it is an account whose second factor broke.
+                // Sending it to setup is the only fail-closed answer that does not also
+                // strand the owner: the challenge would reject every code they own.
+                if ($this->twoFactor->isEnrollmentBroken($user)) {
+                    $event->setResponse($this->challenge($request, self::SETUP_PATH));
+
+                    return;
+                }
+
+                if ($this->twoFactor->isEnrollmentRequired($user)) {
+                    $event->setResponse($this->challenge($request, self::SETUP_PATH));
+
+                    return;
+                }
+            }
+
+            if ($this->twoFactor->needsLoginEmailChallenge($user)) {
                 if ($this->twoFactorSession->isVerified($session)) {
                     return;
                 }
 
                 $event->setResponse($this->challenge($request, self::CHALLENGE_PATH));
-
-                return;
-            }
-
-            // An account whose sealed secret no longer opens is not an account
-            // without a second factor — it is an account whose second factor broke.
-            // Sending it to setup is the only fail-closed answer that does not also
-            // strand the owner: the challenge would reject every code they own.
-            if ($this->twoFactor->isEnrollmentBroken($user)) {
-                $event->setResponse($this->challenge($request, self::SETUP_PATH));
-
-                return;
-            }
-
-            if ($this->twoFactor->isEnrollmentRequired($user)) {
-                $event->setResponse($this->challenge($request, self::SETUP_PATH));
             }
         } catch (\Throwable) {
             // A broken second-factor gate must not lock the site; the challenge

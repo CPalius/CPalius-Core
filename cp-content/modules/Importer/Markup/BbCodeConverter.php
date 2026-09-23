@@ -42,15 +42,40 @@ final class BbCodeConverter
         // Escape first: whatever was HTML in the source stays text.
         $html = htmlspecialchars($bbcode, \ENT_QUOTES | \ENT_SUBSTITUTE, 'UTF-8');
 
+        return $this->paragraphs($this->applyTags($html));
+    }
+
+    /**
+     * Convert leftover BBCode inside already-stored HTML.
+     *
+     * Imported posts that ran through an older converter still contain
+     * [USER], [IMG width="…"] and friends as literal text. Re-escaping the
+     * whole body would destroy the HTML that did convert; this only rewrites
+     * the tags that are still sitting there.
+     */
+    public function rewriteInHtml(string $html): string
+    {
+        if ($html === '' || !str_contains($html, '[')) {
+            return $html;
+        }
+
+        return $this->applyTags($html);
+    }
+
+    private function applyTags(string $html): string
+    {
         $html = $this->code($html);
         $html = $this->simple($html);
+        $html = $this->mentions($html);
         $html = $this->links($html);
         $html = $this->images($html);
+        $html = $this->media($html);
+        $html = $this->attachments($html);
         $html = $this->quotes($html);
         $html = $this->lists($html);
         $html = $this->styles($html);
 
-        return $this->paragraphs($html);
+        return $html;
     }
 
     /**
@@ -81,13 +106,56 @@ final class BbCodeConverter
             '#\[right\](.*?)\[/right\]#is' => '<p style="text-align:right">$1</p>',
             '#\[left\](.*?)\[/left\]#is' => '<p style="text-align:left">$1</p>',
             '#\[spoiler\](.*?)\[/spoiler\]#is' => '<details><summary>spoiler</summary>$1</details>',
+            '#\[ispoiler\](.*?)\[/ispoiler\]#is' => '<details><summary>spoiler</summary>$1</details>',
+            '#\[plain\](.*?)\[/plain\]#is' => '$1',
+            '#\[sub\](.*?)\[/sub\]#is' => '<sub>$1</sub>',
+            '#\[sup\](.*?)\[/sup\]#is' => '<sup>$1</sup>',
+            '#\[hr\s*/?\]#i' => '<hr>',
+            '#\[indent\](.*?)\[/indent\]#is' => '<div style="margin-left:1.5em">$1</div>',
         ];
 
         foreach ($map as $pattern => $replacement) {
             $html = (string) preg_replace($pattern, $replacement, $html);
         }
 
+        $html = (string) preg_replace_callback(
+            '#\[spoiler=([^\]]+)\](.*?)\[/spoiler\]#is',
+            static fn (array $m): string => '<details><summary>'.trim($m[1]).'</summary>'.$m[2].'</details>',
+            $html,
+        );
+
+        $html = (string) preg_replace_callback(
+            '#\[align=(left|right|center|justify)\](.*?)\[/align\]#is',
+            static fn (array $m): string => '<p style="text-align:'.strtolower($m[1]).'">'.$m[2].'</p>',
+            $html,
+        );
+
+        $html = (string) preg_replace_callback(
+            '#\[heading=([1-6])\](.*?)\[/heading\]#is',
+            static fn (array $m): string => '<h'.$m[1].'>'.$m[2].'</h'.$m[1].'>',
+            $html,
+        );
+
         return $html;
+    }
+
+    /**
+     * XenForo [USER=12]@Ali[/USER] and MyBB [mention=12]Ali[/mention].
+     *
+     * Unwrapped to @name so the forum presenter can turn it into a profile
+     * link the same way a typed mention is.
+     */
+    private function mentions(string $html): string
+    {
+        return (string) preg_replace_callback(
+            '#\[(?:user|mention)(?:\s[^\]]*)?(?:=[^\]]*)?\]@?([^\[]+?)\[/(?:user|mention)\]#is',
+            static function (array $m): string {
+                $name = trim(html_entity_decode($m[1], \ENT_QUOTES | \ENT_SUBSTITUTE, 'UTF-8'));
+
+                return $name === '' ? '' : '@'.$name;
+            },
+            $html,
+        );
     }
 
     private function links(string $html): string
@@ -98,9 +166,21 @@ final class BbCodeConverter
             $html,
         );
 
-        return (string) preg_replace_callback(
-            '#\[url\](.*?)\[/url\]#is',
+        $html = (string) preg_replace_callback(
+            '#\[url(?:\s[^\]]*)?\](.*?)\[/url\]#is',
             fn (array $m): string => $this->link($m[1], $m[1]),
+            $html,
+        );
+
+        $html = (string) preg_replace_callback(
+            '#\[email=([^\]]+)\](.*?)\[/email\]#is',
+            fn (array $m): string => $this->link('mailto:'.trim($m[1]), $m[2]),
+            $html,
+        );
+
+        return (string) preg_replace_callback(
+            '#\[email\](.*?)\[/email\]#is',
+            fn (array $m): string => $this->link('mailto:'.trim($m[1]), $m[1]),
             $html,
         );
     }
@@ -120,13 +200,59 @@ final class BbCodeConverter
 
     private function images(string $html): string
     {
+        // XenForo writes [IMG width="640" height="480"]url[/IMG]; MyBB writes
+        // [img=100x50]url[/img]. The old pattern only accepted [img] or
+        // [img=…], so attributed tags survived as literal text.
         return (string) preg_replace_callback(
-            '#\[img(?:=[^\]]*)?\](.*?)\[/img\]#is',
+            '#\[img(?:\s[^\]]*)?(?:=[^\]]*)?\](.*?)\[/img\]#is',
             function (array $m): string {
                 $safe = $this->safeUrl(trim($m[1]));
 
                 return $safe === null ? '' : sprintf('<img src="%s" alt="">', $safe);
             },
+            $html,
+        );
+    }
+
+    private function media(string $html): string
+    {
+        $html = (string) preg_replace_callback(
+            '#\[media=youtube\]([a-zA-Z0-9_-]{6,})\[/media\]#is',
+            fn (array $m): string => $this->link('https://www.youtube.com/watch?v='.$m[1], 'YouTube'),
+            $html,
+        );
+
+        $html = (string) preg_replace_callback(
+            '#\[video=youtube\](.*?)\[/video\]#is',
+            function (array $m): string {
+                $url = trim($m[1]);
+
+                return $this->link($url, $url);
+            },
+            $html,
+        );
+
+        return (string) preg_replace_callback(
+            '#\[media=([a-z0-9_-]+)\](.*?)\[/media\]#is',
+            function (array $m): string {
+                $body = trim($m[2]);
+
+                return $this->safeUrl($body) !== null ? $this->link($body, $body) : $body;
+            },
+            $html,
+        );
+    }
+
+    /**
+     * Attachments need the old board's files, which this import does not
+     * fetch. Drop the tag so the post is readable; a leftover [ATTACH]123
+     * is worse than a missing picture.
+     */
+    private function attachments(string $html): string
+    {
+        return (string) preg_replace(
+            '#\[attach(?:\s[^\]]*)?(?:=[^\]]*)?\].*?\[/attach\]#is',
+            '',
             $html,
         );
     }
@@ -147,6 +273,15 @@ final class BbCodeConverter
 
             $html = (string) preg_replace(
                 '#\[quote\]((?:(?!\[quote).)*?)\[/quote\]#is',
+                '<blockquote>$1</blockquote>',
+                $html,
+            );
+
+            // XenForo 2 / MyBB: [QUOTE="Name, post: 1, member: 2"] or
+            // [quote="Ali" pid="12"] — anything still tagged after the
+            // stricter patterns is unwrapped so it does not stay visible.
+            $html = (string) preg_replace(
+                '#\[quote[^\]]*\]((?:(?!\[quote).)*?)\[/quote\]#is',
                 '<blockquote>$1</blockquote>',
                 $html,
             );
@@ -198,13 +333,25 @@ final class BbCodeConverter
             $html,
         );
 
-        return (string) preg_replace_callback(
+        $html = (string) preg_replace_callback(
             '#\[size=([^\]]+)\](.*?)\[/size\]#is',
             static function (array $m): string {
                 $size = trim($m[1]);
 
                 return preg_match('/^\d{1,3}(px|pt|em|%)?$/', $size) === 1
                     ? sprintf('<span style="font-size:%s">%s</span>', ctype_digit($size) ? $size.'px' : $size, $m[2])
+                    : $m[2];
+            },
+            $html,
+        );
+
+        return (string) preg_replace_callback(
+            '#\[font=([^\]]+)\](.*?)\[/font\]#is',
+            static function (array $m): string {
+                $font = trim($m[1], " \t\"'");
+
+                return preg_match('/^[a-zA-Z0-9 \-]{1,40}$/', $font) === 1
+                    ? sprintf('<span style="font-family:%s">%s</span>', $font, $m[2])
                     : $m[2];
             },
             $html,

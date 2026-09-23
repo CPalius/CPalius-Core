@@ -64,6 +64,54 @@ final class TwoFactorService
     }
 
     /**
+     * After a password login, ask every account for an e-mail code — without
+     * enrolling them in 2FA. Skipped when SMTP cannot send, so a site without
+     * mail is not locked out.
+     */
+    public function isLoginEmailCodeEnabled(): bool
+    {
+        return (bool) $this->settings->get('security.login_email_code', true)
+            && $this->emailOtp !== null
+            && $this->emailOtp->isAvailable();
+    }
+
+    public function needsLoginEmailChallenge(User $user): bool
+    {
+        return $this->isLoginEmailCodeEnabled() && !$this->isEnrolled($user);
+    }
+
+    public function issueLoginEmailCode(User $user, ?Request $request = null): bool
+    {
+        if (!$this->isLoginEmailCodeEnabled() || $this->emailOtp === null) {
+            return false;
+        }
+
+        return $this->emailOtp->issue($user, $request);
+    }
+
+    public function verifyLoginEmailCode(User $user, string $code): bool
+    {
+        if ($this->emailOtp === null) {
+            return false;
+        }
+
+        $identifier = (string) $user->getId();
+        if (!$this->flood->isAllowed(FloodService::EVENT_TWOFACTOR, $identifier, self::VERIFY_LIMIT, self::VERIFY_WINDOW, failOpen: true)) {
+            return false;
+        }
+
+        if ($this->emailOtp->verify($user, $code)) {
+            $this->flood->clear(FloodService::EVENT_TWOFACTOR, $identifier);
+
+            return true;
+        }
+
+        $this->registerFailure($user, 'login_email_mismatch');
+
+        return false;
+    }
+
+    /**
      * The method this account enrolled with. Accounts that enrolled before
      * e-mail codes existed have no stored method and a sealed secret, so TOTP is
      * the right answer for them and the right default for everybody else.

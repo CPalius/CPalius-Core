@@ -16,6 +16,7 @@ final class AccountProfileFormModel
     public ?string $username = null;
     public string $firstName = '';
     public string $lastName = '';
+    public string $location = '';
 
     /**
      * Preferred language for mail. Not an identity field — it needs no approval,
@@ -32,6 +33,7 @@ final class AccountProfileFormModel
         $dto->username = $user->getUsername();
         $dto->firstName = $user->getFirstName();
         $dto->lastName = $user->getLastName();
+        $dto->location = $user->getLocation();
 
         return $dto;
     }

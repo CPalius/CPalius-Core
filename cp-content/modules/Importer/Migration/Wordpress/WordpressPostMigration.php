@@ -13,11 +13,11 @@ use App\Core\Migrate\MigrationOption;
 use App\Core\Migrate\MigrationOptionResolver;
 use App\Core\Migrate\MigrationRow;
 use App\Core\Migrate\MigrationSourceInterface;
+use App\Core\Migrate\Source\ForeignDatabase;
 use App\Entity\Node;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Importer\Source\Wordpress\WordpressMediaIndex;
-use Modules\Importer\Source\Wordpress\WxrPostSource;
-use Modules\Importer\Source\Wordpress\WxrReader;
+use Modules\Importer\Source\Wordpress\WordpressOrigin;
 
 /**
  * WordPress posts become nodes, with their author and terms resolved through
@@ -26,25 +26,28 @@ use Modules\Importer\Source\Wordpress\WxrReader;
  * The status map is where most importers quietly lose content. WordPress has
  * publish, draft, pending, private, future and inherit; CPalius has draft,
  * published and scheduled. Anything not certainly public lands as a DRAFT
- * rather than being dropped or published: a private post that appears on the
- * new public site is a disclosure, and a post silently discarded is data loss.
- * Draft is the only option that is neither.
+ * rather than being dropped or published.
  */
 final class WordpressPostMigration implements ConfigurableMigrationInterface
 {
     public const ID = 'wordpress.posts';
 
+    /** @var array<string, string> */
+    private readonly array $options;
+
     private ?WordpressMediaIndex $media = null;
 
+    /**
+     * @param array<string, string> $options
+     */
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly SlugGenerator $slugGenerator,
         private readonly MigrationLookup $lookup,
-        private readonly string $file = '',
-        private readonly string $locale = 'en',
-        private readonly string $type = 'post',
-        private readonly string $postType = 'post',
+        array $options = [],
+        private readonly ?ForeignDatabase $suppliedDatabase = null,
     ) {
+        $this->options = $options;
     }
 
     public function id(): string
@@ -59,15 +62,10 @@ final class WordpressPostMigration implements ConfigurableMigrationInterface
 
     public function dependsOn(): array
     {
-        // Authors and terms must be in the map before a post can resolve its
-        // own; the registry both orders this and pulls them into a run that
-        // only asked for posts.
         return [
             WordpressAuthorMigration::ID,
             WordpressCategoryMigration::ID,
             WordpressTagMigration::ID,
-            // Attachments too, so the body can be rewritten to point at assets
-            // that exist rather than at a domain about to be switched off.
             WordpressAttachmentMigration::ID,
         ];
     }
@@ -75,7 +73,7 @@ final class WordpressPostMigration implements ConfigurableMigrationInterface
     public function options(): array
     {
         return [
-            MigrationOption::file('file', 'Path to the WordPress WXR export file'),
+            ...WordpressOrigin::commonOptions(),
             MigrationOption::optional('locale', 'Locale the imported content belongs to', 'en'),
             MigrationOption::optional('type', 'CPalius node type to create', 'post'),
             MigrationOption::optional('postType', 'WordPress post type to read (post, page, ...)', 'post'),
@@ -84,27 +82,23 @@ final class WordpressPostMigration implements ConfigurableMigrationInterface
 
     public function withOptions(array $values): static
     {
-        $resolved = MigrationOptionResolver::resolve($this->options(), $values);
-
         return new static(
             $this->entityManager,
             $this->slugGenerator,
             $this->lookup,
-            $resolved['file'],
-            $resolved['locale'],
-            $resolved['type'],
-            $resolved['postType'],
+            MigrationOptionResolver::resolve($this->options(), $values),
+            $this->suppliedDatabase,
         );
     }
 
     public function source(): MigrationSourceInterface
     {
-        return new WxrPostSource($this->reader(), $this->postType);
+        return $this->origin()->posts($this->options['postType'] ?? 'post');
     }
 
     public function destination(): MigrationDestinationInterface
     {
-        return new NodeDestination($this->entityManager, $this->slugGenerator, $this->type, $this->locale);
+        return new NodeDestination($this->entityManager, $this->slugGenerator, $this->options['type'] ?? 'post', $this->options['locale'] ?? 'en');
     }
 
     public function transform(MigrationRow $row): MigrationRow
@@ -112,8 +106,6 @@ final class WordpressPostMigration implements ConfigurableMigrationInterface
         $title = trim($row->getString('title'));
 
         if ($title === '') {
-            // WordPress allows untitled posts; a node cannot have an empty
-            // title, and inventing one would put "Untitled" in a menu.
             $title = sprintf('WordPress post %s', $row->sourceId);
         }
 
@@ -124,7 +116,7 @@ final class WordpressPostMigration implements ConfigurableMigrationInterface
             'title' => $title,
             'slug' => trim($row->getString('slug')),
             'status' => $this->status($row),
-            'locale' => $this->locale,
+            'locale' => $this->options['locale'] ?? 'en',
             'publishedAt' => trim($row->getString('publishedAt')),
             'body' => $media->rewrite($row->getString('content')),
             'excerpt' => $media->rewrite($row->getString('excerpt')),
@@ -141,10 +133,6 @@ final class WordpressPostMigration implements ConfigurableMigrationInterface
         ]);
     }
 
-    /**
-     * The asset behind WordPress's featured image, which it stores as the
-     * attachment's post id in _thumbnail_id meta rather than as a URL.
-     */
     private function featuredAssetId(MigrationRow $row, WordpressMediaIndex $media): string
     {
         $meta = $row->get('meta');
@@ -157,24 +145,16 @@ final class WordpressPostMigration implements ConfigurableMigrationInterface
         return (string) ($media->assetIdForAttachment($thumbnailId) ?? '');
     }
 
-    /**
-     * Built once per migration instance: the index costs a streaming pass over
-     * the export's attachments, and every row would otherwise pay for it.
-     */
     private function media(): WordpressMediaIndex
     {
         return $this->media ??= new WordpressMediaIndex(
-            $this->reader(),
+            $this->origin()->attachments(),
             $this->lookup,
             $this->entityManager,
             WordpressAttachmentMigration::ID,
         );
     }
 
-    /**
-     * Only "publish" is published. Everything else becomes a draft — see the
-     * class docblock for why that is the only safe third option.
-     */
     private function status(MigrationRow $row): string
     {
         return trim($row->getString('status')) === 'publish' ? Node::STATUS_PUBLISHED : Node::STATUS_DRAFT;
@@ -200,12 +180,8 @@ final class WordpressPostMigration implements ConfigurableMigrationInterface
         return $slugs;
     }
 
-    private function reader(): WxrReader
+    private function origin(): WordpressOrigin
     {
-        if ($this->file === '') {
-            throw new \LogicException('This migration has not been configured; pass -o file=<export.xml>.');
-        }
-
-        return new WxrReader($this->file);
+        return new WordpressOrigin($this->entityManager, $this->options, $this->suppliedDatabase);
     }
 }

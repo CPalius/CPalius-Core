@@ -413,6 +413,7 @@ final class ForumTopicRepository extends ServiceEntityRepository
     public function createPublicByAuthorQueryBuilder(User $author): QueryBuilder
     {
         return $this->createQueryBuilder('t')
+            ->leftJoin('t.section', 's')->addSelect('s')
             ->andWhere('t.firstPoster = :author')
             ->andWhere('t.movedToTopic IS NULL')
             ->andWhere('t.mode = :normal')
@@ -426,6 +427,7 @@ final class ForumTopicRepository extends ServiceEntityRepository
     public function createRepliedTopicsByAuthorQueryBuilder(User $author): QueryBuilder
     {
         return $this->createQueryBuilder('t')
+            ->leftJoin('t.section', 's')->addSelect('s')
             ->andWhere('EXISTS (
                 SELECT 1 FROM Modules\Forum\Entity\ForumPost p
                 WHERE p.topic = t AND p.author = :author

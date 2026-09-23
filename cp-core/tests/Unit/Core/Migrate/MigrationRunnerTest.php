@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Core\Migrate;
 
 use App\Core\Migrate\Map\ArrayMigrationMap;
 use App\Core\Migrate\Map\MigrationMapRecord;
+use App\Core\Migrate\MigrationLookup;
 use App\Core\Migrate\MigrationRow;
 use App\Core\Migrate\MigrationRunner;
 use App\Tests\Unit\Core\Migrate\Support\ArraySource;
@@ -216,6 +217,56 @@ final class MigrationRunnerTest extends TestCase
         // Three rows were pulled: two imported, the third is what told the
         // runner the source had more. The source is not drained.
         self::assertSame(3, $source->rowsPulled);
+    }
+
+    public function testASecondLimitedRunContinuesPastRowsAlreadyImported(): void
+    {
+        $source = new ArraySource([
+            new MigrationRow('a', ['n' => 1]),
+            new MigrationRow('b', ['n' => 2]),
+            new MigrationRow('c', ['n' => 3]),
+            new MigrationRow('d', ['n' => 4]),
+        ]);
+        $map = new ArrayMigrationMap();
+        $runner = new MigrationRunner($map);
+        $migration = new TestMigration('test.rows', $source, new RecordingDestination());
+
+        $first = $runner->run($migration, false, 2);
+        self::assertSame(2, $first->created());
+        self::assertTrue($first->limitReached());
+
+        $second = $runner->run($migration, false, 2);
+        self::assertSame(2, $second->unchanged(), 'a and b are already imported');
+        self::assertSame(2, $second->created(), 'c and d are the next batch, not a repeat of a and b');
+        self::assertSame(4, $map->countFor('test.rows'));
+    }
+
+    public function testDryRunOfADependentMigrationSeesParentsFromEarlierStepsInTheSameBatch(): void
+    {
+        $map = new ArrayMigrationMap();
+        $lookup = new MigrationLookup($map);
+        $runner = new MigrationRunner($map, null, null, $lookup);
+
+        $parents = new TestMigration('test.parents', $this->source(['p1']), new RecordingDestination());
+        $children = new TestMigration(
+            'test.children',
+            new ArraySource([new MigrationRow('c1', ['parent' => 'p1'])]),
+            new RecordingDestination(),
+            ['test.parents'],
+            static function (MigrationRow $row) use ($lookup): ?MigrationRow {
+                $parent = $lookup->find('test.parents', $row->getString('parent'));
+
+                return $parent === null ? null : $row->withData(['parentId' => $parent]);
+            },
+        );
+
+        $parentReport = $runner->run($parents, true);
+        $childReport = $runner->run($children, true);
+
+        self::assertSame(1, $parentReport->created());
+        self::assertSame(1, $childReport->created(), 'the child must resolve the parent previewed in this dry run');
+        self::assertSame(0, $childReport->skipped());
+        self::assertSame(0, $map->countFor('test.parents'), 'still a dry run: the real map is untouched');
     }
 
     public function testAZeroOrNegativeLimitIsRefusedRatherThanImportingEverything(): void
