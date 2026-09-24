@@ -53,9 +53,9 @@ final class MailAnalysisService
         $headers['received'] = implode("\n", $received);
 
         return [
-            'from' => $headers['from'] ?? null,
-            'to' => $headers['to'] ?? null,
-            'subject' => $headers['subject'] ?? null,
+            'from' => $this->decodeHeader($headers['from'] ?? null),
+            'to' => $this->decodeHeader($headers['to'] ?? null),
+            'subject' => $this->decodeHeader($headers['subject'] ?? null),
             'date' => $headers['date'] ?? null,
             'message_id' => $headers['message-id'] ?? null,
             'spf' => $headers['received-spf'] ?? ($headers['authentication-results'] ?? null),
@@ -63,6 +63,20 @@ final class MailAnalysisService
             'received' => $received,
             'headers' => $headers,
         ];
+    }
+
+    private function decodeHeader(mixed $value): ?string
+    {
+        if (!\is_string($value) || $value === '') {
+            return \is_string($value) ? $value : null;
+        }
+        $decoded = iconv_mime_decode($value, ICONV_MIME_DECODE_CONTINUE_ON_ERROR, 'UTF-8');
+        if (!\is_string($decoded) || $decoded === '') {
+            return $value;
+        }
+        $clean = preg_replace('/\s+/u', ' ', $decoded);
+
+        return trim(\is_string($clean) ? $clean : $decoded);
     }
 
     /**

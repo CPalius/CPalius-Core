@@ -46,6 +46,94 @@
         font-size: .68rem; font-weight: 700; letter-spacing: .03em;
         padding: .15rem .45rem; border-radius: 999px; background: var(--dt-accent); color: #fff;
     }
+    .dnstools-page--home {
+        max-width: none; margin: 0; padding: var(--navbar-h, 64px) 0 4rem;
+        background: var(--cp-lighter, #F7F8FA);
+    }
+    .dns-home-wrap { max-width: 1120px; margin: 0 auto; padding: 0 1.25rem; }
+    .dns-home-hero__grid {
+        display: grid; grid-template-columns: minmax(0, 1fr) 220px;
+        gap: 2.5rem; align-items: center;
+    }
+    .dns-home-logo {
+        width: 100%; max-width: 220px; height: auto; justify-self: end;
+        padding: 1.1rem; border-radius: 28px;
+        background: rgba(255, 255, 255, .92);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, .28);
+    }
+    .dns-home-hero {
+        background:
+            radial-gradient(900px 420px at 85% -10%, rgba(74, 173, 228, .35), transparent 60%),
+            linear-gradient(165deg, #081420 0%, #1A2A3A 58%, #24384a 100%);
+        color: #fff; padding: 4.5rem 0 3.2rem;
+        border-bottom: 3px solid var(--cp-gold, #C8A86E);
+    }
+    .dns-home-kicker {
+        margin: 0 0 .8rem; color: var(--cp-gold, #C8A86E);
+        font-size: .78rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    }
+    .dns-home-hero h1 {
+        margin: 0; max-width: 16ch; color: #fff;
+        font-size: clamp(2.1rem, 5vw, 3.6rem); line-height: 1.05; letter-spacing: -.03em;
+    }
+    .dns-home-lead { margin: 1rem 0 0; max-width: 38rem; color: #C5D0DC; font-size: 1.08rem; line-height: 1.5; }
+    .dns-home-search {
+        display: flex; align-items: center; gap: .6rem;
+        margin-top: 1.8rem; max-width: 720px; padding: .45rem .45rem .45rem 1rem;
+        background: #fff; border-radius: 999px;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, .28);
+    }
+    .dns-home-search i { color: #8B9DAF; font-size: 1.1rem; }
+    .dns-home-search input {
+        flex: 1; min-width: 0; border: 0; outline: none; background: transparent;
+        color: #1A2A3A; font: inherit; font-size: 1.05rem; padding: .7rem 0;
+    }
+    .dns-home-search button {
+        border: 0; border-radius: 999px; padding: .85rem 1.35rem;
+        background: #1A2A3A; color: #fff; font: inherit; font-weight: 700; cursor: pointer;
+    }
+    .dns-home-search button:hover { background: #0D1B2A; }
+    .dns-home-picks { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem; margin-top: 1.6rem; max-width: 720px; }
+    .dns-home-picks a {
+        display: flex; align-items: center; gap: .55rem;
+        padding: .75rem .85rem; border-radius: 14px;
+        background: rgba(255, 255, 255, .08); color: #fff; text-decoration: none;
+        border: 1px solid rgba(255, 255, 255, .12);
+    }
+    .dns-home-picks a:hover { background: rgba(255, 255, 255, .16); }
+    .dns-home-picks i { color: var(--cp-gold, #C8A86E); }
+    .dns-home-results { margin-top: 1.5rem; }
+    .dns-home-block { margin-top: 2.6rem; }
+    .dns-home-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+    .dns-home-head h2 { margin: 0; font-size: 1.35rem; color: var(--cp-dark, #1A2A3A); }
+    .dns-home-head a { color: var(--cp-primary, #4A7C9B); text-decoration: none; font-weight: 600; }
+    .dns-home-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .85rem; }
+    .dns-home-card {
+        display: flex; flex-direction: column; gap: .35rem;
+        min-height: 148px; padding: 1.05rem 1.1rem;
+        background: #fff; border: 1px solid var(--cp-border-light, #E4E7EC); border-radius: 16px;
+        text-decoration: none; color: inherit;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+    }
+    .dns-home-card:hover { border-color: #B7C6D4; transform: translateY(-2px); box-shadow: 0 12px 28px rgba(26, 42, 58, .08); }
+    .dns-home-card i {
+        width: 2.1rem; height: 2.1rem; display: grid; place-items: center;
+        border-radius: 10px; background: #EAF3F8; color: #3A6A87; font-size: 1.05rem;
+    }
+    .dns-home-card strong { margin-top: .35rem; font-size: .98rem; color: #1A2A3A; }
+    .dns-home-card span { color: #5A6B7D; font-size: .86rem; line-height: 1.35; }
+    @media (max-width: 900px) {
+        .dns-home-grid { grid-template-columns: repeat(2, 1fr); }
+        .dns-home-picks { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+        .dns-home-hero { padding: 2.4rem 0 2rem; }
+        .dns-home-hero__grid { grid-template-columns: 1fr; }
+        .dns-home-logo { justify-self: start; max-width: 140px; order: -1; }
+        .dns-home-search { border-radius: 18px; flex-wrap: wrap; padding: .7rem; }
+        .dns-home-search button { width: 100%; }
+        .dns-home-grid, .dns-home-picks { grid-template-columns: 1fr; }
+    }
     .dnstools-section { margin: 2.4rem 0 0; }
     .dnstools-section h2 { margin: 0 0 1rem; font-size: 1.2rem; }
     .dnstools-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-top: 2rem; }
@@ -141,7 +229,59 @@
         padding: .35rem .7rem; border: 1px solid var(--dt-border); border-radius: 999px;
         text-decoration: none; color: inherit; font-size: .8rem;
     }
+    .dnstools-score {
+        display: flex; gap: 1.25rem; align-items: center;
+        padding: 1.25rem; border-radius: var(--dt-radius); color: #fff;
+        background: #0f766e;
+    }
+    .dnstools-page .dnstools-score h2,
+    .dnstools-page .dnstools-score p,
+    .dnstools-page .dnstools-score .dnstools-score__kicker { color: #fff; }
+    .dnstools-score--excellent { background: #047857; }
+    .dnstools-score--good { background: #0f766e; }
+    .dnstools-score--warning { background: #b45309; }
+    .dnstools-score--poor { background: #b91c1c; }
+    .dnstools-score__dial {
+        width: 7.5rem; height: 7.5rem; border-radius: 50%;
+        display: grid; place-items: center; align-content: center;
+        background: #fff; flex: none;
+    }
+    .dnstools-score__dial strong { font-size: 2.4rem; line-height: 1; color: #0f766e; }
+    .dnstools-score__dial span { color: #0f766e; opacity: .85; font-size: .85rem; }
+    .dnstools-page .dnstools-score--excellent .dnstools-score__dial strong,
+    .dnstools-page .dnstools-score--excellent .dnstools-score__dial span { color: #047857; }
+    .dnstools-page .dnstools-score--good .dnstools-score__dial strong,
+    .dnstools-page .dnstools-score--good .dnstools-score__dial span { color: #0f766e; }
+    .dnstools-page .dnstools-score--warning .dnstools-score__dial strong,
+    .dnstools-page .dnstools-score--warning .dnstools-score__dial span { color: #b45309; }
+    .dnstools-page .dnstools-score--poor .dnstools-score__dial strong,
+    .dnstools-page .dnstools-score--poor .dnstools-score__dial span { color: #b91c1c; }
+    .dnstools-score__kicker { opacity: .9; font-size: .85rem; }
+    .dnstools-score h2 { margin: .15rem 0; font-size: 1.8rem; }
+    .dnstools-score p { margin: 0; overflow-wrap: anywhere; }
+    .dnstools-score__facts {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: .75rem; margin: 1rem 0;
+    }
+    .dnstools-score__facts div {
+        padding: .75rem .9rem; border: 1px solid var(--dt-border); border-radius: 12px; background: var(--dt-surface);
+    }
+    .dnstools-score__facts span { display: block; color: var(--dt-muted); font-size: .75rem; }
+    .dnstools-score__heading { margin: 1.25rem 0 .6rem; font-size: 1.05rem; }
+    .dnstools-tips { display: grid; gap: .7rem; }
+    .dnstools-tip { padding: .9rem 1rem; border-radius: 12px; border: 1px solid var(--dt-border); background: var(--dt-surface); }
+    .dnstools-tip h3 { margin: 0 0 .3rem; font-size: 1rem; }
+    .dnstools-tip p { margin: 0; color: var(--dt-muted); }
+    .dnstools-tip--bad { border-color: #fecaca; background: #fef2f2; }
+    .dnstools-tip--warn { border-color: #fde68a; background: #fffbeb; }
+    .dnstools-tip--ok { border-color: #bbf7d0; background: #f0fdf4; }
+    .dnstools-score__checks { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+    .dnstools-score__checks li {
+        display: grid; grid-template-columns: 1.2fr 1fr auto; gap: .75rem;
+        padding: .55rem .8rem; border: 1px solid var(--dt-border); border-radius: 10px;
+    }
     @media (max-width: 720px) {
         .dnstools-search { grid-template-columns: 1fr; }
+        .dnstools-score { flex-direction: column; align-items: flex-start; }
     }
 </style>

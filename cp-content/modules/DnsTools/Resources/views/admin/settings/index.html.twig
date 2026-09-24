@@ -35,4 +35,10 @@
             <button type="submit" class="btn btn-primary">{{ 'dnstools.settings.save'|trans }}</button>
         </div>
     </form>
+
+    <form method="post" action="{{ path('admin_dnstools_imap_test') }}" class="mt-sp-sm">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_dnstools_imap') }}">
+        <button type="submit" class="btn btn-neutral">{{ 'dnstools.imap.test'|trans }}</button>
+        <p class="mt-2 text-fs-sm text-neutral-600">{{ 'dnstools.imap.test_help'|trans }}</p>
+    </form>
 {% endblock %}

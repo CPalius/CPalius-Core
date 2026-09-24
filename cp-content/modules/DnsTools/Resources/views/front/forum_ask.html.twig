@@ -22,7 +22,7 @@
 
     <div class="dnstools-grid">
         {% for board in boards %}
-            <a class="dnstools-card" href="{{ path('forum_new_topic', {sectionSlug: board.slug, title: title}) }}">
+            <a class="dnstools-card" href="{{ path('forum_new_topic', {sectionSlug: board.slug, title: title, pf: prefill|default('')}) }}">
                 <i class="bi bi-chat-left-text"></i>
                 <h3>{{ board.title }}</h3>
                 <p>{{ 'dnstools.forum.wizard.choose'|trans }}</p>

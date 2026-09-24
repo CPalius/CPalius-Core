@@ -30,7 +30,9 @@ final class AccountMailer
     }
 
     /**
-     * Queues the mail and says whether it got as far as the queue.
+     * Sends one template. Welcome and approval mail go on the queue so a
+     * slow SMTP host cannot hold the request. A login code cannot wait for
+     * a worker that may not be running — those callers pass $immediate.
      *
      * Never throws. An unreachable SMTP host must not roll back the
      * registration or the approval that triggered it — the mail log records the
@@ -39,7 +41,7 @@ final class AccountMailer
      *
      * @param array<string, string|int> $parameters
      */
-    public function send(User $user, string $templateKey, array $parameters = []): bool
+    public function send(User $user, string $templateKey, array $parameters = [], bool $immediate = false): bool
     {
         if (!$this->mailer->canSend()) {
             return false;
@@ -53,7 +55,11 @@ final class AccountMailer
                 ['user' => $user],
             );
 
-            $this->mailer->sendHtml($user->getEmail(), $mail->subject, $mail->html, $mail->text);
+            if ($immediate) {
+                $this->mailer->sendNow($user->getEmail(), $mail->subject, $mail->html, $mail->text);
+            } else {
+                $this->mailer->sendHtml($user->getEmail(), $mail->subject, $mail->html, $mail->text);
+            }
 
             return true;
         } catch (\Throwable) {

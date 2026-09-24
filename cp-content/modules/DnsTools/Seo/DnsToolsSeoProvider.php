@@ -101,7 +101,41 @@ final class DnsToolsSeoProvider implements SeoPageProviderInterface
                 ],
                 locale: $locale,
                 keywords: $tool->keywords,
-                schemaExtra: [
+                schemaExtra: $slug === 'spam-score' ? [
+                    'applicationCategory' => 'UtilitiesApplication',
+                    'operatingSystem' => 'Web',
+                    'offers' => [
+                        '@type' => 'Offer',
+                        'price' => '0',
+                        'priceCurrency' => 'USD',
+                    ],
+                    'mainEntity' => [
+                        [
+                            '@type' => 'Question',
+                            'name' => $this->translator->trans('dnstools.spam.faq.q1', [], null, $locale),
+                            'acceptedAnswer' => [
+                                '@type' => 'Answer',
+                                'text' => $this->translator->trans('dnstools.spam.faq.a1', [], null, $locale),
+                            ],
+                        ],
+                        [
+                            '@type' => 'Question',
+                            'name' => $this->translator->trans('dnstools.spam.faq.q2', [], null, $locale),
+                            'acceptedAnswer' => [
+                                '@type' => 'Answer',
+                                'text' => $this->translator->trans('dnstools.spam.faq.a2', [], null, $locale),
+                            ],
+                        ],
+                        [
+                            '@type' => 'Question',
+                            'name' => $this->translator->trans('dnstools.spam.faq.q3', [], null, $locale),
+                            'acceptedAnswer' => [
+                                '@type' => 'Answer',
+                                'text' => $this->translator->trans('dnstools.spam.faq.a3', [], null, $locale),
+                            ],
+                        ],
+                    ],
+                ] : [
                     'applicationCategory' => 'DeveloperApplication',
                     'featureList' => $tool->subtitle,
                 ],

@@ -78,15 +78,24 @@ final class ForumSectionDestination implements MigrationDestinationInterface
         }
 
         $nodeType = $this->nodeType($row);
+        $parent = $this->parent($row, $section);
         $section->setNodeType($nodeType);
-        $section->setSectionType($nodeType === ForumNodeType::Category ? ForumSectionType::Category : ForumSectionType::Subcategory);
-        $section->setIsContainer($nodeType === ForumNodeType::Category);
+        // A XenForo Category at the root is a CPalius division: Studio's
+        // structure tree starts from divisions, and a root "category" with no
+        // parent would otherwise only show up on the move-topic picker.
+        $sectionType = match (true) {
+            $nodeType === ForumNodeType::Category && $parent === null => ForumSectionType::Division,
+            $nodeType === ForumNodeType::Category => ForumSectionType::Category,
+            default => ForumSectionType::Subcategory,
+        };
+        $section->setSectionType($sectionType);
+        $section->setIsContainer($sectionType->isContainer());
         $section->setAllowTopics($nodeType === ForumNodeType::Forum && trim($row->getString('allowTopics', '1')) !== '0');
 
         $linkUrl = trim($row->getString('linkUrl'));
         $section->setLinkUrl($nodeType === ForumNodeType::Link && $linkUrl !== '' ? $linkUrl : null);
 
-        $section->setParent($this->parent($row, $section));
+        $section->setParent($parent);
 
         $this->entityManager->flush();
 

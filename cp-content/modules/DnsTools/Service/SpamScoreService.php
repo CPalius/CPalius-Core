@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\DnsTools\Service;
 
 use Modules\DnsTools\Security\SsrfGuard;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Transparent 0–10 score. No SpamAssassin, no shell, no outbound mail.
@@ -17,6 +18,7 @@ final class SpamScoreService
         private readonly DnsRecordService $dns,
         private readonly BlacklistService $blacklist,
         private readonly SsrfGuard $ssrf,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -103,11 +105,13 @@ final class SpamScoreService
         }
 
         $score = max(0.0, min(10.0, round($score, 1)));
+        $grade = $this->grade($score);
+        $advice = $this->advice($checks);
 
-        return [
+        $result = [
             'status' => 'scored',
             'score' => $score,
-            'grade' => $this->grade($score),
+            'grade' => $grade,
             'from' => $from !== '' ? $from : null,
             'to' => $parsed['to'] ?? null,
             'subject' => $subject !== '' ? $subject : null,
@@ -123,7 +127,80 @@ final class SpamScoreService
             'blacklist' => $listed,
             'listed_count' => (int) ($listed['listed_count'] ?? 0),
             'checks' => $checks,
+            'advice' => $advice,
         ];
+        $result['share_text'] = $this->shareText($result);
+
+        return $result;
+    }
+
+    /**
+     * @param list<array{name: string, result: string, points: float}> $checks
+     * @return list<array{level: string, title: string, text: string}>
+     */
+    private function advice(array $checks): array
+    {
+        $by = [];
+        foreach ($checks as $check) {
+            $by[$check['name']] = $check['result'];
+        }
+
+        $keys = [
+            'spf' => ['missing' => 'spf_missing', 'fail' => 'spf_fail', 'softfail' => 'spf_fail', 'present' => 'spf_present', 'pass' => 'spf_pass'],
+            'dkim' => ['missing' => 'dkim_missing', 'fail' => 'dkim_fail', 'present' => 'dkim_present', 'pass' => 'dkim_pass'],
+            'dmarc' => ['missing' => 'dmarc_missing', 'fail' => 'dmarc_fail', 'present' => 'dmarc_present', 'pass' => 'dmarc_pass'],
+            'alignment' => ['fail' => 'alignment_fail', 'pass' => 'alignment_pass'],
+            'blacklist' => ['blacklisted' => 'blacklist_hit', 'clean' => 'blacklist_clean'],
+            'ptr' => ['missing' => 'ptr_missing', 'warning' => 'ptr_warning', 'valid' => 'ptr_valid'],
+            'subject' => ['warning' => 'subject_warning'],
+            'body' => ['missing' => 'body_missing', 'warning' => 'body_links'],
+            'message_id' => ['missing' => 'message_id_missing'],
+        ];
+        $bad = ['missing', 'fail', 'blacklisted'];
+        $warn = ['present', 'softfail', 'warning'];
+        $items = [];
+        foreach ($keys as $name => $map) {
+            $result = (string) ($by[$name] ?? '');
+            $key = $map[$result] ?? null;
+            if ($key === null) {
+                continue;
+            }
+            $level = \in_array($result, $bad, true) ? 'bad' : (\in_array($result, $warn, true) ? 'warn' : 'ok');
+            $items[] = [
+                'level' => $level,
+                'title' => $this->translator->trans('dnstools.spam.advice.'.$key.'.title'),
+                'text' => $this->translator->trans('dnstools.spam.advice.'.$key.'.text'),
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param array<string, mixed> $result
+     */
+    private function shareText(array $result): string
+    {
+        $lines = [
+            $this->translator->trans('dnstools.spam.share.score', [
+                'score' => (string) $result['score'],
+                'grade' => $this->translator->trans('dnstools.value.'.(string) $result['grade']),
+            ]),
+            $this->translator->trans('dnstools.field.from').': '.(string) ($result['from'] ?? ''),
+            $this->translator->trans('dnstools.field.to').': '.(string) ($result['to'] ?? ''),
+            $this->translator->trans('dnstools.field.subject').': '.(string) ($result['subject'] ?? ''),
+            $this->translator->trans('dnstools.field.sending_ip').': '.(string) ($result['sending_ip'] ?? ''),
+            '',
+            $this->translator->trans('dnstools.spam.advice_title'),
+        ];
+        foreach ($result['advice'] as $item) {
+            if (!\is_array($item)) {
+                continue;
+            }
+            $lines[] = '- '.(string) ($item['title'] ?? '').': '.(string) ($item['text'] ?? '');
+        }
+
+        return mb_substr(implode("\n", $lines), 0, 4000);
     }
 
     /**

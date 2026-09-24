@@ -65,7 +65,7 @@ final class EmailOtpService
     /**
      * Generates, stores and sends a fresh code.
      *
-     * @return bool true when a code was queued for delivery
+     * @return bool true when a code was handed to SMTP
      */
     public function issue(User $user, ?Request $request = null): bool
     {
@@ -87,13 +87,21 @@ final class EmailOtpService
         $user->setDataValue(self::KEY_SENT_AT, time());
         $this->entityManager->flush();
 
-        $this->flood->register(FloodService::EVENT_TWOFACTOR_EMAIL, $identifier, self::ISSUE_WINDOW);
-
-        return $this->accountMailer->send($user, CoreMailTemplates::ACCOUNT_TWO_FACTOR_CODE, [
+        $sent = $this->accountMailer->send($user, CoreMailTemplates::ACCOUNT_TWO_FACTOR_CODE, [
             'code' => $code,
             'minutes' => (int) round($ttl / 60),
             'ip' => (string) ($request?->getClientIp() ?? '-'),
-        ]);
+        ], immediate: true);
+
+        if (!$sent) {
+            $this->clear($user);
+
+            return false;
+        }
+
+        $this->flood->register(FloodService::EVENT_TWOFACTOR_EMAIL, $identifier, self::ISSUE_WINDOW);
+
+        return true;
     }
 
     /**

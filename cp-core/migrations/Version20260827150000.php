@@ -25,6 +25,9 @@ final class Version20260827150000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
+        // A new site does not inherit the CPalius community board tree.
+        return;
+
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         // Topic moves/deletes must run immediately — seed via connection, not queued addSql().
@@ -108,6 +111,7 @@ final class Version20260827150000 extends AbstractMigration
         string $icon,
         string $now,
     ): void {
+        $this->releaseSlug($slug, $code);
         $this->connection->executeStatement(
             "INSERT INTO forum_sections (code, slug, locale, title, description, icon, sort_order, is_container, allow_topics, section_type, created_at, updated_at)
              SELECT ?, ?, 'tr', ?, ?, ?, ?, 1, 0, 'division', ?, ?
@@ -127,6 +131,7 @@ final class Version20260827150000 extends AbstractMigration
         string $icon,
         string $now,
     ): void {
+        $this->releaseSlug($slug, $code);
         $this->connection->executeStatement(
             "INSERT INTO forum_sections (parent_id, code, slug, locale, title, description, icon, sort_order, is_container, allow_topics, section_type, created_at, updated_at)
              SELECT p.id, ?, ?, 'tr', ?, ?, ?, ?, 1, 0, 'category', ?, ?
@@ -147,6 +152,7 @@ final class Version20260827150000 extends AbstractMigration
         string $icon,
         string $now,
     ): void {
+        $this->releaseSlug($slug, $code);
         $this->connection->executeStatement(
             "INSERT INTO forum_sections (parent_id, code, slug, locale, title, description, icon, sort_order, is_container, allow_topics, section_type, created_at, updated_at)
              SELECT p.id, ?, ?, 'tr', ?, ?, ?, ?, 0, 1, 'subcategory', ?, ?
@@ -154,6 +160,19 @@ final class Version20260827150000 extends AbstractMigration
              WHERE p.code = ?
                AND NOT EXISTS (SELECT 1 FROM forum_sections x WHERE x.code = ?)",
             [$code, $slug, $title, $description, $icon, $sortOrder, $now, $now, $parentCode, $code],
+        );
+    }
+
+    /**
+     * Earlier seeds already own this slug (pub/genel). The unique key is
+     * (slug, locale), not code, so the new row cannot take the slug until the
+     * old row lets go. The old row is deleted later in this same migration.
+     */
+    private function releaseSlug(string $slug, string $code): void
+    {
+        $this->connection->executeStatement(
+            "UPDATE forum_sections SET slug = CONCAT('eski-', id) WHERE locale = 'tr' AND slug = ? AND code <> ?",
+            [$slug, $code],
         );
     }
 

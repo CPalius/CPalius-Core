@@ -70,7 +70,7 @@ final class TwoFactorService
      */
     public function isLoginEmailCodeEnabled(): bool
     {
-        return (bool) $this->settings->get('security.login_email_code', true)
+        return (bool) $this->settings->get('security.login_email_code', false)
             && $this->emailOtp !== null
             && $this->emailOtp->isAvailable();
     }

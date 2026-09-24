@@ -69,6 +69,7 @@ final class CreateAdminCommand extends Command
 
         $user->setCpaliusRoles(['admin']);
         $user->setStatus(User::STATUS_ACTIVE);
+        $user->markEmailVerified();
         $this->passwordChanger->change($user, $password);
 
         $this->entityManager->persist($user);

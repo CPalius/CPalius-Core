@@ -19,11 +19,14 @@ final class Version20260827160000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
+        return;
+
         if ((int) $this->connection->fetchOne('SELECT COUNT(*) FROM forum_topics') > 0) {
             return;
         }
 
-        $posterId = $this->connection->fetchOne('SELECT id FROM users ORDER BY id ASC LIMIT 1');
+        $rawPoster = $this->connection->fetchOne('SELECT id FROM users ORDER BY id ASC LIMIT 1');
+        $posterId = is_numeric($rawPoster) ? (int) $rawPoster : null;
         $posterName = $this->connection->fetchOne('SELECT COALESCE(NULLIF(username, \'\'), email) FROM users ORDER BY id ASC LIMIT 1') ?: 'CPalius';
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 

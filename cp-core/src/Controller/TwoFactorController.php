@@ -81,6 +81,12 @@ final class TwoFactorController extends AbstractController
 
             if ($sent) {
                 $notice = $this->translator->trans('account.two_factor.email_sent', ['minutes' => $this->twoFactor->emailCodeMinutes()]);
+            } elseif ($loginEmail) {
+                // SMTP looked configured but delivery failed. Do not hold the
+                // session on a code that never left the server.
+                $this->twoFactorSession->markVerified($session);
+
+                return $this->redirectToRoute('account_profile');
             } else {
                 $error = $this->translator->trans('account.two_factor.email_send_failed');
             }

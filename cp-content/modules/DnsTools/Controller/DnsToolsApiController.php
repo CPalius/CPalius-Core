@@ -41,12 +41,20 @@ final class DnsToolsApiController extends AbstractController
         }
 
         $action = trim((string) $request->request->get('action', ''));
-        $skipLimit = $slug === 'spam-score' && $action === 'poll';
+        $skipLimit = $slug === 'spam-score' && \in_array($action, ['poll', 'check'], true);
         if (!$skipLimit && !$this->rateLimiter->consume($request, $tool->networkProbe ? 'probe' : 'query')) {
             return new JsonResponse([
                 'ok' => false,
                 'error' => $this->translator->trans('dnstools.error.rate_limit'),
                 'code' => 'RATE_LIMIT',
+            ], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+        if ($slug === 'spam-score' && !$skipLimit && !$this->rateLimiter->consumeSpamQuota($request)) {
+            return new JsonResponse([
+                'ok' => false,
+                'error' => $this->translator->trans('dnstools.error.spam_quota'),
+                'code' => 'RATE_LIMIT',
+                'quota' => $this->rateLimiter->spamQuota($request),
             ], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
@@ -59,11 +67,16 @@ final class DnsToolsApiController extends AbstractController
                 $target = trim((string) ($result['from'] ?? $result['address'] ?? ''));
             }
 
-            return new JsonResponse([
+            $payload = [
                 'ok' => true,
                 'data' => $result,
                 'community' => $this->forumCtas->for($slug, $tool->title, $target, $result),
-            ]);
+            ];
+            if ($slug === 'spam-score') {
+                $payload['quota'] = $this->rateLimiter->spamQuota($request);
+            }
+
+            return new JsonResponse($payload);
         } catch (\InvalidArgumentException $e) {
             return $this->error($this->localize($e->getMessage()), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (\Throwable $e) {

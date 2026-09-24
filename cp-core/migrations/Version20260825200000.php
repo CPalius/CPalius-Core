@@ -15,7 +15,7 @@ final class Version20260825200000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Creates Forum module tables and seeds default sections.';
+        return 'Creates Forum module tables.';
     }
 
     public function up(Schema $schema): void
@@ -107,25 +107,6 @@ final class Version20260825200000 extends AbstractMigration
         $this->addSql('ALTER TABLE forum_posts ADD CONSTRAINT FK_FORUM_POST_TOPIC FOREIGN KEY (topic_id) REFERENCES forum_topics (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE forum_posts ADD CONSTRAINT FK_FORUM_POST_SECTION FOREIGN KEY (section_id) REFERENCES forum_sections (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE forum_posts ADD CONSTRAINT FK_FORUM_POST_AUTHOR FOREIGN KEY (author_id) REFERENCES users (id) ON DELETE SET NULL');
-
-        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-
-        $this->addSql(
-            "INSERT INTO forum_sections (code, slug, locale, title, description, sort_order, is_container, allow_topics, created_at, updated_at) VALUES ('pub', 'genel', 'tr', 'Genel Forum', 'Herkese açık tartışma alanı', 0, 1, 0, ?, ?)",
-            [$now, $now],
-        );
-
-        $this->addSql(
-            "INSERT INTO forum_sections (parent_id, code, slug, locale, title, description, sort_order, is_container, allow_topics, created_at, updated_at)
-             SELECT id, 'general', 'tartisma', 'tr', 'Genel Tartışma', 'Genel konular ve duyurular', 1, 0, 1, ?, ? FROM forum_sections WHERE code = 'pub'",
-            [$now, $now],
-        );
-
-        $this->addSql(
-            "INSERT INTO forum_sections (parent_id, code, slug, locale, title, description, sort_order, is_container, allow_topics, created_at, updated_at)
-             SELECT id, 'offtopic', 'off-topic', 'tr', 'Off-Topic', 'Konu dışı sohbetler', 2, 0, 1, ?, ? FROM forum_sections WHERE code = 'pub'",
-            [$now, $now],
-        );
     }
 
     public function down(Schema $schema): void

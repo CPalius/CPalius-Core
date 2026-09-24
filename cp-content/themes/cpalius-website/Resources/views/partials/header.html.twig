@@ -1,7 +1,7 @@
 <nav class="navbar" id="navbar">
     <div class="container navbar-inner">
         <a href="{{ path('theme_cpalius_website_home') }}" class="navbar-brand">
-            <img src="/CPalius.png" alt="CPalius CMF" class="navbar-logo">
+            <img src="{{ cp_appearance().logo }}" alt="{{ 'aacp.appearance.logo'|trans }}" class="navbar-logo">
         </a>
 
         <button class="navbar-toggle" id="navToggle" aria-label="{{ 'website.nav.toggle_aria'|trans }}" aria-expanded="false" aria-controls="navCollapse">
@@ -23,10 +23,7 @@
                         {% endif %}
                     </li>
                 {% else %}
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#about">{{ 'nav.about'|trans({}, 'portal') }}</a></li>
-                    <li><a href="{{ path('theme_cpalius_website_home') }}#features">{{ 'nav.features'|trans({}, 'portal') }}</a></li>
-                    <li><a href="{{ path('whitepaper_show', {_locale: app.request.locale}) }}">{{ 'nav.whitepaper'|trans({}, 'portal') }}</a></li>
-                    <li><a href="{{ path('roadmap_index') }}">{{ 'nav.roadmap'|trans({}, 'portal') }}</a></li>
+                    <li><a href="{{ path('theme_cpalius_website_home') }}">{{ 'website.nav.home'|trans }}</a></li>
                 {% endfor %}
             </ul>
 

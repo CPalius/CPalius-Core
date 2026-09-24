@@ -39,6 +39,10 @@ No Node.js is required for the core or admin UI (AssetMapper + standalone Tailwi
 > It blocks commits that would empty a source file, shrink one by more than
 > 80%, or include a secret. See `.githooks/pre-commit`.
 
+Upload the release zip (it already contains `cp-includes/vendor`) and open the site. If CPalius is not installed, the browser shows the setup wizard: requirements, an empty MySQL/MariaDB database, the site name, and the first administrator. When that finishes, the wizard deletes itself.
+
+Developers can still install from the command line:
+
 ```bash
 composer install
 cp .env.example .env   # then set DATABASE_URL, APP_SECRET, tokens
@@ -46,7 +50,7 @@ php cp-core/bin/console doctrine:migrations:migrate
 php cp-core/bin/console cp:user:create-admin
 ```
 
-Point your vhost document root to `public/`, then open the site.
+Point the vhost document root at `public/` when the panel allows it. If it does not, the project-root `.htaccess` serves `public/` and blocks the rest of the tree.
 
 Useful commands:
 

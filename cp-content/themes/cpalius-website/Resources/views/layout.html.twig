@@ -20,7 +20,7 @@
         {% endif %}
     {% endblock %}
 
-    <link rel="icon" type="image/png" href="/CPalius.png">
+    <link rel="icon" type="image/png" href="{{ cp_appearance().favicon }}">
 
     {#
         Typefaces are served from this installation, not from a font CDN. A page
@@ -40,6 +40,10 @@
     {% set cpFonts = cp_font_stylesheet() %}
     {% if cpFonts %}<link rel="stylesheet" href="{{ cpFonts }}">{% endif %}
 
+    {% if cp_appearance().og %}
+        <meta property="og:image" content="{{ cp_appearance().og }}">
+    {% endif %}
+    <style{{ csp_nonce_attr() }}>{{ cp_appearance_css() }}</style>
     {% block stylesheets %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">

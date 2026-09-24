@@ -63,16 +63,19 @@ final class ForumBridge
         }
     }
 
-    public function newTopicHref(string $sectionSlug, string $title): ?string
+    public function newTopicHref(string $sectionSlug, string $title, string $prefill = ''): ?string
     {
         $base = $this->newTopicPath($sectionSlug);
         if ($base === null) {
             return null;
         }
 
-        return $base.(str_contains($base, '?') ? '&' : '?').http_build_query([
-            'title' => mb_substr($title, 0, 180),
-        ]);
+        $query = ['title' => mb_substr($title, 0, 180)];
+        if (preg_match('/^[a-f0-9]{16}$/', $prefill) === 1) {
+            $query['pf'] = $prefill;
+        }
+
+        return $base.(str_contains($base, '?') ? '&' : '?').http_build_query($query);
     }
 
     public function wizardUrl(string $title): ?string

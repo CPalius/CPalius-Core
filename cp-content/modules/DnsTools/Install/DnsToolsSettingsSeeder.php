@@ -65,6 +65,8 @@ final class DnsToolsSettingsSeeder
             'dnstools.cache_ttl' => '120',
             'dnstools.rate_limit_minute' => '20',
             'dnstools.rate_limit_hour' => '200',
+            'dnstools.spam_guest_quota' => '10',
+            'dnstools.spam_member_quota' => '100',
             'dnstools.probe_timeout' => '5',
             'dnstools.max_bulk' => '10',
             'dnstools.allow_network_probes' => '1',

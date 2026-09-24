@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Cache\CacheRebuildManager;
+use App\Core\Theme\SiteAppearance;
 use App\Core\Theme\ThemeDefinition;
 use App\Core\Theme\ThemeFileEditor;
 use App\Core\Theme\ThemePackageService;
@@ -38,6 +39,7 @@ final class AACPThemeController
         private readonly TranslatorInterface $translator,
         private readonly ThemePackageService $themePackageService,
         private readonly ThemeFileEditor $themeFileEditor,
+        private readonly SiteAppearance $appearance,
     ) {
     }
 
@@ -110,16 +112,43 @@ final class AACPThemeController
      * Theme options screen. Kept separate from activation so appearance settings can
      * grow without touching the switcher.
      */
-    #[Route('/aacp/themes/options', name: 'aacp_theme_options', methods: ['GET'])]
+    #[Route('/aacp/themes/options', name: 'aacp_theme_options', methods: ['GET', 'POST'])]
     #[CpAdminMenu(label: 'aacp.menu.theme_options', icon: 'heroicons:adjustments-horizontal', panel: 'aacp', priority: 71, capability: 'system.settings.manage', parent: 'aacp_themes')]
     #[IsGranted('system.settings.manage')]
-    public function options(): Response
+    public function options(Request $request): Response
     {
-        $active = $this->themeRegistry->active();
+        $saved = false;
+        $error = null;
+        if ($request->isMethod('POST')) {
+            $this->assertValidCsrf($request);
+            try {
+                /** @var array<string, string> $colors */
+                $colors = $request->request->all('colors');
+                $this->appearance->save(
+                    $colors,
+                    $request->request->all('metrics'),
+                    [
+                        'logo' => $request->files->get('logo'),
+                        'favicon' => $request->files->get('favicon'),
+                        'og' => $request->files->get('og'),
+                    ],
+                    $request->request->getBoolean('clear_logo'),
+                    $request->request->getBoolean('clear_favicon'),
+                    $request->request->getBoolean('clear_og'),
+                );
+                $saved = true;
+            } catch (\InvalidArgumentException $e) {
+                $error = $e->getMessage();
+            }
+        }
 
         $html = $this->twig->render('aacp/theme_options.html.twig', [
-            'theme' => $active,
-            'assets' => $active instanceof ThemeDefinition ? $this->describeAssets($active) : [],
+            'appearance' => $this->appearance->read(),
+            'palette' => SiteAppearance::COLORS,
+            'metrics' => SiteAppearance::METRICS,
+            'csrf_token' => $this->csrfTokenManager->getToken(self::CSRF_TOKEN_ID)->getValue(),
+            'saved' => $saved,
+            'error' => $error,
         ]);
 
         return new Response($html);

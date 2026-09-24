@@ -7,7 +7,7 @@ namespace Modules\DnsTools\Service;
 use App\Core\Settings\SettingsRegistry;
 
 /**
- * Optional catch-all mailbox poll. Skips when IMAP is missing or unset.
+ * Reads the catch-all mailbox at MXRoute. No PHP imap extension and no local mail server.
  */
 final class ImapInboxReader
 {
@@ -19,55 +19,100 @@ final class ImapInboxReader
 
     public function drain(): int
     {
-        if (!\function_exists('imap_open')) {
-            return 0;
-        }
-
-        $host = trim((string) $this->settings->get('dnstools.mail_imap_host', ''));
-        $user = trim((string) $this->settings->get('dnstools.mail_imap_user', ''));
-        $password = (string) $this->settings->get('dnstools.mail_imap_password', '');
-        if ($host === '' || $user === '' || $password === '') {
-            return 0;
-        }
-
-        $port = max(1, min(65535, (int) $this->settings->get('dnstools.mail_imap_port', 993)));
-        $enc = strtolower((string) $this->settings->get('dnstools.mail_imap_encryption', 'ssl'));
-        $flags = $enc === 'tls' ? '/imap/tls/novalidate-cert' : '/imap/ssl/novalidate-cert';
-        $mailbox = '{'.$host.':'.$port.$flags.'}INBOX';
-        $stream = @imap_open($mailbox, $user, $password, 0, 1);
-        if ($stream === false) {
+        try {
+            $client = $this->connect();
+        } catch (\Throwable) {
             return 0;
         }
 
         $accepted = 0;
         try {
-            $ids = imap_search($stream, 'UNSEEN', SE_UID) ?: [];
-            foreach (\array_slice($ids, 0, 20) as $uid) {
-                $header = imap_fetchheader($stream, (int) $uid, FT_UID) ?: '';
-                $body = (string) imap_body($stream, (int) $uid, FT_UID | FT_PEEK);
-                $raw = substr($header."\r\n".$body, 0, 50000);
-                $to = $this->header($header, 'to').' '.$this->header($header, 'delivered-to').' '.$this->header($header, 'x-original-to');
-                if ($this->inbox->ingest($to, $raw)['ok'] ?? false) {
+            $client->selectInbox();
+            $uids = array_slice(array_reverse($client->uidSearchSince(new \DateTimeImmutable('-1 day'))), 0, 20);
+            foreach ($uids as $uid) {
+                $raw = substr($client->uidFetch($uid), 0, 50000);
+                $header = strstr($raw, "\r\n\r\n", true) ?: $raw;
+                if ($this->inbox->ingest($header, $raw)['ok'] ?? false) {
                     ++$accepted;
-                    imap_setflag_full($stream, (string) $uid, '\\Seen \\Deleted', ST_UID);
+                    $client->uidDelete($uid);
                 }
             }
             if ($accepted > 0) {
-                imap_expunge($stream);
+                $client->expunge();
             }
+        } catch (\Throwable) {
+            return $accepted;
         } finally {
-            imap_close($stream);
+            $client->close();
         }
 
         return $accepted;
     }
 
-    private function header(string $raw, string $name): string
+    /**
+     * @return array{ok: bool, error: string, messages: int, matches: list<string>}
+     */
+    public function probe(): array
     {
-        if (preg_match('/^'.preg_quote($name, '/').':\s*(.+)$/im', $raw, $m) !== 1) {
-            return '';
+        $host = trim((string) $this->settings->get('dnstools.mail_imap_host', ''));
+        $user = trim((string) $this->settings->get('dnstools.mail_imap_user', ''));
+        $password = (string) $this->settings->get('dnstools.mail_imap_password', '');
+        if ($host === '' || $user === '' || $password === '') {
+            return ['ok' => false, 'error' => 'imap_incomplete', 'messages' => 0, 'matches' => []];
         }
 
-        return trim($m[1]);
+        try {
+            $client = $this->connect();
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'error' => $e->getMessage(), 'messages' => 0, 'matches' => []];
+        }
+
+        try {
+            $count = $client->selectInbox();
+            $uids = array_slice(array_reverse($client->uidSearchSince(new \DateTimeImmutable('-2 days'))), 0, 12);
+            $matches = [];
+            foreach ($uids as $uid) {
+                $raw = $client->uidFetch($uid);
+                $header = strstr($raw, "\r\n\r\n", true) ?: $raw;
+                if (preg_match_all('/t[a-f0-9]{16}@[^\s>,;]+/i', $header, $found) > 0) {
+                    foreach ($found[0] as $address) {
+                        $matches[] = strtolower($address);
+                    }
+                }
+            }
+
+            return [
+                'ok' => true,
+                'error' => '',
+                'messages' => $count,
+                'matches' => array_values(array_unique($matches)),
+            ];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'error' => $e->getMessage(), 'messages' => 0, 'matches' => []];
+        } finally {
+            $client->close();
+        }
+    }
+
+    private function connect(): CatchallImapClient
+    {
+        $host = trim((string) $this->settings->get('dnstools.mail_imap_host', ''));
+        $user = trim((string) $this->settings->get('dnstools.mail_imap_user', ''));
+        $password = (string) $this->settings->get('dnstools.mail_imap_password', '');
+        if ($host === '' || $user === '' || $password === '') {
+            throw new \RuntimeException('imap_incomplete');
+        }
+
+        $port = max(1, min(65535, (int) $this->settings->get('dnstools.mail_imap_port', 993)));
+        $encryption = strtolower((string) $this->settings->get('dnstools.mail_imap_encryption', 'ssl'));
+        $client = CatchallImapClient::open($host, $port, $encryption);
+        try {
+            $client->login($user, $password);
+        } catch (\Throwable $e) {
+            $client->close();
+            throw $e;
+        }
+
+        return $client;
     }
 }

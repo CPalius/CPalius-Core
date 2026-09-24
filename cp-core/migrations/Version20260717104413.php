@@ -39,20 +39,15 @@ final class Version20260717104413 extends AbstractMigration
         }
 
         $headerItems = [
-            ['Hakkında', '/#about'],
-            ['Mimari', '/#architecture'],
-            ['Çekirdek', '/#core'],
-            ['Özellikler', '/#features'],
-            ['Varlık Modeli', '/#entity'],
-            ['Güvenlik', '/#security'],
-            ['Yol Haritası', '/#roadmap'],
+            ['Ana Sayfa', '/'],
             ['Blog', '/tr/blog'],
+            ['Forum', '/tr/forum'],
         ];
         $this->insertItems($menuIds['header'], $headerItems, $now);
 
         $footerItems = [
-            ['Hakkında', '/#about'],
             ['Blog', '/tr/blog'],
+            ['Forum', '/tr/forum'],
         ];
         $this->insertItems($menuIds['footer'], $footerItems, $now);
 

@@ -21,6 +21,8 @@ final class Version20260827180000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
+        return;
+
         if ($this->connection->fetchOne("SELECT id FROM users WHERE email = 'ayse@forum.cpalius.local'") !== false) {
             return;
         }

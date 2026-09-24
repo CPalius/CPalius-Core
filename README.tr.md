@@ -39,6 +39,10 @@ Bugün blog ve topluluk siteleri; yarın galeri, acente, CRM veya ERP tarzı uyg
 > Bir kaynak dosyayı boşaltan, %80’den fazla küçülten veya sır içeren
 > commit’leri engeller. Bkz. `.githooks/pre-commit`.
 
+Yayın zip’ini yükleyin (`cp-includes/vendor` içindedir) ve siteyi açın. Kurulum yoksa tarayıcı sihirbazı gösterir: gereksinimler, boş bir MySQL/MariaDB veritabanı, site adı ve ilk yönetici. Bitince sihirbaz kendini siler.
+
+Geliştirme kurulumunu komut satırından da yapabilirsiniz:
+
 ```bash
 composer install
 cp .env.example .env   # ardından DATABASE_URL, APP_SECRET, token’ları ayarlayın
@@ -46,7 +50,7 @@ php cp-core/bin/console doctrine:migrations:migrate
 php cp-core/bin/console cp:user:create-admin
 ```
 
-Sanal host’un document root’unu `public/` yapın ve siteyi açın.
+Panel izin veriyorsa document root `public/` olsun. İzin vermiyorsa proje kökündeki `.htaccess`, `public/` dizinini sunar ve ağacın geri kalanını kapatır.
 
 Faydalı komutlar:
 

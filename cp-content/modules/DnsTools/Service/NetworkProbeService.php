@@ -145,38 +145,120 @@ final class NetworkProbeService
     /**
      * @return array<string, mixed>
      */
-    public function smtp(string $host): array
+    public function smtp(string $host, int $port = 587, string $encryption = 'starttls', string $username = '', string $password = ''): array
     {
         if (!$this->probes->networkProbesAllowed()) {
             throw new \RuntimeException('dnstools.error.probes_disabled');
         }
+        $this->ssrf->assertPublicHost($host);
+        $port = max(1, min(65535, $port));
+        $encryption = \in_array($encryption, ['ssl', 'starttls', 'none'], true) ? $encryption : 'starttls';
+        $username = mb_substr(trim($username), 0, 200);
+        $password = mb_substr($password, 0, 200);
 
-        $target = $host;
-        if (filter_var($host, FILTER_VALIDATE_IP) === false && !str_contains($host, '.')) {
-            throw new \InvalidArgumentException('dnstools.error.invalid_host');
+        $implicit = $encryption === 'ssl';
+        $timeout = $this->probes->timeout();
+        $context = stream_context_create([
+            'ssl' => [
+                'verify_peer' => true,
+                'verify_peer_name' => true,
+                'SNI_enabled' => true,
+                'peer_name' => $host,
+            ],
+        ]);
+        $errno = 0;
+        $errstr = '';
+        $fp = @stream_socket_client(
+            sprintf('%s://%s:%d', $implicit ? 'ssl' : 'tcp', $host, $port),
+            $errno,
+            $errstr,
+            $timeout,
+            STREAM_CLIENT_CONNECT,
+            $implicit ? $context : null,
+        );
+        if (!\is_resource($fp)) {
+            return [
+                'ok' => false,
+                'host' => $host,
+                'port' => $port,
+                'encryption' => $encryption,
+                'banner' => '',
+                'auth' => 'skipped',
+                'error' => $errstr !== '' ? $errstr : 'connection failed',
+            ];
         }
 
-        if (filter_var($host, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
-            $mx = $this->dns->records($host, DNS_MX);
-            if ($mx !== []) {
-                usort($mx, static fn (array $a, array $b): int => ((int) ($a['pri'] ?? 10)) <=> ((int) ($b['pri'] ?? 10)));
-                $target = rtrim((string) ($mx[0]['target'] ?? $host), '.');
+        stream_set_timeout($fp, $timeout);
+        $banner = $this->smtpLine($fp);
+        $auth = 'skipped';
+        $error = null;
+        try {
+            $this->smtpExpect($fp, 'EHLO m-dns.org', '250');
+            if ($encryption === 'starttls') {
+                $this->smtpExpect($fp, 'STARTTLS', '220');
+                if (!stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+                    throw new \RuntimeException('STARTTLS failed');
+                }
+                $this->smtpExpect($fp, 'EHLO m-dns.org', '250');
             }
-        }
-
-        $ports = [];
-        foreach ([25, 465, 587] as $port) {
-            try {
-                $ports[] = $this->probes->tcp($target, $port, true) + ['port' => $port];
-            } catch (\Throwable $e) {
-                $ports[] = ['ok' => false, 'port' => $port, 'error' => $e->getMessage()];
+            if ($username !== '') {
+                $token = base64_encode("\0".$username."\0".$password);
+                $this->smtpExpect($fp, 'AUTH PLAIN '.$token, '235');
+                $auth = 'pass';
             }
+            fwrite($fp, "QUIT\r\n");
+        } catch (\Throwable $e) {
+            $error = $e->getMessage();
+            if ($username !== '' && $auth !== 'pass') {
+                $auth = 'fail';
+            }
+            @fwrite($fp, "QUIT\r\n");
         }
+        fclose($fp);
 
         return [
-            'input' => $host,
-            'target' => $target,
-            'ports' => $ports,
+            'ok' => $error === null,
+            'host' => $host,
+            'port' => $port,
+            'encryption' => $encryption,
+            'banner' => mb_substr($banner, 0, 300),
+            'auth' => $auth,
+            'error' => $error,
         ];
+    }
+
+    private function smtpExpect($fp, string $command, string $code): string
+    {
+        fwrite($fp, $command."\r\n");
+        $reply = $this->smtpRead($fp);
+        if (!str_starts_with($reply, $code)) {
+            throw new \RuntimeException(mb_substr(trim($reply), 0, 180));
+        }
+
+        return $reply;
+    }
+
+    private function smtpLine($fp): string
+    {
+        $line = (string) fgets($fp, 512);
+
+        return trim($line);
+    }
+
+    private function smtpRead($fp): string
+    {
+        $text = '';
+        for ($i = 0; $i < 40; ++$i) {
+            $line = (string) fgets($fp, 1024);
+            if ($line === '') {
+                break;
+            }
+            $text .= $line;
+            if (isset($line[3]) && $line[3] !== '-') {
+                break;
+            }
+        }
+
+        return $text;
     }
 }

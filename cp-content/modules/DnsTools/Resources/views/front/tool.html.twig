@@ -5,7 +5,7 @@
 {% block meta_keywords %}{{ tool.keywords }}{% endblock %}
 
 {% block dnstools_main %}
-<div class="dnstools-page" data-dnstools data-api="{{ apiUrl }}" data-token="{{ csrf_token('dnstools_query') }}" data-tool-title="{{ tool.title }}"{% if forumSearchUrl %} data-forum-search="{{ forumSearchUrl }}"{% endif %}{% if forumComposeUrl %} data-forum-compose="{{ forumComposeUrl }}"{% endif %}{% if forumBoards is defined and forumBoards|length > 0 %} data-forum-boards="{{ forumBoards|json_encode|e('html_attr') }}" data-forum-ask="{{ path('dnstools_forum_ask') }}"{% endif %}>
+<div class="dnstools-page" data-dnstools data-api="{{ apiUrl }}" data-token="{{ csrf_token('dnstools_query') }}" data-tool-title="{{ tool.title }}" data-forum-share="{{ path('dnstools_forum_share') }}"{% if forumSearchUrl %} data-forum-search="{{ forumSearchUrl }}"{% endif %}{% if forumComposeUrl %} data-forum-compose="{{ forumComposeUrl }}"{% endif %}{% if forumBoards is defined and forumBoards|length > 0 %} data-forum-boards="{{ forumBoards|json_encode|e('html_attr') }}" data-forum-ask="{{ path('dnstools_forum_ask') }}"{% endif %}>
     <header class="dnstools-hero">
         <ul class="dnstools-crumb">
             <li><a href="{{ path('theme_cpalius_website_home') }}">{{ 'dnstools.breadcrumb.home'|trans }}</a></li>
@@ -28,6 +28,7 @@
                         <div class="dnstools-inbox__row">
                             <code data-inbox-address>{{ 'dnstools.inbox.opening'|trans }}</code>
                             <button type="button" class="dnstools-btn" data-inbox-copy hidden>{{ 'dnstools.inbox.copy'|trans }}</button>
+                            <button type="button" class="dnstools-btn" data-inbox-check>{{ 'dnstools.inbox.check'|trans }}</button>
                             <button type="button" class="dnstools-btn dnstools-btn--ghost" data-inbox-refresh>{{ 'dnstools.inbox.refresh'|trans }}</button>
                         </div>
                         <p class="dnstools-inbox__wait" data-inbox-wait></p>
@@ -88,6 +89,26 @@
                     <label>{{ 'dnstools.input.domain'|trans }} <input type="text" name="domain" required></label>
                     <label>{{ 'dnstools.input.logo_url'|trans }} <input type="url" name="logo_url" required placeholder="https://example.com/logo.svg"></label>
                     <label>{{ 'dnstools.input.authority_url'|trans }} <input type="url" name="authority_url" placeholder="https://example.com/vmc.pem"></label>
+                {% elseif tool.slug == 'smtp-tester' %}
+                    <label>{{ 'dnstools.smtp.host'|trans }}
+                        <input type="text" name="q" required placeholder="mail.example.com" autocomplete="off">
+                    </label>
+                    <label>{{ 'dnstools.smtp.port'|trans }}
+                        <input type="number" name="port" value="587" min="1" max="65535">
+                    </label>
+                    <label>{{ 'dnstools.smtp.encryption'|trans }}
+                        <select name="encryption">
+                            <option value="starttls">STARTTLS</option>
+                            <option value="ssl">SSL</option>
+                            <option value="none">{{ 'dnstools.smtp.none'|trans }}</option>
+                        </select>
+                    </label>
+                    <label>{{ 'dnstools.smtp.username'|trans }}
+                        <input type="text" name="username" autocomplete="off">
+                    </label>
+                    <label>{{ 'dnstools.smtp.password'|trans }}
+                        <input type="password" name="password" autocomplete="new-password">
+                    </label>
                 {% else %}
                     <label>{{ tool.placeholderKey()|trans }}
                         <input type="text" name="q" autocomplete="off" spellcheck="false" required placeholder="{{ tool.placeholderKey()|trans }}">
@@ -106,6 +127,7 @@
     </header>
 
     <div class="dnstools-status" data-dnstools-status hidden></div>
+    <p class="dnstools-quota" data-quota hidden></p>
     <div class="dnstools-results" data-dnstools-results hidden></div>
     <div class="dnstools-community" data-dnstools-community hidden></div>
 

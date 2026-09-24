@@ -66,6 +66,8 @@ final class ProtectedPathsTest extends TestCase
         yield 'module' => ['cp-content/modules/Blog/Entity/BlogComment.php', 'cp-content/modules/Blog/Entity/BlogComment.php'];
         yield 'public asset' => ['public/index.php', 'public/index.php'];
         yield 'root composer' => ['composer.json', 'composer.json'];
+        yield 'shared host front controller' => ['index.php', 'index.php'];
+        yield 'shared host htaccess' => ['.htaccess', '.htaccess'];
 
         // The one .env-named file that must travel WITH a release: it documents
         // what can be configured, and a site that never receives an updated copy

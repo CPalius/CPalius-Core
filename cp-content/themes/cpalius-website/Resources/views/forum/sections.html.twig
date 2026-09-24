@@ -47,15 +47,25 @@
         {% set division = block.division %}
         <section class="forum-division fade-in">
             <header class="forum-division__head">
-                <a href="{{ path('forum_section', {sectionSlug: division.slug}) }}" class="forum-division__link">
-                    <span class="forum-division__icon"><i class="bi {{ division.icon|default('bi-building', true) }}"></i></span>
-                    <span>
-                        <span class="forum-division__type">{{ 'forum.label.category'|trans }}</span>
-                        <span class="forum-division__title">{{ division.title }}</span>
+                {% if division %}
+                    <a href="{{ path('forum_section', {sectionSlug: division.slug}) }}" class="forum-division__link">
+                        <span class="forum-division__icon"><i class="bi {{ division.icon|default('bi-building', true) }}"></i></span>
+                        <span>
+                            <span class="forum-division__type">{{ 'forum.label.category'|trans }}</span>
+                            <span class="forum-division__title">{{ division.title }}</span>
+                        </span>
+                    </a>
+                    {% if division.description %}
+                        <p class="forum-division__desc">{{ division.description }}</p>
+                    {% endif %}
+                {% else %}
+                    <span class="forum-division__link">
+                        <span class="forum-division__icon"><i class="bi bi-grid"></i></span>
+                        <span>
+                            <span class="forum-division__type">{{ 'forum.label.direct_boards'|trans }}</span>
+                            <span class="forum-division__title">{{ 'forum.label.other_boards'|trans }}</span>
+                        </span>
                     </span>
-                </a>
-                {% if division.description %}
-                    <p class="forum-division__desc">{{ division.description }}</p>
                 {% endif %}
             </header>
 

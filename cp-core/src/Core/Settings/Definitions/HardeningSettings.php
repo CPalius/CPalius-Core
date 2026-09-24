@@ -317,7 +317,7 @@ use App\Core\Annotation\CpSetting;
     key: 'security.login_email_code',
     label: 'aacp.security.login_email_code',
     type: 'checkbox',
-    default: true,
+    default: false,
     group: 'security.twofactor',
 )]
 #[CpSetting(

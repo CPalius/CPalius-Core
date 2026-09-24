@@ -57,6 +57,7 @@ use App\Core\Annotation\CpSetting;
     module: 'theme_manager',
     group: 'appearance',
 )]
+#[CpSetting(key: 'core.appearance', label: 'aacp.appearance.store', type: 'textarea', default: '{}', module: 'theme_manager', group: 'appearance')]
 final class CoreSettings
 {
 }

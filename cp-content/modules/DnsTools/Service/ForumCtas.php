@@ -26,6 +26,10 @@ final class ForumCtas
         }
 
         $shareTitle = trim($toolTitle.($target !== '' ? ': '.$target : ''));
+        $subject = trim((string) ($result['subject'] ?? ''));
+        if ($subject !== '') {
+            $shareTitle = $subject;
+        }
         $shareHref = $this->forum->wizardUrl($shareTitle) ?? $this->forum->searchHref($shareTitle);
 
         $hints = [];
@@ -49,6 +53,7 @@ final class ForumCtas
             'share' => $shareHref !== null ? [
                 'href' => $shareHref,
                 'title' => $shareTitle,
+                'body' => mb_substr(trim((string) ($result['share_text'] ?? '')), 0, 4000),
                 'label' => $this->translator->trans('dnstools.forum.share'),
             ] : null,
             'hints' => $hints,

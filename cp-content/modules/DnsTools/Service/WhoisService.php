@@ -30,11 +30,19 @@ final class WhoisService
     public function ip(string $ip): array
     {
         $server = str_contains($ip, ':') ? 'whois.ripe.net' : 'whois.arin.net';
-        $raw = $this->probes->whois($server, $ip);
-        if ($this->referral($raw) !== null) {
-            try {
-                $raw = $this->probes->whois($this->referral($raw) ?? $server, $ip);
-            } catch (\Throwable) {
+        try {
+            $raw = $this->probes->whois($server, $ip);
+            if ($this->referral($raw) !== null) {
+                try {
+                    $raw = $this->probes->whois($this->referral($raw) ?? $server, $ip);
+                } catch (\Throwable) {
+                }
+            }
+        } catch (\Throwable) {
+            $response = $this->probes->httpGet('https://rdap.org/ip/'.rawurlencode($ip), 20000);
+            $raw = (string) ($response['body'] ?? '');
+            if ($raw === '') {
+                throw new \RuntimeException('dnstools.error.whois_unavailable');
             }
         }
 
@@ -53,17 +61,74 @@ final class WhoisService
 
     private function queryChain(string $domain): string
     {
-        $iana = $this->probes->whois(self::IANA, $domain);
-        $server = $this->referral($iana) ?? $this->tldServer($domain);
-        if ($server === null) {
-            return $iana;
+        try {
+            $iana = $this->probes->whois(self::IANA, $domain);
+            $server = $this->referral($iana) ?? $this->tldServer($domain);
+            if ($server === null) {
+                return $iana !== '' ? $iana : $this->rdapText($domain);
+            }
+
+            try {
+                $raw = $this->probes->whois($server, $domain);
+
+                return $raw !== '' ? $raw : $this->rdapText($domain);
+            } catch (\Throwable) {
+                return $iana !== '' ? $iana : $this->rdapText($domain);
+            }
+        } catch (\Throwable) {
+            return $this->rdapText($domain);
+        }
+    }
+
+    private function rdapText(string $domain): string
+    {
+        $url = match (strtolower((string) substr(strrchr($domain, '.'), 1))) {
+            'com', 'net' => 'https://rdap.verisign.com/com/v1/domain/'.rawurlencode($domain),
+            'org' => 'https://rdap.publicinterestregistry.org/rdap/domain/'.rawurlencode($domain),
+            default => 'https://rdap.org/domain/'.rawurlencode($domain),
+        };
+        $response = $this->probes->httpGet($url, 20000);
+        if (($response['status'] ?? 0) >= 300 && ($response['status'] ?? 0) < 400) {
+            $location = (string) ($response['headers']['location'] ?? '');
+            if ($location !== '' && preg_match('#^https://#i', $location) === 1) {
+                $response = $this->probes->httpGet($location, 20000);
+            }
+        }
+        $json = json_decode((string) ($response['body'] ?? ''), true);
+        if (!\is_array($json)) {
+            throw new \RuntimeException('dnstools.error.whois_unavailable');
         }
 
-        try {
-            return $this->probes->whois($server, $domain);
-        } catch (\Throwable) {
-            return $iana;
+        $lines = ['RDAP: '.$domain];
+        foreach ($json['events'] ?? [] as $event) {
+            if (!\is_array($event)) {
+                continue;
+            }
+            $action = (string) ($event['eventAction'] ?? '');
+            $date = (string) ($event['eventDate'] ?? '');
+            $label = match ($action) {
+                'registration' => 'Creation Date',
+                'expiration' => 'Expiry Date',
+                'last changed' => 'Updated Date',
+                default => '',
+            };
+            if ($label !== '' && $date !== '') {
+                $lines[] = $label.': '.$date;
+            }
         }
+        foreach ($json['nameservers'] ?? [] as $ns) {
+            $name = \is_array($ns) ? (string) ($ns['ldhName'] ?? '') : '';
+            if ($name !== '') {
+                $lines[] = 'Name Server: '.$name;
+            }
+        }
+        foreach ($json['status'] ?? [] as $status) {
+            if (\is_string($status) && $status !== '') {
+                $lines[] = 'Status: '.$status;
+            }
+        }
+
+        return implode("\n", $lines);
     }
 
     private function referral(string $raw): ?string

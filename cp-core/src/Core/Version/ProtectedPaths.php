@@ -76,6 +76,8 @@ final class ProtectedPaths
         'importmap.php',
         '.env.example',
         'LICENSE',
+        'index.php',
+        '.htaccess',
     ];
 
     private function __construct()

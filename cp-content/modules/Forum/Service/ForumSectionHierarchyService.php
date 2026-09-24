@@ -130,14 +130,26 @@ final class ForumSectionHierarchyService
     }
 
     /**
+     * Every root row, including imported forums that landed without a parent
+     * category. Studio and the public index used to start from divisions only,
+     * so those boards were reachable when moving a topic and invisible in Yapı.
+     *
+     * @return list<ForumSection>
+     */
+    public function getRootSections(string $locale): array
+    {
+        $this->ensureLocaleLoaded($locale);
+
+        return $this->childrenByParentId[0] ?? [];
+    }
+
+    /**
      * @return list<ForumSection>
      */
     public function getDivisions(string $locale): array
     {
-        $this->ensureLocaleLoaded($locale);
-
         return array_values(array_filter(
-            $this->childrenByParentId[0] ?? [],
+            $this->getRootSections($locale),
             fn (ForumSection $s) => $this->resolveEffectiveType($s) === ForumSectionType::Division,
         ));
     }
@@ -157,31 +169,72 @@ final class ForumSectionHierarchyService
     }
 
     /**
-     * @return list<array{division: ForumSection, categories: list<array{category: ForumSection, subcategories: list<ForumSection>}>}>
+     * @return list<array{division: ForumSection|null, categories: list<array{category: ForumSection, subcategories: list<ForumSection>}>, directSubcategories: list<ForumSection>}>
      */
     public function buildIndexTree(string $locale): array
     {
         $tree = [];
+        $orphanBoards = [];
 
-        foreach ($this->getDivisions($locale) as $division) {
+        foreach ($this->getRootSections($locale) as $root) {
+            if ($this->resolveEffectiveType($root) === ForumSectionType::Division) {
+                $tree[] = $this->divisionBlock($root);
+                continue;
+            }
+
             $categories = [];
-            foreach ($this->getSortedChildren($division, ForumSectionType::Category) as $category) {
+            foreach ($this->getSortedChildren($root, ForumSectionType::Category) as $category) {
                 $categories[] = [
                     'category' => $category,
                     'subcategories' => $this->getSortedChildren($category, ForumSectionType::Subcategory),
                 ];
             }
 
-            $directSubcategories = $this->getSortedChildren($division, ForumSectionType::Subcategory);
+            $directSubcategories = $this->getSortedChildren($root, ForumSectionType::Subcategory);
 
+            if ($categories !== [] || $directSubcategories !== []) {
+                $tree[] = [
+                    'division' => $root,
+                    'categories' => $categories,
+                    'directSubcategories' => $directSubcategories,
+                ];
+                continue;
+            }
+
+            if ($root->allowsTopics()) {
+                $orphanBoards[] = $root;
+            }
+        }
+
+        if ($orphanBoards !== []) {
             $tree[] = [
-                'division' => $division,
-                'categories' => $categories,
-                'directSubcategories' => $directSubcategories,
+                'division' => null,
+                'categories' => [],
+                'directSubcategories' => $orphanBoards,
             ];
         }
 
         return $tree;
+    }
+
+    /**
+     * @return array{division: ForumSection, categories: list<array{category: ForumSection, subcategories: list<ForumSection>}>, directSubcategories: list<ForumSection>}
+     */
+    private function divisionBlock(ForumSection $division): array
+    {
+        $categories = [];
+        foreach ($this->getSortedChildren($division, ForumSectionType::Category) as $category) {
+            $categories[] = [
+                'category' => $category,
+                'subcategories' => $this->getSortedChildren($category, ForumSectionType::Subcategory),
+            ];
+        }
+
+        return [
+            'division' => $division,
+            'categories' => $categories,
+            'directSubcategories' => $this->getSortedChildren($division, ForumSectionType::Subcategory),
+        ];
     }
 
     /**
@@ -387,8 +440,8 @@ final class ForumSectionHierarchyService
     public function buildAdminTree(string $locale): array
     {
         $rows = [];
-        foreach ($this->getDivisions($locale) as $division) {
-            $this->appendAdminRow($rows, $division, 0);
+        foreach ($this->getRootSections($locale) as $root) {
+            $this->appendAdminRow($rows, $root, 0);
         }
 
         return $rows;
@@ -399,7 +452,7 @@ final class ForumSectionHierarchyService
      */
     private function appendAdminRow(array &$rows, ForumSection $section, int $depth): void
     {
-        $rows[] = ['section' => $section, 'depth' => $depth, 'type' => $section->getSectionType()];
+        $rows[] = ['section' => $section, 'depth' => $depth, 'type' => $this->resolveEffectiveType($section)];
 
         foreach ($this->getSortedChildren($section) as $child) {
             $this->appendAdminRow($rows, $child, $depth + 1);

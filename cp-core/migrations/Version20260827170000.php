@@ -27,6 +27,8 @@ final class Version20260827170000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
+        return;
+
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $this->moveTopics('mimari-kavramlar', 'sayfalar-nodlar');
@@ -101,6 +103,10 @@ final class Version20260827170000 extends AbstractMigration
         string $icon,
     ): void {
         $this->connection->executeStatement(
+            "UPDATE forum_sections SET slug = CONCAT('eski-', id) WHERE locale = 'tr' AND slug = ? AND code <> ?",
+            [$slug, $oldCode],
+        );
+        $this->connection->executeStatement(
             'UPDATE forum_sections SET code = ?, slug = ?, title = ?, description = ?, icon = ? WHERE code = ?',
             [$newCode, $slug, $title, $description, $icon, $oldCode],
         );
@@ -118,6 +124,10 @@ final class Version20260827170000 extends AbstractMigration
         $exists = (int) $this->connection->fetchOne('SELECT COUNT(*) FROM forum_sections WHERE code = ?', [$code]);
         if ($exists > 0) {
             $this->connection->executeStatement(
+                "UPDATE forum_sections SET slug = CONCAT('eski-', id) WHERE locale = 'tr' AND slug = ? AND code <> ?",
+                [$slug, $code],
+            );
+            $this->connection->executeStatement(
                 'UPDATE forum_sections SET slug = ?, title = ?, description = ?, icon = ?, sort_order = ?,
                     parent_id = NULL, section_type = \'division\', is_container = 1, allow_topics = 0, updated_at = ?
                  WHERE code = ?',
@@ -127,6 +137,10 @@ final class Version20260827170000 extends AbstractMigration
             return;
         }
 
+        $this->connection->executeStatement(
+            "UPDATE forum_sections SET slug = CONCAT('eski-', id) WHERE locale = 'tr' AND slug = ?",
+            [$slug],
+        );
         $this->connection->executeStatement(
             'INSERT INTO forum_sections (code, slug, locale, title, description, icon, sort_order, is_container, allow_topics, section_type, created_at, updated_at)
              VALUES (?, ?, \'tr\', ?, ?, ?, ?, 1, 0, \'division\', ?, ?)',

@@ -9,6 +9,7 @@ use Modules\DnsTools\Service\DnsToolsTemplateResolver;
 use Modules\DnsTools\Service\ForumBridge;
 use Modules\DnsTools\Service\ToolRegistry;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
@@ -52,6 +53,7 @@ final class DnsToolsFrontController extends AbstractController
         }
 
         $title = mb_substr(trim((string) $request->query->get('title')), 0, 180);
+        $prefill = (string) $request->query->get('pf');
         $boards = $this->forumBoards();
         if ($boards === []) {
             $fallback = $this->forum->searchHref($title) ?? $this->generateUrl('dnstools_index');
@@ -60,7 +62,7 @@ final class DnsToolsFrontController extends AbstractController
         }
 
         if (\count($boards) === 1) {
-            $href = $this->forum->newTopicHref($boards[0]['slug'], $title);
+            $href = $this->forum->newTopicHref($boards[0]['slug'], $title, $prefill);
             if ($href !== null) {
                 return $this->redirect($href);
             }
@@ -69,8 +71,26 @@ final class DnsToolsFrontController extends AbstractController
         return $this->render($this->templates->resolve('forum_ask'), [
             'dnsToolsParentLayout' => $this->templates->layout(),
             'title' => $title,
+            'prefill' => $prefill,
             'boards' => $boards,
         ]);
+    }
+
+    #[Route('/forum-share', name: 'dnstools_forum_share', methods: ['POST'], priority: 8)]
+    public function forumShare(Request $request): JsonResponse
+    {
+        if (!$this->isCsrfTokenValid('dnstools_query', (string) $request->request->get('_token'))) {
+            return new JsonResponse(['ok' => false], Response::HTTP_BAD_REQUEST);
+        }
+
+        $token = bin2hex(random_bytes(8));
+        $request->getSession()->set('dnstools_forum_prefill', [
+            'token' => $token,
+            'title' => mb_substr(trim((string) $request->request->get('title')), 0, 180),
+            'body' => mb_substr(trim((string) $request->request->get('body')), 0, 8000),
+        ]);
+
+        return new JsonResponse(['ok' => true, 'token' => $token]);
     }
 
     #[Route('/all', name: 'dnstools_all', methods: ['GET'])]

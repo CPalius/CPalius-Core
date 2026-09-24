@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
+use App\Core\Mail\CpMailerService;
 use App\Core\Security\Audit\SecurityAuditor;
 use App\Core\Security\Service\IpBanService;
 use App\Core\Security\Session\SessionRegistry;
 use App\Core\Security\TwoFactor\TwoFactorService;
+use App\Core\Settings\SettingsRegistry;
+use App\Entity\Setting;
 use App\Entity\User;
+use App\Repository\SettingRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -36,6 +41,10 @@ final class AACPSecurityCenterController
         private readonly IpBanService $ipBanService,
         private readonly SessionRegistry $sessionRegistry,
         private readonly TwoFactorService $twoFactor,
+        private readonly SettingsRegistry $settings,
+        private readonly SettingRepository $settingRepository,
+        private readonly EntityManagerInterface $entityManager,
+        private readonly CpMailerService $mailer,
         private readonly CsrfTokenManagerInterface $csrfTokenManager,
         private readonly Security $security,
         private readonly TranslatorInterface $translator,
@@ -58,8 +67,32 @@ final class AACPSecurityCenterController
             'sessions' => $this->sessionRegistry->listActive(50),
             'sessionCount' => $this->sessionRegistry->countActive(),
             'twoFactorEnrolled' => $this->currentUserEnrolled(),
+            'loginEmailCodeEnabled' => (bool) $this->settings->get('security.login_email_code', false),
+            'mailConfigured' => $this->mailer->canSend(),
             'action_token' => $this->csrfTokenManager->getToken('aacp_security_action')->getValue(),
         ]));
+    }
+
+    #[Route('/aacp/security/login-email-code', name: 'aacp_security_center_login_email', methods: ['POST'])]
+    #[IsGranted('system.security.manage')]
+    public function updateLoginEmailCode(Request $request): RedirectResponse
+    {
+        $this->assertCsrf($request, 'aacp_security_action');
+
+        $enabled = $request->request->get('enabled') !== null;
+        $existing = $this->settingRepository->findIndexedByKeys(['security.login_email_code']);
+        $setting = $existing['security.login_email_code'] ?? null;
+
+        if (!$setting instanceof Setting) {
+            $setting = new Setting('security.login_email_code', 'core');
+            $this->entityManager->persist($setting);
+        }
+
+        $setting->setSettingValue($enabled ? '1' : '0');
+        $this->entityManager->flush();
+        $this->settings->clearCache('security.login_email_code');
+
+        return new RedirectResponse('/aacp/security?login_email='.($enabled ? 'on' : 'off').'#login-email');
     }
 
     /**

@@ -13,6 +13,8 @@ use App\Core\Annotation\CpSetting;
 #[CpSetting(key: 'dnstools.cache_ttl', label: 'dnstools.setting.cache_ttl', type: 'integer', default: '120', module: 'dnstools', group: 'dnstools_performance')]
 #[CpSetting(key: 'dnstools.rate_limit_minute', label: 'dnstools.setting.rate_limit_minute', type: 'integer', default: '20', module: 'dnstools', group: 'dnstools_security')]
 #[CpSetting(key: 'dnstools.rate_limit_hour', label: 'dnstools.setting.rate_limit_hour', type: 'integer', default: '200', module: 'dnstools', group: 'dnstools_security')]
+#[CpSetting(key: 'dnstools.spam_guest_quota', label: 'dnstools.setting.spam_guest_quota', type: 'integer', default: '10', module: 'dnstools', group: 'dnstools_security')]
+#[CpSetting(key: 'dnstools.spam_member_quota', label: 'dnstools.setting.spam_member_quota', type: 'integer', default: '100', module: 'dnstools', group: 'dnstools_security')]
 #[CpSetting(key: 'dnstools.probe_timeout', label: 'dnstools.setting.probe_timeout', type: 'integer', default: '5', module: 'dnstools', group: 'dnstools_security')]
 #[CpSetting(key: 'dnstools.max_bulk', label: 'dnstools.setting.max_bulk', type: 'integer', default: '10', module: 'dnstools', group: 'dnstools_security')]
 #[CpSetting(key: 'dnstools.allow_network_probes', label: 'dnstools.setting.allow_network_probes', type: 'checkbox', default: '1', module: 'dnstools', group: 'dnstools_security')]

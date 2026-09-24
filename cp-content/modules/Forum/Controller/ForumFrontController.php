@@ -343,6 +343,20 @@ final class ForumFrontController extends AbstractController
 
         $draft = $this->draftService->newTopicDraft($user, $section);
         $prefillTitle = mb_substr(trim((string) $request->query->get('title')), 0, 180);
+        $prefillBody = mb_substr(trim((string) $request->query->get('body')), 0, 8000);
+        $shareToken = (string) $request->query->get('pf');
+        if (preg_match('/^[a-f0-9]{16}$/', $shareToken) === 1) {
+            $stored = $request->getSession()->get('dnstools_forum_prefill');
+            if (\is_array($stored) && ($stored['token'] ?? '') === $shareToken) {
+                if ($prefillTitle === '') {
+                    $prefillTitle = mb_substr(trim((string) ($stored['title'] ?? '')), 0, 180);
+                }
+                $storedBody = mb_substr(trim((string) ($stored['body'] ?? '')), 0, 8000);
+                if ($storedBody !== '') {
+                    $prefillBody = $storedBody;
+                }
+            }
+        }
 
         return $this->render('@Theme/forum/new_topic.html.twig', $this->newTopicViewData(
             $section,
@@ -350,7 +364,7 @@ final class ForumFrontController extends AbstractController
             [
                 'title' => $prefillTitle !== '' ? $prefillTitle : ($draft?->getTitle() ?? ''),
                 'description' => '',
-                'body' => $prefillTitle !== '' ? '' : ($draft?->getBody() ?? ''),
+                'body' => $prefillBody !== '' ? $prefillBody : ($draft?->getBody() ?? ''),
                 'isPrivate' => false,
                 'prefixId' => null,
                 'contentLocale' => $contentLocale,

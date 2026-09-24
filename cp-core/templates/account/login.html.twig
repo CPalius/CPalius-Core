@@ -33,7 +33,7 @@
 {% endif %}
 
 {% if error is not null %}
-    <div class="forum-flash forum-flash--error" style="max-width: 420px; margin: 0 auto var(--sp-md);">{{ error.messageKey|trans(error.messageData, 'security')|default('account.login.error_default'|trans) }}</div>
+    <div class="forum-flash forum-flash--error" style="max-width: 420px; margin: 0 auto var(--sp-md);">{{ error.messageKey|trans(error.messageData) }}</div>
 {% endif %}
 
 <div class="forum-form fade-in" style="max-width: 420px; margin: 0 auto;">

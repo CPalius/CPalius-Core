@@ -30,6 +30,7 @@ final class ToolRunner
         private readonly SettingsRegistry $settings,
         private readonly ProbeClient $probes,
         private readonly InboxService $inbox,
+        private readonly ImapInboxReader $imap,
     ) {
     }
 
@@ -120,10 +121,16 @@ final class ToolRunner
             'domain-expiry' => $this->sliceWhois($this->whois->domain($this->requireDomain($q)), ['expiry_date', 'days_until_expiry', 'registrar', 'status']),
             'whois' => $this->whois->domain($this->requireDomain($q)),
             'domain-history' => $this->analysis->history($this->requireDomain($q)),
-            'smtp-tester' => $this->network->smtp($this->requireHost($q)),
+            'smtp-tester' => $this->network->smtp(
+                $this->requireHost($q),
+                (int) ($input['port'] ?? 587),
+                (string) ($input['encryption'] ?? 'starttls'),
+                (string) ($input['username'] ?? ''),
+                (string) ($input['password'] ?? ''),
+            ),
             'email-header' => $this->mail->headers($q),
             'email-security' => $this->mail->emailSecurity($this->requireEmail($q)),
-            'spam-score' => $this->inbox->handle($input, $request),
+            'spam-score' => $this->scoreInbox($input, $request),
             'email-deliverability' => $this->mail->deliverability($this->requireEmail($q)),
             'ip-lookup' => $this->network->ipLookup($this->clientOrIp($q, $request)),
             'cidr-calculator' => $this->ip->cidr($this->requireCidr($q)),
@@ -147,6 +154,20 @@ final class ToolRunner
             'ipv6-compress' => $this->ip->compress($this->requireIp($q)),
             default => throw new \InvalidArgumentException('dnstools.error.unknown_tool'),
         };
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    private function scoreInbox(array $input, Request $request): array
+    {
+        if (trim((string) ($input['action'] ?? '')) === 'check' || trim((string) ($input['action'] ?? '')) === 'poll') {
+            $this->imap->drain();
+            $input['action'] = 'poll';
+        }
+
+        return $this->inbox->handle($input, $request);
     }
 
     /**
@@ -188,7 +209,7 @@ final class ToolRunner
      */
     private function cacheKey(ToolDefinition $tool, array $input, Request $request): ?string
     {
-        if (\in_array($tool->slug, ['email-header', 'spam-score', 'dns-generator', 'dmarc-generator', 'dkim-generator', 'bimi-generator', 'bandwidth', 'dns-leak'], true)) {
+        if (\in_array($tool->slug, ['email-header', 'spam-score', 'smtp-tester', 'dns-generator', 'dmarc-generator', 'dkim-generator', 'bimi-generator', 'bandwidth', 'dns-leak'], true)) {
             return null;
         }
 

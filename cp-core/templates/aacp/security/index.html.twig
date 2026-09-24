@@ -93,6 +93,36 @@
             </twig:cp:table>
         </twig:cp:card>
 
+        <div id="login-email">
+            {% if app.request.query.get('login_email') %}
+                <div class="mb-sp-sm rounded-lg border border-success-500/30 bg-success-500/10 px-sp-sm py-3 text-fs-sm !text-success-300">
+                    {{ (app.request.query.get('login_email') == 'on' ? 'aacp.security.login_email_code_saved_on' : 'aacp.security.login_email_code_saved_off')|trans }}
+                </div>
+            {% endif %}
+            <twig:cp:card title="{{ 'aacp.security.login_email_code_title'|trans }}">
+                <p class="text-fs-sm !text-slate-400">
+                    {{ 'aacp.security.login_email_code_desc'|trans }}
+                </p>
+                {% if not mailConfigured %}
+                    <p class="mt-sp-sm text-fs-sm !text-warning-300">
+                        {{ 'aacp.security.login_email_code_no_smtp'|trans }}
+                    </p>
+                {% endif %}
+                <form method="post" action="{{ path('aacp_security_center_login_email') }}" class="mt-sp-sm space-y-sp-sm">
+                    <input type="hidden" name="_token" value="{{ action_token }}">
+                    <label class="flex items-center gap-2 text-fs-sm !text-slate-200">
+                        <input type="checkbox" name="enabled" value="1" {{ loginEmailCodeEnabled ? 'checked' : '' }}
+                               class="rounded border-white/20 bg-dark-1">
+                        {{ 'aacp.security.login_email_code'|trans }}
+                    </label>
+                    <button type="submit" class="btn btn-secondary btn-sm">
+                        <twig:ux:icon name="heroicons:envelope" class="h-4 w-4" />
+                        {{ 'aacp.security.login_email_code_save'|trans }}
+                    </button>
+                </form>
+            </twig:cp:card>
+        </div>
+
         <twig:cp:card title="{{ 'aacp.security.twofactor_self_title'|trans }}">
             <p class="text-fs-sm !text-slate-400">
                 {{ twoFactorEnrolled ? 'aacp.security.twofactor_self_on'|trans : 'aacp.security.twofactor_self_off'|trans }}

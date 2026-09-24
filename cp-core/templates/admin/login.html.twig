@@ -30,7 +30,7 @@
                     class="mb-sp-sm flex items-start gap-3 rounded-lg border border-danger-500/40 bg-danger-950/60 px-4 py-3 text-fs-sm text-danger-200"
                 >
                     <twig:ux:icon name="heroicons:exclamation-triangle" class="mt-0.5 h-4 w-4 shrink-0 text-danger-400" />
-                    <p>{{ error.messageKey|trans(error.messageData, 'security')|default('studio.login.error'|trans) }}</p>
+                    <p>{{ error.messageKey|trans(error.messageData) }}</p>
                 </div>
             {% endif %}
 

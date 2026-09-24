@@ -12,6 +12,7 @@ use App\Entity\Setting;
 use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\DnsTools\Install\DnsToolsSettingsSeeder;
+use Modules\DnsTools\Service\ImapInboxReader;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,6 +31,7 @@ final class DnsToolsSettingsAdminController extends AbstractController
         private readonly EntityManagerInterface $entityManager,
         private readonly SystemSettingsService $systemSettings,
         private readonly TranslatorInterface $translator,
+        private readonly ImapInboxReader $imap,
     ) {
     }
 
@@ -89,6 +91,42 @@ final class DnsToolsSettingsAdminController extends AbstractController
         $this->addFlash('success', $this->translator->trans('dnstools.settings.saved'));
 
         return $this->redirectToRoute('admin_dnstools_index');
+    }
+
+    #[Route('/imap-test', name: 'imap_test', methods: ['POST'])]
+    public function imapTest(Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('admin_dnstools_imap', (string) $request->request->get('_token'))) {
+            throw new BadRequestHttpException($this->translator->trans('aacp.common.error.invalid_csrf'));
+        }
+
+        $result = $this->imap->probe();
+        if (!$result['ok']) {
+            $this->addFlash('error', $this->translator->trans('dnstools.imap.test_failed', [
+                'reason' => $this->imapReason($result['error']),
+            ]));
+
+            return $this->redirectToRoute('admin_dnstools_index');
+        }
+
+        $matches = $result['matches'] === []
+            ? $this->translator->trans('dnstools.imap.no_match')
+            : implode(', ', $result['matches']);
+        $this->addFlash('success', $this->translator->trans('dnstools.imap.test_ok', [
+            'count' => $result['messages'],
+            'matches' => $matches,
+        ]));
+
+        return $this->redirectToRoute('admin_dnstools_index');
+    }
+
+    private function imapReason(string $error): string
+    {
+        return match ($error) {
+            'php_imap_missing' => $this->translator->trans('dnstools.imap.missing_extension'),
+            'imap_incomplete' => $this->translator->trans('dnstools.imap.incomplete'),
+            default => $error,
+        };
     }
 
     /**

@@ -12,6 +12,7 @@
     const forumSearch = root.getAttribute('data-forum-search') || '';
     const forumCompose = root.getAttribute('data-forum-compose') || '';
     const forumAskPage = root.getAttribute('data-forum-ask') || '';
+    const forumShareUrl = root.getAttribute('data-forum-share') || '';
     const toolTitle = root.getAttribute('data-tool-title') || '';
     let forumBoards = [];
     try {
@@ -29,7 +30,11 @@
         empty: {{ 'dnstools.status.empty'|trans|json_encode|raw }},
         forumLead: {{ 'dnstools.forum.lead'|trans|json_encode|raw }},
         forumShare: {{ 'dnstools.forum.share'|trans|json_encode|raw }},
-        forumAsk: {{ 'dnstools.forum.ask_field'|trans|json_encode|raw }}
+        forumAsk: {{ 'dnstools.forum.ask_field'|trans|json_encode|raw }},
+        fresh: {{ 'dnstools.spam.fresh'|trans|json_encode|raw }},
+        advice: {{ 'dnstools.spam.advice_title'|trans|json_encode|raw }},
+        checks: {{ 'dnstools.field.checks'|trans|json_encode|raw }},
+        quota: {{ 'dnstools.spam.quota'|trans|json_encode|raw }}
     };
     const askableValues = { not_found: true, warning: true, invalid: true, missing: true, unsigned: true, blacklisted: true, poor: true, fail: true, softfail: true };
     const skipKeys = { tool: true, token: true };
@@ -38,12 +43,15 @@
     const inboxWait = root.querySelector('[data-inbox-wait]');
     const inboxCopy = root.querySelector('[data-inbox-copy]');
     const inboxRefresh = root.querySelector('[data-inbox-refresh]');
+    const inboxCheck = root.querySelector('[data-inbox-check]');
+    const quotaEl = root.querySelector('[data-quota]');
     const inboxLabels = {
         opening: {{ 'dnstools.inbox.opening'|trans|json_encode|raw }},
         waiting: {{ 'dnstools.inbox.waiting'|trans|json_encode|raw }},
         expired: {{ 'dnstools.inbox.expired'|trans|json_encode|raw }},
         pasteOnly: {{ 'dnstools.inbox.paste_only'|trans|json_encode|raw }},
-        copied: {{ 'dnstools.inbox.copied'|trans|json_encode|raw }}
+        copied: {{ 'dnstools.inbox.copied'|trans|json_encode|raw }},
+        needAddress: {{ 'dnstools.inbox.need_address'|trans|json_encode|raw }}
     };
     let inboxTimer = null;
     let inboxToken = '';
@@ -78,6 +86,44 @@
             return values[value];
         }
         return String(value);
+    }
+
+    function paintResult(data) {
+        if (!results) return;
+        results.hidden = false;
+        results.innerHTML = data && data.status === 'scored' && typeof data.score === 'number'
+            ? renderScore(data)
+            : renderNode(data);
+    }
+
+    function renderScore(data) {
+        const grade = String(data.grade || '');
+        const advice = Array.isArray(data.advice) ? data.advice : [];
+        const checks = Array.isArray(data.checks) ? data.checks : [];
+        const facts = ['from', 'to', 'subject', 'date', 'sending_ip', 'ptr', 'spf', 'dkim', 'dmarc', 'alignment'].map((key) => {
+            const value = data[key];
+            if (value === null || value === undefined || value === '') return '';
+            return '<div><span>' + escapeHtml(fieldLabel(key)) + '</span><strong>' + escapeHtml(String(values[value] || value)) + '</strong></div>';
+        }).join('');
+        const tips = advice.map((item) => {
+            const level = item && item.level ? String(item.level) : 'ok';
+            return '<article class="dnstools-tip dnstools-tip--' + escapeHtml(level) + '"><h3>' + escapeHtml(String(item.title || '')) + '</h3><p>' + escapeHtml(String(item.text || '')) + '</p></article>';
+        }).join('');
+        const rows = checks.map((check) => {
+            const name = check && check.name ? String(check.name) : '';
+            const result = check && check.result ? String(check.result) : '';
+            const points = check && typeof check.points === 'number' ? check.points : 0;
+            return '<li><span>' + escapeHtml(fieldLabel(name)) + '</span><span>' + escapeHtml(String(values[result] || result)) + '</span><b>' + escapeHtml(String(points)) + '</b></li>';
+        }).join('');
+        return '<section class="dnstools-score dnstools-score--' + escapeHtml(grade) + '">'
+            + '<div class="dnstools-score__dial"><strong>' + escapeHtml(String(data.score)) + '</strong><span>/ 10</span></div>'
+            + '<div><p class="dnstools-score__kicker">' + escapeHtml(labels.fresh || 'Skor') + '</p><h2>' + escapeHtml(String(values[grade] || grade)) + '</h2><p>' + escapeHtml(String(data.subject || '')) + '</p></div>'
+            + '</section>'
+            + '<div class="dnstools-score__facts">' + facts + '</div>'
+            + '<h3 class="dnstools-score__heading">' + escapeHtml(labels.advice || 'Öneriler') + '</h3>'
+            + '<div class="dnstools-tips">' + tips + '</div>'
+            + '<h3 class="dnstools-score__heading">' + escapeHtml(labels.checks || 'Kontroller') + '</h3>'
+            + '<ul class="dnstools-score__checks">' + rows + '</ul>';
     }
 
     function renderNode(value) {
@@ -135,32 +181,70 @@
         return false;
     }
 
-    function topicHref(slug, title) {
+    function paintQuota(quota) {
+        if (!quotaEl || !quota) return;
+        const left = parseInt(quota.remaining, 10);
+        const limit = parseInt(quota.limit, 10);
+        if (!Number.isFinite(left) || !Number.isFinite(limit)) return;
+        quotaEl.hidden = false;
+        quotaEl.textContent = String(labels.quota || '')
+            .replace('{remaining}', String(left))
+            .replace('{limit}', String(limit));
+    }
+
+    function topicHref(slug, title, body, prefill) {
+        const query = 'title=' + encodeURIComponent(title)
+            + (prefill ? '&pf=' + encodeURIComponent(prefill) : '')
+            + (!prefill && body ? '&body=' + encodeURIComponent(body) : '');
         if (!forumCompose || !slug) {
-            return forumAskPage ? (forumAskPage + (forumAskPage.indexOf('?') === -1 ? '?' : '&') + 'title=' + encodeURIComponent(title)) : '';
+            return forumAskPage ? (forumAskPage + (forumAskPage.indexOf('?') === -1 ? '?' : '&') + query) : '';
         }
         const base = forumCompose.replace('__SLUG__', encodeURIComponent(slug));
-        return base + (base.indexOf('?') === -1 ? '?' : '&') + 'title=' + encodeURIComponent(title);
+        return base + (base.indexOf('?') === -1 ? '?' : '&') + query;
     }
 
     function closeWizard() {
         if (wizard) wizard.hidden = true;
     }
 
-    function openWizard(title) {
+    async function stashShare(title, body) {
+        if (!forumShareUrl || !body) return '';
+        const formData = new FormData();
+        formData.set('_token', token || '');
+        formData.set('title', title);
+        formData.set('body', body);
+        try {
+            const response = await fetch(forumShareUrl, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const payload = await response.json();
+            return payload && payload.ok ? String(payload.token || '') : '';
+        } catch (error) {
+            return '';
+        }
+    }
+
+    async function openWizard(title, body) {
         const clean = String(title || '').trim();
+        const text = String(body || '').trim();
         if (!clean) return;
+        const prefill = await stashShare(clean, text);
         if (forumBoards.length === 1) {
-            window.location.href = topicHref(forumBoards[0].slug, clean);
+            window.location.href = topicHref(forumBoards[0].slug, clean, text, prefill);
             return;
         }
         if (!wizard || forumBoards.length === 0) {
             if (forumAskPage) {
-                window.location.href = forumAskPage + (forumAskPage.indexOf('?') === -1 ? '?' : '&') + 'title=' + encodeURIComponent(clean);
+                window.location.href = topicHref('', clean, text, prefill);
             }
             return;
         }
         wizard.dataset.title = clean;
+        wizard.dataset.body = text;
+        wizard.dataset.prefill = prefill;
         const label = wizard.querySelector('[data-wizard-title]');
         if (label) label.textContent = clean;
         wizard.hidden = false;
@@ -194,7 +278,7 @@
         let share = '';
         if (pack.share && (pack.share.title || pack.share.href)) {
             const title = String(pack.share.title || '');
-            share = '<button type="button" class="dnstools-btn" data-forum-title="' + escapeHtml(title) + '">' + escapeHtml(String(pack.share.label || labels.forumShare)) + '</button>';
+            share = '<button type="button" class="dnstools-btn" data-forum-title="' + escapeHtml(title) + '" data-forum-body="' + escapeHtml(String(pack.share.body || '')) + '">' + escapeHtml(String(pack.share.label || labels.forumShare)) + '</button>';
         }
         if (!actions && !share) {
             return;
@@ -234,7 +318,7 @@
             hiddenToken.value = pack.token;
             inboxToken = pack.token;
         }
-        if (pack.status === 'waiting' && pack.token) {
+        if (pack.status === 'waiting' && pack.token && !inboxTimer) {
             startInboxPoll(pack.token);
         }
     }
@@ -273,22 +357,29 @@
         try {
             const payload = await postTool({ action: 'open' });
             if (!payload.ok) {
+                paintQuota(payload.quota);
                 showStatus(payload.error || labels.error, true);
                 setInboxPanel({ status: 'paste_only', inbox_ready: false });
                 return;
             }
             showStatus('', false);
+            paintQuota(payload.quota);
             setInboxPanel(payload.data || {});
         } catch (error) {
             showStatus(labels.error, true);
         }
     }
 
-    async function pollInbox(currentToken) {
+    async function pollInbox(currentToken, checkNow) {
         if (!api || !currentToken) return;
         try {
-            const payload = await postTool({ action: 'poll', token: currentToken });
-            if (!payload.ok) return;
+            const payload = await postTool({ action: checkNow ? 'check' : 'poll', token: currentToken });
+            if (!payload.ok) {
+                paintQuota(payload.quota);
+                showStatus(payload.error || labels.error, true);
+                return;
+            }
+            paintQuota(payload.quota);
             const data = payload.data || {};
             if (data.status === 'waiting' || data.status === 'expired' || data.status === 'paste_only') {
                 setInboxPanel(data);
@@ -300,10 +391,11 @@
             showStatus('', false);
             if (results) {
                 results.hidden = false;
-                results.innerHTML = renderNode(data);
+                paintResult(data);
             }
             renderCommunity(payload);
         } catch (error) {
+            showStatus(labels.error, true);
         }
     }
 
@@ -314,7 +406,16 @@
         body.set('_token', token || '');
         const raw = String(body.get('q') || '').trim();
         if (inbox) {
-            body.set('action', raw ? 'score' : 'open');
+            const current = form.querySelector('[name="token"]');
+            const tokenValue = current ? String(current.value || '') : '';
+            if (raw) {
+                body.set('action', 'score');
+            } else if (tokenValue) {
+                body.set('action', 'check');
+                body.set('token', tokenValue);
+            } else {
+                body.set('action', 'open');
+            }
         }
         showStatus(labels.loading, false);
         if (results) {
@@ -334,9 +435,11 @@
             });
             const payload = await response.json();
             if (!payload.ok) {
+                paintQuota(payload.quota);
                 showStatus(payload.error || labels.error, true);
                 return;
             }
+            paintQuota(payload.quota);
             const data = payload.data || {};
             if (inbox && (data.status === 'waiting' || data.status === 'paste_only' || data.status === 'expired')) {
                 showStatus('', false);
@@ -347,7 +450,7 @@
             if (inbox) stopInboxPoll();
             if (results) {
                 results.hidden = false;
-                results.innerHTML = renderNode(data);
+                paintResult(data);
             }
             renderCommunity(payload);
         } catch (error) {
@@ -365,6 +468,18 @@
                 event.preventDefault();
                 stopInboxPoll();
                 openInbox();
+            });
+        }
+        if (inboxCheck) {
+            inboxCheck.addEventListener('click', (event) => {
+                event.preventDefault();
+                const current = form ? form.querySelector('[name="token"]') : null;
+                const tokenValue = current ? String(current.value || '') : '';
+                if (tokenValue) {
+                    pollInbox(tokenValue, true);
+                } else {
+                    showStatus(inboxLabels.needAddress, true);
+                }
             });
         }
         if (inboxCopy) {
@@ -385,7 +500,7 @@
         const ask = event.target.closest('[data-forum-title]');
         if (ask) {
             event.preventDefault();
-            openWizard(ask.getAttribute('data-forum-title') || '');
+            openWizard(ask.getAttribute('data-forum-title') || '', ask.getAttribute('data-forum-body') || '');
             return;
         }
         if (event.target.closest('[data-wizard-close]')) {
@@ -395,7 +510,7 @@
         const board = event.target.closest('[data-wizard-board]');
         if (board && wizard) {
             event.preventDefault();
-            const href = topicHref(board.getAttribute('data-wizard-board') || '', wizard.dataset.title || '');
+            const href = topicHref(board.getAttribute('data-wizard-board') || '', wizard.dataset.title || '', wizard.dataset.body || '', wizard.dataset.prefill || '');
             if (href) window.location.href = href;
         }
     });
