@@ -1,7 +1,17 @@
 framework:
     cache:
-        # Unique name of your app: used to compute stable namespaces for cache keys.
-        prefix_seed: cpalius/cmf
+        # MUST be unique PER INSTALLATION, not per product. This was a literal
+        # "cpalius/cmf" for every site running this codebase, which means any two
+        # installs sharing one Redis server (the normal case on a VPS hosting
+        # several sites) compute the IDENTICAL cache key namespace and silently
+        # read/write each other's cached data — SettingsRegistry's cache.app entry
+        # (cpalius.settings.values, a fixed key) is what made this visible: site A's
+        # homepage mode became site B's homepage mode the moment both wrote through
+        # the same Redis-backed pool. APP_SECRET is generated fresh and random per
+        # install (EnvironmentWriter::secret()), so it doubles as a free, correct,
+        # zero-configuration namespace seed — no operator has to remember to set
+        # anything, which is exactly how the previous literal went unnoticed.
+        prefix_seed: '%env(APP_SECRET)%'
 
         # The "app" cache: general-purpose pool, Redis instead of filesystem.
         app: cache.adapter.redis
