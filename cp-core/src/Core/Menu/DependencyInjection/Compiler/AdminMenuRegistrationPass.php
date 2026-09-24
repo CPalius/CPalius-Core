@@ -132,7 +132,7 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
 
                     /** @var Route $methodRoute */
                     $methodRoute = $methodRouteAttributes[0]->newInstance();
-                    $methodRouteName = (string) ($methodRoute->getName() ?? '');
+                    $methodRouteName = (string) ($methodRoute->name ?? '');
 
                     $routeName = $classRoutePrefix.$methodRouteName;
                     if ($routeName === '') {

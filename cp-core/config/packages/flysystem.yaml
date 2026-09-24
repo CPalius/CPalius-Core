@@ -5,6 +5,5 @@
 flysystem:
     storages:
         cpalius_storage:
-            adapter: 'local'
-            options:
+            local:
                 directory: '%kernel.project_dir%/public/uploads'

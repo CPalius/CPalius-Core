@@ -364,7 +364,7 @@
                 </twig:block>
             </twig:cp:table>
 
-            <form method="post" action="{{ path('aacp_updates_apply') }}" class="mt-sp-md flex flex-wrap items-center gap-3">
+            <form method="post" action="{{ path('aacp_updates_apply') }}" id="aacp-updates-apply-form" class="mt-sp-md flex flex-wrap items-center gap-3">
                 <input type="hidden" name="_token" value="{{ token }}">
                 <button type="submit" class="btn btn-primary"
                         onclick="return confirm('{{ 'aacp.updates.apply.confirm'|trans|e('js') }}')">
@@ -372,6 +372,24 @@
                 </button>
                 <p class="text-fs-xs !text-slate-500">{{ 'aacp.updates.apply.note'|trans }}</p>
             </form>
+
+            {% if autoApply %}
+                {# A full-release update just landed files and moved the schema
+                   in the previous request, then stopped there on purpose (see
+                   AACPUpdateController::upgrade()) — the container that request
+                   ran on was already stale the moment the files changed, and
+                   running hooks/module upgrades/config/cache through it is
+                   exactly what took 1.1.2 down. THIS request's container is
+                   freshly rebuilt, so it is safe to finish the job here —
+                   automatically, so the operator does not have to notice the
+                   pending-work table and click Apply a second time while the
+                   site is serving mismatched code and data. .submit() bypasses
+                   the confirm() above; the operator already agreed once by
+                   starting the update. #}
+                <script{{ csp_nonce_attr() }}>
+                    document.getElementById('aacp-updates-apply-form').submit();
+                </script>
+            {% endif %}
         </twig:cp:card>
 
         <twig:cp:card>

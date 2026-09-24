@@ -79,14 +79,16 @@ final class AACPUpdateController extends AbstractController
         $this->patches->refreshIfStale(self::CHECK_MAX_AGE);
 
         $results = $this->runner->run(dryRun: true);
+        $pending = $this->pendingCount($results);
 
         $flashed = $request->getSession()->getFlashBag()->get('patch_log');
         $checkLog = $request->getSession()->getFlashBag()->get('check_log');
         $checkError = $request->getSession()->getFlashBag()->get('check_error');
+        $autoApply = $request->getSession()->getFlashBag()->get('auto_apply') !== [];
 
         return $this->render('aacp/updates/index.html.twig', $this->viewData([
             'results' => $results,
-            'pending' => $this->pendingCount($results),
+            'pending' => $pending,
             'hasFailure' => $this->hasFailure($results),
             'applied' => null,
             'upgradeLog' => null,
@@ -95,6 +97,10 @@ final class AACPUpdateController extends AbstractController
             'patchError' => null,
             'checkLog' => $checkLog[0] ?? null,
             'checkError' => $checkError[0] ?? null,
+            // Only worth auto-submitting when there is actually something left
+            // to do — a full release that happened to leave nothing pending
+            // must not pop an extra request for no reason.
+            'autoApply' => $autoApply && $pending > 0,
         ]));
     }
 
@@ -305,6 +311,21 @@ final class AACPUpdateController extends AbstractController
             $this->addFlash('upgrade_error', $this->translator->trans('aacp.version.upgrade.migration_failed', ['error' => $migrationError]));
         }
 
+        // Files are on disk and the schema moved, but update hooks, module
+        // upgrades, config import and the cache rebuild are still pending —
+        // on purpose, per the docblock above: they run project services
+        // through the container, which this request's is stale the moment
+        // apply() returns. Left here, an operator has to notice the "Bekleyen
+        // işler" table and click Apply a second time, and a site serving
+        // real traffic in between is running new code against whatever of
+        // the old state hasn't caught up yet. Flagging it instead of running
+        // it here lets the NEXT request — a fresh container — auto-submit
+        // the same "Güncellemeyi çalıştır" action the operator would have
+        // clicked anyway, so one click finishes the whole update.
+        if ($error === null && $migrationError === null) {
+            $this->addFlash('auto_apply', '1');
+        }
+
         return $this->redirectToRoute('aacp_updates_index');
     }
 
@@ -358,6 +379,10 @@ final class AACPUpdateController extends AbstractController
             // the one state an operator must not have to guess at.
             'cachePurgeFailure' => $this->cacheRebuild->lastPurgeFailure(),
             'patchApplied' => $this->patchInstaller->appliedLedger(),
+            // Overridden by index() right after a full-release upgrade left
+            // work pending; every other caller renders mid-action, where
+            // auto-submitting a second action makes no sense.
+            'autoApply' => false,
         ], $extra);
     }
 
