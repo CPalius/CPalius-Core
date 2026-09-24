@@ -381,6 +381,18 @@ final class UpdateRunner
         }
     }
 
+    /**
+     * Only ever schedules the rebuild (clearSymfonyCache() defers it to
+     * kernel.terminate) — never forces it into this request. This step runs
+     * after hooks/module upgrades/config import, all of which still use
+     * whatever container this request booted with; forcing a purge here
+     * would risk exactly what apply()'s equivalent step used to risk before
+     * migrations (see CoreUpdater::finishCacheRebuild()'s docblock) —
+     * Symfony's own kernel.terminate listeners, dispatched after this
+     * method returns, still lazily resolving services from a container
+     * this would have just deleted. A failed rebuild surfaces via
+     * CacheRebuildManager::lastPurgeFailure(), not this step's own result.
+     */
     private function rebuildCache(bool $dryRun): UpdateStepResult
     {
         if ($dryRun) {
@@ -397,18 +409,7 @@ final class UpdateRunner
             return UpdateStepResult::failed(self::STEP_CACHE, $e->getMessage());
         }
 
-        $compiled = $this->cache->compileMappedAssets();
-        $details = $compiled['output'] !== '' ? [$compiled['output']] : [];
-
-        if (!$compiled['success']) {
-            $this->logger?->error('cp:update could not compile frontend assets.', [
-                'output' => $compiled['output'],
-            ]);
-
-            return UpdateStepResult::failed(self::STEP_CACHE, $this->t('cache.assets_failed'), $details);
-        }
-
-        return UpdateStepResult::applied(self::STEP_CACHE, $this->t('cache.done'), $details);
+        return UpdateStepResult::applied(self::STEP_CACHE, $this->t('cache.done'));
     }
 
     private static function shortVersion(string $version): string

@@ -120,6 +120,19 @@ final class CacheRebuildManager
 
     /**
      * Called from kernel.terminate after the JSON/HTML response is flushed.
+     *
+     * This is the ONLY place the cache directory is ever actually purged —
+     * see purgeCacheDirectoryNow()'s docblock for why an earlier design that
+     * also allowed forcing this mid-request (before kernel.terminate had
+     * finished dispatching to every listener) was itself the bug behind a
+     * crash 2.2.11 through 2.2.15 each tried to fix somewhere else. By the
+     * time PHP reaches a registered shutdown function, kernel.terminate —
+     * including every module-owned listener on it, whatever they lazily
+     * resolve — has already run to completion in the standard front-
+     * controller flow (public/index.php calls $kernel->terminate() as
+     * ordinary code, before any shutdown function fires). Nothing running
+     * in the request that called clearSymfonyCache() can still be depending
+     * on the old container by the time this executes.
      */
     public function flushDeferredKernelPurge(): void
     {
@@ -136,11 +149,21 @@ final class CacheRebuildManager
     }
 
     /**
-     * Does the purge itself, without touching the HTTP response — safe to call
-     * mid-request, unlike flushDeferredKernelPurge() which assumes the response
-     * already went out. compileMappedAssets() calls this right before it, so
-     * the subprocess it spawns reads a container that matches the code just
-     * deployed instead of whatever was compiled before this request started.
+     * Purges the compiled container, rebuilds it, and recompiles front-end
+     * assets — all three, always together, because a purge with only some
+     * of them done is a site that 500s until the rest catches up.
+     *
+     * Only ever called from flushDeferredKernelPurge(), i.e. only after the
+     * response has already been sent and kernel.terminate has already run.
+     * An earlier version of this class let compileMappedAssets() call this
+     * directly, mid-request, specifically so its asset-compile subprocess
+     * would see fresh files instead of whatever was compiled before the
+     * request started. That reasoning wasn't wrong about the subprocess —
+     * it just ignored that the SAME request still had kernel.terminate
+     * ahead of it, dispatching to every registered listener (module-owned
+     * ones included) through the container this had just deleted. Nothing
+     * forces this early anymore; asset compilation waits for the same safe
+     * window the container rebuild already waits for.
      */
     private function purgeCacheDirectoryNow(): void
     {
@@ -166,23 +189,22 @@ final class CacheRebuildManager
         }
 
         // Structural, not opt-in: every path that empties the cache directory
-        // — deferred (flushDeferredKernelPurge, after the response is sent)
-        // or forced early (compileMappedAssets, mid-request) — funnels
-        // through this one method, so this is the one place a rebuild can be
-        // guaranteed for every caller, present and future, instead of each
-        // of clearSymfonyCache()'s eight call sites across this codebase
-        // having to separately remember to chain a warmup afterward. That
-        // "remember to chain it" approach is what 2.2.12/2.2.13 tried and
-        // why the exact same crash kept resurfacing somewhere new each time
-        // — AACPThemeController, UpdateRunner::rebuildCache(), CoreUpdater's
-        // own interrupted-update shutdown handler, and CoreCacheRebuilder
-        // all call clearSymfonyCache() too, and none of them were, or ever
-        // will need to be, individually patched for this.
+        // funnels through this one method, so this is the one place a
+        // rebuild can be guaranteed for every caller, present and future,
+        // instead of each of clearSymfonyCache()'s eight call sites across
+        // this codebase having to separately remember to chain one
+        // afterward.
         if ($this->environment !== 'test') {
             $warmed = $this->runConsoleCommand(['cache:warmup'], 180);
             if (!$warmed['success']) {
                 $problem = ($problem === null ? '' : $problem.'; ')
                     .'container warmup failed: '.$warmed['output'];
+            }
+
+            $compiled = $this->compileMappedAssets();
+            if (!$compiled['success']) {
+                $problem = ($problem === null ? '' : $problem.'; ')
+                    .'asset compile failed: '.$compiled['output'];
             }
         }
 
@@ -374,8 +396,20 @@ final class CacheRebuildManager
 
     /**
      * Write hashed files into public/assets so importmap URLs resolve after
-     * a zip overwrite. A separate PHP process, because the HTTP request that
-     * just landed the files still holds the old compiled container.
+     * a zip overwrite, against whatever container currently exists.
+     *
+     * Used two ways: directly, by the standalone "rebuild assets" AACP
+     * button, where recompiling against the current container is exactly
+     * what's wanted; and from inside purgeCacheDirectoryNow(), where the
+     * container was just rebuilt a moment earlier by the same method, so
+     * "current container" already means the fresh one.
+     *
+     * Never purges anything itself (it used to — see purgeCacheDirectoryNow()'s
+     * docblock for why forcing a purge from here, mid-request, was the actual
+     * cause of a crash 2.2.11 through 2.2.15 each chased somewhere else: it
+     * broke whatever ran later in the SAME request, including Symfony's own
+     * automatic kernel.terminate listeners, which this class has no way to
+     * skip or reorder around).
      *
      * @return array{success: bool, output: string}
      */
@@ -388,19 +422,6 @@ final class CacheRebuildManager
                 'success' => true,
                 'output' => self::OK.'asset-map:compile skipped (test).',
             ];
-        }
-
-        // A purge requested earlier in this same request (clearSymfonyCache())
-        // is deferred to kernel.terminate, but the compile below shells out to
-        // a brand-new PHP process right now. Left deferred, that subprocess
-        // boots against whatever container was compiled BEFORE this request —
-        // i.e. before the just-deployed code — and asset-map:compile fails
-        // with "cannot be found in any asset map paths" for anything new.
-        // Purging now (not via flushDeferredKernelPurge(), which also tries to
-        // finish the HTTP response) fixes the ordering without side effects.
-        if ($this->deferKernelPurge) {
-            $this->deferKernelPurge = false;
-            $this->purgeCacheDirectoryNow();
         }
 
         // asset-map:compile deletes the manifest before it writes a new one.
@@ -423,39 +444,27 @@ final class CacheRebuildManager
     }
 
     /**
-     * What CoreUpdater and PatchInstaller run the moment new files are on
-     * disk: wipe the compiled container, then dump the importmap so the next
-     * request is not a 404 for a hash the archive never contained.
+     * What CoreUpdater and PatchInstaller run once new files are on disk:
+     * schedules the compiled container to be wiped, rebuilt, and front-end
+     * assets recompiled — all of it deferred to kernel.terminate (see
+     * flushDeferredKernelPurge()'s docblock), never forced into this same
+     * request. The caller's own request keeps using the container it
+     * already booted with for whatever it still has left to do (a redirect,
+     * a render, framework-level listeners on kernel.response/terminate);
+     * only the request AFTER this one sees the rebuilt container.
      *
      * @return list<string>
      */
     public function afterCodeUpdate(): array
     {
-        $log = [];
-
         try {
             $this->clearSymfonyCache();
-            $log[] = 'Caches cleared.';
-        } catch (\Throwable $e) {
-            $log[] = 'WARNING: cache could not be cleared ('.$e->getMessage()
-                .'). Delete cp-core/var/cache/<env> by hand before using the site.';
-        }
 
-        // compileMappedAssets() forces the purge above to happen right now
-        // instead of waiting for kernel.terminate — and purgeCacheDirectoryNow()
-        // always rebuilds the container as part of that same purge (see its
-        // docblock), so by the time this call returns, the container is
-        // already complete. Nothing else needs to ask for that separately.
-        try {
-            $compiled = $this->compileMappedAssets();
-            $log[] = $compiled['success']
-                ? 'Frontend assets compiled (importmap hashes written to public/assets).'
-                : 'WARNING: frontend assets could not be compiled. New panel JS may 404 until AACP rebuilds assets. '.$compiled['output'];
+            return ['Cache clear scheduled; the container and front-end assets rebuild in the background once this response has been sent.'];
         } catch (\Throwable $e) {
-            $log[] = 'WARNING: frontend assets could not be compiled ('.$e->getMessage().').';
+            return ['WARNING: cache could not be cleared ('.$e->getMessage()
+                .'). Delete cp-core/var/cache/<env> by hand before using the site.'];
         }
-
-        return $log;
     }
 
     /**
