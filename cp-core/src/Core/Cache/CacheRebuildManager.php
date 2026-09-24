@@ -165,6 +165,27 @@ final class CacheRebuildManager
             @opcache_reset();
         }
 
+        // Structural, not opt-in: every path that empties the cache directory
+        // — deferred (flushDeferredKernelPurge, after the response is sent)
+        // or forced early (compileMappedAssets, mid-request) — funnels
+        // through this one method, so this is the one place a rebuild can be
+        // guaranteed for every caller, present and future, instead of each
+        // of clearSymfonyCache()'s eight call sites across this codebase
+        // having to separately remember to chain a warmup afterward. That
+        // "remember to chain it" approach is what 2.2.12/2.2.13 tried and
+        // why the exact same crash kept resurfacing somewhere new each time
+        // — AACPThemeController, UpdateRunner::rebuildCache(), CoreUpdater's
+        // own interrupted-update shutdown handler, and CoreCacheRebuilder
+        // all call clearSymfonyCache() too, and none of them were, or ever
+        // will need to be, individually patched for this.
+        if ($this->environment !== 'test') {
+            $warmed = $this->runConsoleCommand(['cache:warmup'], 180);
+            if (!$warmed['success']) {
+                $problem = ($problem === null ? '' : $problem.'; ')
+                    .'container warmup failed: '.$warmed['output'];
+            }
+        }
+
         $this->recordPurgeOutcome($problem);
     }
 
@@ -352,52 +373,6 @@ final class CacheRebuildManager
     }
 
     /**
-     * Compiles the DI container in a dedicated subprocess right after a
-     * purge, instead of leaving the very first thing that boots the kernel
-     * afterward to build it inline.
-     *
-     * Without this, that "first thing" could be a live visitor's request —
-     * a container compile interrupted by a PHP-FPM timeout is not a slow
-     * page, it is a permanently broken one, since Symfony writes the
-     * container's files incrementally rather than atomically — or it could
-     * be this very update pipeline's own next step: clearSymfonyCache() only
-     * defers the purge to kernel.terminate, but compileMappedAssets() (run
-     * right after this method, and by every prior version of this class)
-     * forces it to happen immediately so its own subprocess sees fresh
-     * files. That means AACPUpdateController's second request — the one
-     * that runs update hooks, module upgrades, config import — was already
-     * booting against an emptied cache directory with nothing having
-     * rebuilt it yet, which is exactly the request that kept failing with
-     * "required a compiled service file that does not exist" and left the
-     * "bekleyen işler" (pending work) list needing a manual second attempt.
-     * A dedicated CLI subprocess gets its own timeout budget (matching
-     * asset-map:compile's, same reasoning) and finishes or fails cleanly,
-     * instead of racing live traffic or the next pipeline step for who
-     * compiles the container first.
-     *
-     * @return array{success: bool, output: string}
-     */
-    public function warmContainer(): array
-    {
-        // Same reasoning as compileMappedAssets()'s test-environment skip:
-        // PatchInstallerTest and similar integration tests construct a real
-        // CacheRebuildManager, and a real 180s subprocess has no place there.
-        if ($this->environment === 'test') {
-            return [
-                'success' => true,
-                'output' => self::OK.'cache:warmup skipped (test).',
-            ];
-        }
-
-        if ($this->deferKernelPurge) {
-            $this->deferKernelPurge = false;
-            $this->purgeCacheDirectoryNow();
-        }
-
-        return $this->runConsoleCommand(['cache:warmup'], 180);
-    }
-
-    /**
      * Write hashed files into public/assets so importmap URLs resolve after
      * a zip overwrite. A separate PHP process, because the HTTP request that
      * just landed the files still holds the old compiled container.
@@ -460,23 +435,17 @@ final class CacheRebuildManager
 
         try {
             $this->clearSymfonyCache();
-            $log[] = 'Caches cleared; the next request rebuilds against the current code.';
+            $log[] = 'Caches cleared.';
         } catch (\Throwable $e) {
             $log[] = 'WARNING: cache could not be cleared ('.$e->getMessage()
                 .'). Delete cp-core/var/cache/<env> by hand before using the site.';
         }
 
-        try {
-            $warmed = $this->warmContainer();
-            $log[] = $warmed['success']
-                ? 'Container rebuilt in a dedicated process.'
-                : 'WARNING: container could not be rebuilt ahead of time; it will now compile inline on '
-                    .'whichever request needs it next — the update\'s own follow-up step or a live visitor. '
-                    .$warmed['output'];
-        } catch (\Throwable $e) {
-            $log[] = 'WARNING: container warmup failed ('.$e->getMessage().').';
-        }
-
+        // compileMappedAssets() forces the purge above to happen right now
+        // instead of waiting for kernel.terminate — and purgeCacheDirectoryNow()
+        // always rebuilds the container as part of that same purge (see its
+        // docblock), so by the time this call returns, the container is
+        // already complete. Nothing else needs to ask for that separately.
         try {
             $compiled = $this->compileMappedAssets();
             $log[] = $compiled['success']

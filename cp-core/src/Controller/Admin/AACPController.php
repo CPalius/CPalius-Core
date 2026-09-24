@@ -515,20 +515,10 @@ final class AACPController
         }
 
         try {
-            $result = $this->cacheRebuildManager->clearSymfonyCache();
-
-            // Same reasoning as CacheRebuildManager::afterCodeUpdate(): clearing
-            // alone only empties the compiled container, leaving it to whichever
-            // request boots the kernel next to rebuild it inline — a live visitor,
-            // or (during an update) the pipeline's own next step. An operator
-            // clicking this button by hand deserves the same guarantee an update
-            // gets: the container is fully rebuilt in a dedicated process before
-            // this action reports done, not left as a bet the next pageview wins.
-            $warmed = $this->cacheRebuildManager->warmContainer();
-            $result['output'] = trim($result['output'].PHP_EOL.$warmed['output']);
-            $result['success'] = $result['success'] && $warmed['success'];
-
-            return new JsonResponse($result);
+            // The purge this schedules always rebuilds the container as part
+            // of the same operation — see CacheRebuildManager::
+            // purgeCacheDirectoryNow() — so nothing further is needed here.
+            return new JsonResponse($this->cacheRebuildManager->clearSymfonyCache());
         } catch (\Throwable $e) {
             return new JsonResponse([
                 'success' => false,
