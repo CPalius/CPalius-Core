@@ -98,6 +98,11 @@ services:
         # constructors and fails the whole container.
         exclude:
             - '../src/Core/Migrate/Source/'
+            # Same reasoning: constructed per-listener by ModuleEventListenerGuardPass
+            # with scalar/object arguments autowiring cannot infer (an inner service,
+            # a method name, an event name...). Left in, the blanket resource above
+            # also registers it under its own FQCN and autowiring fails the container.
+            - '../src/Core/Module/ModuleEventListenerGuard.php'
 
     # N+1 tripwire: autoconfigure OFF, on purpose.
     #

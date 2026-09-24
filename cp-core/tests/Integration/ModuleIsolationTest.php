@@ -10,6 +10,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Modules\BrokenBoot\BrokenBootModule;
 use Modules\Healthy\HealthyModule;
+use Modules\ThrowingListener\BrokenRequestSubscriber;
+use Modules\ThrowingListener\ThrowingListenerModule;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpKernel\HttpKernelBrowser;
@@ -234,15 +236,87 @@ final class ModuleIsolationTest extends TestCase
         );
     }
 
+    // Claim 6 — Isolation covers raw Symfony listeners too, not just #[CpHook]
+
+    /**
+     * A module wired straight onto kernel.request via EventSubscriberInterface
+     * (ModuleEventListenerGuardPass) must not be able to 500 every page —
+     * HookManager only isolates the blessed #[CpHook] point; this proves the
+     * other door is covered too.
+     */
+    public function testHomepageStillRespondsWhileAModuleListenerThrowsOnEveryRequest(): void
+    {
+        $kernel = new EventListenerFailureTestKernel('test', true);
+
+        try {
+            $this->bootWithSchemaOn($kernel);
+
+            $browser = new HttpKernelBrowser($kernel);
+            $browser->request('GET', '/');
+
+            $status = $browser->getResponse()->getStatusCode();
+
+            self::assertLessThan(
+                500,
+                $status,
+                sprintf(
+                    'Ana sayfa %d dondu — kernel.request\'e dogrudan baglanan bozuk bir '
+                    .'modul dinleyicisi cekirdegi coketti (ModuleEventListenerGuardPass ihlali).',
+                    $status,
+                ),
+            );
+        } finally {
+            $kernel->shutdown();
+        }
+    }
+
+    /** The failing listener's real reason must be diagnosable, same as a boot-time quarantine. */
+    public function testBrokenModuleListenerIsLoggedWithItsRealReason(): void
+    {
+        $kernel = new EventListenerFailureTestKernel('test', true);
+
+        try {
+            $this->bootWithSchemaOn($kernel);
+
+            $browser = new HttpKernelBrowser($kernel);
+            $browser->request('GET', '/');
+        } finally {
+            $kernel->shutdown();
+        }
+
+        self::assertFileExists(
+            $this->quarantineLog,
+            'Bozuk dinleyici SESSIZCE yutuldu — karantina logu hic olusmadi.',
+        );
+
+        $log = (string) file_get_contents($this->quarantineLog);
+
+        self::assertStringContainsString(
+            BrokenRequestSubscriber::class,
+            $log,
+            'Karantina logu, patlayan dinleyicinin sinif adini icermeli.',
+        );
+        self::assertStringContainsString(
+            BrokenRequestSubscriber::FAILURE_MESSAGE,
+            $log,
+            'Karantina logu, hatanin GERCEK sebebini icermeli — genel bir mesaj yetmez.',
+        );
+    }
+
     // Helpers
 
     /** Boots kernel and rebuilds SQLite schema — required for HTTP tests that read DB. */
     private function bootWithSchema(): void
     {
-        $this->kernel->boot();
+        $this->bootWithSchemaOn($this->kernel);
+    }
+
+    private function bootWithSchemaOn(Kernel $kernel): void
+    {
+        $kernel->boot();
 
         // framework.test exposes test.service_container for private services.
-        $container = $this->kernel->getContainer()->get('test.service_container');
+        $container = $kernel->getContainer()->get('test.service_container');
 
         /** @var EntityManagerInterface $entityManager */
         $entityManager = $container->get(EntityManagerInterface::class);
@@ -296,5 +370,26 @@ final class CoreFailureTestKernel extends Kernel
     public function getCacheDir(): string
     {
         return $this->getProjectDir().'/cp-core/var/cache/test_core_failure';
+    }
+}
+
+/**
+ * Kernel testing ModuleEventListenerGuardPass: a module registers an ordinary
+ * EventSubscriberInterface on kernel.request (not #[CpHook]) that always
+ * throws. The compiler pass must rewrite it to run through
+ * ModuleEventListenerGuard so the exception never reaches the dispatcher.
+ */
+final class EventListenerFailureTestKernel extends Kernel
+{
+    public function registerBundles(): iterable
+    {
+        yield from parent::registerBundles();
+
+        yield new ThrowingListenerModule();
+    }
+
+    public function getCacheDir(): string
+    {
+        return $this->getProjectDir().'/cp-core/var/cache/test_event_listener_failure';
     }
 }

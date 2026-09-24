@@ -258,7 +258,7 @@ final class ForumSectionHierarchyService
         return [[
             'division' => $section,
             'categories' => array_map(
-                static fn (ForumSection $cat) => [
+                fn (ForumSection $cat) => [
                     'category' => $cat,
                     'subcategories' => $this->getSortedChildren($cat, ForumSectionType::Subcategory),
                 ],

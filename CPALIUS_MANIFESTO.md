@@ -177,6 +177,50 @@ We strictly avoid global Node.js/npm dependencies in the core repository.
 
     Theme Contract: Themes are completely decoupled. The theme developer may use Vite or esbuild. The theme configuration (theme.json) only declares built entry points (dist/). CPalius only serves the compiled output; it does not compile theme assets.
 
+8. Module & Theme Developer Contract (Enforced, Not Requested)
+
+Section 2 states "Core Never Dies" as a boot-time property. This section extends the same guarantee to a running site and states it as a contract: a module or theme that breaks the rules below is rejected or isolated by the platform itself, automatically, at the moment the rule is broken. Developer discipline is not the safety mechanism — enforcement is (same principle as Law 5's "security is enforced by default").
+
+Law 8.1: Package Isolation (already enforced — ModulePackageContract)
+
+Every module package is checked before it can ever activate, by code, not by review:
+
+    Must not write into or reference cp-core/ or cp-includes/ (path traversal and core paths are rejected at the ZIP-entry level).
+
+    Must not declare namespace App\ anywhere in its own files — that namespace is core-only.
+
+    Must ship module.json with a bundle field matching Modules\<DirName>\<DirName>Module, the bundle class file itself, and Install/ModuleInstaller.php.
+
+    A failing package is refused activation outright; it never reaches active_modules.php.
+
+Law 8.2: Compile-Time Rejection (already enforced — ModuleActivator, Law 2.2)
+
+Before a module joins active_modules.php, activation runs an isolated dry-run (cache clear, YAML lint, container lint) in a throwaway process. Any failure quarantines the module permanently and it is never activated. This is a hard gate, not a warning.
+
+Law 8.3: Every Request-Time Extension Point Is Isolated, Including the Ones a Module Was Never Told About
+
+    The blessed extension point is #[CpHook]: HookManager wraps every hook-point call (flat-file and attribute-based) in try/catch. A throw is logged to cp-core/var/log/module_quarantine.log and the request continues.
+
+    A module MAY still register an ordinary Symfony EventSubscriberInterface / #[AsEventListener] directly on kernel.* events, when #[CpHook] cannot express what it needs. This is allowed, but it does not grant immunity: ModuleEventListenerGuardPass rewrites every Modules\*-owned kernel.event_listener / kernel.event_subscriber tag, at compile time, to run through ModuleEventListenerGuard instead of the module's class directly. A throw there is caught, logged with the real class and reason, and the request keeps going — exactly like a #[CpHook] failure. App\ (core) listeners are never touched; a core listener throwing is a real core bug and must propagate.
+
+    Practical effect: there is no code path left where one module's runtime exception can 500 a page it does not own, let alone /aacp. If you find one, it is a bug in the guard, not a rule the module broke.
+
+Law 8.4: SQL Migrations Must Be Idempotent — the Ledger Trusts the Filename, Not the Content
+
+Resources/migrations/*.sql files are tracked as "applied" by filename alone, once, forever — there is no checksum re-validation. Consequences a module author must design for:
+
+    Every statement MUST be safe to run more than once: CREATE TABLE IF NOT EXISTS, an information_schema-guarded ALTER TABLE, INSERT IGNORE. A migration that is not idempotent and somehow runs twice (a ledger reset, a restored backup) is the module's bug, not the platform's.
+
+    Once shipped and applied anywhere, a migration file's content is effectively frozen. Fixing a mistake in it does not re-apply the fix to a site that already ran the old version — ship a new, separately-named migration file instead.
+
+    cp:doctor's module_sql_integrity check verifies that every table/column an applied migration claims to create actually exists in the database. It reports drift; it does not repair it automatically. Repair is an explicit App\Core\Update\UpdateHookInterface that forgets the specific ledger entry so the (idempotent) file is retried — see RepairDroppedCommentedSqlHook for the reference shape.
+
+Law 8.5: Theme Contract (extends Law 7)
+
+    A theme ships only compiled output under Resources/dist/ (or equivalent) plus theme.json declaring entry points. The platform serves what is there; it does not compile theme assets, and a theme's build tooling is the theme author's own choice and problem.
+
+    A theme's Twig templates render inside the same request-isolation boundary as everything else — a template error is caught at the response layer like any other exception; it does not require or receive special-casing here.
+
 💡 How to use this Manifesto
 
 Whenever starting a new development sprint or task:

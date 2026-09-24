@@ -15,6 +15,7 @@ use App\Core\Hook\DependencyInjection\Compiler\HookRegistrationPass;
 use App\Core\Localization\DependencyInjection\Compiler\LocalesPatternPass;
 use App\Core\Menu\DependencyInjection\Compiler\AdminMenuRegistrationPass;
 use App\Core\Module\DependencyInjection\Compiler\ModuleContributionPass;
+use App\Core\Module\DependencyInjection\Compiler\ModuleEventListenerGuardPass;
 use App\Core\Module\DependencyInjection\Compiler\ModuleMigrationsPass;
 use App\Core\Module\ModuleEntityMappingResolver;
 use App\Core\Module\ModuleRegistry;
@@ -180,6 +181,10 @@ class Kernel extends BaseKernel
 
         // HookRegistrationPass needs default priority: after autowire, before removing.
         $container->addCompilerPass(new HookRegistrationPass());
+        // Must run before FrameworkBundle's RegisterListenersPass (TYPE_BEFORE_REMOVING,
+        // a later stage than this pass's default TYPE_BEFORE_OPTIMIZATION) so the
+        // original module tags are already replaced by the time it reads them.
+        $container->addCompilerPass(new ModuleEventListenerGuardPass());
         $container->addCompilerPass(new ApiRegistrationPass());
         $container->addCompilerPass(new CronRegistrationPass());
 

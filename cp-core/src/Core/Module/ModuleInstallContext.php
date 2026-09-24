@@ -306,13 +306,20 @@ final class ModuleInstallContext
         $statements = [];
 
         foreach (preg_split('/;\s*(?:\r\n|\n|$)/', $sql) ?: [] as $chunk) {
-            $chunk = trim($chunk);
+            // A chunk is a statement plus whatever full-line "--" comments sit
+            // directly above it (there is no ';' between a comment block and the
+            // statement it explains). Testing whether the WHOLE chunk starts with
+            // "--" used to discard the statement along with its comment; strip
+            // just the comment lines instead, so the statement survives.
+            $lines = preg_split('/\r\n|\n/', $chunk) ?: [];
+            $lines = array_filter($lines, static fn (string $line): bool => !str_starts_with(trim($line), '--'));
+            $statement = trim(implode("\n", $lines));
 
-            if ($chunk === '' || str_starts_with($chunk, '--')) {
+            if ($statement === '') {
                 continue;
             }
 
-            $statements[] = $chunk;
+            $statements[] = $statement;
         }
 
         return $statements;

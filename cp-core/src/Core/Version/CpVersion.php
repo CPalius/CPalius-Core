@@ -35,7 +35,7 @@ final class CpVersion
      * repository. Nothing generates this — a build step that writes it would
      * mean the tarball and the repository could disagree.
      */
-    public const VERSION = '2.2.6';
+    public const VERSION = '2.2.7';
 
     public const RELEASED_AT = '2026-09-24';
 

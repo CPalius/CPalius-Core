@@ -132,6 +132,18 @@ final class CacheRebuildManager
             @\fastcgi_finish_request();
         }
 
+        $this->purgeCacheDirectoryNow();
+    }
+
+    /**
+     * Does the purge itself, without touching the HTTP response — safe to call
+     * mid-request, unlike flushDeferredKernelPurge() which assumes the response
+     * already went out. compileMappedAssets() calls this right before it, so
+     * the subprocess it spawns reads a container that matches the code just
+     * deployed instead of whatever was compiled before this request started.
+     */
+    private function purgeCacheDirectoryNow(): void
+    {
         $problem = null;
 
         try {
@@ -355,6 +367,19 @@ final class CacheRebuildManager
                 'success' => true,
                 'output' => self::OK.'asset-map:compile skipped (test).',
             ];
+        }
+
+        // A purge requested earlier in this same request (clearSymfonyCache())
+        // is deferred to kernel.terminate, but the compile below shells out to
+        // a brand-new PHP process right now. Left deferred, that subprocess
+        // boots against whatever container was compiled BEFORE this request —
+        // i.e. before the just-deployed code — and asset-map:compile fails
+        // with "cannot be found in any asset map paths" for anything new.
+        // Purging now (not via flushDeferredKernelPurge(), which also tries to
+        // finish the HTTP response) fixes the ordering without side effects.
+        if ($this->deferKernelPurge) {
+            $this->deferKernelPurge = false;
+            $this->purgeCacheDirectoryNow();
         }
 
         // asset-map:compile deletes the manifest before it writes a new one.
