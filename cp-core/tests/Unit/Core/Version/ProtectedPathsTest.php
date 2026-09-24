@@ -37,6 +37,7 @@ final class ProtectedPathsTest extends TestCase
 
         // .env holds the database password; overwriting it locks a site out of
         // its own data.
+        yield 'active modules' => ['cp-core/config/active_modules.php'];
         yield 'dotenv' => ['.env'];
         yield 'dotenv local' => ['.env.local'];
         yield 'nested dotenv' => ['cp-core/.env.prod'];

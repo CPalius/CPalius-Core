@@ -97,6 +97,13 @@ final class ProtectedPaths
             return false;
         }
 
+        // Which modules are switched on is the site's choice, like .env.
+        // The package still updates every module's code. Writing this file
+        // would turn back on whatever the operator had switched off.
+        if ($relative === 'cp-core/config/active_modules.php') {
+            return true;
+        }
+
         // Anything else named .env or .env.<something>, at any depth, is site
         // configuration and stays untouched.
         $name = basename($relative);
