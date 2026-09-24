@@ -229,18 +229,9 @@ final class CoreUpdater
         // Only now is the tree consistent again.
         $this->clearMarker();
 
-        // The compiled container, the Twig cache, the translation catalogues
-        // and the AssetMapper dump on disk all describe the code that was
-        // running a second ago. In prod Symfony never rebuilds them on its
-        // own. Leaving this to a second click would mean every request in
-        // between runs NEW files against an OLD container — and new importmap
-        // hashes that the zip never contained, because public/assets is
-        // gitignored. afterCodeUpdate() closes both windows.
-        //
-        // Not fatal on failure, and deliberately not a rollback: the files are
-        // correct and consistent, and a cache an operator can delete over FTP is
-        // a far better place to be than a restored older version.
-        $log[] = $this->clearCacheReporting();
+        // Cache is deliberately NOT cleared here — see finishCacheRebuild()'s
+        // docblock for why purging the compiled container inside this same
+        // method, before the caller has run migrations, was itself the bug.
 
         // Staging and the archive are large and now worthless. The backup stays:
         // it is the only copy of the previous version, and an operator who finds
@@ -249,6 +240,39 @@ final class CoreUpdater
         $log[] = 'Temporary files removed; backup kept at cp-core/var/update.';
 
         return $log;
+    }
+
+    /**
+     * Purges and rebuilds the compiled container — call this AFTER running
+     * migrations against the files apply() just wrote, never before.
+     *
+     * This used to run inside apply() itself, right after installing files.
+     * That was the actual cause of a crash that 2.2.11 through 2.2.14 each
+     * tried to fix as if it were somewhere else: AACPUpdateController runs
+     * migrateOnly() in the SAME request, immediately after apply() returns,
+     * using services (the Doctrine migrations DependencyFactory, and
+     * whatever it lazily resolves — an event-listener proxy included) that
+     * were already resolved from the container THIS request booted with,
+     * before any file was touched. Purging that container mid-request, as
+     * apply() used to, does not just leave a gap for some LATER request to
+     * fall into — it pulls the rug out from under lazily-loaded services
+     * this SAME request's own migration step is about to need, because the
+     * directory their factory files live in was just renamed away. No
+     * amount of rebuilding it faster afterward (2.2.12's dedicated
+     * subprocess, 2.2.14's guarantee that every purge rebuilds) fixes that:
+     * the new container isn't the one the already-running request is bound
+     * to. The old one has to survive until migrations are done using it.
+     *
+     * The comment this replaced said exactly this about migrations —
+     * "the one step that survives the window" — while apply() (which the
+     * caller always runs first) was itself closing that window before
+     * migrations ever got a turn.
+     *
+     * @return string
+     */
+    public function finishCacheRebuild(): string
+    {
+        return $this->clearCacheReporting();
     }
 
     /**
@@ -343,7 +367,14 @@ final class CoreUpdater
         }
 
         $this->clearMarker();
-        $log[] = $this->clearCacheReporting();
+
+        // Cache is deliberately not cleared here — same reasoning as apply();
+        // see finishCacheRebuild()'s docblock. The controller calls it after
+        // this, once nothing else in the request still needs the old
+        // container (recover() runs a dry-run status check right after
+        // resume() returns, which is exactly the kind of lazy service
+        // resolution that must not have its container pulled out from
+        // under it mid-request).
 
         $this->fs->remove([$root, \dirname($root).'/download-'.$state['version'].'.zip']);
         $log[] = 'Temporary files removed; backup kept at cp-core/var/update.';
@@ -377,8 +408,9 @@ final class CoreUpdater
         $this->restore($state['backup']);
         $this->clearMarker();
 
+        // Cache is deliberately not cleared here — see finishCacheRebuild()'s
+        // docblock and resume()'s comment above; same reasoning applies.
         $log = [\sprintf('Restored the files that were in place before %s.', $state['version'])];
-        $log[] = $this->clearCacheReporting();
 
         return $log;
     }

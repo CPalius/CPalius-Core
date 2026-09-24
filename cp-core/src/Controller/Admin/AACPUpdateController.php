@@ -234,6 +234,22 @@ final class AACPUpdateController extends AbstractController
 
         $results = $this->runner->run(dryRun: true);
 
+        // Deferred, not finishCacheRebuild(): this method renders a template
+        // below, through this same request's already-instantiated services.
+        // Forcing the purge+rebuild now — as finishCacheRebuild() does, for
+        // upgrade()'s redirect-only response — risks the render itself
+        // needing something lazily resolved from the container being pulled
+        // out from under it. Deferring lets the purge and rebuild happen
+        // safely in the background after this response is already sent.
+        if ($error === null) {
+            try {
+                $this->cacheRebuild->clearSymfonyCache();
+            } catch (\Throwable) {
+                // Surfaced to the operator via cachePurgeFailure in viewData(),
+                // not here — this action's own log is about resume/rollback.
+            }
+        }
+
         return $this->render('aacp/updates/index.html.twig', $this->viewData([
             'results' => $results,
             'pending' => $this->pendingCount($results),
@@ -273,11 +289,22 @@ final class AACPUpdateController extends AbstractController
          * panel was what died, the operator could never reach the button that
          * would have run the migrations. The site was down with no way back in.
          *
-         * Migrations are the one step that survives the window. They need the
-         * DBAL connection and the migration files on disk; neither depends on
-         * the compiled container that is about to be thrown away. Update hooks,
-         * module upgrades and the cache rebuild still wait for the next request,
-         * because those DO run project services through the old factory.
+         * Migrations are the one step that survives the window — but only
+         * because apply() no longer purges the compiled container itself
+         * (see CoreUpdater::finishCacheRebuild()'s docblock). This request
+         * booted with, and $this->runner already holds, services resolved
+         * from the container that existed BEFORE apply() wrote a single new
+         * file. Migrations lazily resolving anything through those
+         * already-instantiated services — the Doctrine migrations
+         * DependencyFactory has done exactly this — need that container's
+         * files to still be sitting where they were when this request
+         * started. Purging it here, before migrations run, doesn't just
+         * leave a gap for some later request: it deletes the files THIS
+         * request's own lazy service resolution is about to reach for.
+         * That used to happen inside apply() itself and was the actual
+         * cause of a crash 2.2.11 through 2.2.14 each chased in the wrong
+         * place. The container is purged and rebuilt below, only once
+         * migrations no longer need the old one.
          *
          * A failure here is reported and not retried: the files are already the
          * new version, so the honest thing is to say the schema did not move and
@@ -292,6 +319,19 @@ final class AACPUpdateController extends AbstractController
                 }
             } catch (\Throwable $e) {
                 $migrationError = $e->getMessage();
+            }
+
+            // Now — and only now — is it safe to purge the compiled
+            // container: migrations just finished with the old one, and
+            // nothing else left in this request needs it. Runs regardless
+            // of $migrationError: the files on disk are already the new
+            // version either way, and leaving a container that describes
+            // neither the old nor the new code in place is worse than a
+            // stale cache an operator could otherwise just clear by hand.
+            try {
+                $log[] = $this->updater->finishCacheRebuild();
+            } catch (\Throwable $e) {
+                $log[] = 'WARNING: cache could not be rebuilt after migrations ('.$e->getMessage().').';
             }
         }
 
@@ -311,17 +351,19 @@ final class AACPUpdateController extends AbstractController
             $this->addFlash('upgrade_error', $this->translator->trans('aacp.version.upgrade.migration_failed', ['error' => $migrationError]));
         }
 
-        // Files are on disk and the schema moved, but update hooks, module
-        // upgrades, config import and the cache rebuild are still pending —
-        // on purpose, per the docblock above: they run project services
-        // through the container, which this request's is stale the moment
-        // apply() returns. Left here, an operator has to notice the "Bekleyen
-        // işler" table and click Apply a second time, and a site serving
-        // real traffic in between is running new code against whatever of
-        // the old state hasn't caught up yet. Flagging it instead of running
-        // it here lets the NEXT request — a fresh container — auto-submit
-        // the same "Güncellemeyi çalıştır" action the operator would have
-        // clicked anyway, so one click finishes the whole update.
+        // Files are on disk, the schema moved, and this request's own
+        // finishCacheRebuild() call above already left a freshly-compiled
+        // container in place. Update hooks, module upgrades and config
+        // import are still pending on purpose: they run project services
+        // through THAT now-current container rather than this request's
+        // already-instantiated ones, so they need a request that boots
+        // fresh — this one is already past that point. UpdateRunner's own
+        // pipeline rebuilds the container again at the end of that request
+        // too, since hooks/module upgrades/config import can themselves
+        // change what needs compiling. Flagging it instead of running it
+        // here lets the NEXT request auto-submit the same "Güncellemeyi
+        // çalıştır" action the operator would have clicked anyway, so one
+        // click finishes the whole update.
         if ($error === null && $migrationError === null) {
             $this->addFlash('auto_apply', '1');
         }
