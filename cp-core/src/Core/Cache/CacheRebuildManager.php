@@ -352,6 +352,52 @@ final class CacheRebuildManager
     }
 
     /**
+     * Compiles the DI container in a dedicated subprocess right after a
+     * purge, instead of leaving the very first thing that boots the kernel
+     * afterward to build it inline.
+     *
+     * Without this, that "first thing" could be a live visitor's request —
+     * a container compile interrupted by a PHP-FPM timeout is not a slow
+     * page, it is a permanently broken one, since Symfony writes the
+     * container's files incrementally rather than atomically — or it could
+     * be this very update pipeline's own next step: clearSymfonyCache() only
+     * defers the purge to kernel.terminate, but compileMappedAssets() (run
+     * right after this method, and by every prior version of this class)
+     * forces it to happen immediately so its own subprocess sees fresh
+     * files. That means AACPUpdateController's second request — the one
+     * that runs update hooks, module upgrades, config import — was already
+     * booting against an emptied cache directory with nothing having
+     * rebuilt it yet, which is exactly the request that kept failing with
+     * "required a compiled service file that does not exist" and left the
+     * "bekleyen işler" (pending work) list needing a manual second attempt.
+     * A dedicated CLI subprocess gets its own timeout budget (matching
+     * asset-map:compile's, same reasoning) and finishes or fails cleanly,
+     * instead of racing live traffic or the next pipeline step for who
+     * compiles the container first.
+     *
+     * @return array{success: bool, output: string}
+     */
+    public function warmContainer(): array
+    {
+        // Same reasoning as compileMappedAssets()'s test-environment skip:
+        // PatchInstallerTest and similar integration tests construct a real
+        // CacheRebuildManager, and a real 180s subprocess has no place there.
+        if ($this->environment === 'test') {
+            return [
+                'success' => true,
+                'output' => self::OK.'cache:warmup skipped (test).',
+            ];
+        }
+
+        if ($this->deferKernelPurge) {
+            $this->deferKernelPurge = false;
+            $this->purgeCacheDirectoryNow();
+        }
+
+        return $this->runConsoleCommand(['cache:warmup'], 180);
+    }
+
+    /**
      * Write hashed files into public/assets so importmap URLs resolve after
      * a zip overwrite. A separate PHP process, because the HTTP request that
      * just landed the files still holds the old compiled container.
@@ -418,6 +464,17 @@ final class CacheRebuildManager
         } catch (\Throwable $e) {
             $log[] = 'WARNING: cache could not be cleared ('.$e->getMessage()
                 .'). Delete cp-core/var/cache/<env> by hand before using the site.';
+        }
+
+        try {
+            $warmed = $this->warmContainer();
+            $log[] = $warmed['success']
+                ? 'Container rebuilt in a dedicated process.'
+                : 'WARNING: container could not be rebuilt ahead of time; it will now compile inline on '
+                    .'whichever request needs it next — the update\'s own follow-up step or a live visitor. '
+                    .$warmed['output'];
+        } catch (\Throwable $e) {
+            $log[] = 'WARNING: container warmup failed ('.$e->getMessage().').';
         }
 
         try {
