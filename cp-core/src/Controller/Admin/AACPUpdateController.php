@@ -46,6 +46,7 @@ final class AACPUpdateController extends AbstractController
     private const CSRF_UPGRADE = 'aacp_updates_upgrade';
     private const CSRF_PATCH = 'aacp_updates_patch';
     private const CSRF_RECOVER = 'aacp_updates_recover';
+    private const CSRF_CHECK = 'aacp_updates_check';
 
     /**
      * How stale the stored release check may be before opening this screen
@@ -80,6 +81,8 @@ final class AACPUpdateController extends AbstractController
         $results = $this->runner->run(dryRun: true);
 
         $flashed = $request->getSession()->getFlashBag()->get('patch_log');
+        $checkLog = $request->getSession()->getFlashBag()->get('check_log');
+        $checkError = $request->getSession()->getFlashBag()->get('check_error');
 
         return $this->render('aacp/updates/index.html.twig', $this->viewData([
             'results' => $results,
@@ -90,7 +93,46 @@ final class AACPUpdateController extends AbstractController
             'upgradeError' => null,
             'patchLog' => $flashed !== [] ? $flashed : null,
             'patchError' => null,
+            'checkLog' => $checkLog[0] ?? null,
+            'checkError' => $checkError[0] ?? null,
         ]));
+    }
+
+    /**
+     * Asks the release feed now, ignoring the staleness window.
+     *
+     * Opening the screen refreshes only when the stored answer is old. An
+     * operator who just published a release, or who landed here inside that
+     * window, needs a way to ask again without waiting.
+     */
+    #[Route('/check', name: 'check', methods: ['POST'])]
+    public function check(Request $request): Response
+    {
+        if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(self::CSRF_CHECK, (string) $request->request->get('_token')))) {
+            throw new BadRequestHttpException($this->translator->trans('aacp.common.error.invalid_csrf'));
+        }
+
+        $line = $this->releases->refresh();
+        $this->patches->refresh();
+
+        if (str_starts_with($line, 'Release check failed')) {
+            $this->addFlash('check_error', $this->translator->trans('aacp.version.check.failed', [
+                'reason' => $line,
+            ]));
+        } else {
+            $status = $this->releases->status();
+            if ($status !== null && $status['outdated']) {
+                $this->addFlash('check_log', $this->translator->trans('aacp.version.check.found', [
+                    'version' => $status['version'],
+                ]));
+            } else {
+                $this->addFlash('check_log', $this->translator->trans('aacp.version.check.current', [
+                    'version' => CpVersion::VERSION,
+                ]));
+            }
+        }
+
+        return $this->redirectToRoute('aacp_updates_index');
     }
 
     /**
@@ -294,6 +336,7 @@ final class AACPUpdateController extends AbstractController
 
         return array_merge([
             'token' => $this->csrfTokenManager->getToken(self::CSRF_APPLY)->getValue(),
+            'checkToken' => $this->csrfTokenManager->getToken(self::CSRF_CHECK)->getValue(),
             'upgradeToken' => $this->csrfTokenManager->getToken(self::CSRF_UPGRADE)->getValue(),
             'patchToken' => $this->csrfTokenManager->getToken(self::CSRF_PATCH)->getValue(),
             'recoverToken' => $this->csrfTokenManager->getToken(self::CSRF_RECOVER)->getValue(),

@@ -84,8 +84,21 @@
                             {{ 'aacp.version.checked_at'|trans({ when: release.checked_at|date('Y-m-d H:i') }) }}
                         </p>
                     {% endif %}
+
+                    <form method="post" action="{{ path('aacp_updates_check') }}" class="mt-sp-xs">
+                        <input type="hidden" name="_token" value="{{ checkToken }}">
+                        <button type="submit" class="btn btn-secondary">
+                            {{ 'aacp.version.check.button'|trans }}
+                        </button>
+                    </form>
                 </div>
             </div>
+
+            {% if checkError is defined and checkError %}
+                <div class="toast toast-warning mt-sp-sm">{{ checkError }}</div>
+            {% elseif checkLog is defined and checkLog %}
+                <div class="toast toast-success mt-sp-sm">{{ checkLog }}</div>
+            {% endif %}
 
             {% if upgradeError is not null %}
                 <div class="toast toast-danger mt-sp-sm">
