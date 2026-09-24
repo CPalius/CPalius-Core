@@ -241,7 +241,9 @@ final class ThreatAnalyzer
                 continue;
             }
             if (\is_scalar($value)) {
-                $sample[$key] = mb_substr((string) $value, 0, 180);
+                $sample[$key] = $this->isSecretField($key)
+                    ? '[redacted]'
+                    : mb_substr((string) $value, 0, 180);
             }
             if (\count($sample) >= 12) {
                 break;
@@ -249,5 +251,10 @@ final class ThreatAnalyzer
         }
 
         return $sample;
+    }
+
+    private function isSecretField(string $key): bool
+    {
+        return preg_match('/password|passwd|secret|token|csrf|authorization/i', $key) === 1;
     }
 }

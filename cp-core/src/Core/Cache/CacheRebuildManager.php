@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Cache;
 
+use App\Core\Asset\TailwindBuildSeeder;
 use App\Core\OriginCache\OriginCachePurger;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
@@ -353,6 +354,16 @@ final class CacheRebuildManager
             return [
                 'success' => true,
                 'output' => self::OK.'asset-map:compile skipped (test).',
+            ];
+        }
+
+        // asset-map:compile deletes the manifest before it writes a new one.
+        // Running it without the built CSS throws, and the site then 500s on
+        // every page because the good manifest from the zip is already gone.
+        if (!(new TailwindBuildSeeder($this->projectDir))->seed()) {
+            return [
+                'success' => true,
+                'output' => self::OK.'asset-map:compile skipped; shipped public/assets kept (built Tailwind CSS was not on disk).',
             ];
         }
 
