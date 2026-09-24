@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Modules\Importer\Markup;
+namespace Modules\Forum\Markup;
 
 /**
  * Turns forum BBCode into HTML.

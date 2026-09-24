@@ -202,6 +202,24 @@ final class ModuleRegistry
      */
     private function validate(string $moduleClass): ?string
     {
+        // Checked ahead of class_exists() on purpose. A production install runs
+        // composer install --optimize-autoloader, which bakes every PSR-4 class
+        // into a static classmap array; that array is generated once and never
+        // re-checked against disk. If a module's directory is deleted by hand
+        // (FTP, "just remove the files") without regenerating the autoloader,
+        // class_exists() still finds the class in the stale classmap and
+        // reports true — then the very next include of that classmapped path
+        // fatals with "failed to open stream", uncaught, anywhere the class is
+        // used (Twig namespace registration, an event listener, a direct
+        // `new`). Checking the file directly is the only way to catch this
+        // before it becomes a runtime crash instead of a quarantine entry.
+        if ($this->modulesDir !== null) {
+            $relativePath = $this->classToRelativeFilePath($moduleClass);
+            if ($relativePath !== null && !is_file($this->modulesDir.'/'.$relativePath)) {
+                return 'Module file missing on disk (deleted without deactivating first).';
+            }
+        }
+
         // class_exists() triggers the autoloader, so a syntax error surfaces here.
         try {
             $exists = class_exists($moduleClass);
@@ -226,6 +244,22 @@ final class ModuleRegistry
         }
 
         return null;
+    }
+
+    /**
+     * PSR-4-resolves a `Modules\...` class name to its path relative to
+     * modulesDir, the same way Composer's autoloader would — but by deriving
+     * it, not by trusting a generated classmap. Returns null for a class
+     * outside the `Modules\` root (nothing under this registry's purview).
+     */
+    private function classToRelativeFilePath(string $moduleClass): ?string
+    {
+        $prefix = 'Modules\\';
+        if (!str_starts_with($moduleClass, $prefix)) {
+            return null;
+        }
+
+        return str_replace('\\', '/', substr($moduleClass, \strlen($prefix))).'.php';
     }
 
     private function quarantine(string $moduleClass, string $reason): void

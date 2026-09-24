@@ -35,9 +35,9 @@ final class CpVersion
      * repository. Nothing generates this — a build step that writes it would
      * mean the tarball and the repository could disagree.
      */
-    public const VERSION = '2.2.10';
+    public const VERSION = '2.2.11';
 
-    public const RELEASED_AT = '2026-09-24';
+    public const RELEASED_AT = '2026-09-25';
 
     /**
      * Release code name, for humans. Never parsed, never compared, never part

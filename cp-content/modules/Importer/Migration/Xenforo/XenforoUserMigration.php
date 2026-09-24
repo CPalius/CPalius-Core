@@ -15,7 +15,7 @@ use App\Core\Migrate\MigrationSourceInterface;
 use App\Core\Migrate\Source\DatabaseSource;
 use App\Core\Migrate\Source\ForeignDatabase;
 use Doctrine\ORM\EntityManagerInterface;
-use Modules\Importer\Markup\BbCodeConverter;
+use Modules\Forum\Markup\BbCodeConverter;
 use Modules\Importer\Migration\DatabaseOptions;
 use Modules\Importer\Migration\ImportedAccountEmail;
 use Modules\Importer\Source\ForumDataFolder;

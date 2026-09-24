@@ -6,7 +6,7 @@ namespace App\Core\Aacp\Widgets;
 
 use App\Core\Aacp\SystemWidgetData;
 use App\Core\Aacp\SystemWidgetProviderInterface;
-use App\Repository\PerformanceBackendStatusRepository;
+use App\Core\Performance\PerformanceBackendRegistry;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -15,14 +15,14 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 final class NginxPageSpeedSystemWidgetProvider implements SystemWidgetProviderInterface
 {
     public function __construct(
-        private readonly PerformanceBackendStatusRepository $repository,
+        private readonly PerformanceBackendRegistry $registry,
         private readonly TranslatorInterface $translator,
     ) {
     }
 
     public function getWidget(): SystemWidgetData
     {
-        $status = $this->repository->findOneByBackendId('pagespeed');
+        $status = $this->registry->getStatus('pagespeed');
         $enabled = $status?->isEnabled() ?? false;
 
         return new SystemWidgetData(

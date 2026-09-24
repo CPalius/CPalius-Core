@@ -16,7 +16,7 @@ use App\Core\Migrate\Source\DatabaseSource;
 use App\Core\Migrate\Source\ForeignDatabase;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Migrate\ForumPostDestination;
-use Modules\Importer\Markup\BbCodeConverter;
+use Modules\Forum\Markup\BbCodeConverter;
 use Modules\Importer\Markup\ForumAttachMarkup;
 use Modules\Importer\Migration\DatabaseOptions;
 use Modules\Importer\Source\LocalAssetIntake;

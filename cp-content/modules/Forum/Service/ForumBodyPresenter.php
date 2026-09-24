@@ -7,7 +7,7 @@ namespace Modules\Forum\Service;
 use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use App\Repository\UserRepository;
-use Modules\Importer\Markup\BbCodeConverter;
+use Modules\Forum\Markup\BbCodeConverter;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 

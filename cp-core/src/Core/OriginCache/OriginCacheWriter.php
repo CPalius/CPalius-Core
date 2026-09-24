@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Core\OriginCache;
 
 use App\Core\Localization\LocaleProvider;
+use App\Core\Performance\PerformanceBackendRegistry;
 use App\Core\Settings\SettingsRegistry;
-use App\Repository\PerformanceBackendStatusRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -25,7 +25,7 @@ final class OriginCacheWriter implements EventSubscriberInterface
         private readonly OriginCacheStore $store,
         private readonly OriginCachePolicy $policy,
         private readonly OriginHtmlProcessor $processor,
-        private readonly PerformanceBackendStatusRepository $statusRepository,
+        private readonly PerformanceBackendRegistry $registry,
         private readonly SettingsRegistry $settingsRegistry,
         private readonly Security $security,
         private readonly LoggerInterface $logger,
@@ -132,7 +132,7 @@ final class OriginCacheWriter implements EventSubscriberInterface
 
     private function isOriginEnabled(): bool
     {
-        $status = $this->statusRepository->findOneByBackendId('cpalius');
+        $status = $this->registry->getStatus('cpalius');
 
         return $status !== null && $status->isEnabled() && $this->store->isEnabledOnDisk();
     }

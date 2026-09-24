@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Modules\Importer\Tests\Unit;
+namespace Modules\Forum\Tests\Unit;
 
-use Modules\Importer\Markup\BbCodeConverter;
+use Modules\Forum\Markup\BbCodeConverter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

@@ -20,10 +20,20 @@ final class ModuleRegistryTest extends TestCase
 {
     private string $workDir;
 
+    /**
+     * Where the fixture module classes below actually live on disk (the
+     * autoload-dev PSR-4 root for `Modules\`). ModuleRegistry now verifies a
+     * module's file exists under modulesDir before trusting class_exists(),
+     * so tests exercising "healthy" fixtures must point modulesDir here, not
+     * at the empty scratch workDir.
+     */
+    private string $fixturesDir;
+
     protected function setUp(): void
     {
         $this->workDir = \dirname(__DIR__, 4).'/var/test-modules/'.bin2hex(random_bytes(6));
         mkdir($this->workDir, 0775, true);
+        $this->fixturesDir = \dirname(__DIR__, 4).'/tests/Fixtures/Modules';
     }
 
     protected function tearDown(): void
@@ -64,7 +74,7 @@ final class ModuleRegistryTest extends TestCase
 
         $quarantined = $registry->getQuarantinedModules();
         self::assertCount(1, $quarantined);
-        self::assertStringContainsString('not found', $quarantined[0]['reason']);
+        self::assertStringContainsString('missing on disk', $quarantined[0]['reason']);
     }
 
     /** Isolation essence: a broken module must not affect healthy siblings. */
@@ -132,7 +142,7 @@ final class ModuleRegistryTest extends TestCase
         $registry = new ModuleRegistry(
             activeModulesFile: $file,
             quarantineLogFile: $this->workDir.'/quarantine.log',
-            modulesDir: $this->workDir,
+            modulesDir: $this->fixturesDir,
         );
 
         // Invalid entries are filtered; valid ones survive.
@@ -172,7 +182,62 @@ final class ModuleRegistryTest extends TestCase
         return new ModuleRegistry(
             activeModulesFile: $file,
             quarantineLogFile: $logFile ?? $this->workDir.'/quarantine.log',
+            modulesDir: $this->fixturesDir,
+        );
+    }
+
+    /**
+     * The actual production incident this check exists for: an operator
+     * deletes a module's directory by hand (FTP) without deactivating it
+     * first, so active_modules.php still declares it. class_exists() alone
+     * cannot catch this under an optimized Composer classmap (built before
+     * the deletion, never regenerated) — it would still report true. The
+     * file-existence check must catch it regardless of what class_exists()
+     * says, using a module directory that mimics production's real layout
+     * (a class file directly under modulesDir/<ModuleName>/) rather than the
+     * fixtures dir, which class_exists() can already resolve.
+     */
+    public function testModuleFileDeletedAfterActivationIsQuarantinedEvenThoughClassStillLoads(): void
+    {
+        // A distinct, throwaway class (not one of the shared fixtures) so
+        // this test does not depend on / interfere with class_exists()
+        // caching for HealthyModule elsewhere in this suite.
+        $moduleDir = $this->workDir.'/GonePhpUnit';
+        mkdir($moduleDir, 0775, true);
+        $classFile = $moduleDir.'/GonePhpUnitModule.php';
+        file_put_contents($classFile, <<<'PHP'
+            <?php
+            namespace Modules\GonePhpUnit;
+            final class GonePhpUnitModule extends \Symfony\Component\HttpKernel\Bundle\Bundle {}
+            PHP);
+
+        // Load it once so the autoloader/opcache knows the class — simulating
+        // an optimized classmap generated while the file still existed.
+        require $classFile;
+        self::assertTrue(class_exists('Modules\\GonePhpUnit\\GonePhpUnitModule', false));
+
+        // Now simulate the operator deleting the module's files by hand.
+        unlink($classFile);
+        rmdir($moduleDir);
+
+        // Not createRegistry(): this test's whole point is a module dir that
+        // matches where the (now-deleted) file actually was, not the shared
+        // fixtures dir — createRegistry()'s modulesDir wouldn't have had it
+        // either way, which would pass for the wrong reason.
+        $activeModulesFile = $this->workDir.'/active_modules.php';
+        file_put_contents(
+            $activeModulesFile,
+            "<?php\nreturn ['Modules\\\\GonePhpUnit\\\\GonePhpUnitModule'];\n",
+        );
+        $registry = new ModuleRegistry(
+            activeModulesFile: $activeModulesFile,
+            quarantineLogFile: $this->workDir.'/quarantine.log',
             modulesDir: $this->workDir,
         );
+
+        self::assertSame([], $registry->getHealthyModuleBundles());
+        $quarantined = $registry->getQuarantinedModules();
+        self::assertCount(1, $quarantined);
+        self::assertStringContainsString('missing on disk', $quarantined[0]['reason']);
     }
 }

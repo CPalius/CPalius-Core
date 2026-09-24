@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Core\OriginCache;
 
 use App\Core\Localization\LocaleProvider;
+use App\Core\Performance\PerformanceBackendRegistry;
 use App\Core\Settings\SettingsRegistry;
-use App\Repository\PerformanceBackendStatusRepository;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -20,7 +20,7 @@ final class OriginCacheReader implements EventSubscriberInterface
     public function __construct(
         private readonly OriginCacheStore $store,
         private readonly OriginCachePolicy $policy,
-        private readonly PerformanceBackendStatusRepository $statusRepository,
+        private readonly PerformanceBackendRegistry $registry,
         private readonly SettingsRegistry $settingsRegistry,
         private readonly LocaleProvider $localeProvider,
     ) {
@@ -38,7 +38,7 @@ final class OriginCacheReader implements EventSubscriberInterface
         if (!$event->isMainRequest()) {
             return;
         }
-        $status = $this->statusRepository->findOneByBackendId('cpalius');
+        $status = $this->registry->getStatus('cpalius');
         if ($status === null || !$status->isEnabled() || !$this->store->isEnabledOnDisk()) {
             return;
         }

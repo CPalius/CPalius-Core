@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Core\Performance;
 
 use App\Core\Settings\SettingsRegistry;
-use App\Repository\PerformanceBackendStatusRepository;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,7 +19,7 @@ final class VarnishCacheHeaderListener implements EventSubscriberInterface
 {
     public function __construct(
         private readonly VarnishCachePolicy $policy,
-        private readonly PerformanceBackendStatusRepository $statusRepository,
+        private readonly PerformanceBackendRegistry $registry,
         private readonly SettingsRegistry $settingsRegistry,
         private readonly Security $security,
     ) {
@@ -49,7 +48,7 @@ final class VarnishCacheHeaderListener implements EventSubscriberInterface
             return;
         }
 
-        $status = $this->statusRepository->findOneByBackendId('varnish');
+        $status = $this->registry->getStatus('varnish');
         if ($status === null || !$status->isEnabled()) {
             return;
         }
