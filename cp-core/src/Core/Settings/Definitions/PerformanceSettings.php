@@ -12,7 +12,7 @@ use App\Core\Annotation\CpSetting;
  */
 #[CpSetting(key: 'performance.redis.host', label: 'aacp.performance.field.host', type: 'text', default: '127.0.0.1', module: 'performance', group: 'performance')]
 #[CpSetting(key: 'performance.redis.port', label: 'aacp.performance.field.port', type: 'integer', default: 6379, module: 'performance', group: 'performance')]
-#[CpSetting(key: 'performance.redis.password', label: 'aacp.performance.field.password', type: 'text', default: '', module: 'performance', group: 'performance')]
+#[CpSetting(key: 'performance.redis.password', label: 'aacp.performance.field.password', type: 'password', default: '', module: 'performance', group: 'performance')]
 #[CpSetting(key: 'performance.redis.timeout', label: 'aacp.performance.field.timeout', type: 'text', default: '1.5', module: 'performance', group: 'performance')]
 #[CpSetting(key: 'performance.memcached.host', label: 'aacp.performance.field.host', type: 'text', default: '127.0.0.1', module: 'performance', group: 'performance')]
 #[CpSetting(key: 'performance.memcached.port', label: 'aacp.performance.field.port', type: 'integer', default: 11211, module: 'performance', group: 'performance')]

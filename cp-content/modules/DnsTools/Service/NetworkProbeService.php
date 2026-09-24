@@ -150,7 +150,15 @@ final class NetworkProbeService
         if (!$this->probes->networkProbesAllowed()) {
             throw new \RuntimeException('dnstools.error.probes_disabled');
         }
-        $this->ssrf->assertPublicHost($host);
+        $ips = $this->ssrf->resolvePublic($host);
+        if ($ips === null || $ips === []) {
+            throw new \InvalidArgumentException('dnstools.error.private_target');
+        }
+        // Connect to the address that was just validated, not the hostname
+        // again — re-resolving at connect time would let a low-TTL DNS record
+        // flip to a private/loopback/metadata target after the check above
+        // and bypass SsrfGuard (DNS-rebinding TOCTOU).
+        $ip = filter_var($ips[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) ? '['.$ips[0].']' : $ips[0];
         $port = max(1, min(65535, $port));
         $encryption = \in_array($encryption, ['ssl', 'starttls', 'none'], true) ? $encryption : 'starttls';
         $username = mb_substr(trim($username), 0, 200);
@@ -169,7 +177,7 @@ final class NetworkProbeService
         $errno = 0;
         $errstr = '';
         $fp = @stream_socket_client(
-            sprintf('%s://%s:%d', $implicit ? 'ssl' : 'tcp', $host, $port),
+            sprintf('%s://%s:%d', $implicit ? 'ssl' : 'tcp', $ip, $port),
             $errno,
             $errstr,
             $timeout,

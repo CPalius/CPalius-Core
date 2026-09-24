@@ -74,10 +74,14 @@ services:
         arguments:
             - '%env(REDIS_URL)%'
 
+    # prefix defaults to the literal 'sf_s' otherwise, identical on every install
+    # sharing a Redis server — see RedisSessionPrefixFactory for why.
     session.handler.redis.primary:
         class: Symfony\Component\HttpFoundation\Session\Storage\Handler\RedisSessionHandler
+        factory: ['App\Core\Session\RedisSessionPrefixFactory', 'create']
         arguments:
             - '@Redis'
+            - '%env(APP_SECRET)%'
 
     # Used by framework.yaml session.handler_id when Redis is unreachable;
     # falls back to file storage if the primary handler throws (see FailoverRedisSessionHandler).

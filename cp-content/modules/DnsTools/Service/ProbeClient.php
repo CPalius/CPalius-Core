@@ -39,13 +39,13 @@ final class ProbeClient
      */
     public function tcp(string $host, int $port, bool $readBanner = true): array
     {
-        $this->ssrf->assertPublicHost($host);
+        $ip = $this->pinnedIp($host);
         $timeout = $this->timeout();
         $start = hrtime(true);
         $errno = 0;
         $errstr = '';
         $fp = @stream_socket_client(
-            sprintf('tcp://%s:%d', $this->socketHost($host), $port),
+            sprintf('tcp://%s:%d', $this->socketHost($ip), $port),
             $errno,
             $errstr,
             $timeout,
@@ -72,7 +72,7 @@ final class ProbeClient
      */
     public function tlsPeer(string $host, int $port = 443): array
     {
-        $this->ssrf->assertPublicHost($host);
+        $ip = $this->pinnedIp($host);
         $timeout = $this->timeout();
         $context = stream_context_create([
             'ssl' => [
@@ -87,7 +87,7 @@ final class ProbeClient
         ]);
 
         $fp = @stream_socket_client(
-            sprintf('ssl://%s:%d', $this->socketHost($host), $port),
+            sprintf('ssl://%s:%d', $this->socketHost($ip), $port),
             $errno,
             $errstr,
             $timeout,
@@ -128,7 +128,7 @@ final class ProbeClient
                 break;
             }
             $host = (string) $parts['host'];
-            $this->ssrf->assertPublicHost($host);
+            $ip = $this->pinnedIp($host);
             $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
             $port = (int) ($parts['port'] ?? ($scheme === 'http' ? 80 : 443));
             $path = (string) ($parts['path'] ?? '/');
@@ -148,7 +148,7 @@ final class ProbeClient
             ]);
 
             $fp = @stream_socket_client(
-                sprintf('%s://%s:%d', $transport, $this->socketHost($host), $port),
+                sprintf('%s://%s:%d', $transport, $this->socketHost($ip), $port),
                 $errno,
                 $errstr,
                 $this->timeout(),
@@ -199,7 +199,7 @@ final class ProbeClient
         }
 
         $host = (string) $parts['host'];
-        $this->ssrf->assertPublicHost($host);
+        $ip = $this->pinnedIp($host);
         $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
         if ($scheme !== 'https') {
             throw new \InvalidArgumentException('dnstools.error.invalid_url');
@@ -222,7 +222,7 @@ final class ProbeClient
         ]);
 
         $fp = @stream_socket_client(
-            sprintf('ssl://%s:%d', $this->socketHost($host), $port),
+            sprintf('ssl://%s:%d', $this->socketHost($ip), $port),
             $errno,
             $errstr,
             $this->timeout(),
@@ -252,10 +252,10 @@ final class ProbeClient
 
     public function whois(string $server, string $query): string
     {
-        $this->ssrf->assertPublicHost($server);
+        $ip = $this->pinnedIp($server);
         $timeout = $this->timeout();
         $fp = @stream_socket_client(
-            sprintf('tcp://%s:43', $this->socketHost($server)),
+            sprintf('tcp://%s:43', $this->socketHost($ip)),
             $errno,
             $errstr,
             $timeout,
@@ -303,6 +303,26 @@ final class ProbeClient
     private function socketHost(string $host): string
     {
         return filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) ? '['.$host.']' : $host;
+    }
+
+    /**
+     * Resolves and validates $host, then returns one of the validated IPs to
+     * connect to directly. Connecting through the hostname a second time (the
+     * old assertPublicHost()-then-connect-by-name pattern) let a low-TTL DNS
+     * record flip from a public IP (at validation time) to a private/loopback/
+     * metadata address (at connect time) and bypass SsrfGuard entirely — a
+     * classic DNS-rebinding TOCTOU. Pinning the connection to the address that
+     * was actually validated closes that gap; callers still pass the original
+     * hostname separately for TLS SNI / HTTP Host header purposes.
+     */
+    private function pinnedIp(string $host): string
+    {
+        $ips = $this->ssrf->resolvePublic($host);
+        if ($ips === null || $ips === []) {
+            throw new \InvalidArgumentException('dnstools.error.private_target');
+        }
+
+        return $ips[0];
     }
 
     /**

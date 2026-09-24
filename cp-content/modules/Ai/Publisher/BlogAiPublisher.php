@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Ai\Publisher;
 
+use App\Core\Content\RichTextSanitizer;
 use App\Core\Content\SlugGenerator;
 use App\Core\Localization\LocaleProvider;
 use App\Core\OriginCache\OriginCachePurger;
@@ -29,6 +30,7 @@ final class BlogAiPublisher
         private readonly NodeRepository $nodeRepository,
         private readonly SlugGenerator $slugGenerator,
         private readonly OriginCachePurger $originCachePurger,
+        private readonly RichTextSanitizer $richTextSanitizer,
         private readonly ?CategoryRepository $categoryRepository = null,
         private readonly ?TagRepository $tagRepository = null,
     ) {
@@ -104,7 +106,7 @@ final class BlogAiPublisher
 
                 $this->copyPublication($source, $node);
                 $node->setDataValue('excerpt', $result->excerpt !== '' ? $result->excerpt : $result->description);
-                $node->setDataValue('body', $result->body);
+                $node->setDataValue('body', $this->richTextSanitizer->sanitize($result->body));
                 $node->setDataValue('is_featured', $source->getDataValue('is_featured', 0));
                 $node->setDataValue('comments_enabled', $source->getDataValue('comments_enabled', 1));
                 $node->setDataValue('post_sub_type', $source->getDataValue('post_sub_type'));

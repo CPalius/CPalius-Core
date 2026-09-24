@@ -102,6 +102,21 @@ Thumbs.db
 # Local holding area for files removed from the tree (never deploy)
 /_archive/
 
+# m-dns.org production site's legacy PHP toolkit, sitting in this working copy
+# for local editing/deploy convenience. Not part of the CPalius-CMF product —
+# committing it would ship a separate, unrelated site's code (and runtime data
+# under DNS-Araclari/data/) into this repo's history.
+/DNS-Araclari/
+
+# Release build staging + published ZIPs (built by _release/build-*.sh, never
+# hand-edited; ZIPs are already covered by *.zip below, this also covers the
+# expanded staging tree under _release/cpalius/).
+/_release/
+
+# Local-only tooling, not part of the shipped product.
+/claude/
+/design-system/
+
 # Third-party importers kept locally as FORMAT REFERENCE only (WordPress
 # Importer is GPLv2+, the MyBB Merge System and the XenForo importer are under
 # their own licences). CPalius is proprietary, so none of that code may be

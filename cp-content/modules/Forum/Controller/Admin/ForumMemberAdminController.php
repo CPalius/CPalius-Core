@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Forum\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
+use App\Core\Content\RichTextSanitizer;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -46,6 +47,7 @@ final class ForumMemberAdminController extends AbstractController
         private readonly TranslatorInterface $translator,
         private readonly EntityManagerInterface $entityManager,
         private readonly UserPasswordHasherInterface $passwordHasher,
+        private readonly RichTextSanitizer $richTextSanitizer,
     ) {
     }
 
@@ -374,7 +376,7 @@ final class ForumMemberAdminController extends AbstractController
         $user->setFirstName((string) $formValues['firstName']);
         $user->setLastName((string) $formValues['lastName']);
         $user->setStatus($status);
-        $user->setBio((string) $formValues['bio']);
+        $user->setBio($this->richTextSanitizer->sanitize((string) $formValues['bio']));
         $user->setLocation((string) $formValues['location']);
         $user->setSignature((string) $formValues['signature']);
         $user->setCustomTitle((string) $formValues['customTitle']);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Ai\Publisher;
 
+use App\Core\Content\RichTextSanitizer;
 use App\Core\Content\SlugGenerator;
 use App\Core\Localization\LocaleProvider;
 use App\Core\OriginCache\OriginCachePurger;
@@ -26,6 +27,7 @@ final class PagesAiPublisher
         private readonly NodeRepository $nodeRepository,
         private readonly SlugGenerator $slugGenerator,
         private readonly OriginCachePurger $originCachePurger,
+        private readonly RichTextSanitizer $richTextSanitizer,
     ) {
     }
 
@@ -101,7 +103,7 @@ final class PagesAiPublisher
 
                 $this->copyPublication($source, $node);
                 $node->setDataValue('excerpt', $result->excerpt !== '' ? $result->excerpt : $result->description);
-                $node->setDataValue('body', $result->body);
+                $node->setDataValue('body', $this->richTextSanitizer->sanitize($result->body));
                 $node->setDataValue('is_featured', $source->getDataValue('is_featured', 0));
                 $node->setDataValue('template', $source->getDataValue('template'));
                 $node->setDataValue('featured_image_asset_id', $source->getDataValue('featured_image_asset_id'));
