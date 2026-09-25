@@ -6,6 +6,7 @@ namespace App\Tests\Integration;
 
 use App\Controller\Admin\AACPController;
 use App\Core\Admin\PlatformPulseService;
+use App\Core\Settings\SettingsRegistry;
 use App\Entity\Node;
 use App\Tests\Support\IntegrationTestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -121,6 +122,11 @@ final class AacpPlatformPulseTest extends IntegrationTestCase
         $this->pushRequest();
         $this->authenticateAs('admin');
         $this->forgetPulseCache();
+
+        // Page views are counted, not logged as rows (VisitorStatsRecorder),
+        // so the visitor-mode dashboard no longer has a per-row feed to cap —
+        // only the security feed still lists individual rows.
+        $this->enableSecurityScanner();
 
         // Deliberately more than the cap: a table with nine rows would pass
         // this assertion whatever the limit was.
@@ -319,6 +325,20 @@ final class AacpPlatformPulseTest extends IntegrationTestCase
             $entrypoint,
             'a CSS import here is refused by CSP and takes every other entrypoint down with it',
         );
+    }
+
+    private function enableSecurityScanner(): void
+    {
+        $connection = $this->em()->getConnection();
+        $connection->executeStatement(
+            'INSERT INTO cp_settings (setting_key, setting_value) VALUES (:key, :value)
+             ON DUPLICATE KEY UPDATE setting_value = :value',
+            ['key' => 'telemetry.security_enabled', 'value' => '1'],
+        );
+
+        /** @var SettingsRegistry $settingsRegistry */
+        $settingsRegistry = $this->container()->get(SettingsRegistry::class);
+        $settingsRegistry->clearCache();
     }
 
     private function seedTelemetryRows(int $count): void

@@ -101,9 +101,13 @@ class TelemetryLogRepository extends ServiceEntityRepository
     }
 
     /**
+     * Every row here is a security event now — page views are counted, not
+     * logged (see purgeAll()'s docblock) — so there is no event_type filter
+     * left to offer.
+     *
      * @return list<array<string, mixed>>
      */
-    public function findLiveFeed(int $limit = 40, ?int $afterId = null, bool $pageViewsOnly = false): array
+    public function findLiveFeed(int $limit = 40, ?int $afterId = null): array
     {
         try {
             $sql = 'SELECT t.id, t.ip_address, t.user_id, t.request_method, t.request_uri, t.user_agent,
@@ -112,16 +116,9 @@ class TelemetryLogRepository extends ServiceEntityRepository
                     FROM cp_system_telemetry_logs t
                     LEFT JOIN cp_users u ON u.id = t.user_id';
             $params = [];
-            $where = [];
             if ($afterId !== null && $afterId > 0) {
-                $where[] = 't.id > :afterId';
+                $sql .= ' WHERE t.id > :afterId';
                 $params['afterId'] = $afterId;
-            }
-            if ($pageViewsOnly) {
-                $where[] = "t.event_type = 'page_view'";
-            }
-            if ($where !== []) {
-                $sql .= ' WHERE '.implode(' AND ', $where);
             }
             $sql .= ' ORDER BY t.id DESC LIMIT '.$limit;
 
@@ -131,94 +128,6 @@ class TelemetryLogRepository extends ServiceEntityRepository
         }
 
         return array_map($this->normalizeRow(...), $rows);
-    }
-
-    /**
-     * Public traffic for the visitor dashboard (security scanner off).
-     *
-     * @return array{
-     *     uniqueIps: int,
-     *     pageViews: int,
-     *     hourly: array{labels: list<string>, hits: list<int>},
-     *     topPages: list<array{path: string, hits: int}>,
-     *     topIps: list<array{ip: string, hits: int}>
-     * }
-     */
-    public function visitorStats(int $hours = 24): array
-    {
-        $emptyHourly = $this->emptyHourly($hours);
-
-        try {
-            $since = (new \DateTimeImmutable())->modify(sprintf('-%d hours', $hours))->format('Y-m-d H:i:s');
-            $unique = (int) $this->connection->fetchOne(
-                "SELECT COUNT(DISTINCT ip_address) FROM cp_system_telemetry_logs
-                 WHERE created_at >= :since AND event_type = 'page_view'",
-                ['since' => $since],
-            );
-            $views = (int) $this->connection->fetchOne(
-                "SELECT COUNT(*) FROM cp_system_telemetry_logs
-                 WHERE created_at >= :since AND event_type = 'page_view'",
-                ['since' => $since],
-            );
-            $hourlyRows = $this->connection->fetchAllAssociative(
-                "SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00') AS bucket, COUNT(*) AS hits
-                 FROM cp_system_telemetry_logs
-                 WHERE created_at >= :since AND event_type = 'page_view'
-                 GROUP BY bucket ORDER BY bucket ASC",
-                ['since' => $since],
-            );
-            $pageRows = $this->connection->fetchAllAssociative(
-                "SELECT SUBSTRING_INDEX(request_uri, '?', 1) AS path, COUNT(*) AS hits
-                 FROM cp_system_telemetry_logs
-                 WHERE created_at >= :since AND event_type = 'page_view'
-                 GROUP BY path ORDER BY hits DESC LIMIT 8",
-                ['since' => $since],
-            );
-            $ipRows = $this->connection->fetchAllAssociative(
-                "SELECT ip_address AS ip, COUNT(*) AS hits
-                 FROM cp_system_telemetry_logs
-                 WHERE created_at >= :since AND event_type = 'page_view'
-                 GROUP BY ip_address ORDER BY hits DESC LIMIT 8",
-                ['since' => $since],
-            );
-        } catch (DBALException) {
-            return [
-                'uniqueIps' => 0,
-                'pageViews' => 0,
-                'hourly' => [
-                    'labels' => $emptyHourly['labels'],
-                    'hits' => array_fill(0, \count($emptyHourly['labels']), 0),
-                ],
-                'topPages' => [],
-                'topIps' => [],
-            ];
-        }
-
-        $index = [];
-        foreach ($hourlyRows as $row) {
-            $index[(string) $row['bucket']] = (int) $row['hits'];
-        }
-        $hits = [];
-        foreach ($emptyHourly['keys'] as $key) {
-            $hits[] = $index[$key] ?? 0;
-        }
-
-        $topPages = [];
-        foreach ($pageRows as $row) {
-            $topPages[] = ['path' => (string) $row['path'], 'hits' => (int) $row['hits']];
-        }
-        $topIps = [];
-        foreach ($ipRows as $row) {
-            $topIps[] = ['ip' => (string) $row['ip'], 'hits' => (int) $row['hits']];
-        }
-
-        return [
-            'uniqueIps' => $unique,
-            'pageViews' => $views,
-            'hourly' => ['labels' => $emptyHourly['labels'], 'hits' => $hits],
-            'topPages' => $topPages,
-            'topIps' => $topIps,
-        ];
     }
 
     /**
@@ -256,24 +165,6 @@ class TelemetryLogRepository extends ServiceEntityRepository
             'critical' => (int) ($row['criticals'] ?? 0),
             'events' => (int) ($row['events'] ?? 0),
         ];
-    }
-
-    /**
-     * @return array{labels: list<string>, keys: list<string>}
-     */
-    private function emptyHourly(int $hours): array
-    {
-        $labels = [];
-        $keys = [];
-        $now = new \DateTimeImmutable();
-        for ($i = $hours - 1; $i >= 0; --$i) {
-            $shifted = $now->modify(sprintf('-%d hours', $i));
-            $bucket = $shifted->setTime((int) $shifted->format('H'), 0, 0);
-            $keys[] = $bucket->format('Y-m-d H:00:00');
-            $labels[] = $bucket->format('H:00');
-        }
-
-        return ['labels' => $labels, 'keys' => $keys];
     }
 
     /**
@@ -467,6 +358,12 @@ class TelemetryLogRepository extends ServiceEntityRepository
 
     /**
      * Deletes every telemetry row regardless of severity.
+     *
+     * This table holds security events only — page views are counted by
+     * VisitorStatsRecorder into cp_visitor_daily_stats and friends, a
+     * separate table this never touches. That split is deliberate: clearing
+     * the security log used to also wipe visitor history, because both lived
+     * in this one table.
      *
      * Swallows DBAL failures like the rest of this repository: telemetry is
      * observability, and a panel that 500s while trying to free disk space is

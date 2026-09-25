@@ -8,6 +8,7 @@ use App\Core\Aacp\SystemWidgetData;
 use App\Core\Aacp\SystemWidgetProviderInterface;
 use App\Core\Admin\PlatformPulseService;
 use App\Core\Annotation\CpAdminMenu;
+use App\Core\Analytics\VisitorStatsRepository;
 use App\Core\Api\ApiKeyService;
 use App\Core\Audit\Entity\AuditLog;
 use App\Core\Audit\Repository\AuditLogRepository;
@@ -102,6 +103,7 @@ final class AACPController
         private readonly TranslatorInterface $translator,
         private readonly AuditLogRepository $auditLogRepository,
         private readonly TelemetryLogRepository $telemetryLogRepository,
+        private readonly VisitorStatsRepository $visitorStatsRepository,
         private readonly IpBanService $ipBanService,
         private readonly PerformanceInventory $performanceInventory,
         #[Autowire(service: 'cache.app')]
@@ -207,7 +209,10 @@ final class AACPController
         $health = $this->buildHealthReport();
         $system = $this->buildSystemReport();
         $securityOn = (bool) $this->settingsRegistry->get('telemetry.security_enabled', false);
-        $visitorStats = $this->telemetryLogRepository->visitorStats(24);
+        // Page views are counted the same way regardless of mode (VisitorStatsRecorder),
+        // and the KPI strip shows them in both — only the feed table and trend
+        // chart switch to security data when the scanner is on.
+        $visitorStats = $this->visitorStatsRepository->stats(24);
         $securitySummary = $this->telemetryLogRepository->securitySummary(24);
         $banStats = $this->ipBanService->stats();
 
@@ -219,7 +224,7 @@ final class AACPController
             // Ten rows, not thirty. The live feed is a pulse, not a log: the
             // log has its own screen (/aacp/logs). Thirty rows pushed every
             // platform signal below the fold on a 1080p panel.
-            'telemetryFeed' => $this->telemetryLogRepository->findLiveFeed(self::TELEMETRY_FEED_ROWS, null, !$securityOn),
+            'telemetryFeed' => $securityOn ? $this->telemetryLogRepository->findLiveFeed(self::TELEMETRY_FEED_ROWS) : [],
             'telemetryTrend' => $securityOn
                 ? $this->telemetryLogRepository->hourlyTrend(24)
                 : $visitorStats['hourly'],

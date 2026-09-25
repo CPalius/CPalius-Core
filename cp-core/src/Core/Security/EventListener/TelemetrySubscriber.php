@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Core\Security\EventListener;
 
+use App\Core\Analytics\VisitorStatsRecorder;
 use App\Core\Security\Dto\ThreatResult;
+use App\Core\Security\Entity\SystemTelemetryLog;
 use App\Core\Security\Http\LoginTargetPath;
 use App\Core\Security\Repository\TelemetryLogRepository;
 use App\Core\Security\Service\ThreatAnalyzer;
@@ -42,6 +44,7 @@ final class TelemetrySubscriber implements EventSubscriberInterface
     public function __construct(
         private readonly ThreatAnalyzer $threatAnalyzer,
         private readonly TelemetryLogRepository $telemetryLogRepository,
+        private readonly VisitorStatsRecorder $visitorStatsRecorder,
         private readonly SettingsRegistry $settingsRegistry,
         private readonly Security $security,
         private readonly LoggerInterface $logger,
@@ -72,11 +75,26 @@ final class TelemetrySubscriber implements EventSubscriberInterface
             }
 
             $result = $this->resolveResult($request, $securityOn);
+            $ip = (string) ($request->getClientIp() ?: '0.0.0.0');
+
+            // An ordinary page view — the overwhelming majority of requests,
+            // in both modes: ThreatAnalyzer::analyze() only escalates away
+            // from EVENT_PAGE_VIEW when it actually finds something — is
+            // counted, not logged as a row. cp_system_telemetry_logs now
+            // holds only what's worth inspecting individually: real security
+            // signals. This is also what stops "clear telemetry" from wiping
+            // visitor history — they no longer share a table.
+            if ($result->eventType === SystemTelemetryLog::EVENT_PAGE_VIEW) {
+                $this->visitorStatsRecorder->record($ip);
+
+                return;
+            }
+
             $user = $this->security->getUser();
             $userId = $user instanceof User ? $user->getId() : null;
 
             $this->telemetryLogRepository->insertRow(
-                (string) ($request->getClientIp() ?: '0.0.0.0'),
+                $ip,
                 $userId,
                 $request->getMethod(),
                 $request->getRequestUri(),

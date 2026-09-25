@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Core\Analytics\VisitorStatsRepository;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Security\Http\LoginTargetPath;
 use App\Core\Security\Repository\TelemetryLogRepository;
@@ -34,6 +35,7 @@ final class AACPTelemetryController
     public function __construct(
         private readonly Environment $twig,
         private readonly TelemetryLogRepository $telemetryLogRepository,
+        private readonly VisitorStatsRepository $visitorStatsRepository,
         private readonly IpBanService $ipBanService,
         private readonly SystemSettingsService $systemSettingsService,
         private readonly SettingsRegistry $settingsRegistry,
@@ -67,14 +69,14 @@ final class AACPTelemetryController
             ]);
         }
 
-        $stats = $this->telemetryLogRepository->visitorStats(24);
+        $stats = $this->visitorStatsRepository->stats(24);
 
         return new JsonResponse([
             'mode' => 'visitors',
-            'rows' => $this->telemetryLogRepository->findLiveFeed(40, $after, true),
+            // Page views are counted, not logged as rows — there is no
+            // individual-row feed left to poll for in this mode.
+            'rows' => [],
             'trend' => $stats['hourly'],
-            'topPages' => $stats['topPages'],
-            'topIps' => $stats['topIps'],
             'uniqueIps' => $stats['uniqueIps'],
             'pageViews' => $stats['pageViews'],
         ]);
