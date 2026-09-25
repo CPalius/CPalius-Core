@@ -108,7 +108,25 @@ final class ModulePackageService
             return ['success' => false, 'message' => $deactivate['message']];
         }
 
-        (new Filesystem())->remove($targetDir);
+        // Deleting $targetDir here, synchronously, used to mean every request served
+        // between now and CacheRebuildManager's deferred rebuild — including the
+        // redirect this action itself sends the admin's own browser to — hit a
+        // container compiled while this module's files still existed. Its Twig
+        // loader factory has this module's Resources/views path baked in as a
+        // literal string; Twig validates that path exists on every instantiation,
+        // not just at compile time, so it threw for every single request in that
+        // window (Twig\Error\LoaderError, "directory does not exist"), not just an
+        // unlucky concurrent one.
+        //
+        // deactivate() just registered a shutdown function (via
+        // CacheRebuildManager::clearSymfonyCache()) that purges and rebuilds the
+        // container after this response is sent. Registering this removal as a
+        // second shutdown function runs it after that one (PHP calls them in
+        // registration order), once the container being served no longer
+        // references this directory at all — closing the gap instead of racing it.
+        register_shutdown_function(static function () use ($targetDir): void {
+            (new Filesystem())->remove($targetDir);
+        });
 
         return [
             'success' => true,

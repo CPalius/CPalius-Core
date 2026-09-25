@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Module;
 
+use App\Core\Cache\CacheRebuildManager;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 
@@ -18,6 +19,7 @@ final class ModuleActivator
         private readonly ActiveModulesFileWriter $fileWriter,
         private readonly ModuleDependencyChecker $dependencyChecker,
         private readonly ModuleLifecycleManager $lifecycleManager,
+        private readonly CacheRebuildManager $cacheRebuildManager,
         private readonly string $projectDir,
         private readonly string $modulesDir,
     ) {
@@ -267,25 +269,20 @@ final class ModuleActivator
         return mb_strimwidth($firstLine, 0, 200, '...');
     }
 
+    /**
+     * Used to hand-roll its own synchronous `cache:clear --no-warmup` subprocess,
+     * deliberately leaving the container unbuilt so "the next real request warms
+     * it lazily". That next request is never a random visitor — activate/deactivate/
+     * delete all redirect straight back into AACP, so it was always this same admin's
+     * own next click that was guaranteed to hit the gap and pay for an inline compile
+     * squeezed into one HTTP request's time/memory budget (the exact failure mode
+     * CacheRebuildManager exists to avoid — see cache-purge-never-forced-2.2.16).
+     * Routing through it here closes that gap the same way every other cache-clearing
+     * call site in the app already does: defer the purge past this response, rebuild
+     * in the background.
+     */
     private function clearCache(): void
     {
-        $phpBinary = (new PhpExecutableFinder())->find() ?: 'php';
-        $consolePath = $this->projectDir.'/cp-core/bin/console';
-
-        // --no-warmup: the dry-run already proved the container compiles (runDryRun's
-        // lint:container). Rebuilding it here too just pays the warmup cost (~20s on
-        // this stack) synchronously inside the admin's click; the next real request
-        // warms it lazily instead, off the critical path.
-        $clear = new Process([$phpBinary, $consolePath, 'cache:clear', '--no-warmup'], $this->projectDir);
-        $clear->setTimeout(180);
-        $clear->run();
-
-        if ($clear->isSuccessful()) {
-            return;
-        }
-
-        $warmup = new Process([$phpBinary, $consolePath, 'cache:warmup'], $this->projectDir);
-        $warmup->setTimeout(180);
-        $warmup->run();
+        $this->cacheRebuildManager->clearSymfonyCache();
     }
 }
