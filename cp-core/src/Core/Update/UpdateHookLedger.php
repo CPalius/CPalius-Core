@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Update;
 
+use App\Core\Settings\SettingsRegistry;
 use App\Entity\Setting;
 use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -20,7 +21,16 @@ use Doctrine\ORM\EntityManagerInterface;
  *
  * Writes go through the repository directly rather than SettingsRegistry: the
  * registry is a read-through cache shaped for request-time reads, and the
- * ledger must be durable the moment a hook finishes.
+ * ledger must be durable the moment a hook finishes. Reads go through
+ * SettingsRegistry::getRaw() instead of a repository query of their own: this
+ * class's own per-request memo already made hasRun() cheap within one
+ * request, but every admin page that also checks for pending updates, the
+ * latest release, and this ledger was still three-plus separate SELECTs
+ * against cp_settings, on top of whatever SettingsRegistry itself reads for
+ * the page — easily enough to trip Law 6.1's ten-per-table guard on a busy
+ * dashboard and get this hook's inspection silently skipped for that request.
+ * getRaw() folds this into the query SettingsRegistry was already going to
+ * run anyway.
  */
 final class UpdateHookLedger
 {
@@ -32,6 +42,7 @@ final class UpdateHookLedger
     public function __construct(
         private readonly SettingRepository $settings,
         private readonly EntityManagerInterface $entityManager,
+        private readonly SettingsRegistry $settingsRegistry,
     ) {
     }
 
@@ -49,7 +60,7 @@ final class UpdateHookLedger
             return $this->memo;
         }
 
-        $raw = $this->settings->findOneBy(['settingKey' => self::KEY])?->getSettingValue();
+        $raw = $this->settingsRegistry->getRaw(self::KEY);
 
         if (!\is_string($raw) || trim($raw) === '') {
             return $this->memo = [];
@@ -116,5 +127,10 @@ final class UpdateHookLedger
         $this->entityManager->flush();
 
         $this->memo = $applied;
+
+        // Otherwise getRaw() keeps serving the pre-write value for up to
+        // SettingsRegistry::CACHE_TTL, and a hook that just ran would still
+        // look pending to the next request.
+        $this->settingsRegistry->clearCache();
     }
 }

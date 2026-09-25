@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Version;
 
+use App\Core\Settings\SettingsRegistry;
 use App\Entity\Setting;
 use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -59,6 +60,7 @@ final class ReleaseChecker
     public function __construct(
         private readonly SettingRepository $settings,
         private readonly EntityManagerInterface $entityManager,
+        private readonly SettingsRegistry $settingsRegistry,
     ) {
     }
 
@@ -78,21 +80,22 @@ final class ReleaseChecker
      */
     public function status(): ?array
     {
-        // Read through the repository and memoise, exactly as UpdateHookLedger
-        // does. SettingsRegistry is not an option: it resolves only keys that
-        // have a registered SettingDefinition and silently returns the default
-        // for anything else, and this key is internal bookkeeping rather than
-        // an operator-editable setting — putting it in the settings UI to make
-        // the read work would be the tail wagging the dog.
-        //
-        // The cost is one indexed lookup, once per request, and only on pages
-        // that actually ask — which is the admin layouts. The public footer
-        // renders the version from a constant and never calls this.
+        // Read through SettingsRegistry::getRaw() and memoise here besides:
+        // getRaw() serves this from the same batch-loaded, cache.app-cached
+        // map every settings read on the page already shares, rather than
+        // this class running its own SELECT against cp_settings on top of
+        // it — which, alongside UpdateHookLedger and whatever else an admin
+        // page checks, was enough separate single-row reads of that one
+        // table to trip Law 6.1's ten-per-table guard on a busy dashboard.
+        // getRaw() needs no registered SettingDefinition, so this key stays
+        // internal bookkeeping rather than an operator-editable setting —
+        // putting it in the settings UI to make the read work would still be
+        // the tail wagging the dog.
         if ($this->memo !== null) {
             return $this->memo === false ? null : $this->memo;
         }
 
-        $raw = $this->settings->findOneBy(['settingKey' => self::KEY])?->getSettingValue();
+        $raw = $this->settingsRegistry->getRaw(self::KEY);
 
         if (!\is_string($raw) || trim($raw) === '') {
             $this->memo = false;
@@ -402,6 +405,10 @@ final class ReleaseChecker
         $setting->setSettingValue(json_encode($payload, \JSON_THROW_ON_ERROR));
 
         $this->entityManager->flush();
+
+        // Otherwise getRaw() keeps serving the pre-refresh value for up to
+        // SettingsRegistry::CACHE_TTL after cron just wrote a new one.
+        $this->settingsRegistry->clearCache();
 
         // Invalidate the memo so a refresh() followed by status() in the same
         // request — which is exactly what the updates screen does — sees the

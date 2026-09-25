@@ -226,6 +226,7 @@ final class UpdateRunnerTest extends IntegrationTestCase
         return new UpdateHookLedger(
             $this->container()->get(\App\Repository\SettingRepository::class),
             $this->em(),
+            $this->container()->get(\App\Core\Settings\SettingsRegistry::class),
         );
     }
 

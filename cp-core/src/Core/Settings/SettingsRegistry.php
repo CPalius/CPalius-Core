@@ -77,6 +77,22 @@ class SettingsRegistry
     }
 
     /**
+     * Raw cp_settings value for a key with no registered #[CpSetting] definition
+     * (an operator can never edit it, so it has no type, default, or UI). For
+     * internal bookkeeping rows (an update-hook ledger, a cached release
+     * pointer) that would otherwise each run their own uncoordinated,
+     * un-memoised query against cp_settings — this serves them from the same
+     * batch-loaded, per-request-and-cache.app-cached map get()/getForLocale()
+     * already use, instead of adding to the table's query count. Untouched by
+     * clearCache()'s origin-cache tagging: internal keys are not rendered
+     * pages, so there is nothing to invalidate there.
+     */
+    public function getRaw(string $key): ?string
+    {
+        return $this->loadValues()[$key] ?? null;
+    }
+
+    /**
      * Value in the active locale. Missing keys return $default (no exception); DB rows are type-cast.
      *
      * @param mixed $default returned when the key has no definition
