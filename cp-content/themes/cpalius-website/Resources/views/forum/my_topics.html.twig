@@ -41,8 +41,6 @@
     </div>
 </div>
 
-{% include '@Theme/forum/partials/_user_rail.html.twig' %}
-
 {% if topics|length %}
     <div class="forum-topics-head forum-topics-head--mine fade-in" aria-hidden="true">
         <span></span>
@@ -120,5 +118,6 @@
     route: 'forum_my_topics',
 } %}
 
+{% include '@Theme/forum/partials/_user_rail.html.twig' %}
 {% include '@Theme/forum/partials/_stats_bar.html.twig' %}
 {% endblock %}

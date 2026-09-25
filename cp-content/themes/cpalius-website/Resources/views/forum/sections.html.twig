@@ -34,7 +34,6 @@
     {% endif %}
 
     {% include '@Theme/forum/partials/_announcements.html.twig' %}
-    {% include '@Theme/forum/partials/_user_rail.html.twig' %}
 
     {% if indexTree is empty %}
         <div class="forum-empty">
@@ -103,5 +102,6 @@
         </section>
     {% endfor %}
 
+    {% include '@Theme/forum/partials/_user_rail.html.twig' %}
     {% include '@Theme/forum/partials/_stats_bar.html.twig' %}
 {% endblock %}
