@@ -1,0 +1,8 @@
+visitorstats.menu.title: "Visitor statistics"
+visitorstats.today.views: "Page views (today)"
+visitorstats.today.unique: "Unique visitors (today)"
+visitorstats.history.title: "Daily history ({days} days)"
+visitorstats.history.column.date: "Date"
+visitorstats.history.column.views: "Page views"
+visitorstats.history.column.unique: "Unique visitors"
+visitorstats.history.empty: "No visits recorded yet."

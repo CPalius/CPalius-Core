@@ -11,6 +11,16 @@
         'pass': '!border-success-500/30 !bg-success-500/10 !text-success-300',
     } %}
     {% set scoreTone = score >= 90 ? 'is-good' : (score >= 70 ? 'is-warn' : 'is-bad') %}
+    {# Same short labels the dashboard's threat-vector chart uses (aacp-dashboard.js
+       VECTOR_LABELS) — plain abbreviations rather than translated strings there too,
+       kept consistent rather than inventing a parallel i18n set for the same data. #}
+    {% set vectorLabels = {
+        'sqli_attempt': 'SQLi',
+        'xss_attempt': 'XSS',
+        'scanner_detected': 'Scanner',
+        'path_traversal': 'LFI',
+        'login_attempt': 'Login',
+    } %}
     {% set issueTotal = (summary.critical|default(0)) + (summary.high|default(0)) + (summary.medium|default(0)) + (summary.low|default(0)) %}
     {% set maxSeverity = [summary.critical|default(0), summary.high|default(0), summary.medium|default(0), summary.low|default(0), summary.pass|default(0)]|sort|last %}
     {% if maxSeverity < 1 %}{% set maxSeverity = 1 %}{% endif %}
@@ -92,6 +102,85 @@
                 </twig:block>
             </twig:cp:table>
         </twig:cp:card>
+
+        <div id="threats">
+            <twig:cp:card title="{{ 'aacp.security.threats_title'|trans }}" padded="{{ not threatScannerOn }}">
+                {% if not threatScannerOn %}
+                    <p class="text-fs-sm !text-slate-400">
+                        {{ 'aacp.security.threats_disabled'|trans }}
+                        <a href="{{ path('aacp_telemetry_settings') }}" class="!text-emerald-400 hover:!text-emerald-300">{{ 'aacp.telemetry.settings_link'|trans }} →</a>
+                    </p>
+                {% else %}
+                    <div class="border-b border-white/10 px-sp-sm py-sp-sm">
+                        <p class="text-fs-sm !text-slate-400">
+                            {{ 'aacp.dashboard.security_summary.line'|trans({
+                                events: threatSummary.events,
+                                warnings: threatSummary.warnings,
+                                critical: threatSummary.critical,
+                            }) }}
+                        </p>
+                        {% if threatSummary.events > 0 %}
+                            <p class="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-fs-xs !text-slate-500">
+                                {% for vector in threatVectors %}
+                                    {% if vector.count > 0 %}
+                                        <span>{{ vectorLabels[vector.eventType]|default(vector.eventType) }}: <b class="!text-slate-300">{{ vector.count }}</b></span>
+                                    {% endif %}
+                                {% endfor %}
+                            </p>
+                        {% endif %}
+                    </div>
+
+                    <twig:cp:table headers="{{ [
+                        'aacp.telemetry.col.time'|trans,
+                        'aacp.telemetry.col.severity'|trans,
+                        'aacp.telemetry.col.ip'|trans,
+                        'aacp.telemetry.col.user'|trans,
+                        'aacp.telemetry.col.event'|trans,
+                        'aacp.telemetry.col.score'|trans,
+                        'aacp.telemetry.col.details'|trans,
+                    ] }}" empty="{{ threatFeed is empty }}" emptyText="{{ 'aacp.telemetry.feed.empty'|trans }}">
+                        <twig:block name="rows">
+                            {% for row in threatFeed %}
+                                <tr>
+                                    <td class="!text-slate-400">{{ row.time }}</td>
+                                    <td><span class="aacp-sev aacp-sev-{{ row.severity }}">{{ row.severity }}</span></td>
+                                    <td><span class="font-mono text-fs-xs !text-slate-200">{{ row.ip }}</span></td>
+                                    <td class="!text-slate-400">{{ row.user }}</td>
+                                    <td class="!text-slate-400">{{ row.method }} {{ row.uri|length > 48 ? row.uri|slice(0, 48) ~ '…' : row.uri }}</td>
+                                    <td class="!text-slate-400">{{ row.threatScore }}</td>
+                                    <td>
+                                        {% if row.details is not empty %}
+                                            <code class="block max-w-[240px] truncate font-mono text-fs-xs !text-slate-500" title="{{ row.details|json_encode }}">{{ row.details|json_encode }}</code>
+                                        {% else %}
+                                            <span class="!text-slate-600">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </twig:block>
+                    </twig:cp:table>
+
+                    {% if topThreatIps is not empty %}
+                        <div class="border-t border-white/10 px-sp-sm py-sp-sm">
+                            <p class="mb-2 text-fs-xs font-medium uppercase tracking-wider !text-slate-500">{{ 'aacp.telemetry.top_ips.title'|trans }}</p>
+                            <ul class="aacp-top-ips">
+                                {% for ip in topThreatIps %}
+                                    <li>
+                                        <div>
+                                            <span class="font-mono text-slate-100">{{ ip.ip }}</span>
+                                            <span class="ms-2 font-mono text-slate-500">{{ ip.score }} · {{ ip.hits }} · {{ vectorLabels[ip.lastEvent]|default(ip.lastEvent) }}</span>
+                                        </div>
+                                        {% if ip.banned %}
+                                            <span class="aacp-sev aacp-sev-threat">{{ 'aacp.telemetry.banned'|trans }}</span>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </twig:cp:card>
+        </div>
 
         <div id="login-email">
             {% if app.request.query.get('login_email') %}

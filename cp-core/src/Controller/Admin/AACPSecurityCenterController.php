@@ -7,6 +7,7 @@ namespace App\Controller\Admin;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Mail\CpMailerService;
 use App\Core\Security\Audit\SecurityAuditor;
+use App\Core\Security\Repository\TelemetryLogRepository;
 use App\Core\Security\Service\IpBanService;
 use App\Core\Security\Session\SessionRegistry;
 use App\Core\Security\TwoFactor\TwoFactorService;
@@ -38,6 +39,7 @@ final class AACPSecurityCenterController
     public function __construct(
         private readonly Environment $twig,
         private readonly SecurityAuditor $auditor,
+        private readonly TelemetryLogRepository $telemetryLogRepository,
         private readonly IpBanService $ipBanService,
         private readonly SessionRegistry $sessionRegistry,
         private readonly TwoFactorService $twoFactor,
@@ -57,6 +59,7 @@ final class AACPSecurityCenterController
     public function index(): Response
     {
         $findings = $this->auditor->run();
+        $threatScannerOn = (bool) $this->settings->get('telemetry.security_enabled', false);
 
         return new Response($this->twig->render('aacp/security/index.html.twig', [
             'findings' => $findings,
@@ -69,6 +72,17 @@ final class AACPSecurityCenterController
             'twoFactorEnrolled' => $this->currentUserEnrolled(),
             'loginEmailCodeEnabled' => (bool) $this->settings->get('security.login_email_code', false),
             'mailConfigured' => $this->mailer->canSend(),
+            // The audit above is a posture checklist (config recommendations); this
+            // is the live feed of what actually happened — who tripped the WAF, with
+            // what payload, how often. Previously that data existed (the AACP
+            // dashboard's telemetry widget already collected and displayed it) but
+            // never here, on the one page named "Security Center" an operator would
+            // actually go looking for it.
+            'threatScannerOn' => $threatScannerOn,
+            'threatFeed' => $threatScannerOn ? $this->telemetryLogRepository->findLiveFeed(25) : [],
+            'threatVectors' => $threatScannerOn ? $this->telemetryLogRepository->vectorBreakdown(24) : [],
+            'topThreatIps' => $threatScannerOn ? $this->telemetryLogRepository->topThreatIps(10) : [],
+            'threatSummary' => $threatScannerOn ? $this->telemetryLogRepository->securitySummary(24) : null,
             'action_token' => $this->csrfTokenManager->getToken('aacp_security_action')->getValue(),
         ]));
     }

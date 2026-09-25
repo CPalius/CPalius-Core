@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Core\Analytics;
+namespace Modules\VisitorStats\Service;
 
+use App\Core\Analytics\VisitorRecorderInterface;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception as DBALException;
 
@@ -17,7 +18,7 @@ use Doctrine\DBAL\Exception as DBALException;
  * this hour's counter, and (only to tell a repeat visit from a first one
  * today) one row per distinct IP per day.
  */
-final class VisitorStatsRecorder
+final class VisitorStatsRecorder implements VisitorRecorderInterface
 {
     public function __construct(
         private readonly Connection $connection,

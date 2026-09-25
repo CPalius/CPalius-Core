@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Core\Analytics\Task;
+namespace Modules\VisitorStats\Task;
 
 use App\Core\Cron\Attribute\CpCronJob;
 use Doctrine\DBAL\Connection;

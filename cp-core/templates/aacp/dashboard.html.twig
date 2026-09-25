@@ -97,14 +97,21 @@
                     <a href="{{ path('aacp_telemetry_settings') }}" class="font-mono text-[0.65rem] uppercase tracking-wide text-emerald-400 hover:text-emerald-300">{{ 'aacp.telemetry.settings_link'|trans }} →</a>
                 </div>
                 <div class="aacp-visitor-kpis mb-2">
-                    <div>
-                        <span>{{ 'aacp.telemetry.visitors.page_views'|trans }}</span>
-                        <strong data-visitor-page-views>{{ visitorStats.pageViews }}</strong>
-                    </div>
-                    <div>
-                        <span>{{ 'aacp.telemetry.visitors.unique_ips'|trans }}</span>
-                        <strong data-visitor-unique-ips>{{ visitorStats.uniqueIps }}</strong>
-                    </div>
+                    {% if visitorStatsAvailable %}
+                        <div>
+                            <span>{{ 'aacp.telemetry.visitors.page_views'|trans }}</span>
+                            <strong data-visitor-page-views>{{ visitorStats.pageViews }}</strong>
+                        </div>
+                        <div>
+                            <span>{{ 'aacp.telemetry.visitors.unique_ips'|trans }}</span>
+                            <strong data-visitor-unique-ips>{{ visitorStats.uniqueIps }}</strong>
+                        </div>
+                    {% else %}
+                        <div class="col-span-2 !flex flex-wrap items-center justify-between gap-2">
+                            <span class="!text-fs-xs normal-case tracking-normal !text-slate-400">{{ 'aacp.telemetry.visitors.module_missing'|trans }}</span>
+                            <a href="{{ path('aacp_modules') }}" class="font-mono text-[0.65rem] uppercase tracking-wide !text-emerald-400 hover:!text-emerald-300">{{ 'aacp.telemetry.visitors.module_missing_link'|trans }}</a>
+                        </div>
+                    {% endif %}
                     <div>
                         <span>{{ 'aacp.dashboard.security_summary.threats'|trans }}</span>
                         <strong class="{{ securitySummary.threats > 0 ? 'text-danger-300' : '' }}">{{ securitySummary.threats }}</strong>

@@ -1,0 +1,25 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Modules\VisitorStats\Service\:
+        resource: '../../Service/'
+
+    Modules\VisitorStats\Repository\:
+        resource: '../../Repository/'
+
+    Modules\VisitorStats\Task\:
+        resource: '../../Task/'
+
+    Modules\VisitorStats\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    # Core depends on these interfaces only (App\Core\Analytics\), never on
+    # this module's classes — so core still compiles and runs, at zero cost,
+    # whether or not this module is installed. Explicit aliases rather than
+    # relying on Symfony's "only one implementation" autowiring: correct
+    # either way, but explicit here is the whole point of this module.
+    App\Core\Analytics\VisitorRecorderInterface: '@Modules\VisitorStats\Service\VisitorStatsRecorder'
+    App\Core\Analytics\VisitorStatsProviderInterface: '@Modules\VisitorStats\Repository\VisitorStatsRepository'

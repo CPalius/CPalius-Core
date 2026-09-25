@@ -2,15 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\Core\Analytics;
+namespace Modules\VisitorStats\Repository;
 
+use App\Core\Analytics\VisitorStatsProviderInterface;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception as DBALException;
 
 /**
  * Read side of the aggregated visitor counters VisitorStatsRecorder writes.
  */
-final class VisitorStatsRepository
+final class VisitorStatsRepository implements VisitorStatsProviderInterface
 {
     public function __construct(
         private readonly Connection $connection,
@@ -35,6 +36,35 @@ final class VisitorStatsRepository
             'pageViews' => $totalViews,
             'hourly' => $this->hourly($hours),
         ];
+    }
+
+    /**
+     * Daily history for the module's own admin page — the reason
+     * cp_visitor_daily_stats is never pruned (~365 rows/year). Newest first.
+     *
+     * @return list<array{date: string, totalViews: int, uniqueVisitors: int}>
+     */
+    public function dailyHistory(int $days = 30): array
+    {
+        try {
+            $since = (new \DateTimeImmutable('today'))->modify(sprintf('-%d days', $days - 1))->format('Y-m-d');
+            $rows = $this->connection->fetchAllAssociative(
+                'SELECT stat_date, total_views, unique_visitors FROM cp_visitor_daily_stats
+                 WHERE stat_date >= :since ORDER BY stat_date DESC',
+                ['since' => $since],
+            );
+        } catch (DBALException) {
+            return [];
+        }
+
+        return array_map(
+            static fn (array $row): array => [
+                'date' => (string) $row['stat_date'],
+                'totalViews' => (int) $row['total_views'],
+                'uniqueVisitors' => (int) $row['unique_visitors'],
+            ],
+            $rows,
+        );
     }
 
     /**

@@ -1,0 +1,13 @@
+{
+    "name": "VisitorStats",
+    "version": "1.0.0",
+    "description": "Aggregated page-view/unique-visitor counting for the public site, separate from core's security telemetry.",
+    "author": "CPalius",
+    "bundle": "Modules\\VisitorStats\\VisitorStatsModule",
+    "core_version": "^2.0",
+    "requires": {},
+    "conflicts": {},
+    "provides": [
+        "visitor-stats"
+    ]
+}

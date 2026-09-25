@@ -1,0 +1,45 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'visitorstats.menu.title'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <twig:cp:card padded="{{ true }}">
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div class="rounded-md border border-white/10 bg-dark-1 px-2.5 py-2">
+                    <span class="block font-mono text-[0.65rem] uppercase tracking-wide !text-slate-500">{{ 'visitorstats.today.views'|trans }}</span>
+                    <strong class="mt-0.5 block font-mono text-lg !text-emerald-300">{{ today.pageViews }}</strong>
+                </div>
+                <div class="rounded-md border border-white/10 bg-dark-1 px-2.5 py-2">
+                    <span class="block font-mono text-[0.65rem] uppercase tracking-wide !text-slate-500">{{ 'visitorstats.today.unique'|trans }}</span>
+                    <strong class="mt-0.5 block font-mono text-lg !text-emerald-300">{{ today.uniqueIps }}</strong>
+                </div>
+            </div>
+        </twig:cp:card>
+
+        <twig:cp:card title="{{ 'visitorstats.history.title'|trans({days: historyDays}) }}" padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'visitorstats.history.column.date'|trans,
+                'visitorstats.history.column.views'|trans,
+                'visitorstats.history.column.unique'|trans,
+            ] }}" empty="{{ history is empty }}" emptyText="{{ 'visitorstats.history.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for day in history %}
+                        <tr>
+                            <td class="!text-slate-300">{{ day.date }}</td>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono !text-slate-200">{{ day.totalViews }}</span>
+                                    <span class="h-1.5 flex-1 max-w-[160px] overflow-hidden rounded-full bg-white/5" aria-hidden="true">
+                                        <span class="block h-full rounded-full bg-emerald-500/60" style="width: {{ ((day.totalViews / maxViews) * 100)|round }}%"></span>
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="font-mono !text-slate-400">{{ day.uniqueVisitors }}</td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+{% endblock %}

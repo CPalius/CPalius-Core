@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
-use App\Core\Analytics\VisitorStatsRepository;
+use App\Core\Analytics\VisitorStatsProviderInterface;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Security\Http\LoginTargetPath;
 use App\Core\Security\Repository\TelemetryLogRepository;
@@ -35,7 +35,8 @@ final class AACPTelemetryController
     public function __construct(
         private readonly Environment $twig,
         private readonly TelemetryLogRepository $telemetryLogRepository,
-        private readonly VisitorStatsRepository $visitorStatsRepository,
+        // Null when the VisitorStats module is not installed/active.
+        private readonly ?VisitorStatsProviderInterface $visitorStatsProvider,
         private readonly IpBanService $ipBanService,
         private readonly SystemSettingsService $systemSettingsService,
         private readonly SettingsRegistry $settingsRegistry,
@@ -69,7 +70,7 @@ final class AACPTelemetryController
             ]);
         }
 
-        $stats = $this->visitorStatsRepository->stats(24);
+        $stats = $this->visitorStatsProvider?->stats(24) ?? ['hourly' => ['labels' => [], 'hits' => []], 'uniqueIps' => 0, 'pageViews' => 0];
 
         return new JsonResponse([
             'mode' => 'visitors',

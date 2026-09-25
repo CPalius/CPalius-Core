@@ -8,7 +8,7 @@ use App\Core\Aacp\SystemWidgetData;
 use App\Core\Aacp\SystemWidgetProviderInterface;
 use App\Core\Admin\PlatformPulseService;
 use App\Core\Annotation\CpAdminMenu;
-use App\Core\Analytics\VisitorStatsRepository;
+use App\Core\Analytics\VisitorStatsProviderInterface;
 use App\Core\Api\ApiKeyService;
 use App\Core\Audit\Entity\AuditLog;
 use App\Core\Audit\Repository\AuditLogRepository;
@@ -103,7 +103,8 @@ final class AACPController
         private readonly TranslatorInterface $translator,
         private readonly AuditLogRepository $auditLogRepository,
         private readonly TelemetryLogRepository $telemetryLogRepository,
-        private readonly VisitorStatsRepository $visitorStatsRepository,
+        // Null when the VisitorStats module is not installed/active.
+        private readonly ?VisitorStatsProviderInterface $visitorStatsProvider,
         private readonly IpBanService $ipBanService,
         private readonly PerformanceInventory $performanceInventory,
         #[Autowire(service: 'cache.app')]
@@ -209,10 +210,14 @@ final class AACPController
         $health = $this->buildHealthReport();
         $system = $this->buildSystemReport();
         $securityOn = (bool) $this->settingsRegistry->get('telemetry.security_enabled', false);
-        // Page views are counted the same way regardless of mode (VisitorStatsRecorder),
-        // and the KPI strip shows them in both — only the feed table and trend
-        // chart switch to security data when the scanner is on.
-        $visitorStats = $this->visitorStatsRepository->stats(24);
+        // Page views are counted the same way regardless of mode, and the KPI
+        // strip shows them in both — only the feed table and trend chart
+        // switch to security data when the scanner is on. Null provider
+        // (VisitorStats module not installed/active): the template shows a
+        // "not installed" hint instead of fabricated zeros.
+        $visitorStatsAvailable = $this->visitorStatsProvider !== null;
+        $visitorStats = $this->visitorStatsProvider?->stats(24)
+            ?? ['uniqueIps' => 0, 'pageViews' => 0, 'hourly' => ['labels' => [], 'hits' => []]];
         $securitySummary = $this->telemetryLogRepository->securitySummary(24);
         $banStats = $this->ipBanService->stats();
 
@@ -231,6 +236,7 @@ final class AACPController
             'telemetryVectors' => $securityOn ? $this->telemetryLogRepository->vectorBreakdown(24) : [],
             'topThreatIps' => $securityOn ? $this->telemetryLogRepository->topThreatIps(5) : [],
             'visitorStats' => $visitorStats,
+            'visitorStatsAvailable' => $visitorStatsAvailable,
             'securitySummary' => $securitySummary,
             'banStats' => $banStats,
             'quarantineLog' => array_slice($this->readQuarantineLog(), 0, 8),

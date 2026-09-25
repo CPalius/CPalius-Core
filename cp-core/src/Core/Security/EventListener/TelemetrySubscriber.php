@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Security\EventListener;
 
-use App\Core\Analytics\VisitorStatsRecorder;
+use App\Core\Analytics\VisitorRecorderInterface;
 use App\Core\Security\Dto\ThreatResult;
 use App\Core\Security\Entity\SystemTelemetryLog;
 use App\Core\Security\Http\LoginTargetPath;
@@ -44,7 +44,13 @@ final class TelemetrySubscriber implements EventSubscriberInterface
     public function __construct(
         private readonly ThreatAnalyzer $threatAnalyzer,
         private readonly TelemetryLogRepository $telemetryLogRepository,
-        private readonly VisitorStatsRecorder $visitorStatsRecorder,
+        // Null when the VisitorStats module is not installed/active — page
+        // views are simply not counted then, which is correct, not degraded.
+        // (No "= null" here: it isn't the last constructor param, and PHP
+        // deprecates an optional param before a required one. Symfony's
+        // autowiring passes null for a nullable-typed argument with no
+        // matching service regardless of a PHP-level default existing.)
+        private readonly ?VisitorRecorderInterface $visitorStatsRecorder,
         private readonly SettingsRegistry $settingsRegistry,
         private readonly Security $security,
         private readonly LoggerInterface $logger,
@@ -85,7 +91,7 @@ final class TelemetrySubscriber implements EventSubscriberInterface
             // signals. This is also what stops "clear telemetry" from wiping
             // visitor history — they no longer share a table.
             if ($result->eventType === SystemTelemetryLog::EVENT_PAGE_VIEW) {
-                $this->visitorStatsRecorder->record($ip);
+                $this->visitorStatsRecorder?->record($ip);
 
                 return;
             }
