@@ -2,6 +2,10 @@
 
 {% block header %}{{ 'visitorstats.menu.title'|trans }}{% endblock %}
 
+{% block javascripts %}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'visitorstats-charts']) }}
+{% endblock %}
+
 {% block body %}
     <div class="space-y-sp-md">
         <twig:cp:card padded="{{ true }}">
@@ -17,33 +21,21 @@
             </div>
         </twig:cp:card>
 
-        <twig:cp:card title="{{ 'visitorstats.daily.title'|trans({days: daily|length}) }}" padded="{{ true }}">
-            <div class="flex h-40 items-end gap-[3px]">
-                {% for day in daily %}
-                    {% set pct = ((day.totalViews / maxDailyViews) * 100)|round(1) %}
-                    <div class="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
-                        <span class="font-mono text-fs-xs !text-slate-400 opacity-0 transition-opacity group-hover:opacity-100">{{ day.totalViews }}</span>
-                        <div class="flex h-full w-full items-end" title="{{ day.date }}: {{ day.totalViews }} {{ 'visitorstats.chart.views_unit'|trans }}, {{ day.uniqueVisitors }} {{ 'visitorstats.chart.unique_unit'|trans }}">
-                            <span class="w-full rounded-t-sm bg-emerald-500/70 transition-colors group-hover:bg-emerald-400" style="height: {{ max(pct, 2) }}%"></span>
-                        </div>
-                        <span class="font-mono text-[0.6rem] !text-slate-600">{{ day.date|slice(-2) }}</span>
-                    </div>
-                {% endfor %}
+        <twig:cp:card title="{{ 'visitorstats.daily.title'|trans({days: dailyDays})|upper }}" padded="{{ true }}">
+            <twig:block name="actions">
+                <div class="flex items-center gap-3 font-mono text-[0.65rem] uppercase tracking-wide !text-slate-400">
+                    <span class="flex items-center gap-1.5"><span class="inline-block h-2 w-2 rounded-full" style="background:#059669"></span>{{ 'visitorstats.chart.total'|trans }}</span>
+                    <span class="flex items-center gap-1.5"><span class="inline-block h-2 w-2 rounded-full" style="background:#6ee7b7"></span>{{ 'visitorstats.chart.unique'|trans }}</span>
+                </div>
+            </twig:block>
+            <div class="h-64">
+                <canvas data-visitorstats-chart="daily" data-visitorstats-data="{{ dailyChart|json_encode|e('html_attr') }}"></canvas>
             </div>
         </twig:cp:card>
 
-        <twig:cp:card title="{{ 'visitorstats.monthly.title'|trans({months: monthly|length}) }}" padded="{{ true }}">
-            <div class="flex h-40 items-end gap-2">
-                {% for row in monthly %}
-                    {% set pct = ((row.totalViews / maxMonthlyViews) * 100)|round(1) %}
-                    <div class="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
-                        <span class="font-mono text-fs-xs !text-slate-400 opacity-0 transition-opacity group-hover:opacity-100">{{ row.totalViews }}</span>
-                        <div class="flex h-full w-full items-end" title="{{ row.month }}: {{ row.totalViews }} {{ 'visitorstats.chart.views_unit'|trans }}, {{ row.uniqueVisitors }} {{ 'visitorstats.chart.unique_unit'|trans }}">
-                            <span class="w-full rounded-t-sm bg-primary-500/70 transition-colors group-hover:bg-primary-400" style="height: {{ max(pct, 2) }}%"></span>
-                        </div>
-                        <span class="font-mono text-[0.65rem] !text-slate-500">{{ row.month|slice(-2) }}</span>
-                    </div>
-                {% endfor %}
+        <twig:cp:card title="{{ 'visitorstats.monthly.title'|trans({months: monthlyMonths})|upper }}" padded="{{ true }}">
+            <div class="h-48">
+                <canvas data-visitorstats-chart="monthly" data-visitorstats-data="{{ monthlyChart|json_encode|e('html_attr') }}"></canvas>
             </div>
         </twig:cp:card>
     </div>

@@ -40,24 +40,45 @@ final class VisitorStatsAdminController
 
         $html = $this->twig->render('@VisitorStatsModule/admin/index.html.twig', [
             'today' => $this->repository->stats(24),
-            'daily' => $daily,
-            'maxDailyViews' => self::maxViews($daily),
-            'monthly' => $monthly,
-            'maxMonthlyViews' => self::maxViews($monthly),
+            'dailyDays' => self::HISTORY_DAYS,
+            'monthlyMonths' => self::HISTORY_MONTHS,
+            'dailyChart' => self::dailyChartPayload($daily),
+            'monthlyChart' => self::monthlyChartPayload($monthly),
         ]);
 
         return new Response($html);
     }
 
     /**
-     * @param list<array{totalViews: int}> $rows
+     * @param list<array{date: string, totalViews: int, uniqueVisitors: int}> $daily
+     *
+     * @return array{labels: list<string>, total: list<int>, unique: list<int>}
      */
-    private static function maxViews(array $rows): int
+    private static function dailyChartPayload(array $daily): array
     {
-        return array_reduce(
-            $rows,
-            static fn (int $carry, array $row): int => max($carry, $row['totalViews']),
-            1,
-        );
+        return [
+            'labels' => array_map(
+                static fn (array $row): string => (new \DateTimeImmutable($row['date']))->format('d M'),
+                $daily,
+            ),
+            'total' => array_map(static fn (array $row): int => $row['totalViews'], $daily),
+            'unique' => array_map(static fn (array $row): int => $row['uniqueVisitors'], $daily),
+        ];
+    }
+
+    /**
+     * @param list<array{month: string, totalViews: int, uniqueVisitors: int}> $monthly
+     *
+     * @return array{labels: list<string>, total: list<int>}
+     */
+    private static function monthlyChartPayload(array $monthly): array
+    {
+        return [
+            'labels' => array_map(
+                static fn (array $row): string => (new \DateTimeImmutable($row['month'].'-01'))->format('M Y'),
+                $monthly,
+            ),
+            'total' => array_map(static fn (array $row): int => $row['totalViews'], $monthly),
+        ];
     }
 }
