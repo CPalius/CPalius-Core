@@ -17,29 +17,34 @@
             </div>
         </twig:cp:card>
 
-        <twig:cp:card title="{{ 'visitorstats.history.title'|trans({days: historyDays}) }}" padded="{{ false }}">
-            <twig:cp:table headers="{{ [
-                'visitorstats.history.column.date'|trans,
-                'visitorstats.history.column.views'|trans,
-                'visitorstats.history.column.unique'|trans,
-            ] }}" empty="{{ history is empty }}" emptyText="{{ 'visitorstats.history.empty'|trans }}">
-                <twig:block name="rows">
-                    {% for day in history %}
-                        <tr>
-                            <td class="!text-slate-300">{{ day.date }}</td>
-                            <td>
-                                <div class="flex items-center gap-2">
-                                    <span class="font-mono !text-slate-200">{{ day.totalViews }}</span>
-                                    <span class="h-1.5 flex-1 max-w-[160px] overflow-hidden rounded-full bg-white/5" aria-hidden="true">
-                                        <span class="block h-full rounded-full bg-emerald-500/60" style="width: {{ ((day.totalViews / maxViews) * 100)|round }}%"></span>
-                                    </span>
-                                </div>
-                            </td>
-                            <td class="font-mono !text-slate-400">{{ day.uniqueVisitors }}</td>
-                        </tr>
-                    {% endfor %}
-                </twig:block>
-            </twig:cp:table>
+        <twig:cp:card title="{{ 'visitorstats.daily.title'|trans({days: daily|length}) }}" padded="{{ true }}">
+            <div class="flex h-40 items-end gap-[3px]">
+                {% for day in daily %}
+                    {% set pct = ((day.totalViews / maxDailyViews) * 100)|round(1) %}
+                    <div class="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
+                        <span class="font-mono text-fs-xs !text-slate-400 opacity-0 transition-opacity group-hover:opacity-100">{{ day.totalViews }}</span>
+                        <div class="flex h-full w-full items-end" title="{{ day.date }}: {{ day.totalViews }} {{ 'visitorstats.chart.views_unit'|trans }}, {{ day.uniqueVisitors }} {{ 'visitorstats.chart.unique_unit'|trans }}">
+                            <span class="w-full rounded-t-sm bg-emerald-500/70 transition-colors group-hover:bg-emerald-400" style="height: {{ max(pct, 2) }}%"></span>
+                        </div>
+                        <span class="font-mono text-[0.6rem] !text-slate-600">{{ day.date|slice(-2) }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        </twig:cp:card>
+
+        <twig:cp:card title="{{ 'visitorstats.monthly.title'|trans({months: monthly|length}) }}" padded="{{ true }}">
+            <div class="flex h-40 items-end gap-2">
+                {% for row in monthly %}
+                    {% set pct = ((row.totalViews / maxMonthlyViews) * 100)|round(1) %}
+                    <div class="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
+                        <span class="font-mono text-fs-xs !text-slate-400 opacity-0 transition-opacity group-hover:opacity-100">{{ row.totalViews }}</span>
+                        <div class="flex h-full w-full items-end" title="{{ row.month }}: {{ row.totalViews }} {{ 'visitorstats.chart.views_unit'|trans }}, {{ row.uniqueVisitors }} {{ 'visitorstats.chart.unique_unit'|trans }}">
+                            <span class="w-full rounded-t-sm bg-primary-500/70 transition-colors group-hover:bg-primary-400" style="height: {{ max(pct, 2) }}%"></span>
+                        </div>
+                        <span class="font-mono text-[0.65rem] !text-slate-500">{{ row.month|slice(-2) }}</span>
+                    </div>
+                {% endfor %}
+            </div>
         </twig:cp:card>
     </div>
 {% endblock %}

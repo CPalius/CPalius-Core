@@ -78,35 +78,44 @@
             </div>
         </twig:cp:card>
 
-        <twig:cp:card title="{{ 'aacp.security.findings_title'|trans }}" padded="{{ false }}">
-            <twig:cp:table headers="{{ [
-                'aacp.security.column.severity'|trans,
-                'aacp.security.column.check'|trans,
-                'aacp.security.column.detail'|trans,
-            ] }}" empty="{{ findings is empty }}" emptyText="{{ 'aacp.security.findings_empty'|trans }}">
-                <twig:block name="rows">
-                    {% for finding in findings %}
-                        <tr>
-                            <td class="align-top">
-                                <span class="badge rounded-md border px-2 py-0.5 text-fs-xs {{ severityStyle[finding.severity]|default('') }}">
-                                    {{ ('aacp.security.severity.' ~ finding.severity)|trans }}
-                                </span>
-                            </td>
-                            <td class="align-top">
-                                <span class="block font-medium !text-slate-200">{{ finding.titleKey|trans }}</span>
-                                <span class="mt-0.5 block font-mono text-fs-xs !text-slate-500">{{ finding.id }}</span>
-                            </td>
-                            <td class="align-top !text-slate-400">{{ finding.detailKey|trans(finding.parameters) }}</td>
-                        </tr>
-                    {% endfor %}
-                </twig:block>
-            </twig:cp:table>
-        </twig:cp:card>
-
         <div id="threats">
-            <twig:cp:card title="{{ 'aacp.security.threats_title'|trans }}" padded="{{ not threatScannerOn }}">
-                {% if not threatScannerOn %}
-                    <p class="text-fs-sm !text-slate-400">
+            <twig:cp:card padded="{{ false }}">
+                <div class="flex border-b border-white/10 px-sp-sm">
+                    <a href="{{ path('aacp_security_center') }}#threats"
+                       class="border-b-2 px-sp-sm py-2.5 text-fs-sm font-medium {{ activePanel == 'threats' ? 'border-primary-500 text-primary-400' : 'border-transparent text-slate-500 hover:text-slate-300' }}">
+                        {{ 'aacp.security.threats_title'|trans }}
+                    </a>
+                    <a href="{{ path('aacp_security_center', {panel: 'findings'}) }}#threats"
+                       class="border-b-2 px-sp-sm py-2.5 text-fs-sm font-medium {{ activePanel == 'findings' ? 'border-primary-500 text-primary-400' : 'border-transparent text-slate-500 hover:text-slate-300' }}">
+                        {{ 'aacp.security.findings_title'|trans }}
+                    </a>
+                </div>
+
+                {% if activePanel == 'findings' %}
+                    <twig:cp:table headers="{{ [
+                        'aacp.security.column.severity'|trans,
+                        'aacp.security.column.check'|trans,
+                        'aacp.security.column.detail'|trans,
+                    ] }}" empty="{{ findings is empty }}" emptyText="{{ 'aacp.security.findings_empty'|trans }}">
+                        <twig:block name="rows">
+                            {% for finding in findings %}
+                                <tr>
+                                    <td class="align-top">
+                                        <span class="badge rounded-md border px-2 py-0.5 text-fs-xs {{ severityStyle[finding.severity]|default('') }}">
+                                            {{ ('aacp.security.severity.' ~ finding.severity)|trans }}
+                                        </span>
+                                    </td>
+                                    <td class="align-top">
+                                        <span class="block font-medium !text-slate-200">{{ finding.titleKey|trans }}</span>
+                                        <span class="mt-0.5 block font-mono text-fs-xs !text-slate-500">{{ finding.id }}</span>
+                                    </td>
+                                    <td class="align-top !text-slate-400">{{ finding.detailKey|trans(finding.parameters) }}</td>
+                                </tr>
+                            {% endfor %}
+                        </twig:block>
+                    </twig:cp:table>
+                {% elseif not threatScannerOn %}
+                    <p class="p-sp-sm text-fs-sm !text-slate-400">
                         {{ 'aacp.security.threats_disabled'|trans }}
                         <a href="{{ path('aacp_telemetry_settings') }}" class="!text-emerald-400 hover:!text-emerald-300">{{ 'aacp.telemetry.settings_link'|trans }} →</a>
                     </p>
@@ -137,7 +146,6 @@
                         'aacp.telemetry.col.user'|trans,
                         'aacp.telemetry.col.event'|trans,
                         'aacp.telemetry.col.score'|trans,
-                        'aacp.telemetry.col.details'|trans,
                     ] }}" empty="{{ threatFeed is empty }}" emptyText="{{ 'aacp.telemetry.feed.empty'|trans }}">
                         <twig:block name="rows">
                             {% for row in threatFeed %}
@@ -146,15 +154,8 @@
                                     <td><span class="aacp-sev aacp-sev-{{ row.severity }}">{{ row.severity }}</span></td>
                                     <td><span class="font-mono text-fs-xs !text-slate-200">{{ row.ip }}</span></td>
                                     <td class="!text-slate-400">{{ row.user }}</td>
-                                    <td class="!text-slate-400">{{ row.method }} {{ row.uri|length > 48 ? row.uri|slice(0, 48) ~ '…' : row.uri }}</td>
+                                    <td class="!text-slate-400">{{ row.method }} {{ row.uri|length > 40 ? row.uri|slice(0, 40) ~ '…' : row.uri }}</td>
                                     <td class="!text-slate-400">{{ row.threatScore }}</td>
-                                    <td>
-                                        {% if row.details is not empty %}
-                                            <code class="block max-w-[240px] truncate font-mono text-fs-xs !text-slate-500" title="{{ row.details|json_encode }}">{{ row.details|json_encode }}</code>
-                                        {% else %}
-                                            <span class="!text-slate-600">—</span>
-                                        {% endif %}
-                                    </td>
                                 </tr>
                             {% endfor %}
                         </twig:block>

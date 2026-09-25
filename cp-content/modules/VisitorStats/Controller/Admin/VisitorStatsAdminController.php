@@ -22,7 +22,8 @@ use Twig\Environment;
 #[IsGranted('visitorstats.view')]
 final class VisitorStatsAdminController
 {
-    private const HISTORY_DAYS = 30;
+    private const HISTORY_DAYS = 31;
+    private const HISTORY_MONTHS = 12;
 
     public function __construct(
         private readonly Environment $twig,
@@ -34,20 +35,29 @@ final class VisitorStatsAdminController
     #[CpAdminMenu(label: 'visitorstats.menu.title', icon: 'heroicons:presentation-chart-line', panel: 'aacp', priority: 26, capability: 'visitorstats.view')]
     public function index(): Response
     {
-        $history = $this->repository->dailyHistory(self::HISTORY_DAYS);
-        $maxViews = array_reduce(
-            $history,
-            static fn (int $carry, array $day): int => max($carry, $day['totalViews']),
-            1,
-        );
+        $daily = $this->repository->dailyHistory(self::HISTORY_DAYS);
+        $monthly = $this->repository->monthlyHistory(self::HISTORY_MONTHS);
 
         $html = $this->twig->render('@VisitorStatsModule/admin/index.html.twig', [
             'today' => $this->repository->stats(24),
-            'history' => $history,
-            'maxViews' => $maxViews,
-            'historyDays' => self::HISTORY_DAYS,
+            'daily' => $daily,
+            'maxDailyViews' => self::maxViews($daily),
+            'monthly' => $monthly,
+            'maxMonthlyViews' => self::maxViews($monthly),
         ]);
 
         return new Response($html);
+    }
+
+    /**
+     * @param list<array{totalViews: int}> $rows
+     */
+    private static function maxViews(array $rows): int
+    {
+        return array_reduce(
+            $rows,
+            static fn (int $carry, array $row): int => max($carry, $row['totalViews']),
+            1,
+        );
     }
 }

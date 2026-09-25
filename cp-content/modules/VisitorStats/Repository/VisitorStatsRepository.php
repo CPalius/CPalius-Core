@@ -40,31 +40,95 @@ final class VisitorStatsRepository implements VisitorStatsProviderInterface
 
     /**
      * Daily history for the module's own admin page — the reason
-     * cp_visitor_daily_stats is never pruned (~365 rows/year). Newest first.
+     * cp_visitor_daily_stats is never pruned (~365 rows/year). Oldest first,
+     * so a day-by-day chart reads left to right; every day in the window is
+     * present even with zero visits (a day with no row is not "missing", it
+     * had none), which a plain SELECT would silently skip.
      *
      * @return list<array{date: string, totalViews: int, uniqueVisitors: int}>
      */
     public function dailyHistory(int $days = 30): array
     {
+        $today = new \DateTimeImmutable('today');
+
         try {
-            $since = (new \DateTimeImmutable('today'))->modify(sprintf('-%d days', $days - 1))->format('Y-m-d');
+            $since = $today->modify(sprintf('-%d days', $days - 1))->format('Y-m-d');
             $rows = $this->connection->fetchAllAssociative(
                 'SELECT stat_date, total_views, unique_visitors FROM cp_visitor_daily_stats
-                 WHERE stat_date >= :since ORDER BY stat_date DESC',
+                 WHERE stat_date >= :since ORDER BY stat_date ASC',
                 ['since' => $since],
             );
         } catch (DBALException) {
-            return [];
+            $rows = [];
         }
 
-        return array_map(
-            static fn (array $row): array => [
-                'date' => (string) $row['stat_date'],
+        $byDate = [];
+        foreach ($rows as $row) {
+            $byDate[(string) $row['stat_date']] = [
                 'totalViews' => (int) $row['total_views'],
                 'uniqueVisitors' => (int) $row['unique_visitors'],
-            ],
-            $rows,
-        );
+            ];
+        }
+
+        $history = [];
+        for ($i = $days - 1; $i >= 0; --$i) {
+            $date = $today->modify(sprintf('-%d days', $i))->format('Y-m-d');
+            $history[] = [
+                'date' => $date,
+                'totalViews' => $byDate[$date]['totalViews'] ?? 0,
+                'uniqueVisitors' => $byDate[$date]['uniqueVisitors'] ?? 0,
+            ];
+        }
+
+        return $history;
+    }
+
+    /**
+     * Monthly totals for the last N months, summed from the same daily rows
+     * — no separate table, exactly the aggregation this method name says.
+     * Oldest first, current (partial) month included and labelled as such
+     * by the caller if it wants to.
+     *
+     * @return list<array{month: string, totalViews: int, uniqueVisitors: int}>
+     */
+    public function monthlyHistory(int $months = 12): array
+    {
+        $firstOfThisMonth = new \DateTimeImmutable('first day of this month');
+
+        try {
+            $since = $firstOfThisMonth->modify(sprintf('-%d months', $months - 1))->format('Y-m-d');
+            $rows = $this->connection->fetchAllAssociative(
+                "SELECT DATE_FORMAT(stat_date, '%Y-%m') AS ym,
+                        SUM(total_views) AS total_views,
+                        SUM(unique_visitors) AS unique_visitors
+                 FROM cp_visitor_daily_stats
+                 WHERE stat_date >= :since
+                 GROUP BY ym",
+                ['since' => $since],
+            );
+        } catch (DBALException) {
+            $rows = [];
+        }
+
+        $byMonth = [];
+        foreach ($rows as $row) {
+            $byMonth[(string) $row['ym']] = [
+                'totalViews' => (int) $row['total_views'],
+                'uniqueVisitors' => (int) $row['unique_visitors'],
+            ];
+        }
+
+        $history = [];
+        for ($i = $months - 1; $i >= 0; --$i) {
+            $ym = $firstOfThisMonth->modify(sprintf('-%d months', $i))->format('Y-m');
+            $history[] = [
+                'month' => $ym,
+                'totalViews' => $byMonth[$ym]['totalViews'] ?? 0,
+                'uniqueVisitors' => $byMonth[$ym]['uniqueVisitors'] ?? 0,
+            ];
+        }
+
+        return $history;
     }
 
     /**
