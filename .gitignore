@@ -140,6 +140,11 @@ Thumbs.db
 # One-off recovery for a stale compiled container after a patch (delete after use)
 /public/cp-unstick.php
 
+# One-off read-only diagnostic for the recurring stale-container-after-update
+# crash: live VERSION, purge-failure marker, container file count, proc_open
+# capability (delete after use — do not deploy)
+/public/cp-diag-cache.php
+
 # Logs & temp
 *.log
 *.tmp
