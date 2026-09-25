@@ -49,7 +49,10 @@ final class AccountUserChecker implements UserCheckerInterface
             throw new CustomUserMessageAccountStatusException('account.login.pending_approval');
         }
 
-        if ($this->registrationService->isEmailVerificationRequired() && !$user->isEmailVerified()) {
+        if ($this->registrationService->isEmailVerificationRequired()
+            && $this->registrationService->isLoginVerificationRequired()
+            && !$user->isEmailVerified()
+        ) {
             throw new CustomUserMessageAccountStatusException('account.login.email_not_verified');
         }
     }

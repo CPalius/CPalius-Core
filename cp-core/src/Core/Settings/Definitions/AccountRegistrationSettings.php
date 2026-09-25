@@ -25,6 +25,26 @@ use App\Core\Annotation\CpSetting;
     module: 'account',
     group: 'account.registration',
 )]
+/*
+ * Independent from require_email_verification on purpose (Manifesto-style
+ * separation of concerns, matching require_identity_change_approval's own
+ * comment above): "ask new registrants to verify their address" and "refuse
+ * login to anyone not currently verified" used to be the same checkbox,
+ * which meant turning on the first also silently locked out every existing
+ * account created before the setting existed — they were never asked to
+ * verify anything, so isEmailVerified() reads false for them too. Defaults
+ * to true so a site already relying on that combined behavior sees no
+ * change; an operator who wants registration verification as a soft
+ * nudge, not a login gate, can turn this off on its own.
+ */
+#[CpSetting(
+    key: 'account.require_email_verification_at_login',
+    label: 'settings.account.require_email_verification_at_login',
+    type: 'checkbox',
+    default: true,
+    module: 'account',
+    group: 'account.registration',
+)]
 #[CpSetting(
     key: 'account.require_admin_approval',
     label: 'settings.account.require_admin_approval',

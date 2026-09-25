@@ -43,7 +43,15 @@ final class UserFormModel
     #[Assert\Length(max: 16)]
     public string $locale = '';
 
-    public string $bio = '';
+    /**
+     * Nullable, not '' — TextareaType::reverseTransform() turns an empty
+     * submitted textarea into null (Symfony's own behavior, TextareaType-
+     * specific), and PropertyAccessor writes that straight to this property
+     * with no setter to coerce it; a non-nullable string here throws
+     * InvalidTypeException on any save with an empty bio. mapDtoToUser()
+     * already casts through (string) before it reaches the entity.
+     */
+    public ?string $bio = null;
 
     #[Assert\Length(max: 120)]
     public ?string $customTitle = null;

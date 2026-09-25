@@ -273,7 +273,12 @@ final class ForumFrontController extends AbstractController
         }
 
         if (!$this->canCreateThread($section)) {
-            throw new AccessDeniedHttpException();
+            // Reached routinely (a guest or a member without post rights
+            // clicking "new topic") — Symfony turns this into an ordinary
+            // 403 page either way, but an empty exception message was
+            // indistinguishable from a real bug in the log, unlike every
+            // other throw in this method.
+            throw new AccessDeniedHttpException($this->translator->trans('site.forum.section.cannot_create_topic'));
         }
 
         $this->assertCanCreateThreadInSection($section);

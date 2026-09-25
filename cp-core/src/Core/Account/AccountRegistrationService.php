@@ -58,6 +58,19 @@ final class AccountRegistrationService
         return (bool) ($this->settingsRegistry->get('account.require_email_verification') ?? false);
     }
 
+    /**
+     * Whether an unverified account is refused login — independent of
+     * isEmailVerificationRequired(), which only governs the registration
+     * flow. AccountUserChecker::checkPostAuth() requires both this AND
+     * isEmailVerificationRequired() before blocking a login: if
+     * registration itself never asked for verification, an account being
+     * "unverified" carries no meaning to gate login on.
+     */
+    public function isLoginVerificationRequired(): bool
+    {
+        return (bool) ($this->settingsRegistry->get('account.require_email_verification_at_login') ?? true);
+    }
+
     public function isAdminApprovalRequired(): bool
     {
         return (bool) ($this->settingsRegistry->get('account.require_admin_approval') ?? false);
