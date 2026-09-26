@@ -9,7 +9,7 @@
     <h2 class="blog-sidebar-widget__title">{{ 'blog.sidebar.author_whoami'|trans }}</h2>
     <div class="slw-sidebar-profile__avatar">
         {% if avatarUrl %}
-            <img src="{{ avatarUrl }}" alt="{{ displayName }}" loading="lazy" decoding="async">
+            <img src="{{ avatarUrl|lower ends with '.gif' ? avatarUrl : avatarUrl|cp_thumb(192, 192) }}" alt="{{ displayName }}" loading="lazy" decoding="async" width="96" height="96">
         {% else %}
             <span aria-hidden="true">{{ initial }}</span>
         {% endif %}

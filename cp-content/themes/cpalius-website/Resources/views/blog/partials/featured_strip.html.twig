@@ -45,7 +45,7 @@
                     <a class="{{ slideClass }}" href="{{ slideHref }}">
                         {% if slide.coverUrl %}
                             <img
-                                src="{{ slide.coverUrl }}"
+                                src="{{ slide.coverUrl|cp_thumb(720, 720, 'fit') }}"
                                 alt=""
                                 loading="lazy"
                                 decoding="async"

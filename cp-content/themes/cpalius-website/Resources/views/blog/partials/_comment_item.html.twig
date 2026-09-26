@@ -9,7 +9,7 @@
 <article class="blog-comment{{ isReply ? ' blog-comment--reply' : '' }}" id="comment-{{ comment.id }}">
     <div class="blog-comment__avatar" aria-hidden="true">
         {% if avatarUrl %}
-            <img src="{{ avatarUrl }}" alt="" loading="lazy" decoding="async">
+            <img src="{{ avatarUrl|lower ends with '.gif' ? avatarUrl : avatarUrl|cp_thumb(96, 96) }}" alt="" loading="lazy" decoding="async" width="48" height="48">
         {% else %}
             <span>{{ displayName|trim|first|upper }}</span>
         {% endif %}

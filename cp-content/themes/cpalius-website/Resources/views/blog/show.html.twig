@@ -45,7 +45,7 @@
 
         {% if featuredImageUrl and subType != 'not' %}
             <div class="post-hero-image fade-in">
-                <img src="{{ featuredImageUrl }}" alt="{{ post.title }}" loading="eager">
+                <img src="{{ featuredImageUrl|cp_thumb(1600, 1600, 'fit') }}" alt="{{ post.title }}" loading="eager" fetchpriority="high" decoding="async">
             </div>
         {% endif %}
     </div>

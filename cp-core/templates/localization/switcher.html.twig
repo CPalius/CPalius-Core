@@ -14,7 +14,6 @@
                 <li>
                     {% if link.isCurrent %}
                         <span class="locale-switcher__link is-active" aria-current="true" lang="{{ link.code }}">
-                            <img src="/themes/cpalius-website/img/flags/{{ link.code }}.png" alt="" class="locale-switcher__flag" width="22" height="16">
                             <span>{{ link.nativeName }}</span>
                         </span>
                     {% else %}
@@ -23,7 +22,6 @@
                            lang="{{ link.code }}"
                            rel="alternate"
                            class="locale-switcher__link">
-                            <img src="/themes/cpalius-website/img/flags/{{ link.code }}.png" alt="" class="locale-switcher__flag" width="22" height="16">
                             <span>{{ link.nativeName }}</span>
                         </a>
                     {% endif %}

@@ -5,7 +5,7 @@
 <section class="blog-hero{% if blogHero.imageUrl %} blog-hero--has-media{% endif %}" id="blog-hero">
     {% if blogHero.imageUrl %}
         <div class="blog-hero__media" aria-hidden="true">
-            <img src="{{ blogHero.imageUrl }}" alt="" loading="eager">
+            <img src="{{ blogHero.imageUrl|cp_thumb(1920, 1920, 'fit') }}" alt="" loading="eager" fetchpriority="high" decoding="async">
             <div class="blog-hero__scrim"></div>
         </div>
     {% endif %}
@@ -62,7 +62,7 @@
                 {% set coverUrl = blog_featured_image_url(spotlight) %}
                 {% if coverUrl %}
                     <a href="{{ path('blog_show', {_locale: spotlight.locale, slug: spotlight.slug}) }}" class="blog-hero__feature-cover">
-                        <img src="{{ coverUrl }}" alt="{{ spotlight.title }}" loading="lazy">
+                        <img src="{{ coverUrl|cp_thumb(960, 960, 'fit') }}" alt="{{ spotlight.title }}" loading="lazy" decoding="async">
                     </a>
                 {% endif %}
                 <h2 class="blog-hero__feature-title">

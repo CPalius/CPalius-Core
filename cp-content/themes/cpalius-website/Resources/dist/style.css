@@ -6499,15 +6499,6 @@ a.slw-sidebar-profile__name:hover {
   color: var(--cp-white);
 }
 
-.locale-switcher__flag {
-  display: block;
-  width: 22px;
-  height: 16px;
-  object-fit: cover;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
 .locale-switcher__link {
   display: inline-flex;
   align-items: center;

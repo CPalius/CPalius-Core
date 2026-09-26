@@ -4,6 +4,6 @@
 {% set coverUrl = blog_featured_image_url(post) %}
 {% if coverUrl %}
     <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}" class="slw-feed-card__cover">
-        <img src="{{ coverUrl }}" alt="{{ post.title }}" loading="lazy" width="640" height="360">
+        <img src="{{ coverUrl|cp_thumb(720, 720, 'fit') }}" alt="{{ post.title }}" loading="lazy" decoding="async" width="640" height="360">
     </a>
 {% endif %}

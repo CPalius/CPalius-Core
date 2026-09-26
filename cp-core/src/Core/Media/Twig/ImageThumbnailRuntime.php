@@ -38,6 +38,12 @@ final class ImageThumbnailRuntime implements RuntimeExtensionInterface
             return '';
         }
 
+        // A remote image (Gravatar, a CDN URL, a pasted link) has no local
+        // original to resize; prefixing it with /uploads/ would break it.
+        if (str_contains($key, '://') || str_starts_with($key, '//') || str_starts_with($key, 'data:')) {
+            return $key;
+        }
+
         // The derivative is generated (or found) locally first and only then
         // renamed onto the CDN. Ordering it the other way round would hand the
         // browser a CDN URL for a file that does not exist yet on this origin

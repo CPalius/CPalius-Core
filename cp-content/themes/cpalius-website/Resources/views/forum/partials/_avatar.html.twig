@@ -8,7 +8,7 @@
 {% set sizeKey = size|default('md') %}
 {% if resolvedUrl %}
     <span class="forum-avatar forum-avatar--{{ sizeKey }}{{ square|default(false) ? ' forum-avatar--square' : '' }} forum-avatar--image">
-        <img src="{{ resolvedUrl }}" alt="{{ name|default('') }}" loading="lazy" decoding="async">
+        <img src="{{ resolvedUrl|lower ends with '.gif' ? resolvedUrl : resolvedUrl|cp_thumb(192, 192) }}" alt="{{ name|default('') }}" loading="lazy" decoding="async">
         {% if online|default(false) %}
             <span class="forum-avatar__presence forum-avatar__presence--online" role="img" aria-label="{{ 'presence.online'|trans({}, 'forums') }}" title="{{ 'presence.online'|trans({}, 'forums') }}"></span>
         {% endif %}
