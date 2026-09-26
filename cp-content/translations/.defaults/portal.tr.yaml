@@ -37,7 +37,6 @@ hero:
   desc: "Modern web ekosisteminde hazır eklenti sistemleriyle donatılmış ama hantal CMS'ler ile her şeye sıfırdan başlamayı gerektiren saf framework'ler arasındaki köprüyü kuran, dünya standartlarında optimize, güvenli ve genişletilebilir altyapı."
   cta_whitepaper: "Whitepaper'ı İncele"
   cta_features: "Öne çıkan özellikler"
-  badge_opensource: "Açık Kaynak"
 
 about:
   label: "Neden CPalius?"
@@ -143,8 +142,6 @@ features:
   ops_text: "Canlı sistem sağlığı, Studio dashboard, güvenlik telemetrisi ve IP ban. Veritabanı düşse bile Recovery Console ayakta kalır."
   extend_title: "Modül, API, Hook, Cron"
   extend_text: "REST Gateway, izole hook'lar, birleşik cron ve ilk parti Blog/Forum/Medya/Menü/SEO — hepsi aynı Capability zırhıyla."
-  more_hint: "Config Sync, XSS sanitization, Schema.org, N+1 muhafızı, audit log ve forum motorunun ayrıntısı Whitepaper'da."
-  more_cta: "Tüm teknik ayrıntılar — Whitepaper"
   index_title: "Flat Field Index Motoru"
   index_text: "JSON verilerini veritabanı bağımsız sorgulayın. NodeFieldIndex tablosu ve Doctrine Event Listener ile tip-uygun kolonlara sahip indeks tablosu. SQLite, MySQL ve Postgres'te aynı DQL çalışır."
   config_title: "Config Sync Sistemi"

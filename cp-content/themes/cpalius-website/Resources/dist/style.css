@@ -1527,14 +1527,6 @@ p {
   flex-wrap: wrap;
 }
 
-.hero-tech-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0;
-  padding-top: var(--sp-md);
-  border-top: 1px solid rgba(255,255,255,0.08);
-}
-
 /* ================================================
    ABOUT / PROBLEM-SOLUTION
    ================================================ */

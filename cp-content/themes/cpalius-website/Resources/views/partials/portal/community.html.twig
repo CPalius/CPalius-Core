@@ -15,9 +15,11 @@
                     <a href="https://github.com/slaweally" target="_blank" rel="noopener" class="btn btn-outline">
                         <i class="bi bi-github"></i> {{ 'community.cta_github'|trans({}, t) }}
                     </a>
+                    {% if forumAvailable %}
                     <a href="{{ path('forum_index') }}" class="btn btn-outline">
                         <i class="bi bi-chat-dots"></i> {{ 'community.cta_discuss'|trans({}, t) }}
                     </a>
+                    {% endif %}
                 </div>
             </div>
         </div>

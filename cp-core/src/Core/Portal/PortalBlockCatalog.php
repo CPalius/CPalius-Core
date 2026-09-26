@@ -112,7 +112,7 @@ final class PortalBlockCatalog
                 'supportsLimit' => false,
                 'supportsLayout' => false,
                 'supportsHeroFields' => false,
-                'default' => ['id' => 'stats', 'enabled' => true, 'title' => ''],
+                'default' => ['id' => 'stats', 'enabled' => false, 'title' => ''],
             ],
             'roadmap' => [
                 'label' => 'studio.homepage.blocks.roadmap',

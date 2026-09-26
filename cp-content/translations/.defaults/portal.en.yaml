@@ -37,7 +37,6 @@ hero:
   desc: "A world-class, optimized, secure, and extensible foundation that bridges plugin-rich but cumbersome CMS platforms and frameworks that require starting everything from scratch."
   cta_whitepaper: "Read the Whitepaper"
   cta_features: "Key features"
-  badge_opensource: "Open Source"
 
 about:
   label: "Why CPalius?"
@@ -142,8 +141,6 @@ features:
   ops_text: "Live system health, Studio dashboard, security telemetry, and IP bans. The Recovery Console stays up even if the database is down."
   extend_title: "Modules, API, Hooks, Cron"
   extend_text: "REST Gateway, isolated hooks, a unified cron engine, and first-party Blog/Forum/Media/Menu/SEO — all under the same capability armor."
-  more_hint: "Config Sync, XSS sanitization, Schema.org, the N+1 guard, audit log, and the forum engine are documented in the Whitepaper."
-  more_cta: "Full technical detail — Whitepaper"
   index_title: "Flat Field Index Engine"
   index_text: "Query JSON data in a database-agnostic way. NodeFieldIndex plus a Doctrine Event Listener build a typed index table. The same DQL works on SQLite, MySQL, and Postgres."
   config_title: "Config Sync System"
