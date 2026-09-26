@@ -406,6 +406,11 @@ p {
   margin-top: var(--sp-sm);
 }
 
+.section-title--center::after {
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .section-dark .section-title::after,
 .section-darker .section-title::after {
   background: var(--cp-accent);
@@ -2329,36 +2334,9 @@ p {
 }
 
 /* Mobile */
-@media (max-width: 768px) {
-  :root {
-    --fs-hero: 40px;
-    --fs-3xl: 28px;
-    --fs-2xl: 24px;
-    --fs-xl: 22px;
-    --sp-2xl: 68px;
-    --sp-xl: 50px;
-    --navbar-h: 56px;
-  }
-
-  .hero-grid {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .hero {
-    min-height: 0;
-    padding-bottom: var(--sp-xl);
-  }
-
-  .hero-visual {
-    flex: 0 0 auto;
-    width: 100%;
-  }
-
-  .hero-meta {
-    justify-content: center;
-  }
-
+/* Collapsed navigation: nine menu items plus search, locale and auth need
+   ~1200px; between 769px and that, the bar overflowed and hid sign-in. */
+@media (max-width: 1200px) {
   .navbar-collapse {
     display: none;
     position: absolute;
@@ -2529,6 +2507,37 @@ p {
 
   .navbar-alert.is-open .navbar-alert__panel {
     display: flex;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --fs-hero: 40px;
+    --fs-3xl: 28px;
+    --fs-2xl: 24px;
+    --fs-xl: 22px;
+    --sp-2xl: 68px;
+    --sp-xl: 50px;
+    --navbar-h: 56px;
+  }
+
+  .hero-grid {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .hero {
+    min-height: 0;
+    padding-bottom: var(--sp-xl);
+  }
+
+  .hero-visual {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .hero-meta {
+    justify-content: center;
   }
 
   .hero-actions {

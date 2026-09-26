@@ -520,7 +520,7 @@ stats:
   opensource: "Open Source"
 
 roadmap:
-  label: "Chapter 10"
+  label: "Roadmap"
   title: "Future Roadmap"
   desc: "Safe Mode, origin cache, telemetry, and the audit log have shipped. Sprint detail and remaining work live in the Whitepaper and the Roadmap page."
   sprint1: "Sprint 1"

@@ -521,7 +521,7 @@ stats:
   opensource: "Açık Kaynak"
 
 roadmap:
-  label: "Bölüm 10"
+  label: "Yol Haritası"
   title: "Gelecek Yol Haritası"
   desc: "Safe Mode, origin cache, telemetri ve audit log teslim edildi. Sprint ayrıntıları ve kalan işler Whitepaper ile Yol Haritası sayfasında."
   sprint1: "Sprint 1"
