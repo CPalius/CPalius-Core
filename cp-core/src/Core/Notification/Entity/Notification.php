@@ -79,7 +79,7 @@ class Notification
         $this->eventKey = $eventKey;
         $this->data = $data;
         $this->actor = $actor;
-        $this->actorName = $actor?->getFullName();
+        $this->actorName = $actor?->getPublicName();
         $this->subjectType = $subjectType;
         $this->subjectId = $subjectId;
         $this->dedupeKey = $dedupeKey;

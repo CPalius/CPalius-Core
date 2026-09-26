@@ -316,8 +316,27 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Fieldab
     public function getFullName(): string
     {
         $fullName = trim($this->getFirstName().' '.$this->getLastName());
+        if ($fullName !== '') {
+            return $fullName;
+        }
+        $username = trim((string) ($this->username ?? ''));
 
-        return $fullName !== '' ? $fullName : $this->email;
+        return $username !== '' ? $username : $this->email;
+    }
+
+    /**
+     * What other people see: first+last name, then username — never the e-mail
+     * (imported accounts often have no name, and getFullName() would expose it).
+     */
+    public function getPublicName(): string
+    {
+        $fullName = trim($this->getFirstName().' '.$this->getLastName());
+        if ($fullName !== '') {
+            return $fullName;
+        }
+        $username = trim((string) ($this->username ?? ''));
+
+        return $username !== '' ? $username : '#'.($this->id ?? '');
     }
 
     /**

@@ -1,7 +1,7 @@
 <dialog class="forum-rep-modal" data-rep-modal>
     <form method="post" action="{{ path('forum_give_reputation', {username: targetUser.profileSlug}) }}" class="forum-rep-modal__form">
         <header class="forum-rep-modal__header">
-            <h2>{{ 'forum.rep.modal_title'|trans({'name': targetUser.fullName}) }}</h2>
+            <h2>{{ 'forum.rep.modal_title'|trans({'name': targetUser.publicName}) }}</h2>
             <button type="button" class="forum-tool-btn" data-rep-close aria-label="{{ 'forum.action.cancel'|trans }}"><i class="bi bi-x-lg"></i></button>
         </header>
 

@@ -1,22 +1,22 @@
 {% extends '@Theme/forum/layout.html.twig' %}
 
-{% block title %}{{ profileUser.fullName }} — {{ 'forum.profile.title_suffix'|trans }}{% endblock %}
+{% block title %}{{ profileUser.publicName }} — {{ 'forum.profile.title_suffix'|trans }}{% endblock %}
 
 {% block forum_breadcrumbs %}
     <nav class="forum-crumb fade-in" aria-label="{{ 'forum.nav_aria'|trans }}">
         <ol class="forum-crumb__list">
             <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
             <li><a href="{{ path('forum_index') }}">{{ 'forum.breadcrumb.home_title'|trans }}</a></li>
-            <li class="is-active">{{ profileUser.fullName }}</li>
+            <li class="is-active">{{ profileUser.publicName }}</li>
         </ol>
     </nav>
 {% endblock %}
 
 {% block forum_content %}
 <div class="forum-profile-card fade-in">
-    {% include '@Theme/forum/partials/_avatar.html.twig' with {name: profileUser.fullName, user: profileUser, size: 'lg'} %}
+    {% include '@Theme/forum/partials/_avatar.html.twig' with {name: profileUser.publicName, user: profileUser, size: 'lg'} %}
     <div class="forum-profile-card__body">
-        <h1 class="forum-profile-card__name">{{ profileUser.fullName }}</h1>
+        <h1 class="forum-profile-card__name">{{ profileUser.publicName }}</h1>
         {% include '@Theme/forum/partials/_custom_title.html.twig' with {user: profileUser} %}
         {% if rank %}
             <span class="forum-badge" style="background: color-mix(in srgb, {{ rank.color }} 15%, white); color: {{ rank.color }};">
@@ -37,7 +37,7 @@
             <div class="forum-profile-card__fields">{{ profileFields }}</div>
         {% endif %}
         {% if canGiveRep %}
-            <button type="button" class="btn btn-sm btn-outline" data-rep-open data-rep-user="{{ profileUser.profileSlug }}" data-rep-name="{{ profileUser.fullName }}">
+            <button type="button" class="btn btn-sm btn-outline" data-rep-open data-rep-user="{{ profileUser.profileSlug }}" data-rep-name="{{ profileUser.publicName }}">
                 <i class="bi bi-award"></i> {{ 'forum.action.give_rep'|trans }}
             </button>
         {% endif %}
@@ -100,7 +100,7 @@
                 <div class="forum-rep-item__value {{ rep.positive ? 'is-pos' : 'is-neg' }}">{{ rep.positive ? '+' : '−' }}1</div>
                 <div class="forum-rep-item__body">
                     <div class="forum-rep-item__meta">
-                        <a href="{{ path('forum_profile', {username: rep.fromUser.profileSlug}) }}">{{ rep.fromUser.fullName }}</a>
+                        <a href="{{ path('forum_profile', {username: rep.fromUser.profileSlug}) }}">{{ rep.fromUser.publicName }}</a>
                         · {{ ('forum.rep.reason.' ~ rep.reason)|trans }}
                         · {{ rep.createdAt|date('d.m.Y H:i') }}
                     </div>

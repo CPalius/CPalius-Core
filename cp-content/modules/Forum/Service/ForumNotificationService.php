@@ -255,7 +255,7 @@ final class ForumNotificationService
             $receiver->getId(),
             array_merge([
                 'from_user_id' => $giver->getId(),
-                'from_username' => $giver->getFullName(),
+                'from_username' => $giver->getPublicName(),
                 'value' => $value,
             ], $extra),
             $giver,
@@ -325,7 +325,7 @@ final class ForumNotificationService
         return [
             'url' => null,
             'from_user_id' => $from->getId(),
-            'from_username' => $from->getFullName(),
+            'from_username' => $from->getPublicName(),
             'topic_id' => $topic->getId(),
             'topic_title' => $topic->getTitle(),
             'topic_slug' => $topic->getSlug(),
