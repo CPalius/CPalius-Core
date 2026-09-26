@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace Modules\Seo\Provider;
 
 use App\Core\Settings\SettingsRegistry;
+use App\Entity\User;
+use Modules\Forum\Entity\ForumPost;
 use Modules\Forum\Entity\ForumSection;
 use Modules\Forum\Entity\ForumTopic;
+use Modules\Forum\ForumDictionary;
 use Modules\Forum\ForumNodeType;
+use Modules\Forum\Repository\ForumPostRepository;
+use Modules\Forum\Repository\ForumPostVoteRepository;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
 use Modules\Seo\Contract\SeoPageProviderInterface;
@@ -22,6 +27,8 @@ final class ForumSeoProvider implements SeoPageProviderInterface
         private readonly SeoUrlBuilder $urls,
         private readonly ?ForumSectionRepository $sectionRepository = null,
         private readonly ?ForumTopicRepository $topicRepository = null,
+        private readonly ?ForumPostRepository $postRepository = null,
+        private readonly ?ForumPostVoteRepository $voteRepository = null,
     ) {
     }
 
@@ -95,14 +102,112 @@ final class ForumSeoProvider implements SeoPageProviderInterface
             publishedAt: $topic->getCreatedAt(),
             modifiedAt: $topic->getUpdatedAt(),
             locale: $locale,
-            schemaExtra: [
-                'interactionStatistic' => [
-                    '@type' => 'InteractionCounter',
-                    'interactionType' => 'https://schema.org/CommentAction',
-                    'userInteractionCount' => $topic->getPostCount(),
-                ],
-            ],
+            schemaExtra: $this->topicSchema($topic, $request->query->getInt('page', 1), $locale),
         );
+    }
+
+    /**
+     * Google DiscussionForumPosting: the opening post is the entity (text, author.url),
+     * the replies visible on this page become comment[] — the same slice the page renders.
+     *
+     * @return array<string, mixed>
+     */
+    private function topicSchema(ForumTopic $topic, int $page, string $locale): array
+    {
+        $extra = [
+            'interactionStatistic' => [[
+                '@type' => 'InteractionCounter',
+                'interactionType' => 'https://schema.org/CommentAction',
+                'userInteractionCount' => $topic->getReplyCount(),
+            ]],
+        ];
+        if ($this->postRepository === null) {
+            return $extra;
+        }
+
+        $first = $this->postRepository->findFirstByTopic($topic);
+        $perPage = max(1, (int) $this->settings->get('forum.posts_per_page', ForumDictionary::DEFAULT_POSTS_PER_PAGE));
+        /** @var list<ForumPost> $posts */
+        $posts = $this->postRepository->createTopicPostsQueryBuilder($topic)
+            ->setFirstResult((max(1, $page) - 1) * $perPage)
+            ->setMaxResults($perPage)
+            ->getQuery()
+            ->getResult();
+
+        $all = $first instanceof ForumPost ? [$first, ...$posts] : $posts;
+        $postIds = array_values(array_unique(array_map(static fn (ForumPost $p): int => (int) $p->getId(), $all)));
+        $userIds = array_values(array_unique(array_filter(array_map(static fn (ForumPost $p): int => (int) $p->getAuthor()?->getId(), $all))));
+        $votes = $this->voteRepository?->countBothByPostIds($postIds) ?? [];
+        $writes = $this->postRepository->countPublicPostsForUserIds($userIds);
+
+        if ($first instanceof ForumPost) {
+            $text = $this->plainText($first->getBody());
+            $extra['text'] = $text !== '' ? $text : $topic->getTitle();
+            $extra['author'] = $this->person($first, $writes, $locale);
+            $extra['interactionStatistic'][] = $this->likeCounter($votes[(int) $first->getId()]['likes'] ?? 0);
+        }
+
+        $comments = [];
+        foreach ($posts as $post) {
+            $text = $this->plainText($post->getBody());
+            if ($post->getId() === $first?->getId() || $text === '') {
+                continue;
+            }
+            $comments[] = [
+                '@type' => 'Comment',
+                'text' => $text,
+                'author' => $this->person($post, $writes, $locale),
+                'datePublished' => $post->getCreatedAt()->format(\DATE_ATOM),
+                'interactionStatistic' => $this->likeCounter($votes[(int) $post->getId()]['likes'] ?? 0),
+            ];
+        }
+        if ($comments !== []) {
+            $extra['comment'] = $comments;
+        }
+
+        return $extra;
+    }
+
+    /**
+     * @param array<int, int> $writes public post count keyed by user id
+     *
+     * @return array<string, mixed>
+     */
+    private function person(ForumPost $post, array $writes, string $locale): array
+    {
+        $user = $post->getAuthor();
+        $slug = $user instanceof User ? $user->getProfileSlug() : '';
+        $person = ['@type' => 'Person', 'name' => $post->getPosterName() !== '' ? $post->getPosterName() : $slug];
+        if ($slug !== '') {
+            $person['url'] = $this->urls->absolute('forum_profile', ['_locale' => $locale, 'username' => $slug], $locale);
+            $person['agentInteractionStatistic'] = [
+                '@type' => 'InteractionCounter',
+                'interactionType' => 'https://schema.org/WriteAction',
+                'userInteractionCount' => $writes[(int) $user?->getId()] ?? 0,
+            ];
+        }
+
+        return $person;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function likeCounter(int $count): array
+    {
+        return [
+            '@type' => 'InteractionCounter',
+            'interactionType' => 'https://schema.org/LikeAction',
+            'userInteractionCount' => $count,
+        ];
+    }
+
+    private function plainText(string $html): string
+    {
+        $text = strip_tags(str_replace(['<br', '</p>', '</li>'], ["\n<br", "</p>\n", "</li>\n"], $html));
+        $text = html_entity_decode($text, \ENT_QUOTES | \ENT_HTML5, 'UTF-8');
+
+        return trim((string) preg_replace(['/[ \t]+/u', '/\n\s*\n\s*/u'], [' ', "\n\n"], $text));
     }
 
     private function section(Request $request, string $locale): ?SeoDocument

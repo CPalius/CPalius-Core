@@ -27,6 +27,7 @@ final class SeoDocument
         public ?string $videoUrl = null,
         public ?string $videoTitle = null,
         public ?string $authorName = null,
+        public ?string $authorUrl = null,
         public ?\DateTimeInterface $publishedAt = null,
         public ?\DateTimeInterface $modifiedAt = null,
         public ?string $locale = null,

@@ -58,9 +58,12 @@ final class SeoEngine implements SeoHeadRendererInterface
 
         $locale = $document->locale ?: (string) $request->getLocale();
         $templateKey = $this->templateKey($document->contentKind);
-        $titleOverride = trim((string) ($overrides['title'] ?? ''));
-        $descriptionOverride = trim((string) ($overrides['description'] ?? ''));
-        $robotsOverride = trim((string) ($overrides['robots'] ?? ''));
+        // Themes capture these with {% set %}…{% endset %}, which hands over already
+        // HTML-escaped text; head.html.twig escapes again, so decode once here or
+        // <title> ships "&amp;quot;" and Google shows a literal "&quot;".
+        $titleOverride = $this->plain($overrides['title'] ?? '');
+        $descriptionOverride = $this->plain($overrides['description'] ?? '');
+        $robotsOverride = $this->plain($overrides['robots'] ?? '');
 
         $headline = $document->headline !== '' ? $document->headline : $titleOverride;
         $title = $titleOverride !== '' ? $titleOverride : $this->titles->format($headline, $templateKey, $locale);
@@ -78,8 +81,11 @@ final class SeoEngine implements SeoHeadRendererInterface
 
         $robots = $this->robots($document, $request, $robotsOverride);
         $ogImage = $this->ogImage($document, $locale);
-        $ogTitle = trim((string) $this->settings->getForLocale('seo.og_title', $locale, '')) ?: $title;
-        $ogDescription = trim((string) $this->settings->getForLocale('seo.og_description', $locale, '')) ?: $description;
+        // The site-wide OG title/description only stand in for pages without their
+        // own headline — a post shared on social must carry its own title.
+        $ownContent = $document->headline !== '';
+        $ogTitle = ($ownContent ? '' : trim((string) $this->settings->getForLocale('seo.og_title', $locale, ''))) ?: $title;
+        $ogDescription = ($ownContent ? '' : trim((string) $this->settings->getForLocale('seo.og_description', $locale, ''))) ?: $description;
 
         $siteName = trim((string) $this->settings->getForLocale('core.site_name', $locale, 'CPalius CMF'));
         $schemaJson = '{}';
@@ -204,6 +210,11 @@ final class SeoEngine implements SeoHeadRendererInterface
         }
 
         return '';
+    }
+
+    private function plain(mixed $value): string
+    {
+        return trim(html_entity_decode((string) $value, \ENT_QUOTES | \ENT_HTML5, 'UTF-8'));
     }
 
     private function isOn(string $key): bool

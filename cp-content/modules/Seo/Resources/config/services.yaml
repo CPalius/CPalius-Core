@@ -43,10 +43,17 @@ services:
     Modules\Seo\Repository\:
         resource: '../../Repository/'
 
+    Modules\Seo\Provider\BlogSeoProvider:
+        arguments:
+            $commentService: '@?Modules\Blog\Service\BlogCommentService'
+            $commentRepository: '@?Modules\Blog\Repository\BlogCommentRepository'
+
     Modules\Seo\Provider\ForumSeoProvider:
         arguments:
             $sectionRepository: '@?Modules\Forum\Repository\ForumSectionRepository'
             $topicRepository: '@?Modules\Forum\Repository\ForumTopicRepository'
+            $postRepository: '@?Modules\Forum\Repository\ForumPostRepository'
+            $voteRepository: '@?Modules\Forum\Repository\ForumPostVoteRepository'
 
     Modules\Seo\Sitemap\Source\ForumSitemapSource:
         arguments:

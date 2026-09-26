@@ -47,11 +47,6 @@ use App\Core\Annotation\CpSetting;
     'CreativeWork' => 'CreativeWork',
     'Article' => 'Article',
 ], module: 'seo', group: 'seo_blog')]
-#[CpSetting(key: 'seo.blog.software_schema', label: 'studio.seo.field.blog_software_schema', type: 'select', default: 'SoftwareApplication', variants: [
-    'SoftwareApplication' => 'SoftwareApplication',
-    'Product' => 'Product',
-    'WebApplication' => 'WebApplication',
-], module: 'seo', group: 'seo_blog')]
 #[CpSetting(key: 'seo.forum.topic_schema', label: 'studio.seo.field.forum_topic_schema', type: 'select', default: 'DiscussionForumPosting', variants: [
     'DiscussionForumPosting' => 'DiscussionForumPosting',
     'QAPage' => 'QAPage',

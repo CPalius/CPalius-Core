@@ -98,7 +98,6 @@ final class SeoSettingsSeeder
             'seo.index_forum_activity' => '0',
             'seo.blog.article_schema' => 'BlogPosting',
             'seo.blog.project_schema' => 'SoftwareSourceCode',
-            'seo.blog.software_schema' => 'SoftwareApplication',
             'seo.forum.topic_schema' => 'DiscussionForumPosting',
             'seo.roadmap.entry_schema' => 'TechArticle',
             'seo.include_search_action' => '1',

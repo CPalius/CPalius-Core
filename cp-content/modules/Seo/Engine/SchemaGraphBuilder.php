@@ -157,6 +157,9 @@ final class SchemaGraphBuilder
         }
         if ($document->authorName !== null && $document->authorName !== '') {
             $entity['author'] = ['@type' => 'Person', 'name' => $document->authorName];
+            if ($document->authorUrl !== null && $document->authorUrl !== '') {
+                $entity['author']['url'] = $document->authorUrl;
+            }
         }
 
         $images = [];
@@ -171,12 +174,10 @@ final class SchemaGraphBuilder
         }
 
         if ($document->videoUrl !== null && $document->videoUrl !== '') {
-            $entity['video'] = [
-                '@type' => 'VideoObject',
-                'name' => $document->videoTitle ?: $title,
-                'contentUrl' => $document->videoUrl,
-                'embedUrl' => $document->videoUrl,
-            ];
+            $video = $this->video($document, $title);
+            if ($video !== null) {
+                $entity['video'] = $video;
+            }
         }
 
         foreach ($document->schemaExtra as $key => $value) {
@@ -187,6 +188,41 @@ final class SchemaGraphBuilder
         }
 
         return $entity;
+    }
+
+    /**
+     * Google requires name, thumbnailUrl and uploadDate on every VideoObject; an
+     * item missing one is invalid, so no thumbnail means no video node at all.
+     * YouTube/Vimeo links are player pages (embedUrl), only a file is a contentUrl.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function video(SeoDocument $document, string $title): ?array
+    {
+        $url = (string) $document->videoUrl;
+        $thumbnail = $document->images[0] ?? null;
+        $node = ['@type' => 'VideoObject', 'name' => $document->videoTitle ?: $title];
+
+        if (preg_match('~(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/)|youtu\.be/)([\w-]{11})~i', $url, $m) === 1) {
+            $node['embedUrl'] = 'https://www.youtube.com/embed/'.$m[1];
+            $thumbnail ??= 'https://i.ytimg.com/vi/'.$m[1].'/hqdefault.jpg';
+        } elseif (preg_match('~vimeo\.com/(?:video/)?(\d+)~i', $url, $m) === 1) {
+            $node['embedUrl'] = 'https://player.vimeo.com/video/'.$m[1];
+        } else {
+            $node['contentUrl'] = $url;
+        }
+
+        $uploaded = $document->publishedAt ?? $document->modifiedAt;
+        if ($thumbnail === null || !$uploaded instanceof \DateTimeInterface) {
+            return null;
+        }
+        $node['thumbnailUrl'] = $thumbnail;
+        $node['uploadDate'] = $uploaded->format(\DATE_ATOM);
+        if ($document->description !== '') {
+            $node['description'] = $document->description;
+        }
+
+        return $node;
     }
 
     private function orgName(string $locale): string

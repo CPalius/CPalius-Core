@@ -9,14 +9,19 @@ use App\Core\Token\TokenContext;
 use App\Core\Token\TokenReplacer;
 use App\Entity\Asset;
 use App\Entity\Node;
+use App\Entity\User;
 use App\Repository\AssetRepository;
 use App\Repository\CategoryRepository;
 use App\Repository\NodeRepository;
 use App\Repository\TagRepository;
+use Modules\Blog\Entity\BlogComment;
+use Modules\Blog\Repository\BlogCommentRepository;
+use Modules\Blog\Service\BlogCommentService;
 use Modules\Seo\Contract\SeoPageProviderInterface;
 use Modules\Seo\Document\SeoDocument;
 use Modules\Seo\Engine\SeoUrlBuilder;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 final class BlogSeoProvider implements SeoPageProviderInterface
 {
@@ -28,6 +33,8 @@ final class BlogSeoProvider implements SeoPageProviderInterface
         private readonly SettingsRegistry $settings,
         private readonly SeoUrlBuilder $urls,
         private readonly TokenReplacer $tokenReplacer,
+        private readonly ?BlogCommentService $commentService = null,
+        private readonly ?BlogCommentRepository $commentRepository = null,
     ) {
     }
 
@@ -88,7 +95,7 @@ final class BlogSeoProvider implements SeoPageProviderInterface
 
         $images = $this->images($node, $seo, $locale);
         $videoUrl = $this->videoUrl($typeFields);
-        $schemaType = $this->schemaType($subType, null);
+        $schemaType = $this->schemaType($subType);
         $kind = $videoUrl !== null ? 'video' : 'blog';
 
         $canonical = !empty($seo['canonical_url'])
@@ -102,15 +109,25 @@ final class BlogSeoProvider implements SeoPageProviderInterface
             $authorName = null;
         }
 
+        // The page entity's url/@id stay the canonical post; the demo/repo/version
+        // describe the software, so they live on it (inline for SoftwareSourceCode,
+        // otherwise as the article's `about`) instead of overwriting `url`.
         $extra = [];
         if ($subType === 'yazilim' || $subType === 'proje') {
-            if (!empty($typeFields['demo_url'])) {
-                $extra['url'] = (string) $typeFields['demo_url'];
-            }
-            if (!empty($typeFields['repo_url'])) {
-                $extra['codeRepository'] = (string) $typeFields['repo_url'];
+            $software = array_filter([
+                'codeRepository' => (string) ($typeFields['repo_url'] ?? ''),
+                'version' => (string) ($typeFields['version'] ?? ''),
+            ]);
+            if ($schemaType === 'SoftwareSourceCode') {
+                $extra = $software;
+            } else {
+                $software += array_filter(['url' => (string) ($typeFields['demo_url'] ?? '')]);
+                if ($software !== []) {
+                    $extra['about'] = ['@type' => 'SoftwareSourceCode', 'name' => $node->getTitle()] + $software;
+                }
             }
         }
+        $extra += $this->comments($node, $request->query->getInt('cpage', 1), $locale);
 
         return new SeoDocument(
             headline: $node->getTitle(),
@@ -127,12 +144,93 @@ final class BlogSeoProvider implements SeoPageProviderInterface
             videoUrl: $videoUrl,
             videoTitle: $videoUrl !== null ? $node->getTitle() : null,
             authorName: \is_string($authorName) ? $authorName : null,
+            authorUrl: $this->profileUrl($author, $locale),
             publishedAt: $node->getPublishedAt(),
             modifiedAt: $node->getUpdatedAt(),
             locale: $locale,
             schemaExtra: $extra,
             forceNoindex: $noindex,
         );
+    }
+
+    /**
+     * commentCount + the approved comments on this comment page (cpage), replies
+     * nested under their parent — the same slice the post renders.
+     *
+     * @return array<string, mixed>
+     */
+    private function comments(Node $node, int $page, string $locale): array
+    {
+        if ($this->commentService === null || $this->commentRepository === null || !$this->commentService->enabledForPost($node)) {
+            return [];
+        }
+
+        $count = $this->commentRepository->countApprovedForNode($node);
+        if ($count === 0) {
+            return ['commentCount' => 0];
+        }
+
+        $perPage = $this->commentService->perPage();
+        /** @var list<BlogComment> $parents */
+        $parents = $this->commentRepository->createApprovedTopLevelQueryBuilder($node)
+            ->setFirstResult((max(1, $page) - 1) * $perPage)
+            ->setMaxResults($perPage)
+            ->getQuery()
+            ->getResult();
+
+        $replies = [];
+        $parentIds = array_values(array_filter(array_map(static fn (BlogComment $c): ?int => $c->getId(), $parents)));
+        foreach ($this->commentRepository->findApprovedRepliesForParents($parentIds) as $reply) {
+            $replies[(int) $reply->getParent()?->getId()][] = $this->comment($reply, $locale);
+        }
+
+        $comments = [];
+        foreach ($parents as $parent) {
+            $item = $this->comment($parent, $locale);
+            if (isset($replies[(int) $parent->getId()])) {
+                $item['comment'] = $replies[(int) $parent->getId()];
+            }
+            $comments[] = $item;
+        }
+
+        return ['commentCount' => $count, 'comment' => $comments];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function comment(BlogComment $comment, string $locale): array
+    {
+        $author = ['@type' => 'Person', 'name' => $comment->getDisplayName()];
+        $url = $this->profileUrl($comment->getAuthor(), $locale);
+        if ($url !== null) {
+            $author['url'] = $url;
+        }
+
+        return [
+            '@type' => 'Comment',
+            'text' => trim(html_entity_decode(strip_tags($comment->getBody()), \ENT_QUOTES | \ENT_HTML5, 'UTF-8')),
+            'author' => $author,
+            'datePublished' => $comment->getCreatedAt()->format(\DATE_ATOM),
+        ];
+    }
+
+    /**
+     * The member's public profile; the forum profile is the only one there is, so
+     * without the Forum module the author simply carries no url.
+     */
+    private function profileUrl(?User $user, string $locale): ?string
+    {
+        $slug = $user?->getProfileSlug() ?? '';
+        if ($slug === '') {
+            return null;
+        }
+
+        try {
+            return $this->urls->absolute('forum_profile', ['_locale' => $locale, 'username' => $slug], $locale);
+        } catch (RouteNotFoundException) {
+            return null;
+        }
     }
 
     private function category(Request $request, string $locale): ?SeoDocument
@@ -244,15 +342,15 @@ final class BlogSeoProvider implements SeoPageProviderInterface
         return $candidate;
     }
 
-    private function schemaType(string $subType, ?string $videoUrl): string
+    /**
+     * Software posts are articles about software: Google rejects a
+     * SoftwareApplication/Product/WebApplication without offers + a rating,
+     * which a blog post never has, so they render as the article type.
+     */
+    private function schemaType(string $subType): string
     {
-        if ($videoUrl !== null) {
-            return 'VideoObject';
-        }
-
         return match ($subType) {
             'proje' => (string) $this->settings->get('seo.blog.project_schema', 'SoftwareSourceCode'),
-            'yazilim' => (string) $this->settings->get('seo.blog.software_schema', 'SoftwareApplication'),
             default => (string) $this->settings->get('seo.blog.article_schema', 'BlogPosting'),
         };
     }
