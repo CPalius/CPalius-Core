@@ -33,6 +33,12 @@
   color: color-mix(in srgb, var(--cp-success) 70%, var(--cp-text));
 }
 
+.forum-flash--info {
+  background: color-mix(in srgb, var(--cp-accent) 8%, white);
+  border-color: color-mix(in srgb, var(--cp-accent) 30%, var(--slw-border));
+  color: color-mix(in srgb, var(--cp-accent) 70%, var(--cp-text));
+}
+
 .forum-flash--error,
 .forum-flash--warning {
   background: color-mix(in srgb, var(--cp-danger) 8%, white);
@@ -139,7 +145,7 @@
 }
 
 .forum-header__stats strong {
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-weight: 600;
   color: var(--cp-dark);
 }
@@ -147,7 +153,7 @@
 .forum-stats-inline {
   display: flex;
   gap: var(--sp-md);
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   color: var(--slw-text-faint);
   white-space: nowrap;
@@ -175,7 +181,7 @@
 .forum-search-btn:hover {
   background: color-mix(in srgb, var(--cp-accent) 8%, white);
   border-color: color-mix(in srgb, var(--cp-accent) 30%, var(--slw-border));
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 /* ---- Liste kolon başlıkları ---- */
@@ -237,7 +243,7 @@
 
 .forum-division__title {
   display: block;
-  font-family: var(--font-heading, 'Roboto Condensed', sans-serif);
+  font-family: var(--cp-font-heading);
   font-size: 1.15rem;
   font-weight: 700;
   color: #fff;
@@ -272,7 +278,7 @@
 }
 
 .forum-category-block__head a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-category-block__head--muted {
@@ -347,7 +353,7 @@
 }
 
 .forum-crumb__list li a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-crumb__list li:first-child a {
@@ -358,7 +364,7 @@
 }
 
 .forum-crumb__list li:first-child a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-crumb__list li.is-active {
@@ -388,7 +394,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   font-size: var(--fs-md);
   font-weight: 700;
   color: var(--cp-dark);
@@ -400,7 +406,7 @@
 }
 
 .forum-group__title i {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-boards {
@@ -435,7 +441,7 @@
   align-items: center;
   justify-content: center;
   background: color-mix(in srgb, var(--cp-accent) 10%, white);
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   font-size: 18px;
 }
 
@@ -443,7 +449,7 @@
   font-size: var(--fs-md);
   font-weight: 600;
   margin-bottom: 3px;
-  font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+  font-family: var(--cp-font-body);
 }
 
 .forum-board__body h3 a {
@@ -451,7 +457,7 @@
 }
 
 .forum-board__body h3 a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-board__body p {
@@ -469,8 +475,8 @@
 
 .forum-board__sub a {
   font-size: var(--fs-xs);
-  color: var(--cp-accent);
-  font-family: var(--slw-font-mono);
+  color: var(--cp-accent-text);
+  font-family: var(--cp-font-mono);
 }
 
 .forum-board__sub a:hover {
@@ -503,7 +509,7 @@
 }
 
 .forum-board__last a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-board__last .empty {
@@ -512,7 +518,7 @@
 
 .forum-board__stats {
   text-align: center;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
 }
 
 .forum-board__stats strong {
@@ -570,6 +576,48 @@
   background: var(--slw-surface);
 }
 
+/*
+  Single-column topic rows: "my topics", unread and drafts.
+
+  Those lists carry one content block, not the board's five columns, and without
+  this they inherited the board grid and dropped that block into the 40px icon
+  track — every title crushed against the left edge. The side slot collapses to
+  nothing when a page has no stats to put there, so drafts can share the class.
+*/
+.forum-topic--simple {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.forum-topic__main {
+  min-width: 0;
+}
+
+.forum-topic__side {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+/* The narrow-screen overrides for these rows live in the responsive section
+   further down, after the board rules that would otherwise win on cascade order. */
+
+/*
+  "My topics" reuses the board row wholesale — same grid, same icon, same stat
+  and activity columns — because it is the same kind of list. What it swaps is
+  the second line: the board a topic sits in matters when the list spans every
+  board, and the author does not, because it is always the reader.
+*/
+.forum-topic__board {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--slw-text-muted);
+}
+
+.forum-topic__board:hover {
+  color: var(--cp-accent-text);
+}
+
 .forum-topic--sticky {
   border-left-color: var(--cp-gold);
   background: color-mix(in srgb, var(--cp-gold) 4%, white);
@@ -609,7 +657,7 @@
 }
 
 .forum-topic__title a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-topic__meta {
@@ -624,7 +672,7 @@
 
 .forum-topic__stat {
   text-align: center;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
 }
 
 .forum-topic__stat strong {
@@ -660,7 +708,7 @@
   color: var(--cp-white);
   background: var(--cp-primary);
   flex-shrink: 0;
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
 }
 
 .forum-topic__activity-text {
@@ -675,7 +723,7 @@
 }
 
 .forum-topic__activity-text a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-topic__activity-text time {
@@ -693,7 +741,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   line-height: 1.6;
 }
 
@@ -758,7 +806,7 @@
   color: rgba(255,255,255,0.5);
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
 }
 
 .forum-mod-bar__actions {
@@ -894,7 +942,7 @@
 }
 
 .forum-postbit__name a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-postbit__badge {
@@ -907,7 +955,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   line-height: 1.6;
   background: color-mix(in srgb, var(--badge-color, var(--cp-accent)) 12%, white);
   color: var(--badge-color, var(--cp-accent));
@@ -936,7 +984,7 @@
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--cp-dark);
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
 }
 
 .forum-postbit__stat span {
@@ -987,7 +1035,7 @@
   align-items: center;
   gap: 8px;
   color: var(--slw-text-faint);
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
 }
 
 .forum-post__num {
@@ -996,7 +1044,7 @@
 }
 
 .forum-post__num:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-post__toolbar {
@@ -1020,7 +1068,7 @@
   cursor: pointer;
   transition: all var(--tr-fast);
   text-decoration: none;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   padding: 0;
 }
 
@@ -1033,7 +1081,7 @@
 .forum-tool-btn:hover {
   background: color-mix(in srgb, var(--cp-accent) 10%, transparent);
   border-color: color-mix(in srgb, var(--cp-accent) 20%, transparent);
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-tool-btn--like {
@@ -1089,7 +1137,7 @@
 
 .forum-post__body p { color: var(--cp-text); margin-bottom: 1em; }
 .forum-post__body p:last-child { margin-bottom: 0; }
-.forum-post__body a { color: var(--cp-accent); text-decoration: underline; }
+.forum-post__body a { color: var(--cp-accent-text); text-decoration: underline; }
 .forum-post__body ul, .forum-post__body ol { margin: 0 0 1em 1.4em; color: var(--cp-text); }
 .forum-post__body blockquote {
   border-left: 3px solid var(--cp-accent);
@@ -1101,14 +1149,14 @@
   border-radius: 0 var(--forum-radius) var(--forum-radius) 0;
 }
 .forum-post__body code {
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   background: var(--slw-surface);
   padding: 2px 5px;
   border-radius: 3px;
   font-size: 0.9em;
 }
 .forum-post__body pre {
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   background: var(--slw-accent, #0d1117);
   color: #e6edf3;
   padding: 14px;
@@ -1159,7 +1207,7 @@
 
 .forum-post__engagement-label {
   font-size: var(--fs-xs);
-  font-family: var(--slw-font-sans);
+  font-family: var(--cp-font-body);
 }
 
 .forum-post__toolbar--meta {
@@ -1195,7 +1243,7 @@
   gap: 8px;
 }
 
-.forum-form__title i { color: var(--cp-accent); }
+.forum-form__title i { color: var(--cp-accent-text); }
 
 .forum-field {
   margin-bottom: var(--sp-sm);
@@ -1209,7 +1257,7 @@
   letter-spacing: 0.5px;
   color: var(--slw-text-muted);
   margin-bottom: 6px;
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
 }
 
 .forum-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="image"]),
@@ -1229,7 +1277,6 @@
 .forum-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="image"]):focus,
 .forum-field select:focus,
 .forum-field textarea:focus {
-  outline: none;
   border-color: var(--cp-accent);
 }
 
@@ -1269,10 +1316,14 @@
   color: var(--cp-danger, #c0392b);
 }
 
-/* ---- CKEditor 5 (forum-editor-init.js) — --cp-*/--slw-* tema uyumu ----
-   CKEditor kendi --ck-color-*/--ck-border-radius değişkenlerini kullanır;
-   burada bunları forumun marka tokenlarına eşliyoruz, forkl amaya gerek
-   kalmadan görsel dile %100 uyum sağlanır. */
+/* ---- CKEditor 5 (forum-editor-init.js) — cp / slw token uyumu ----
+   CKEditor kendi ck-color ve ck-border-radius değişkenlerini kullanır; burada
+   bunları forumun marka tokenlarına eşliyoruz, fork etmeye gerek kalmadan
+   görsel dile uyum sağlanır.
+
+   NOT: bu yorumdaki yıldız-eğik çizgi dizileri kaldırıldı. "--cp-*" ve
+   "--ck-color-*" yazarken oluşan dizi yorumu erkenden kapatıyor, kalan metin
+   CSS olarak ayrıştırılıyor ve hemen altındaki kural bloğu düşüyordu. */
 .forum .ck.ck-editor {
   --ck-border-radius: 4px;
   --ck-color-base-border: var(--slw-border);
@@ -1320,7 +1371,7 @@
   color: var(--slw-text-muted);
 }
 
-.forum-form__cancel:hover { color: var(--cp-accent); }
+.forum-form__cancel:hover { color: var(--cp-accent-text); }
 
 .forum-reply-anchor {
   margin-top: var(--sp-lg);
@@ -1432,11 +1483,11 @@
 }
 
 .forum-profile-tabs a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-profile-tabs a.is-active {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   border-bottom-color: var(--cp-accent);
 }
 
@@ -1447,7 +1498,7 @@
   gap: 4px;
   background: none;
   border: none;
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   font-size: var(--fs-xs);
   color: var(--slw-text-faint);
   cursor: pointer;
@@ -1474,7 +1525,7 @@
 
 .forum-pagination-info {
   font-size: var(--fs-xs);
-  font-family: var(--slw-font-mono);
+  font-family: var(--cp-font-mono);
   color: var(--slw-text-faint);
 }
 
@@ -1522,6 +1573,8 @@
 
 .forum-search-box__field:focus-within {
   border-color: var(--cp-accent);
+  outline: 2px solid var(--cp-accent-text);
+  outline-offset: 2px;
 }
 
 .forum-search-box__field i {
@@ -1588,7 +1641,7 @@
 }
 
 .forum-search-section__title i {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-search-posts {
@@ -1625,7 +1678,7 @@
 .forum-search-post__topic {
   margin-left: auto;
   font-size: var(--fs-xs);
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1667,9 +1720,19 @@
   .forum-topic {
     grid-template-columns: 34px 1fr;
   }
+  /* Restated here because the board rule above would otherwise put the icon
+     track back on rows that have no icon. */
+  .forum-topic--simple {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
   .forum-topic__stat,
   .forum-topic__activity {
     display: none;
+  }
+  /* The side stats are the only thing these rows have to the right, so they
+     stay while the board's own stat columns go — in their normal stacked form. */
+  .forum-topic__side .forum-topic__stat {
+    display: block;
   }
 
   .forum-post {
@@ -1730,6 +1793,28 @@
     margin-left: 0;
     width: 100%;
   }
+
+  /* Phone width: the reply/view counters move under the title instead of
+     competing with it for a line that is barely wide enough for one. */
+  .forum-topic--simple {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .forum-topic__side {
+    gap: var(--sp-sm);
+  }
+
+  /* On its own row under the title, number and label read better side by
+     side than stacked. */
+  .forum-topic__side .forum-topic__stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  .forum-topic__side .forum-topic__stat strong {
+    display: inline;
+  }
 }
 
 /* ---- Son olaylar panosu (kompakt tablo) ---- */
@@ -1788,7 +1873,7 @@
 }
 
 .forum-activity__tab:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-activity__body {
@@ -1906,7 +1991,7 @@
 }
 
 .forum-activity-thread__link:hover .forum-activity-thread__title-text {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-activity-thread__stats {
@@ -1915,7 +2000,7 @@
   justify-content: center;
   gap: 6px;
   font-size: 12px;
-  font-family: var(--slw-font-mono, ui-monospace, monospace);
+  font-family: var(--cp-font-mono);
   color: var(--slw-text-muted);
 }
 
@@ -1946,7 +2031,7 @@
 
 .forum-activity-thread__last a:hover,
 .forum-activity-thread__cat a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-activity-thread__last time {
@@ -1955,7 +2040,7 @@
   font-size: 10px;
   line-height: 1.2;
   color: var(--slw-text-faint);
-  font-family: var(--slw-font-mono, ui-monospace, monospace);
+  font-family: var(--cp-font-mono);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1996,7 +2081,7 @@
 }
 
 .forum-activity__more:hover:not(:disabled) {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   background: color-mix(in srgb, var(--cp-accent) 6%, #fff);
 }
 
@@ -2209,7 +2294,7 @@
 }
 .forum-topic__icon.is-unread {
   background: color-mix(in srgb, var(--cp-accent) 16%, white);
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 .forum-topic__pages {
   display: inline-flex;
@@ -2289,6 +2374,12 @@
 }
 .forum-postbit__title--bold { font-weight: 700; }
 .forum-postbit__title--badge { font-weight: 600; }
+/*
+  The signature is a direct child of .forum-post__main, which has no padding of
+  its own — so without this it sat flush against the card edge while the header,
+  body and footer above it were all inset by 18px. Inset a little further than
+  those, so the block reads as an aside rather than as more post.
+*/
 .forum-post__signature {
   margin: 16px 20px 0;
   padding-top: 12px;
@@ -2304,6 +2395,51 @@
   .forum-post__signature {
     margin-inline: 16px;
   }
+}
+
+/* Word filter: why this list may be shorter than the reader expects. */
+.forum-word-filter-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 var(--sp-sm);
+  padding: 8px 14px;
+  border: 1px dashed var(--slw-border);
+  border-radius: var(--forum-radius);
+  font-size: var(--fs-xs);
+  color: var(--slw-text-muted);
+}
+
+.forum-word-filter-note a {
+  color: var(--cp-accent-text);
+  text-decoration: underline;
+}
+
+/* Anti-bump: the divider between a post and the self-reply folded into it. */
+.forum-post__bump {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 14px;
+  font-size: var(--fs-xs);
+  color: var(--slw-text-muted);
+}
+
+.forum-post__bump::before,
+.forum-post__bump::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--slw-border);
+}
+
+.forum-post__bump-note {
+  flex: 0 0 auto;
+  padding: 2px 10px;
+  border: 1px solid var(--slw-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--slw-border) 25%, transparent);
+  white-space: nowrap;
 }
 .forum-thread-notice--deleted {
   background: color-mix(in srgb, var(--cp-danger, #c0392b) 10%, white);
@@ -2365,7 +2501,7 @@ blockquote.cp-quote-post-0,
   font-weight: 600;
   background: color-mix(in srgb, var(--cp-accent) 10%, white);
   border: 1px solid color-mix(in srgb, var(--cp-accent) 25%, var(--slw-border));
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   text-decoration: none;
 }
 
@@ -2443,6 +2579,8 @@ blockquote.cp-quote-post-0,
   display: block;
 }
 
+/* 220px avatar rail + content. Below 900px the rail sits above the form
+   instead of eating two thirds of a phone; see the override further down. */
 .forum-profile-settings {
   display: grid;
   gap: var(--sp-lg);
@@ -2483,7 +2621,7 @@ blockquote.cp-quote-post-0,
   font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-family: var(--cp-font-heading);
   color: var(--cp-dark);
 }
 
@@ -2758,7 +2896,7 @@ blockquote.cp-quote-post-0,
 }
 
 .forum-stats__right a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .forum-online-list {
@@ -2786,7 +2924,7 @@ blockquote.cp-quote-post-0,
 
 .forum-online-list__member:hover {
   border-color: color-mix(in srgb, var(--cp-accent) 40%, var(--slw-border));
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 @media (max-width: 1100px) {
@@ -2937,7 +3075,7 @@ blockquote.cp-quote-post-0,
 }
 .forum-engagement__member:hover {
   border-color: color-mix(in srgb, var(--cp-accent) 40%, var(--slw-border));
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 .forum-engagement__member i {
   font-size: 10px;
@@ -3126,27 +3264,31 @@ blockquote.cp-quote-post-0,
   cursor: pointer;
   accent-color: var(--cp-accent);
 }
+/* Sits directly above .forum-stats (board footer) now, not at the top of the
+   page — same dark bar language (#243447 fill, 2px radius, no border) so the
+   pair reads as one footer group instead of two differently-styled widgets
+   stacked by accident. .forum-stats supplies the 40px gap between them via
+   its own margin-top; this only needs one above itself. */
 .forum-user-rail {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 var(--sp-md);
-  padding: 8px 10px;
-  background: var(--slw-surface-elevated, #fff);
-  border: 1px solid var(--slw-border);
-  border-radius: 10px;
+  gap: 4px;
+  margin: var(--sp-2xl, 40px) 0 0;
+  padding: 10px 12px;
+  background: #243447;
+  border-radius: 2px;
 }
 .forum-user-rail__item,
 .forum-user-rail__form button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 7px 12px;
+  border-radius: 2px;
   border: 1px solid transparent;
-  background: transparent;
-  color: var(--cp-text);
+  background: #132132;
+  color: #D7D8E6;
   font-size: 12px;
   font-weight: 600;
   text-decoration: none;
@@ -3155,13 +3297,13 @@ blockquote.cp-quote-post-0,
 }
 .forum-user-rail__item:hover,
 .forum-user-rail__form button:hover {
-  background: color-mix(in srgb, var(--cp-accent) 8%, transparent);
-  border-color: color-mix(in srgb, var(--cp-accent) 20%, var(--slw-border));
-  color: var(--cp-accent);
+  background: color-mix(in srgb, var(--cp-accent) 35%, #132132);
+  color: #fff;
 }
 .forum-user-rail__item i,
 .forum-user-rail__form button i {
   font-size: 13px;
+  color: #fff;
 }
 .forum-imod__split {
   display: none;
@@ -3327,7 +3469,7 @@ blockquote.cp-quote-post-0,
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   background: color-mix(in srgb, var(--cp-accent) 10%, transparent);
   border-radius: 999px;
   padding: 3px 8px;
@@ -3636,42 +3778,13 @@ blockquote.cp-quote-post-0,
 .forum-post__body h4 { font-size: 1.1em; }
 
 
-/* ---- Who is online, by kind ---- */
+/* ---- Who is online ---- */
 
-.forum-online-kinds {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 2px;
-}
-
-.forum-online-kind {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.forum-online-kind i {
-  opacity: 0.75;
-}
-
-.forum-online-kind b {
+/* The stats bar shows one total; the per-kind colours below are still used by
+   the online list, which is where the breakdown lives now. */
+.forum-online-total {
   font-variant-numeric: tabular-nums;
-}
-
-/* The word is dropped on narrow screens; the icon and the title attribute
-   still say which number is which. */
-.forum-online-kind__label {
-  font-size: 0.85em;
-  opacity: 0.7;
-}
-
-@media (max-width: 720px) {
-  .forum-online-kind__label {
-    display: none;
-  }
+  font-size: 1.15em;
 }
 
 .forum-online-kind--member i { color: #30a46c; }
@@ -3718,6 +3831,43 @@ blockquote.cp-quote-post-0,
   font-size: 0.85rem;
   opacity: 0.6;
 }
+
+
+/* ================================================================
+   FORUM — MOBILE HARDENING
+   Last block in the file so it wins over the component rules above
+   without raising specificity. Breakpoints match the list documented
+   at the bottom of style.css.
+   ================================================================ */
+
+@media (max-width: 900px) {
+  /* The account/profile screen was the one two-column grid in this file
+     with no narrow-screen rule: a 220px avatar rail against a form on a
+     360px phone left the form about 100px wide. */
+  .forum-profile-settings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Three nowrap counters side by side do not fit a phone header. */
+  .forum-stats-inline {
+    flex-wrap: wrap;
+    gap: var(--sp-sm);
+    white-space: normal;
+  }
+
+  /* The column headings describe columns that are hidden at this width. */
+  .forum-topics-head--mine {
+    display: none;
+  }
+
+  /* Poll result rows: label, bar and count stop competing for one line. */
+  .forum-poll__results li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+/* The stats footer is deliberately not touched here: it already stacks in the
+   900px block above, and re-stating it at 600px only fought with it. */
 
 /* ---- Spoiler + guest content gates ---- */
 .forum-spoiler {
@@ -3767,6 +3917,106 @@ blockquote.cp-quote-post-0,
 }
 .forum-guest-content p {
   margin: 0;
+}
+.forum-announcements {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+.forum-announce {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--cp-accent) 28%, var(--slw-border));
+  background: color-mix(in srgb, var(--cp-accent) 10%, var(--slw-surface));
+  border-radius: 10px;
+}
+.forum-announce i {
+  margin-top: 2px;
+  color: var(--cp-accent-text);
+}
+.forum-announce__label {
+  margin: 0 0 4px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--slw-text-muted);
+}
+.forum-announce__text {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.forum-gate,
+.forum-banned {
+  max-width: 460px;
+  margin: 48px auto;
+  padding: 28px 24px;
+  text-align: center;
+  border: 1px solid var(--slw-border);
+  border-radius: 14px;
+  background: var(--slw-surface);
+}
+.forum-gate__icon,
+.forum-banned__icon {
+  font-size: 2rem;
+  color: var(--cp-accent-text);
+  margin-bottom: 10px;
+}
+.forum-banned__icon {
+  color: #c0392b;
+}
+.forum-gate__title,
+.forum-banned__title {
+  margin: 0 0 8px;
+  font-size: var(--fs-xl);
+}
+.forum-gate__lead,
+.forum-banned__lead,
+.forum-banned__reason,
+.forum-banned__expires {
+  margin: 0 0 10px;
+  color: var(--slw-text-muted);
+  font-size: var(--fs-sm);
+}
+.forum-gate__form {
+  display: grid;
+  gap: 10px;
+  text-align: left;
+  margin-top: 16px;
+}
+.forum-gate__label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.forum-post__ignored {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--slw-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--slw-text-muted) 6%, var(--slw-surface));
+}
+.forum-post__ignored summary {
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  color: var(--slw-text-muted);
+}
+.forum-poll__voters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  width: 100%;
+}
+.forum-poll__voters li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--slw-text-muted);
 }
 
 .forum-field--headline {

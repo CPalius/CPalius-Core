@@ -110,8 +110,9 @@
         }
       });
     }, {
-      threshold: 0.15,
-      rootMargin: '0px 0px -40px 0px'
+      // Any ratio above 0 can be unreachable for an element taller than
+      // the viewport (a long forum topic never reached 0.15 on a phone).
+      threshold: 0
     });
 
     animElements.forEach(function (el) {
