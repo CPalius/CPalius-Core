@@ -1,6 +1,6 @@
 {% extends '@Theme/account/layout.html.twig' %}
 
-{% block title %}{{ 'account.login.title'|trans({'app_name': cp_app_name|default('CPalius CMF')}) }}{% endblock %}
+{% block title %}{{ 'account.login.title'|trans({'app_name': siteName}) }}{% endblock %}
 
 {% block forum_breadcrumbs %}
     <nav class="forum-nav fade-in" aria-label="{{ 'account.nav_aria'|trans }}">
@@ -46,6 +46,7 @@
         <div class="forum-field">
             <label for="account-password">{{ 'account.login.password_label'|trans }}</label>
             <input type="password" id="account-password" name="_password" required autocomplete="current-password">
+            <a href="{{ path('account_password_forgot') }}" style="display:inline-block; margin-top: var(--sp-xs); font-size: var(--fs-sm); color: var(--cp-accent);">{{ 'account.password_reset.forgot_link'|trans }}</a>
         </div>
 
         {% include 'account/partials/_captcha_widget.html.twig' with {

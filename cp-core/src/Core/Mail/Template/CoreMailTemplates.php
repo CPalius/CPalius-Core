@@ -23,6 +23,7 @@ final class CoreMailTemplates implements MailTemplateProviderInterface
     public const IDENTITY_APPROVED = 'account.identity_change.approved';
     public const IDENTITY_REJECTED = 'account.identity_change.rejected';
     public const ACCOUNT_TWO_FACTOR_CODE = 'account.two_factor_code';
+    public const ACCOUNT_PASSWORD_RESET = 'account.password_reset';
     public const NOTIFICATION_INSTANT = 'notification.instant';
     public const NOTIFICATION_DIGEST = 'notification.digest';
 
@@ -99,6 +100,15 @@ final class CoreMailTemplates implements MailTemplateProviderInterface
                 htmlKey: 'account.two_factor.mail.body_html',
                 textKey: 'account.two_factor.mail.body_text',
                 parameters: ['code', 'minutes', 'ip'],
+            ),
+            new MailTemplateDefinition(
+                key: self::ACCOUNT_PASSWORD_RESET,
+                labelKey: 'aacp.mail_templates.tpl.password_reset.label',
+                descriptionKey: 'aacp.mail_templates.tpl.password_reset.description',
+                subjectKey: 'account.password_reset.mail.subject',
+                htmlKey: 'account.password_reset.mail.body_html',
+                textKey: 'account.password_reset.mail.body_text',
+                parameters: ['url', 'minutes', 'ip'],
             ),
             new MailTemplateDefinition(
                 key: self::NOTIFICATION_INSTANT,

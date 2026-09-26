@@ -15,6 +15,7 @@ use App\Core\Security\Flood\FloodService;
 use App\Core\Security\Password\PasswordChanger;
 use App\Core\Security\Http\LoginTargetPath;
 use App\Core\Security\Service\LoginDefenseService;
+use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -68,7 +69,7 @@ final class AccountController extends AbstractController
     }
 
     #[Route('/hesap/giris', name: 'account_login', methods: ['GET'])]
-    public function login(Request $request, AuthenticationUtils $authenticationUtils): Response
+    public function login(Request $request, AuthenticationUtils $authenticationUtils, SettingsRegistry $settings): Response
     {
         if ($this->getUser() !== null) {
             return $this->redirectToRoute('theme_cpalius_website_home');
@@ -93,6 +94,7 @@ final class AccountController extends AbstractController
             'error' => $authenticationUtils->getLastAuthenticationError(),
             'captchaEnabled' => $this->loginDefense->captchaRequiredOnLogin((string) ($request->getClientIp() ?? '')),
             'captchaConfig' => $this->captchaService->getWidgetConfig(),
+            'siteName' => trim((string) $settings->getForLocale('core.site_name', $request->getLocale(), '')) ?: 'CPalius CMF',
         ]);
     }
 

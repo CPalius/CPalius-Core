@@ -56,6 +56,24 @@ class UserRepository extends ServiceEntityRepository implements UserProviderInte
     }
 
     /**
+     * Only the SHA-256 of a reset token is stored, so a leaked database row is not a
+     * working reset link.
+     */
+    public function findOneByPasswordResetTokenHash(string $hash): ?User
+    {
+        if ($hash === '') {
+            return null;
+        }
+
+        $id = $this->getEntityManager()->getConnection()->fetchOne(
+            'SELECT id FROM cp_users WHERE JSON_UNQUOTE(JSON_EXTRACT(data, \'$.password_reset_token_hash\')) = ? LIMIT 1',
+            [$hash],
+        );
+
+        return $id === false || $id === null ? null : $this->find((int) $id);
+    }
+
+    /**
      * Pending approval registrations (inactive + registration_pending_approval).
      *
      * @return list<User>
