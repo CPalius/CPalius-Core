@@ -140,10 +140,14 @@
                     <div class="forum-post__date">
                         <a href="#post{{ post.id }}" class="forum-post__num">#{{ postNum }}</a>
                         <time datetime="{{ post.createdAt|date('c') }}">{{ post.createdAt|date('d.m.Y H:i') }}</time>
-                        <span class="forum-post__relative">{{ post.createdAt|forum_relative_time }}</span>
+                        {# Past a week the filter falls back to the absolute date, which the <time> already shows. #}
+                        {% set relative = post.createdAt|forum_relative_time %}
+                        {% if relative != post.createdAt|date('d.m.Y H:i') %}
+                            <span class="forum-post__relative">{{ relative }}</span>
+                        {% endif %}
                     </div>
                     <div class="forum-post__toolbar forum-post__toolbar--meta">
-                        <button type="button" class="forum-tool-btn" data-share-post title="{{ 'action.share'|trans({}, 'forums') }}"><i class="bi bi-share"></i></button>
+                        <button type="button" class="forum-tool-btn" data-share-post title="{{ 'action.share'|trans({}, 'forums') }}" aria-label="{{ 'action.share'|trans({}, 'forums') }}"><i class="bi bi-share" aria-hidden="true"></i></button>
                         {% set viewer = cp_user() %}
                         {% set canEdit = cp_is_granted('forum.post.edit.any') or (cp_is_granted('forum.post.edit.own') and viewer and post.author and post.author.id == viewer.id) %}
                         {% set canDelete = canModerate or (cp_is_granted('forum.post.delete.own') and viewer and post.author and post.author.id == viewer.id) %}
@@ -220,7 +224,8 @@
 
                 <footer class="forum-post__footer">
                     {% include '@Theme/forum/partials/_post_engagement_tools.html.twig' %}
-                    {% if post.updatedAt %}
+                    {# Imported and freshly created posts can carry updatedAt with no editor; that is not an edit. #}
+                    {% if post.updatedAt and post.updatedByName and post.updatedAt|date('U') > post.createdAt|date('U') + 60 %}
                         <span class="forum-post__edited"><i class="bi bi-pencil"></i> {{ 'forum.post.edited_by'|trans({'name': post.updatedByName}) }} — {{ post.updatedAt|date('d.m.Y H:i') }}</span>
                     {% endif %}
                 </footer>

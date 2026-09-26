@@ -2,7 +2,7 @@
     CPalius Forum Engine avatar (image or initial). Expects: name, size, user, avatarUrl, online.
 #}
 {% set resolvedUrl = avatarUrl|default(user is defined and user ? forum_user_avatar_url(user) : null) %}
-{% set palette = ['#4A7C9B', '#4AADE4', '#C8A86E', '#8B9DAF', '#3A6A87', '#a371f7', '#e8590c'] %}
+{% set palette = ['#3A6A87', '#22668C', '#7A5C22', '#55657A', '#2F5670', '#7048C8', '#B0420A'] %}
 {% set initial = name|default('?')|trim|first|upper %}
 {% set colorIndex = name is not empty ? (name|length * 7 + (name|trim|length)) % (palette|length) : 0 %}
 {% set sizeKey = size|default('md') %}
@@ -10,14 +10,14 @@
     <span class="forum-avatar forum-avatar--{{ sizeKey }}{{ square|default(false) ? ' forum-avatar--square' : '' }} forum-avatar--image">
         <img src="{{ resolvedUrl }}" alt="{{ name|default('') }}" loading="lazy" decoding="async">
         {% if online|default(false) %}
-            <span class="forum-avatar__presence forum-avatar__presence--online" title="{{ 'presence.online'|trans({}, 'forums') }}"></span>
+            <span class="forum-avatar__presence forum-avatar__presence--online" role="img" aria-label="{{ 'presence.online'|trans({}, 'forums') }}" title="{{ 'presence.online'|trans({}, 'forums') }}"></span>
         {% endif %}
     </span>
 {% else %}
     <span class="forum-avatar forum-avatar--{{ sizeKey }}{{ square|default(false) ? ' forum-avatar--square' : '' }}" style="background: {{ palette[colorIndex] }};" aria-hidden="true">
         {{ initial }}
         {% if online|default(false) %}
-            <span class="forum-avatar__presence forum-avatar__presence--online" title="{{ 'presence.online'|trans({}, 'forums') }}"></span>
+            <span class="forum-avatar__presence forum-avatar__presence--online" role="img" aria-label="{{ 'presence.online'|trans({}, 'forums') }}" title="{{ 'presence.online'|trans({}, 'forums') }}"></span>
         {% endif %}
     </span>
 {% endif %}

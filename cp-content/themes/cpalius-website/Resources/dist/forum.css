@@ -191,7 +191,7 @@
   gap: var(--sp-sm);
   padding: 8px 16px;
   margin-bottom: 6px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -234,7 +234,7 @@
 
 .forum-division__type {
   display: block;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -295,7 +295,7 @@
 .forum-board__type {
   display: inline-block;
   margin-bottom: 2px;
-  font-size: 9px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -529,7 +529,7 @@
 }
 
 .forum-board__stats span {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--slw-text-faint);
@@ -683,7 +683,7 @@
 }
 
 .forum-topic__stat span {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--slw-text-faint);
@@ -737,7 +737,7 @@
   gap: 4px;
   padding: 2px 8px;
   border-radius: 3px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -951,7 +951,7 @@
   gap: 3px;
   padding: 2px 8px;
   border-radius: 3px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -988,14 +988,14 @@
 }
 
 .forum-postbit__stat span {
-  font-size: 9px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--slw-text-faint);
 }
 
 .forum-postbit__joined {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--slw-text-faint);
   display: flex;
   align-items: center;
@@ -1461,7 +1461,7 @@
 }
 
 .forum-profile-card__stats span {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--slw-text-faint);
@@ -2037,7 +2037,7 @@
 .forum-activity-thread__last time {
   display: block;
   margin-top: 0;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   line-height: 1.2;
   color: var(--slw-text-faint);
   font-family: var(--cp-font-mono);
@@ -2179,7 +2179,7 @@
 }
 .forum-profile-metric__label {
   display: block;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.4px;
   color: var(--slw-text-faint);
@@ -2243,6 +2243,15 @@
   .forum-profile-card__stats--grid,
   .forum-profile-metrics { grid-template-columns: repeat(2, 1fr); }
 }
+/* Side by side, the name column shrank to ~60px on a phone and broke mid-word. */
+@media (max-width: 600px) {
+  .forum-profile-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .forum-profile-card__body,
+  .forum-profile-card__stats--grid { width: 100%; }
+}
 
 /* ---- Konu listesi araç çubuğu, filtreler, önek, konu araçları ---- */
 .forum-toolbar {
@@ -2280,7 +2289,7 @@
   grid-template-columns: 40px 1fr 90px 90px 190px;
   gap: var(--sp-sm);
   padding: 8px 18px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2305,7 +2314,7 @@
   padding: 0 5px;
   border: 1px solid var(--slw-border);
   border-radius: 2px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--slw-text-muted);
   text-decoration: none;
 }
@@ -2314,7 +2323,7 @@
   align-items: center;
   padding: 1px 7px;
   border-radius: 2px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -2497,7 +2506,7 @@ blockquote.cp-quote-post-0,
   padding: 2px 8px;
   margin: 2px 4px 0 0;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   background: color-mix(in srgb, var(--cp-accent) 10%, white);
   border: 1px solid color-mix(in srgb, var(--cp-accent) 25%, var(--slw-border));
@@ -3011,7 +3020,7 @@ blockquote.cp-quote-post-0,
   margin-left: 6px;
   padding: 1px 6px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -3046,7 +3055,7 @@ blockquote.cp-quote-post-0,
 .forum-engagement__title i { color: var(--cp-accent, #2563eb); font-size: 12px; }
 .forum-engagement__count {
   margin-left: auto;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--slw-text-muted);
   white-space: nowrap;

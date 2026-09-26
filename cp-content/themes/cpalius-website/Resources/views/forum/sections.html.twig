@@ -3,7 +3,7 @@
 {% set pageTitle = currentSection ? currentSection.title : forumHome.title %}
 {% set pageDesc = currentSection and currentSection.description ? currentSection.description : forumHome.description %}
 
-{% block title %}{{ pageTitle }} — {{ forumHome.title }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
+{% block title %}{{ currentSection ? pageTitle ~ ' — ' : '' }}{{ forumHome.title }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
 {% block meta_description %}{{ currentSection and currentSection.description ? currentSection.description : forumHome.metaDescription }}{% endblock %}
 
 {% block forum_breadcrumbs %}
@@ -16,7 +16,7 @@
 {% endblock %}
 
 {% block forum_content %}
-    {% if currentSection %}
+    {% if currentSection or pageTitle %}
         <header class="forum-header fade-in">
             <div class="forum-header__top">
                 <div>
@@ -51,7 +51,7 @@
                         <span class="forum-division__icon"><i class="bi {{ division.icon|default('bi-building', true) }}"></i></span>
                         <span>
                             <span class="forum-division__type">{{ 'forum.label.category'|trans }}</span>
-                            <span class="forum-division__title">{{ division.title }}</span>
+                            <span class="forum-division__title" role="heading" aria-level="2">{{ division.title }}</span>
                         </span>
                     </a>
                     {% if division.description %}
@@ -62,7 +62,7 @@
                         <span class="forum-division__icon"><i class="bi bi-grid"></i></span>
                         <span>
                             <span class="forum-division__type">{{ 'forum.label.direct_boards'|trans }}</span>
-                            <span class="forum-division__title">{{ 'forum.label.other_boards'|trans }}</span>
+                            <span class="forum-division__title" role="heading" aria-level="2">{{ 'forum.label.other_boards'|trans }}</span>
                         </span>
                     </span>
                 {% endif %}

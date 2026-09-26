@@ -25,6 +25,9 @@
                     type="button"
                     class="forum-activity__tab{% if tab == firstTab %} is-active{% endif %}"
                     role="tab"
+                    id="forum-activity-tab-{{ tab }}"
+                    aria-controls="forum-activity-panel-{{ tab }}"
+                    tabindex="{{ tab == firstTab ? '0' : '-1' }}"
                     data-activity-tab="{{ tab }}"
                     aria-selected="{{ tab == firstTab ? 'true' : 'false' }}"
                 >
@@ -43,6 +46,8 @@
                 class="forum-activity__panel{% if tab == firstTab %} is-active{% endif %}"
                 data-activity-panel="{{ tab }}"
                 role="tabpanel"
+                id="forum-activity-panel-{{ tab }}"
+                aria-labelledby="forum-activity-tab-{{ tab }}"
                 {% if tab != firstTab %}hidden{% endif %}
             >
                 <div class="forum-activity__thead" aria-hidden="true">

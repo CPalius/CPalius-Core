@@ -14,29 +14,38 @@
 {% endblock %}
 
 {% block forum_content %}
+<header class="forum-header">
+    <h1 class="section-title">{{ 'forum.search.title_prefix'|trans }}</h1>
+</header>
 <div class="forum-search-form fade-in">
-    <form action="{{ path('forum_search') }}" method="get" class="forum-search-box">
+    <form action="{{ path('forum_search') }}" method="get" class="forum-search-box" role="search">
         <div class="forum-search-box__field">
-            <i class="bi bi-search"></i>
-            <input type="search" name="q" value="{{ query }}" placeholder="{{ 'forum.search.input_placeholder'|trans }}" autofocus autocomplete="off">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <label class="visually-hidden" for="forum-search-q">{{ 'forum.search.title_prefix'|trans }}</label>
+            <input type="search" id="forum-search-q" name="q" value="{{ query }}" placeholder="{{ 'forum.search.input_placeholder'|trans }}" autofocus autocomplete="off">
         </div>
         <div class="forum-search-box__filters">
-            <select name="scope">
+            <label class="visually-hidden" for="forum-search-scope">{{ 'forum.search.scope_label'|trans }}</label>
+            <select name="scope" id="forum-search-scope">
                 <option value="all" {{ scope == 'all' ? 'selected' : '' }}>{{ 'forum.search.scope_all'|trans }}</option>
                 <option value="topics" {{ scope == 'topics' ? 'selected' : '' }}>{{ 'forum.search.scope_topics'|trans }}</option>
                 <option value="posts" {{ scope == 'posts' ? 'selected' : '' }}>{{ 'forum.search.scope_posts'|trans }}</option>
             </select>
             {% if sections is defined and sections is not empty %}
-                <select name="section">
+                <label class="visually-hidden" for="forum-search-section">{{ 'forum.search.section_label'|trans }}</label>
+                <select name="section" id="forum-search-section">
                     <option value="">{{ 'forum.search.all_sections'|trans }}</option>
                     {% for s in sections %}
                         <option value="{{ s.id }}" {{ sectionFilter == s.id ? 'selected' : '' }}>{{ s.title }}</option>
                     {% endfor %}
                 </select>
             {% endif %}
-            <input type="text" name="author" value="{{ author|default('') }}" placeholder="{{ 'forum.search.author'|trans }}" class="forum-search-extra">
-            <input type="date" name="from" value="{{ dateFrom|default('') }}" title="{{ 'forum.search.from'|trans }}">
-            <input type="date" name="to" value="{{ dateTo|default('') }}" title="{{ 'forum.search.to'|trans }}">
+            <label class="visually-hidden" for="forum-search-author">{{ 'forum.search.author'|trans }}</label>
+            <input type="text" id="forum-search-author" name="author" value="{{ author|default('') }}" placeholder="{{ 'forum.search.author'|trans }}" class="forum-search-extra">
+            <label class="visually-hidden" for="forum-search-from">{{ 'forum.search.from'|trans }}</label>
+            <input type="date" id="forum-search-from" name="from" value="{{ dateFrom|default('') }}" title="{{ 'forum.search.from'|trans }}">
+            <label class="visually-hidden" for="forum-search-to">{{ 'forum.search.to'|trans }}</label>
+            <input type="date" id="forum-search-to" name="to" value="{{ dateTo|default('') }}" title="{{ 'forum.search.to'|trans }}">
             <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search"></i> {{ 'forum.action.search'|trans }}</button>
         </div>
     </form>

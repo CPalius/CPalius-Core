@@ -1254,7 +1254,7 @@ p {
 
 .navbar-notif-box__text time {
   color: rgba(255,255,255,0.4);
-  font-size: 10px;
+  font-size: var(--fs-xs);
 }
 
 .navbar-notif-box__empty {
@@ -2704,7 +2704,7 @@ p {
   }
 
   .hero-label {
-    font-size: 10px;
+    font-size: var(--fs-xs);
     letter-spacing: 2px;
   }
 
@@ -3309,7 +3309,7 @@ p {
   align-items: center;
   gap: 6px;
   font-family: var(--cp-font-mono);
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -3475,7 +3475,7 @@ p {
 
 .slw-ide-panel__lang {
   font-family: var(--cp-font-mono);
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   color: var(--slw-terminal);
 }
@@ -3698,7 +3698,7 @@ a.slw-sidebar-profile__name:hover {
   display: block;
   margin-top: 2px;
   font-family: var(--cp-font-mono);
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--slw-text-faint);
 }
 
@@ -4099,7 +4099,7 @@ a.slw-sidebar-profile__name:hover {
 .project-meta-card__key,
 .software-spec-card__key {
   font-family: var(--cp-font-mono);
-  font-size: 0.65rem;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--slw-text-faint);
@@ -5159,7 +5159,7 @@ a.slw-sidebar-profile__name:hover {
 
 .blog-featured-slide__type {
   font-family: var(--cp-font-mono);
-  font-size: 0.65rem;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #9ec5e0;
@@ -5755,7 +5755,7 @@ a.slw-sidebar-profile__name:hover {
   border: 1px solid var(--cp-border);
   background: var(--cp-white);
   color: var(--cp-text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -6308,7 +6308,7 @@ a.slw-sidebar-profile__name:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 6px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--cp-text-muted);
 }
 
@@ -7325,11 +7325,31 @@ object {
   .forum-tool-btn,
   .forum-filters__item,
   .pagination a,
-  .pagination span {
-    min-height: 40px;
+  .pagination span,
+  .blog-featured-slider__nav,
+  .project-card-link,
+  .portal-module__more,
+  .blog-sidebar-widget .badge {
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .forum-tool-btn,
+  .blog-featured-slider__nav {
+    min-width: 44px;
+  }
+
+  /* Stacked link lists: tall enough to hit, without changing the layout. */
+  .slw-breadcrumb a,
+  .forum-crumb a,
+  .footer-links a,
+  .blog-sidebar-widget li a,
+  .blog-taxonomy__root,
+  .slw-related-list__item a {
+    display: inline-block;
+    padding-block: 12px;
   }
 }
 

@@ -140,9 +140,19 @@
       btn.addEventListener('click', function () {
         var post = btn.closest('.forum-post');
         var url = window.location.href.split('#')[0] + (post && post.id ? '#' + post.id : '');
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(url);
-        }
+        if (!navigator.clipboard) return;
+        navigator.clipboard.writeText(url).then(function () {
+          var label = btn.getAttribute('aria-label') || '';
+          var icon = btn.querySelector('i');
+          btn.setAttribute('aria-label', forumI18n('link-copied', 'Link copied'));
+          btn.classList.add('is-copied');
+          if (icon) icon.className = 'bi bi-check-lg';
+          window.setTimeout(function () {
+            btn.setAttribute('aria-label', label);
+            btn.classList.remove('is-copied');
+            if (icon) icon.className = 'bi bi-share';
+          }, 1800);
+        });
       });
     });
   }
@@ -401,13 +411,27 @@
     var baseUrl = root.getAttribute('data-activity-url');
     var loadMoreStep = parseInt(root.getAttribute('data-load-more') || '5', 10) || 5;
 
-    root.querySelectorAll('[data-activity-tab]').forEach(function (tabBtn) {
+    var tabButtons = Array.prototype.slice.call(root.querySelectorAll('[data-activity-tab]'));
+    tabButtons.forEach(function (tabBtn, i) {
+      // WAI-ARIA tabs: one tab stop for the whole list, arrows move between tabs.
+      tabBtn.addEventListener('keydown', function (e) {
+        var next = null;
+        if (e.key === 'ArrowRight') next = tabButtons[(i + 1) % tabButtons.length];
+        else if (e.key === 'ArrowLeft') next = tabButtons[(i - 1 + tabButtons.length) % tabButtons.length];
+        else if (e.key === 'Home') next = tabButtons[0];
+        else if (e.key === 'End') next = tabButtons[tabButtons.length - 1];
+        if (!next) return;
+        e.preventDefault();
+        next.focus();
+        next.click();
+      });
       tabBtn.addEventListener('click', function () {
         var tab = tabBtn.getAttribute('data-activity-tab');
-        root.querySelectorAll('[data-activity-tab]').forEach(function (b) {
+        tabButtons.forEach(function (b) {
           var on = b === tabBtn;
           b.classList.toggle('is-active', on);
           b.setAttribute('aria-selected', on ? 'true' : 'false');
+          b.tabIndex = on ? 0 : -1;
           var item = b.closest('.forum-activity__tab-item');
           if (item) item.classList.toggle('is-active', on);
         });
@@ -597,6 +621,8 @@
     var overlay = document.createElement('div');
     overlay.className = 'forum-lightbox-overlay';
     overlay.hidden = true;
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
     overlay.innerHTML = '<button type="button" class="forum-lightbox-overlay__close" aria-label="' + forumI18n('close', 'Close') + '">&times;</button>'
       + '<button type="button" class="forum-lightbox-overlay__nav forum-lightbox-overlay__prev" aria-label="' + forumI18n('prev', 'Previous') + '">‹</button>'
       + '<img class="forum-lightbox-overlay__img" alt="">'
@@ -605,6 +631,16 @@
     var imgEl = overlay.querySelector('.forum-lightbox-overlay__img');
     var items = [];
     var index = 0;
+    var opener = null;
+    var selector = '.forum-post__body img, .forum-attachments img';
+    var embedded = '.forum-unfurl-card, .twitter-tweet, .instagram-media';
+
+    // Images open on click, so they must open from the keyboard too.
+    document.querySelectorAll(selector).forEach(function (node) {
+      if (node.closest(embedded) || node.closest('a')) return;
+      node.tabIndex = 0;
+      node.setAttribute('role', 'button');
+    });
 
     var galleryFor = function (img) {
       var post = img.closest('.forum-post');
@@ -617,13 +653,26 @@
       if (!items[index]) return;
       imgEl.src = items[index].currentSrc || items[index].getAttribute('src') || '';
       imgEl.alt = items[index].getAttribute('alt') || '';
+      overlay.querySelectorAll('.forum-lightbox-overlay__nav').forEach(function (nav) {
+        nav.hidden = items.length < 2;
+      });
+      var wasHidden = overlay.hidden;
       overlay.hidden = false;
       document.body.classList.add('forum-lightbox-open');
+      if (wasHidden) overlay.querySelector('.forum-lightbox-overlay__close').focus();
     };
     var close = function () {
       overlay.hidden = true;
       imgEl.removeAttribute('src');
       document.body.classList.remove('forum-lightbox-open');
+      if (opener) opener.focus();
+      opener = null;
+    };
+    var open = function (img) {
+      opener = img;
+      items = galleryFor(img);
+      index = Math.max(0, items.indexOf(img));
+      show();
     };
     var step = function (delta) {
       if (!items.length) return;
@@ -636,10 +685,16 @@
       if (!img || img.closest('.forum-unfurl-card, .twitter-tweet, .instagram-media')) return;
       e.preventDefault();
       e.stopPropagation();
-      items = galleryFor(img);
-      index = Math.max(0, items.indexOf(img));
-      show();
+      open(img);
     }, true);
+
+    document.addEventListener('keydown', function (e) {
+      if (!overlay.hidden || (e.key !== 'Enter' && e.key !== ' ')) return;
+      var img = e.target.closest && e.target.closest(selector);
+      if (!img || img.closest(embedded)) return;
+      e.preventDefault();
+      open(img);
+    });
 
     overlay.addEventListener('click', function (e) {
       if (e.target === overlay || e.target.closest('.forum-lightbox-overlay__close')) close();
@@ -648,6 +703,14 @@
     });
     document.addEventListener('keydown', function (e) {
       if (overlay.hidden) return;
+      if (e.key === 'Tab') {
+        // Keep focus inside the dialog.
+        var stops = Array.prototype.filter.call(overlay.querySelectorAll('button'), function (b) { return !b.hidden; });
+        var first = stops[0];
+        var last = stops[stops.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
       if (e.key === 'Escape') close();
       if (e.key === 'ArrowLeft') step(-1);
       if (e.key === 'ArrowRight') step(1);
@@ -737,6 +800,15 @@
       if (e.key === 'Shift' || e.key.indexOf('Arrow') === 0) sync();
     });
 
+    // Touch selection fires no mouseup; wait for the handles to settle.
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
+      var touchTimer = null;
+      document.addEventListener('selectionchange', function () {
+        window.clearTimeout(touchTimer);
+        touchTimer = window.setTimeout(sync, 350);
+      });
+    }
+
     document.addEventListener('scroll', hide, { passive: true });
 
     // Keeps the selection alive while the button is pressed.
@@ -782,6 +854,7 @@
     document.body.appendChild(card);
 
     var cache = {};
+    var pending = {};
     var hideTimer = null;
     var activeKey = null;
 
@@ -822,6 +895,8 @@
         return;
       }
 
+      if (pending[key]) return;
+      pending[key] = true;
       fetch(url, {
         credentials: 'same-origin',
         headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
@@ -834,6 +909,8 @@
         show(anchor, cache[key], key);
       }).catch(function () {
         // A card that cannot load is simply not shown; the link still works.
+      }).finally(function () {
+        delete pending[key];
       });
     }
 
@@ -869,7 +946,8 @@
     var memberCardUrl = forumRoot ? forumRoot.getAttribute('data-member-card-url') || '' : '';
     var postPreviewUrl = forumRoot ? forumRoot.getAttribute('data-post-preview-url') || '' : '';
 
-    document.addEventListener('mouseover', function (e) {
+    function reveal(e) {
+      if (!e.target.closest) return;
       var mention = e.target.closest('a.forum-mention[data-mention]');
       if (mention && memberCardUrl) {
         var slug = mention.getAttribute('data-mention');
@@ -888,11 +966,22 @@
           .replace('/post/0/', '/post/' + encodeURIComponent(num) + '/');
         load(ref, 'p:' + topicId + ':' + num, url, postCard);
       }
-    });
+    }
 
-    document.addEventListener('mouseout', function (e) {
-      if (e.target.closest('a.forum-mention[data-mention], a.forum-postref[data-post-ref]')) {
+    function conceal(e) {
+      if (e.target.closest && e.target.closest('a.forum-mention[data-mention], a.forum-postref[data-post-ref]')) {
         scheduleHide();
+      }
+    }
+
+    document.addEventListener('mouseover', reveal);
+    document.addEventListener('focusin', reveal);
+    document.addEventListener('mouseout', conceal);
+    document.addEventListener('focusout', conceal);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !card.hasAttribute('hidden')) {
+        card.setAttribute('hidden', 'hidden');
+        activeKey = null;
       }
     });
   }
