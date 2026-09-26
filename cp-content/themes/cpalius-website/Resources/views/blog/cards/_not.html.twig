@@ -5,12 +5,12 @@
     <div class="slw-feed-card__body blog-card-not__body">
         <div class="slw-feed-card__head">
             <span class="slw-type-badge slw-ctype--not"><span class="slw-type-badge__dot"></span> {{ 'blog.card.type.note'|trans }}</span>
-            <time>{{ post.publishedAt ? post.publishedAt|date('d.m.Y') : '' }}</time>
+            <time datetime="{{ post.publishedAt ? post.publishedAt|date('c') : '' }}">{{ post.publishedAt|cp_date }}</time>
         </div>
-        <h4 class="slw-feed-card__title blog-card-not__title">
+        <h3 class="slw-feed-card__title blog-card-not__title">
             <span class="blog-card-not__prompt" aria-hidden="true">$</span>
             <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
-        </h4>
+        </h3>
         {% include '@Theme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
     </div>
 </article>

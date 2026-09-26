@@ -12,6 +12,7 @@ use App\Entity\Node;
 use App\Entity\User;
 use App\Repository\CategoryRepository;
 use App\Repository\NodeRepository;
+use App\Repository\TagRepository;
 use Modules\Blog\Service\BlogAppearanceService;
 use Modules\Blog\Service\BlogCommentService;
 use Modules\Blog\Service\BlogPostPresentationService;
@@ -38,6 +39,7 @@ final class PostFrontController extends AbstractController
         private readonly TranslatorInterface $translator,
         private readonly BlogCommentService $commentService,
         private readonly CacheTagCollector $tagCollector,
+        private readonly TagRepository $tagRepository,
     ) {
     }
 
@@ -121,11 +123,13 @@ final class PostFrontController extends AbstractController
         );
 
         $this->tagCollector->addListTag('node', self::NODE_TYPE);
+        $tagName = $this->tagRepository->findOneBySlug($slug, $locale)?->getName() ?? $slug;
 
         return $this->render('@Theme/blog/tag/show.html.twig', [
             'posts' => $result,
             'tagSlug' => $slug,
-            'heading' => '#'.$slug,
+            'tagName' => $tagName,
+            'heading' => '#'.$tagName,
             ...$this->appearanceViewData($locale, showFeatured: false),
         ]);
     }

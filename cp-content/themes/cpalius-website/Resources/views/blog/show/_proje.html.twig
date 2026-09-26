@@ -47,7 +47,7 @@
 
             <aside class="grid-golden-minor">
                 <div class="blog-sidebar-widget project-meta-card">
-                    <h5>{{ 'blog.card.type.project'|trans }}</h5>
+                    <h2 class="blog-sidebar-widget__title">{{ 'blog.card.type.project'|trans }}</h2>
                     <ul class="project-meta-card__list">
                         {% if post.category %}
                             <li>
@@ -58,7 +58,7 @@
                         {% if typeFields.repo_url is defined and typeFields.repo_url %}
                             <li>
                                 <span class="project-meta-card__key">{{ 'blog.card.link.repo'|trans }}</span>
-                                <a href="{{ typeFields.repo_url }}" target="_blank" rel="noopener noreferrer">GitHub</a>
+                                <a href="{{ typeFields.repo_url }}" target="_blank" rel="noopener noreferrer">{{ typeFields.repo_url|split('/')[2]|default(typeFields.repo_url)|replace({'www.': ''}) }}</a>
                             </li>
                         {% endif %}
                         {% if typeFields.demo_url is defined and typeFields.demo_url %}

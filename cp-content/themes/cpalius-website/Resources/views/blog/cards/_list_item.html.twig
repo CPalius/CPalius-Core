@@ -16,7 +16,7 @@
         <div class="blog-list-item__meta">
             <span class="slw-type-badge slw-ctype--proje"><i class="bi bi-kanban" aria-hidden="true"></i> {{ typeLabelKey|trans }}</span>
             <time datetime="{{ post.publishedAt ? post.publishedAt|date('c') : '' }}">
-                {{ post.publishedAt ? post.publishedAt|date('d.m.Y') : '' }}
+                {{ post.publishedAt|cp_date }}
             </time>
         </div>
         <h3 class="blog-list-item__title">
@@ -46,14 +46,14 @@
         {% if typeFields.version is defined and typeFields.version %}
             <span class="blog-card-yazilim__version">v{{ typeFields.version }}</span>
         {% else %}
-            <span class="blog-card-yazilim__version blog-card-yazilim__version--empty">SW</span>
+            <span class="blog-card-yazilim__version blog-card-yazilim__version--empty"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
         {% endif %}
     </div>
     <div class="blog-list-item__body">
         <div class="blog-list-item__meta">
             <span class="slw-type-badge slw-ctype--yazilim"><span class="slw-type-badge__dot"></span> {{ typeLabelKey|trans }}</span>
             <time datetime="{{ post.publishedAt ? post.publishedAt|date('c') : '' }}">
-                {{ post.publishedAt ? post.publishedAt|date('d.m.Y') : '' }}
+                {{ post.publishedAt|cp_date }}
             </time>
         </div>
         <h3 class="blog-list-item__title">
@@ -74,7 +74,7 @@
         <div class="blog-list-item__meta">
             <span class="slw-type-badge slw-ctype--not"><span class="slw-type-badge__dot"></span> {{ typeLabelKey|trans }}</span>
             <time datetime="{{ post.publishedAt ? post.publishedAt|date('c') : '' }}">
-                {{ post.publishedAt ? post.publishedAt|date('d.m.Y') : '' }}
+                {{ post.publishedAt|cp_date }}
             </time>
         </div>
         <h3 class="blog-list-item__title blog-card-not__title">
@@ -94,7 +94,7 @@
         <div class="blog-list-item__meta">
             <span class="slw-type-badge slw-ctype--makale"><span class="slw-type-badge__dot"></span> {{ typeLabelKey|trans }}</span>
             <time datetime="{{ post.publishedAt ? post.publishedAt|date('c') : '' }}">
-                {{ post.publishedAt ? post.publishedAt|date('d.m.Y') : '' }}
+                {{ post.publishedAt|cp_date }}
             </time>
         </div>
         <h3 class="blog-list-item__title blog-card__title--editorial">

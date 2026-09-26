@@ -21,7 +21,7 @@
             {% else %}
                 <strong class="blog-comment__name">{{ displayName }}</strong>
             {% endif %}
-            <time datetime="{{ comment.createdAt|date('c') }}">{{ comment.createdAt|date('d.m.Y H:i') }}</time>
+            <time datetime="{{ comment.createdAt|date('c') }}">{{ comment.createdAt|cp_date(true) }}</time>
         </header>
         <div class="blog-comment__body">{{ comment.body|nl2br }}</div>
         <div class="blog-comment__tools">

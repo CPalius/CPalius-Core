@@ -278,7 +278,8 @@ p {
   padding: var(--sp-sm);
 }
 
-.grid-golden--blog .blog-sidebar-widget h5 {
+.grid-golden--blog .blog-sidebar-widget h5,
+.grid-golden--blog .blog-sidebar-widget__title {
   font-size: var(--fs-xs);
 }
 
@@ -2764,7 +2765,8 @@ p {
   margin-bottom: var(--sp-md);
 }
 
-.blog-sidebar-widget h5 {
+.blog-sidebar-widget h5,
+.blog-sidebar-widget__title {
   font-size: var(--fs-sm);
   text-transform: uppercase;
   letter-spacing: 1.5px;

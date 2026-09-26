@@ -1,6 +1,6 @@
 {% extends '@Theme/layout.html.twig' %}
 
-{% block title %}#{{ tagSlug }} — {{ 'blog.label.blog'|trans }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
+{% block title %}#{{ tagName|default(tagSlug) }} — {{ 'blog.label.blog'|trans }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
 
 {% block content %}
 {% include '@Theme/blog/partials/hero.html.twig' %}
@@ -10,11 +10,11 @@
         {% if not (blogHero is defined and blogHero.enabled) %}
             <div class="section-header fade-in">
                 <span class="section-label">{{ 'blog.tag.label'|trans }}</span>
-                <h2 class="section-title">#{{ tagSlug }}</h2>
+                <h2 class="section-title">#{{ tagName|default(tagSlug) }}</h2>
             </div>
         {% else %}
             <div class="blog-feed-toolbar fade-in">
-                <h2 class="blog-feed-toolbar__title" id="blog-feed">#{{ tagSlug }}</h2>
+                <h2 class="blog-feed-toolbar__title" id="blog-feed">#{{ tagName|default(tagSlug) }}</h2>
                 <span class="blog-feed-toolbar__layout">{{ 'blog.tag.label'|trans }}</span>
             </div>
         {% endif %}

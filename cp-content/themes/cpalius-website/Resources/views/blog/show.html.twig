@@ -21,9 +21,8 @@
         </ul>
 
         <div class="slw-ctype-strip slw-ctype--{{ subType }} fade-in">
-            <span class="slw-type-badge__dot"></span>
+            <span class="slw-type-badge__dot" aria-hidden="true"></span>
             {{ blog_post_sub_type_label(subType) }}
-            <span class="slw-ctype-strip__extra">{{ 'blog.reading_time'|trans({'minutes': postBody|reading_time}) }}</span>
         </div>
 
         <h1 class="post-hero-title fade-in">{{ post.title }}</h1>
@@ -34,14 +33,14 @@
 
         <div class="slw-detail-meta fade-in">
             {% if post.publishedAt %}
-                <time class="slw-detail-meta__item" datetime="{{ post.publishedAt|date('c') }}">{{ post.publishedAt|date('d M Y') }}</time>
+                <time class="slw-detail-meta__item" datetime="{{ post.publishedAt|date('c') }}">{{ post.publishedAt|cp_date }}</time>
             {% endif %}
             {% if post.author %}
                 <span class="slw-detail-meta__sep">·</span>
-                <span class="slw-detail-meta__item"><i class="bi bi-person-workspace"></i> {{ blog_public_display_name(post.author)|default('blog.author.anonymous'|trans) }}</span>
+                <span class="slw-detail-meta__item"><i class="bi bi-person-workspace" aria-hidden="true"></i> {{ blog_public_display_name(post.author)|default('blog.author.anonymous'|trans) }}</span>
             {% endif %}
             <span class="slw-detail-meta__sep">·</span>
-            <span class="slw-detail-meta__item"><i class="bi bi-clock"></i> {{ 'blog.reading_time'|trans({'minutes': postBody|reading_time}) }}</span>
+            <span class="slw-detail-meta__item"><i class="bi bi-clock" aria-hidden="true"></i> {{ 'blog.reading_time'|trans({'minutes': postBody|reading_time}) }}</span>
         </div>
 
         {% if featuredImageUrl and subType != 'not' %}

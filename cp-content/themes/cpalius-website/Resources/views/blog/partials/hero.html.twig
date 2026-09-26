@@ -73,7 +73,7 @@
                     <p class="blog-hero__feature-excerpt">{{ spotlightExcerpt }}</p>
                 {% endif %}
                 <time class="blog-hero__feature-date" datetime="{{ spotlight.publishedAt ? spotlight.publishedAt|date('c') : '' }}">
-                    {{ spotlight.publishedAt ? spotlight.publishedAt|date('d.m.Y') : '' }}
+                    {{ spotlight.publishedAt|cp_date }}
                 </time>
             </aside>
         {% endif %}

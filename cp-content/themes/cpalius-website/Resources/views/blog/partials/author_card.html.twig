@@ -6,7 +6,7 @@
 {% set avatarUrl = blog_user_avatar_url(author) %}
 {% set initial = displayName|trim|first|upper %}
 <div class="blog-sidebar-widget slw-sidebar-profile">
-    <h5>{{ 'blog.sidebar.author_whoami'|trans }}</h5>
+    <h2 class="blog-sidebar-widget__title">{{ 'blog.sidebar.author_whoami'|trans }}</h2>
     <div class="slw-sidebar-profile__avatar">
         {% if avatarUrl %}
             <img src="{{ avatarUrl }}" alt="{{ displayName }}" loading="lazy" decoding="async">

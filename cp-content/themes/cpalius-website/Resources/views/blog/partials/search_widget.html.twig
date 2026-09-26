@@ -2,7 +2,7 @@
     Sidebar search (golden minor column). Shared entry point across archive/show/tag/search templates.
 #}
 <div class="blog-sidebar-widget">
-    <h5>{{ 'blog.sidebar.search_title'|trans }}</h5>
+    <h2 class="blog-sidebar-widget__title">{{ 'blog.sidebar.search_title'|trans }}</h2>
     <form method="get" action="{{ path('blog_search', {_locale: app.request.locale}) }}" class="blog-search-form">
         <input type="search" name="q" value="{{ term|default('') }}" placeholder="{{ 'blog.sidebar.search_placeholder'|trans }}" aria-label="{{ 'blog.sidebar.search_aria'|trans }}">
         <button type="submit" class="btn btn-primary">{{ 'blog.sidebar.search_submit'|trans }}</button>

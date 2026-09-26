@@ -8,16 +8,16 @@
             <span class="slw-type-badge slw-ctype--yazilim">
                 <span class="slw-type-badge__dot"></span> {{ 'blog.card.type.software'|trans }}
             </span>
-            <time>{{ post.publishedAt ? post.publishedAt|date('d.m.Y') : '' }}</time>
+            <time datetime="{{ post.publishedAt ? post.publishedAt|date('c') : '' }}">{{ post.publishedAt|cp_date }}</time>
         </div>
 
         {% if typeFields.version is defined and typeFields.version %}
             <span class="blog-card-yazilim__version">v{{ typeFields.version }}</span>
         {% endif %}
 
-        <h4 class="slw-feed-card__title">
+        <h3 class="slw-feed-card__title">
             <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}">{{ post.title }}</a>
-        </h4>
+        </h3>
         {% include '@Theme/blog/partials/_feed_card_excerpt.html.twig' with { post: post } %}
 
         <div class="blog-card-yazilim__footer">

@@ -22,7 +22,7 @@
         {% else %}
             <div class="blog-feed-toolbar fade-in">
                 <h2 class="blog-feed-toolbar__title" id="blog-feed">{{ heading }}</h2>
-                <span class="blog-feed-toolbar__layout">{{ ('blog.layout.' ~ (listLayout|default('grid')))|trans }}</span>
+                <span class="blog-feed-toolbar__layout">{{ posts.totalItems }} {{ 'blog.hero.stat_posts'|trans }}</span>
             </div>
         {% endif %}
 
