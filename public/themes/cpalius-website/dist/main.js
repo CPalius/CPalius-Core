@@ -7,6 +7,9 @@
 (function () {
   'use strict';
 
+  // JS-driven scrolls ignore the CSS scroll-behavior media query, so they ask too.
+  var scrollMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+
   function escapeHtml(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
       return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
@@ -66,7 +69,7 @@
 
         window.scrollTo({
           top: targetPos,
-          behavior: 'smooth'
+          behavior: scrollMotion
         });
 
         // Close mobile menu if open
@@ -698,33 +701,11 @@
 
       function scrollByCard(dir) {
         var amount = Math.max(240, Math.floor(track.clientWidth * 0.8)) * dir;
-        track.scrollBy({ left: amount, behavior: 'smooth' });
+        track.scrollBy({ left: amount, behavior: scrollMotion });
       }
 
       if (prev) prev.addEventListener('click', function () { scrollByCard(-1); });
       if (next) next.addEventListener('click', function () { scrollByCard(1); });
-
-      if (!slider.hasAttribute('data-autoplay')) return;
-
-      var paused = false;
-      var timer = setInterval(function () {
-        if (paused || document.hidden) return;
-        var maxScroll = track.scrollWidth - track.clientWidth;
-        if (maxScroll <= 4) return;
-        if (track.scrollLeft >= maxScroll - 8) {
-          track.scrollTo({ left: 0, behavior: 'smooth' });
-        } else {
-          scrollByCard(1);
-        }
-      }, 4200);
-
-      slider.addEventListener('mouseenter', function () { paused = true; });
-      slider.addEventListener('mouseleave', function () { paused = false; });
-      slider.addEventListener('focusin', function () { paused = true; });
-      slider.addEventListener('focusout', function () { paused = false; });
-
-      // Keep reference so GC doesn't clear; stop on page hide is enough via document.hidden
-      slider._autoplayTimer = timer;
     });
   }
 

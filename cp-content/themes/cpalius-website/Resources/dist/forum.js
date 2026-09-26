@@ -131,7 +131,8 @@
 
   function scrollToReply(replyBody) {
     var anchor = document.getElementById('reply');
-    if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (anchor) anchor.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
     replyBody.focus();
   }
 

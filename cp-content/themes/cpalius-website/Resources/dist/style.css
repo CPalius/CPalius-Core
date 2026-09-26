@@ -155,8 +155,9 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
+  html,
+  * {
+    scroll-behavior: auto !important;
   }
 
   .fade-in,
@@ -5067,12 +5068,6 @@ a.slw-sidebar-profile__name:hover {
   font-size: 1rem;
   font-weight: 700;
   color: var(--cp-dark, #1c2128);
-}
-
-.blog-featured-strip__hint {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--slw-text-muted, #57606a);
 }
 
 .blog-featured-slider {

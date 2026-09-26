@@ -23,10 +23,9 @@
     <div class="container">
         <div class="blog-featured-strip__head">
             <h2 class="blog-featured-strip__title">{{ 'blog.featured.title'|trans }}</h2>
-            <p class="blog-featured-strip__hint">{{ 'blog.featured.hint'|trans }}</p>
         </div>
 
-        <div class="blog-featured-slider" data-portal-slider data-autoplay>
+        <div class="blog-featured-slider" data-portal-slider>
             <button
                 type="button"
                 class="blog-featured-slider__nav blog-featured-slider__nav--prev"
@@ -47,7 +46,7 @@
                         {% if slide.coverUrl %}
                             <img
                                 src="{{ slide.coverUrl }}"
-                                alt="{{ slide.post.title }}"
+                                alt=""
                                 loading="lazy"
                                 decoding="async"
                             >
