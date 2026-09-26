@@ -1,7 +1,7 @@
 {% extends '@Theme/layout.html.twig' %}
 
 {% set seo = page.getDataValue('seo') %}
-{% set pageBody = page.getDataValue('body') %}
+{% set pageBody = page.getDataValue('body')|default('')|sanitize_html('cpalius_richtext') %}
 {% set layout = template|default('default') %}
 
 {% block title %}{{ page.title }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}

@@ -1,7 +1,7 @@
 {% extends '@Theme/layout.html.twig' %}
 
 {% set seo = post.getDataValue('seo') %}
-{% set postBody = post.getDataValue('body') %}
+{% set postBody = post.getDataValue('body')|default('')|sanitize_html('cpalius_richtext') %}
 {% set subType = post.getDataValue('post_sub_type', 'makale') %}
 {% set typeFields = post.getDataValue('type_fields', {}) %}
 

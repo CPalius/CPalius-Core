@@ -30,7 +30,7 @@
             {% endif %}
         </div>
         {% if profileUser.bio %}
-            <div class="forum-profile-card__bio">{{ profileUser.bio|raw }}</div>
+            <div class="forum-profile-card__bio">{{ profileUser.bio|sanitize_html('cpalius_richtext') }}</div>
         {% endif %}
         {% set profileFields = cp_fields(profileUser) %}
         {% if profileFields %}

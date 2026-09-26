@@ -20,6 +20,6 @@
         <strong class="slw-sidebar-profile__name">{{ displayName }}</strong>
     {% endif %}
     {% if author.bio %}
-        <div class="slw-sidebar-profile__bio">{{ author.bio|raw }}</div>
+        <div class="slw-sidebar-profile__bio">{{ author.bio|sanitize_html('cpalius_richtext') }}</div>
     {% endif %}
 </div>
