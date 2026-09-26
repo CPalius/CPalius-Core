@@ -67,7 +67,10 @@
                                 </span>
                             </button>
 
-                            <div class="navbar-user__dropdown" id="navUserDropdown">
+                            {# Forum shortcuts only while the reader is inside the forum. #}
+                            {% set inForum = app.request.attributes.get('_route', '') starts with 'forum' %}
+                            <div class="navbar-user__dropdown{{ inForum ? ' navbar-user__dropdown--split' : '' }}" id="navUserDropdown">
+                                <div class="navbar-user__col">
                                 <div class="navbar-user__inbox">
                                     <div class="navbar-alert is-open" data-inbox-channel="notifications">
                                         <button type="button" class="navbar-alert__btn" id="navNotifToggle" aria-expanded="true" aria-controls="navNotifBox" aria-label="{{ 'website.nav.notifications'|trans }}">
@@ -128,6 +131,32 @@
                                 <a href="{{ path('admin_logout') }}" class="navbar-user__link navbar-user__link--danger">
                                     <i class="bi bi-box-arrow-right"></i> {{ 'website.nav.logout'|trans }}
                                 </a>
+                                </div>
+                                {% if inForum %}
+                                    <nav class="navbar-user__col navbar-user__col--forum" aria-label="{{ 'forum.user_rail.title'|trans }}">
+                                        <span class="navbar-user__heading">{{ 'forum.breadcrumb.home_title'|trans }}</span>
+                                        <a href="{{ path('forum_unread') }}" class="navbar-user__link">
+                                            <i class="bi bi-envelope" aria-hidden="true"></i> {{ 'forum.unread.link'|trans }}
+                                        </a>
+                                        <a href="{{ path('forum_my_topics') }}" class="navbar-user__link">
+                                            <i class="bi bi-chat-square-text" aria-hidden="true"></i> {{ 'forum.my_topics.link'|trans }}
+                                        </a>
+                                        <a href="{{ path('forum_drafts') }}" class="navbar-user__link">
+                                            <i class="bi bi-journal-text" aria-hidden="true"></i> {{ 'forum.draft.list'|trans }}
+                                        </a>
+                                        <div class="navbar-user__divider"></div>
+                                        <form method="post" action="{{ path('forum_mark_read') }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('forum_mark_read') }}">
+                                            {% if section is defined and section.id is defined %}
+                                                <input type="hidden" name="section_id" value="{{ section.id }}">
+                                            {% endif %}
+                                            <button type="submit" class="navbar-user__link">
+                                                <i class="bi bi-check2-all" aria-hidden="true"></i>
+                                                {{ (section is defined and section.id is defined ? 'forum.unread.mark_board' : 'forum.unread.mark_all')|trans }}
+                                            </button>
+                                        </form>
+                                    </nav>
+                                {% endif %}
                             </div>
                         </div>
                     </div>

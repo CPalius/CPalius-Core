@@ -3273,47 +3273,6 @@ blockquote.cp-quote-post-0,
   cursor: pointer;
   accent-color: var(--cp-accent);
 }
-/* Sits directly above .forum-stats (board footer) now, not at the top of the
-   page — same dark bar language (#243447 fill, 2px radius, no border) so the
-   pair reads as one footer group instead of two differently-styled widgets
-   stacked by accident. .forum-stats supplies the 40px gap between them via
-   its own margin-top; this only needs one above itself. */
-.forum-user-rail {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  margin: var(--sp-2xl, 40px) 0 0;
-  padding: 10px 12px;
-  background: #243447;
-  border-radius: 2px;
-}
-.forum-user-rail__item,
-.forum-user-rail__form button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-radius: 2px;
-  border: 1px solid transparent;
-  background: #132132;
-  color: #D7D8E6;
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  font-family: inherit;
-}
-.forum-user-rail__item:hover,
-.forum-user-rail__form button:hover {
-  background: color-mix(in srgb, var(--cp-accent) 35%, #132132);
-  color: #fff;
-}
-.forum-user-rail__item i,
-.forum-user-rail__form button i {
-  font-size: 13px;
-  color: #fff;
-}
 .forum-imod__split {
   display: none;
   min-width: 180px;

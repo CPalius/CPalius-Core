@@ -152,8 +152,7 @@ html {
 .slw-term-window__bar,
 .slw-term-window__body,
 .forum-stats__left,
-.forum-stats__right,
-.forum-user-rail {
+.forum-stats__right {
   --cp-accent-text: var(--cp-accent);
   --cp-text-muted: #8B9DAF;
   --slw-text-faint: #848d97;
@@ -1056,6 +1055,42 @@ p {
   height: 1px;
   background: rgba(255,255,255,0.08);
   margin: 6px 0;
+}
+
+/* Inside the forum the menu gains a second column of forum shortcuts. */
+.navbar-user__dropdown--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 230px;
+  width: min(540px, calc(100vw - 24px));
+  max-width: none;
+}
+
+.navbar-user__col--forum {
+  border-left: 1px solid rgba(255,255,255,0.08);
+}
+
+.navbar-user__heading {
+  display: block;
+  padding: 10px 16px 6px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--cp-steel-light);
+}
+
+.navbar-user__col--forum form {
+  margin: 0;
+}
+
+.navbar-user__col--forum button.navbar-user__link {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
 }
 
 .navbar-user__link--danger {
@@ -2494,6 +2529,11 @@ p {
     display: block;
     opacity: 1;
     visibility: visible;
+  }
+
+  .navbar-user__col--forum {
+    border-left: 0;
+    border-top: 1px solid rgba(255,255,255,0.08);
   }
 
   .navbar-alert__panel {

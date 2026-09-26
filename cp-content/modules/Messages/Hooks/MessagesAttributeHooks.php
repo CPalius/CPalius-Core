@@ -120,30 +120,6 @@ final class MessagesAttributeHooks
         return $context->appendHtml($html);
     }
 
-    #[CpHook('forum.user.rail', priority: 40)]
-    public function onForumUserRail(HookContext $context): HookContext
-    {
-        return $this->appendInboxLink($context, 'forum-user-rail__item messages-hook--rail');
-    }
-
-    private function appendInboxLink(HookContext $context, string $class): HookContext
-    {
-        if (!$this->config->enabled() || !$this->security->isGranted('messages.send')) {
-            return $context;
-        }
-
-        try {
-            $url = $this->urlGenerator->generate('messages_inbox');
-        } catch (RoutingException) {
-            return $context;
-        }
-
-        $label = htmlspecialchars($this->translator->trans('messages.nav.inbox'), ENT_QUOTES, 'UTF-8');
-        $class = htmlspecialchars($class, ENT_QUOTES, 'UTF-8');
-
-        return $context->appendHtml('<a href="'.$url.'" class="'.$class.'"><i class="bi bi-envelope"></i> '.$label.'</a>');
-    }
-
     /**
      * @param array<string, string> $params
      */
