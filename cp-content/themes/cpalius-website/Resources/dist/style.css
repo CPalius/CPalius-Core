@@ -14,6 +14,11 @@
   --cp-accent: #4AADE4;
   --cp-accent-hover: #3A9BD4;
   --cp-accent-light: #6ABDE8;
+  /* Accent as text/fill on light surfaces: #4AADE4 on white is 2.5:1.
+     Derived so a Studio-chosen accent stays readable too. Dark surfaces
+     reset it to the plain accent below. */
+  --cp-accent-text: color-mix(in srgb, var(--cp-accent) 62%, #000);
+  --cp-on-accent: var(--cp-darker);
   --cp-steel: #8B9DAF;
   --cp-steel-light: #A8B5C4;
   --cp-dark: #1A2A3A;
@@ -28,7 +33,7 @@
   --cp-border-light: #E4E7EC;
   --cp-text: #2C3E50;
   --cp-text-secondary: #5A6B7D;
-  --cp-text-muted: #8B9DAF;
+  --cp-text-muted: #5F6F80;
   --cp-code-bg: #0A1628;
   --cp-success: #27AE60;
   --cp-danger: #C0392B;
@@ -119,6 +124,50 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Dark surfaces: the plain accent already reads fine here. */
+.hero,
+.section-dark,
+.section-darker,
+.navbar,
+.footer,
+.project-toolbar {
+  --cp-accent-text: var(--cp-accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--cp-accent-text);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--sp-sm);
+  top: -100px;
+  z-index: 10000;
+  padding: var(--sp-xs) var(--sp-sm);
+  background: var(--cp-white);
+  color: var(--cp-text);
+  font-weight: 700;
+}
+
+.skip-link:focus {
+  top: var(--sp-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .fade-in,
+  .fade-in-left,
+  .fade-in-right {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 body {
   font-family: var(--cp-font-body);
   font-size: var(--fs-base);
@@ -163,7 +212,7 @@ p {
   color: var(--cp-text-secondary);
 }
 
-.text-accent { color: var(--cp-accent); }
+.text-accent { color: var(--cp-accent-text); }
 .text-gold { color: var(--cp-gold); }
 .text-white { color: var(--cp-white); }
 .text-steel { color: var(--cp-steel); }
@@ -303,7 +352,7 @@ p {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 3px;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   margin-bottom: var(--sp-xs);
   padding-bottom: 8px;
   border-bottom: 2px solid var(--cp-accent);
@@ -365,7 +414,7 @@ p {
 
 .btn-primary {
   background: var(--cp-accent);
-  color: var(--cp-white);
+  color: var(--cp-on-accent);
   border-color: var(--cp-accent);
 }
 
@@ -399,13 +448,13 @@ p {
 
 .btn-outline {
   background: transparent;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   border-color: var(--cp-accent);
 }
 
 .btn-outline:hover {
   background: var(--cp-accent);
-  color: var(--cp-white);
+  color: var(--cp-on-accent);
 }
 
 /* ---- Badge ---- */
@@ -450,7 +499,7 @@ p {
   align-items: center;
   justify-content: center;
   background: var(--cp-light);
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   font-size: var(--fs-xl);
   margin-bottom: var(--sp-md);
   border-left: 3px solid var(--cp-accent);
@@ -527,7 +576,7 @@ p {
   overflow-x: auto;
 }
 
-.code-block .keyword { color: var(--cp-accent); }
+.code-block .keyword { color: var(--cp-accent-text); }
 .code-block .string { color: var(--cp-gold); }
 .code-block .comment { color: #5A6B7D; font-style: italic; }
 .code-block .function { color: #7EC8E3; }
@@ -733,7 +782,6 @@ p {
 }
 
 .navbar-search__input:focus {
-  outline: none;
   border-color: var(--cp-accent);
   background: rgba(255,255,255,0.1);
 }
@@ -1193,7 +1241,7 @@ p {
 .navbar-notif-box__icon {
   flex-shrink: 0;
   width: 18px;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   text-align: center;
 }
 
@@ -1231,7 +1279,7 @@ p {
   background: none;
   border: 0;
   padding: 0;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   font-size: 12px;
   cursor: pointer;
   text-decoration: none;
@@ -1481,7 +1529,7 @@ p {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 4px;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   margin-bottom: var(--sp-md);
   display: flex;
   align-items: center;
@@ -1735,7 +1783,7 @@ p {
   align-items: center;
   justify-content: center;
   background: rgba(74, 173, 228, 0.1);
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   font-size: var(--fs-lg);
 }
 
@@ -1820,7 +1868,7 @@ p {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 2px;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   margin-bottom: var(--sp-xs);
 }
 
@@ -1870,7 +1918,7 @@ p {
   align-items: center;
   justify-content: center;
   background: rgba(74, 173, 228, 0.1);
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   font-size: var(--fs-xl);
   margin-bottom: var(--sp-md);
   border-left: 3px solid var(--cp-accent);
@@ -1918,7 +1966,7 @@ p {
 
 .tech-item i {
   font-size: var(--fs-2xl);
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   display: block;
   margin-bottom: var(--sp-sm);
 }
@@ -2151,7 +2199,7 @@ p {
   font-family: var(--cp-font-heading);
   font-size: var(--fs-4xl);
   font-weight: 700;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   line-height: 1;
   margin-bottom: var(--sp-xs);
 }
@@ -2220,7 +2268,7 @@ p {
 }
 
 .footer-links a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .footer-links a i {
@@ -2242,7 +2290,7 @@ p {
 }
 
 .footer-bottom a {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .footer-bottom a:hover {
@@ -2741,7 +2789,7 @@ p {
 }
 
 .blog-sidebar-widget a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 /* Arama formu â€” sidebar dar olduÄŸu iÃ§in dikey yÄ±ÄŸÄ±lÄ±r */
@@ -2764,7 +2812,6 @@ p {
 }
 
 .blog-search-form input[type="search"]:focus {
-  outline: none;
   border-color: var(--cp-accent);
 }
 
@@ -2919,7 +2966,7 @@ p {
 }
 
 .post-hero-breadcrumb a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .post-hero-breadcrumb-sep {
@@ -2991,7 +3038,7 @@ p {
 }
 
 .post-body a {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   text-decoration: underline;
 }
 
@@ -3126,7 +3173,7 @@ p {
 
 .project-card-link:hover {
   border-color: var(--cp-accent);
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 /* "Not" tÃ¼rÃ¼ â€” terminal tarzÄ± minimalist liste (archive.html.twig) */
@@ -3157,7 +3204,7 @@ p {
 
 .terminal-prompt {
   flex: 0 0 auto;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   font-weight: 700;
 }
 
@@ -3238,7 +3285,7 @@ p {
   --slw-surface-elevated: #ffffff;
   --slw-text-main: #1c2128;
   --slw-text-muted: #57606a;
-  --slw-text-faint: #848d97;
+  --slw-text-faint: #626b75;
   --slw-ctype-not: #3fb950;
   --slw-ctype-makale: #2da44e;
   --slw-ctype-proje: #6e7781;
@@ -5150,7 +5197,6 @@ a.slw-sidebar-profile__name:hover {
 .blog-featured-slide:focus-visible {
   transform: translateY(-2px);
   box-shadow: 0 8px 22px rgba(26, 42, 58, 0.18);
-  outline: none;
 }
 
 .blog-featured-slide:hover img,
@@ -5592,7 +5638,7 @@ a.slw-sidebar-profile__name:hover {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .roadmap-card__status {
@@ -5619,7 +5665,7 @@ a.slw-sidebar-profile__name:hover {
 
 .roadmap-card__title i {
   margin-right: 6px;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .roadmap-card__summary {
@@ -5638,7 +5684,7 @@ a.slw-sidebar-profile__name:hover {
 }
 
 .roadmap-card__link:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .roadmap-feed {
@@ -5716,11 +5762,11 @@ a.slw-sidebar-profile__name:hover {
 }
 
 .roadmap-chip--native { color: var(--cp-primary); border-color: rgba(74, 124, 155, 0.35); }
-.roadmap-chip--blog { color: var(--cp-accent); border-color: rgba(74, 173, 228, 0.4); }
+.roadmap-chip--blog { color: var(--cp-accent-text); border-color: rgba(74, 173, 228, 0.4); }
 .roadmap-chip--forum { color: var(--cp-gold-hover); border-color: rgba(200, 168, 110, 0.45); }
 .roadmap-chip--muted { color: var(--cp-text-muted); }
 .roadmap-chip--status-shipped { color: var(--cp-success); border-color: rgba(39, 174, 96, 0.35); }
-.roadmap-chip--status-in_progress { color: var(--cp-accent); border-color: rgba(74, 173, 228, 0.4); }
+.roadmap-chip--status-in_progress { color: var(--cp-accent-text); border-color: rgba(74, 173, 228, 0.4); }
 .roadmap-chip--status-planned { color: var(--cp-gold-hover); border-color: rgba(200, 168, 110, 0.45); }
 
 .roadmap-feed-row__title {
@@ -5740,7 +5786,7 @@ a.slw-sidebar-profile__name:hover {
 
 .roadmap-feed-row__title i {
   margin-right: 6px;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .roadmap-feed-row__excerpt {
@@ -5786,7 +5832,7 @@ a.slw-sidebar-profile__name:hover {
 }
 
 .roadmap-detail__back a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 @media (max-width: 960px) {
@@ -5825,7 +5871,7 @@ a.slw-sidebar-profile__name:hover {
 
 .roadmap-sidebar__widget h5 i {
   margin-right: 6px;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .roadmap-sidebar__intro {
@@ -5895,7 +5941,7 @@ a.slw-sidebar-profile__name:hover {
 
 .roadmap-sidebar__title i {
   margin-right: 4px;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .roadmap-sidebar__summary {
@@ -5956,7 +6002,7 @@ a.slw-sidebar-profile__name:hover {
 }
 
 .roadmap-main-card__title a:hover { color: var(--cp-primary); }
-.roadmap-main-card__title i { margin-right: 6px; color: var(--cp-accent); }
+.roadmap-main-card__title i { margin-right: 6px; color: var(--cp-accent-text); }
 
 .roadmap-main-card__summary {
   margin: 0 0 var(--sp-sm);
@@ -5972,7 +6018,7 @@ a.slw-sidebar-profile__name:hover {
   text-decoration: none;
 }
 
-.roadmap-main-card__link:hover { color: var(--cp-accent); }
+.roadmap-main-card__link:hover { color: var(--cp-accent-text); }
 
 .roadmap-module-block {
   margin-bottom: var(--sp-md);
@@ -5995,7 +6041,7 @@ a.slw-sidebar-profile__name:hover {
 }
 
 .roadmap-module-block--blog h5 { color: var(--cp-primary-dark); }
-.roadmap-module-block--blog h5 i { color: var(--cp-accent); }
+.roadmap-module-block--blog h5 i { color: var(--cp-accent-text); }
 
 .roadmap-module-block--forum {
   border-top: 3px solid var(--cp-gold);
@@ -6550,7 +6596,7 @@ code.code-inline,
 }
 
 .manifesto-block h3 i {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .manifesto-text p {
@@ -6612,7 +6658,7 @@ code.code-inline,
 }
 
 .whitepaper-back:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .whitepaper-hero h1 {
@@ -6653,7 +6699,7 @@ code.code-inline,
   font-size: var(--fs-sm);
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   margin-bottom: var(--sp-sm);
 }
 
@@ -6857,7 +6903,6 @@ code.code-inline,
 }
 
 .site-search-form input[type="search"]:focus {
-  outline: none;
   border-color: var(--cp-accent);
 }
 
@@ -6894,7 +6939,7 @@ code.code-inline,
 }
 
 .site-search-group__title i {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .site-search-group__more {
@@ -6902,7 +6947,7 @@ code.code-inline,
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
   white-space: nowrap;
 }
 
@@ -6926,7 +6971,7 @@ code.code-inline,
 }
 
 .site-search-hit a:hover {
-  color: var(--cp-accent);
+  color: var(--cp-accent-text);
 }
 
 .site-search-hit p {

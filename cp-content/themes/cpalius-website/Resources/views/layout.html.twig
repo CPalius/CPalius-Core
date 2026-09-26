@@ -47,9 +47,12 @@
     {% block stylesheets %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
+    <a class="skip-link" href="#main">{{ 'website.skip_to_content'|trans }}</a>
     {% include '@Theme/partials/header.html.twig' %}
 
+    <main id="main">
     {% block content %}{% endblock %}
+    </main>
 
     {% include '@Theme/partials/footer.html.twig' %}
 
