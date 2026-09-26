@@ -2767,6 +2767,27 @@ p {
 
 .blog-list-item__thumb {
   min-width: 0;
+  overflow: hidden;
+}
+
+/* The cover fills its 160px column. An aspect-ratio here combined with
+   height:100% made the width follow the row height, so a tall row pushed
+   the image ~40px under the title. */
+.blog-list-item .blog-list-item__thumb .slw-feed-card__cover {
+  aspect-ratio: auto;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .blog-list-item .blog-list-item__thumb .slw-feed-card__cover {
+    aspect-ratio: 16 / 9;
+    height: auto;
+  }
+}
+
+/* Without a cover the text takes the whole row instead of leaving a blank 160px gap. */
+.blog-list-item--no-thumb {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .blog-list-item__thumb .slw-feed-card__cover {

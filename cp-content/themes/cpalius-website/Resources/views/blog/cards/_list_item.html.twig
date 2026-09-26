@@ -86,10 +86,13 @@
 </article>
 
 {% else %}
-<article class="blog-list-item blog-list-item--makale blog-card--makale slw-ctype--makale fade-in">
+{% set hasCover = blog_featured_image_url(post) is not empty %}
+<article class="blog-list-item blog-list-item--makale blog-card--makale slw-ctype--makale fade-in{{ hasCover ? '' : ' blog-list-item--no-thumb' }}">
+    {% if hasCover %}
     <div class="blog-list-item__thumb">
         {% include '@Theme/blog/partials/_feed_card_cover.html.twig' with { post: post } %}
     </div>
+    {% endif %}
     <div class="blog-list-item__body">
         <div class="blog-list-item__meta">
             <span class="slw-type-badge slw-ctype--makale"><span class="slw-type-badge__dot"></span> {{ typeLabelKey|trans }}</span>
