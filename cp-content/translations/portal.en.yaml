@@ -30,13 +30,14 @@ nav:
   github: "GitHub"
 
 hero:
-  label: "NEXT-GEN CONTENT MANAGEMENT FRAMEWORK"
-  subtitle_line1: "From a Content Management System"
+  subtitle_line1: "From a Content Management System to a"
   subtitle_em: "\"Bulletproof\""
   subtitle_line2: "Enterprise Application Framework"
   desc: "A world-class, optimized, secure, and extensible foundation that bridges plugin-rich but cumbersome CMS platforms and frameworks that require starting everything from scratch."
   cta_whitepaper: "Read the Whitepaper"
-  cta_features: "Key features"
+  cta_download: "Download"
+  meta_no_node: "No Node.js required"
+  code_note_html: "One attribute: <strong>vehicle.create/edit/delete/view</strong> capabilities, an audit log, a tenant filter and a workflow."
 
 about:
   label: "Why CPalius?"

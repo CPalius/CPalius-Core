@@ -1,48 +1,49 @@
 {% set t = 'portal' %}
+{% set repoUrl = 'https://github.com/CPalius/CPalius-Core' %}
 <section class="hero" id="hero">
     <div class="container hero-grid">
         <div class="hero-content">
-            <p class="hero-label">{{ 'hero.label'|trans({}, t) }}</p>
             <h1 class="hero-title">CPalius <span class="text-accent">CMF</span></h1>
             <p class="hero-subtitle">
-                <span>{{ 'hero.subtitle_line1'|trans({}, t) }}</span><br>
+                {{ 'hero.subtitle_line1'|trans({}, t) }}
                 <em>{{ 'hero.subtitle_em'|trans({}, t) }}</em>
-                <span>{{ 'hero.subtitle_line2'|trans({}, t) }}</span>
+                {{ 'hero.subtitle_line2'|trans({}, t) }}
             </p>
             <p class="hero-desc">{{ 'hero.desc'|trans({}, t) }}</p>
             <div class="hero-actions">
-                <a href="{{ path('whitepaper_show', {_locale: app.request.locale}) }}" class="btn btn-primary">
-                    <i class="bi bi-book"></i> {{ 'hero.cta_whitepaper'|trans({}, t) }}
+                <a href="{{ repoUrl }}/releases/latest" class="btn btn-primary" rel="noopener">
+                    <i class="bi bi-download" aria-hidden="true"></i>
+                    {{ 'hero.cta_download'|trans({}, t) }}
+                    <span class="hero-version">v{{ cp_version() }}</span>
                 </a>
-                <a href="#features" class="btn btn-secondary">
-                    <i class="bi bi-grid"></i> {{ 'hero.cta_features'|trans({}, t) }}
-                    <i class="bi bi-arrow-right"></i>
+                <a href="{{ path('whitepaper_show', {_locale: app.request.locale}) }}" class="btn btn-secondary">
+                    <i class="bi bi-book" aria-hidden="true"></i> {{ 'hero.cta_whitepaper'|trans({}, t) }}
                 </a>
             </div>
+            <ul class="hero-meta">
+                <li>PHP 8.4+</li>
+                <li>MySQL 8 / MariaDB 10.6+</li>
+                <li>{{ 'hero.meta_no_node'|trans({}, t) }}</li>
+                <li><a href="{{ repoUrl }}" rel="noopener"><i class="bi bi-github" aria-hidden="true"></i> GitHub</a></li>
+            </ul>
         </div>
 
-        <div class="hero-visual">
-            <div class="hero-stage">
-                <div class="hero-stage-ring ring-1"></div>
-                <div class="hero-stage-ring ring-2"></div>
-                <div class="hero-stage-ring ring-3"></div>
-                <div class="hero-stage-orbit">
-                    <span class="orbit-dot"></span>
-                </div>
-                <div class="hero-stage-orbit orbit-reverse">
-                    <span class="orbit-dot"></span>
-                </div>
-                <div class="hero-stage-glow"></div>
-                <div class="hero-stage-glow-core"></div>
-                <div class="hero-stage-floor"></div>
-                <img src="{{ cp_appearance().logo }}" alt="" class="hero-stage-logo">
-                <span class="hero-spark spark-1"></span>
-                <span class="hero-spark spark-2"></span>
-                <span class="hero-spark spark-3"></span>
-                <span class="hero-spark spark-4"></span>
-                <span class="hero-spark spark-5"></span>
-                <span class="hero-spark spark-6"></span>
+        {# The real #[CpResource] signature (cp-core/src/Core/Annotation/CpResource.php), not an illustration. #}
+        <figure class="hero-visual hero-code">
+            <div class="hero-code__bar" aria-hidden="true">
+                <span>Vehicle.php</span>
+                <span>PHP 8.4</span>
             </div>
-        </div>
+            <pre class="hero-code__body"><code><span class="tok-attr">#[CpResource</span>(
+    name: <span class="tok-str">'vehicle'</span>,
+    capabilities: [<span class="tok-str">'create'</span>, <span class="tok-str">'edit'</span>, <span class="tok-str">'delete'</span>, <span class="tok-str">'view'</span>],
+    auditable: <span class="tok-kw">true</span>,
+    multiTenant: <span class="tok-kw">true</span>,
+    workflow: <span class="tok-str">'vehicle_lifecycle'</span>,
+)<span class="tok-attr">]</span>
+<span class="tok-attr">#[ORM\Entity]</span>
+<span class="tok-kw">final class</span> <span class="tok-type">Vehicle</span> { &hellip; }</code></pre>
+            <figcaption class="hero-code__note">{{ 'hero.code_note_html'|trans({}, t)|raw }}</figcaption>
+        </figure>
     </div>
 </section>

@@ -30,13 +30,14 @@ nav:
   github: "GitHub"
 
 hero:
-  label: "NEXT-GEN CONTENT MANAGEMENT FRAMEWORK"
   subtitle_line1: "Bir İçerik Yönetim Sisteminden"
   subtitle_em: "\"Kurşun Geçirmez\""
   subtitle_line2: "Kurumsal Uygulama Framework'üne"
   desc: "Modern web ekosisteminde hazır eklenti sistemleriyle donatılmış ama hantal CMS'ler ile her şeye sıfırdan başlamayı gerektiren saf framework'ler arasındaki köprüyü kuran, dünya standartlarında optimize, güvenli ve genişletilebilir altyapı."
   cta_whitepaper: "Whitepaper'ı İncele"
-  cta_features: "Öne çıkan özellikler"
+  cta_download: "İndir"
+  meta_no_node: "Node.js gerekmez"
+  code_note_html: "Tek bir attribute: <strong>vehicle.create/edit/delete/view</strong> yetkileri, audit log, tenant filtresi ve iş akışı."
 
 about:
   label: "Neden CPalius?"

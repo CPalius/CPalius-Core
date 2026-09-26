@@ -25,41 +25,45 @@ portal_blocks:
     popular_forum_topics:
         label: studio.homepage.blocks.popular_forum_topics
         group: portal
+        hide_on_landing: true
         supports_limit: true
         supports_layout: true
         requires_route: forum_index
         legacy_widget_setting: homepage.widget.popular_forum_topics
         default:
-            enabled: true
+            enabled: false
             title: ''
             limit: 5
             layout: slider
     forum_boards:
         label: studio.homepage.blocks.forum_boards
         group: portal
+        hide_on_landing: true
         supports_limit: true
         supports_layout: true
         requires_route: forum_index
         default:
-            enabled: true
+            enabled: false
             title: ''
             limit: 8
             layout: cards
     forum_stats:
         label: studio.homepage.blocks.forum_stats
         group: portal
+        hide_on_landing: true
         requires_route: forum_index
         default:
-            enabled: true
+            enabled: false
             title: ''
     latest_forum_posts:
         label: studio.homepage.blocks.latest_forum_posts
         group: portal
+        hide_on_landing: true
         supports_limit: true
         supports_layout: true
         requires_route: forum_index
         default:
-            enabled: true
+            enabled: false
             title: ''
             limit: 6
             layout: list
