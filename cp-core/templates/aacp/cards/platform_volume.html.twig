@@ -1,0 +1,17 @@
+    <section class="aacp-cmd-panel{{ hiddenWidgets["platform.volume"] is defined ? ' is-collapsed' }}" data-aacp-widget="platform.volume" data-card-id="platform.volume">
+        <h3 class="aacp-cmd-panel-title">{{ 'aacp.pulse.volume.title'|trans }}</h3>
+        {% if not pulse.volume.available|default(false) %}
+            <p class="aacp-pulse-unavailable">{{ 'aacp.pulse.unavailable'|trans }}</p>
+        {% elseif pulse.volume.types is empty %}
+            <p class="aacp-pulse-note">{{ 'aacp.pulse.volume.empty'|trans }}</p>
+        {% else %}
+            <ul class="aacp-top-ips">
+                {% for type in pulse.volume.types|slice(0, card.limitValue) %}
+                    <li>
+                        <span class="min-w-0 truncate font-mono text-slate-100" title="{{ type.id }}">{{ type.label|trans }}</span>
+                        <span class="shrink-0 font-mono text-emerald-300">{{ type.count }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>

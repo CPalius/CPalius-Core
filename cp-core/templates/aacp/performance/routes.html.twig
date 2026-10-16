@@ -1,0 +1,72 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.perf_routes.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <twig:cp:card title="{{ 'aacp.perf_routes.server_title'|trans }}">
+            <p class="mb-3 text-fs-xs text-slate-500">{{ 'aacp.perf_routes.server_intro'|trans }}</p>
+            <ul class="space-y-2">
+                {% for f in findings %}
+                    <li class="flex gap-3 text-fs-sm">
+                        <span class="mt-0.5 inline-block w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-fs-xs font-semibold uppercase
+                            {{ f.severity == 'critical' or f.severity == 'high' ? 'bg-red-500/15 text-red-300' : (f.severity == 'medium' ? 'bg-amber-500/15 text-amber-300' : (f.severity == 'low' ? 'bg-sky-500/15 text-sky-300' : 'bg-emerald-500/15 text-emerald-300')) }}">{{ f.severity }}</span>
+                        <span>
+                            <span class="font-medium text-slate-200">{{ f.title }}</span>
+                            <span class="block text-slate-400">{{ f.detail }}</span>
+                            {% if f.remedy %}<span class="block text-emerald-300/80">→ {{ f.remedy }}</span>{% endif %}
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </twig:cp:card>
+
+        <p class="text-fs-sm text-slate-400">{{ 'aacp.perf_routes.intro'|trans }}</p>
+
+        {% if rows is empty %}
+            <twig:cp:card>
+                <p class="text-fs-sm text-slate-400">{{ 'aacp.perf_routes.empty'|trans }}</p>
+            </twig:cp:card>
+        {% else %}
+            <div class="overflow-x-auto rounded-lg border border-white/10">
+                <table class="w-full text-left text-fs-sm">
+                    <thead class="bg-white/5 text-fs-xs uppercase tracking-wider text-slate-400">
+                        <tr>
+                            <th class="px-3 py-2">{{ 'aacp.perf_routes.col_route'|trans }}</th>
+                            <th class="px-3 py-2">{{ 'aacp.perf_routes.col_audience'|trans }}</th>
+                            <th class="px-3 py-2 text-right">{{ 'aacp.perf_routes.col_samples'|trans }}</th>
+                            <th class="px-3 py-2 text-right">{{ 'aacp.perf_routes.col_avg'|trans }}</th>
+                            <th class="px-3 py-2 text-right">{{ 'aacp.perf_routes.col_p95'|trans }}</th>
+                            <th class="px-3 py-2 text-right">{{ 'aacp.perf_routes.col_max'|trans }}</th>
+                            <th class="px-3 py-2 text-right">{{ 'aacp.perf_routes.col_queries'|trans }}</th>
+                            <th class="px-3 py-2 text-right">{{ 'aacp.perf_routes.col_db'|trans }}</th>
+                            <th class="px-3 py-2 text-right">{{ 'aacp.perf_routes.col_mem'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        {% for r in rows %}
+                            {# Colour is a hint, not a verdict: > 200 ms or > 30 queries on average is worth a look. #}
+                            <tr>
+                                <td class="px-3 py-2 font-mono text-fs-xs text-slate-200">{{ r.route }}</td>
+                                <td class="px-3 py-2 text-slate-400">{{ ('aacp.perf_routes.audience_' ~ r.audience)|trans }}</td>
+                                <td class="px-3 py-2 text-right tabular-nums text-slate-400">{{ r.n }}</td>
+                                <td class="px-3 py-2 text-right tabular-nums {{ r.avgMs > 200 ? 'text-amber-300' : 'text-slate-200' }}">{{ r.avgMs|number_format(1) }}</td>
+                                <td class="px-3 py-2 text-right tabular-nums text-slate-300">≤ {{ r.p95Ms }}</td>
+                                <td class="px-3 py-2 text-right tabular-nums text-slate-400">{{ r.msMax|number_format(0) }}</td>
+                                <td class="px-3 py-2 text-right tabular-nums {{ r.avgQ > 30 ? 'text-amber-300' : 'text-slate-200' }}">{{ r.avgQ|number_format(1) }}</td>
+                                <td class="px-3 py-2 text-right tabular-nums text-slate-400">{{ r.avgDbMs|number_format(1) }}</td>
+                                <td class="px-3 py-2 text-right tabular-nums text-slate-400">{{ (r.mem / 1048576)|number_format(0) }} MB</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+
+        <form method="post" action="{{ path('aacp_performance_routes_reset') }}" class="flex items-center gap-3">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <button type="submit" class="rounded-lg border border-white/15 px-3 py-2 text-fs-sm text-slate-300 hover:bg-white/5">{{ 'aacp.perf_routes.reset'|trans }}</button>
+            <span class="text-fs-xs text-slate-500">{{ 'aacp.perf_routes.hint'|trans }}</span>
+        </form>
+    </div>
+{% endblock %}

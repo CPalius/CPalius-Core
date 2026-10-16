@@ -1,0 +1,19 @@
+blog_module_legacy_redirect:
+    resource: ../../Controller/LegacyBlogRedirectController.php
+    type: attribute
+
+blog_module_front:
+    resource: ../../Controller/
+    type: attribute
+    prefix: /{_locale}
+    requirements:
+        _locale: '%cpalius.locales_pattern%'
+    defaults:
+        _locale: '%cpalius.default_locale%'
+    exclude:
+        - ../../Controller/Admin/
+        - ../../Controller/LegacyBlogRedirectController.php
+
+blog_module_admin:
+    resource: ../../Controller/Admin/
+    type: attribute

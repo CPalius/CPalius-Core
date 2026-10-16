@@ -1,0 +1,155 @@
+{#
+    Font library and role assignment.
+
+    Two cards: what is installed, and which role uses what. The order matters —
+    you cannot sensibly assign a font you have not added yet.
+#}
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.menu.fonts'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('aacp_theme_options') }}" class="btn btn-sm btn-neutral">
+        {{ 'aacp.menu.theme_options'|trans }}
+    </a>
+{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        {% if installed %}
+            <div class="rounded-lg border border-success-500/30 bg-success-500/10 px-sp-sm py-3 text-fs-sm !text-success-200">
+                {{ 'aacp.fonts.flash.installed'|trans({'name': installed}) }}
+            </div>
+        {% endif %}
+        {% if removed %}
+            <div class="rounded-lg border border-warning-500/30 bg-warning-500/10 px-sp-sm py-3 text-fs-sm !text-warning-200">
+                {{ 'aacp.fonts.flash.removed'|trans({'name': removed}) }}
+            </div>
+        {% endif %}
+        {% if saved %}
+            <div class="rounded-lg border border-success-500/30 bg-success-500/10 px-sp-sm py-3 text-fs-sm !text-success-200">
+                {{ 'aacp.fonts.flash.saved'|trans }}
+            </div>
+        {% endif %}
+        {% if error %}
+            <div class="rounded-lg border border-danger-500/30 bg-danger-500/10 px-sp-sm py-3 text-fs-sm !text-danger-200">
+                {{ error|trans }}
+            </div>
+        {% endif %}
+
+        {% if not writable %}
+            <div class="rounded-lg border border-warning-500/30 bg-warning-500/10 px-sp-sm py-3 text-fs-sm !text-warning-200">
+                {{ 'aacp.fonts.not_writable'|trans({'path': fontsDir}) }}
+            </div>
+        {% endif %}
+
+        <twig:cp:card title="{{ 'aacp.fonts.add_title'|trans }}">
+            <p class="mb-sp-sm text-fs-sm !text-slate-400">{{ 'aacp.fonts.add_desc'|trans }}</p>
+
+            <form method="post" action="{{ path('aacp_fonts_install') }}" class="space-y-sp-sm">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+                <div>
+                    <label class="form-label !text-slate-400" for="font-url">{{ 'aacp.fonts.field.url'|trans }}</label>
+                    <input type="url" id="font-url" name="url" required
+                           placeholder="https://fonts.googleapis.com/css2?family=Inter:wght@400;700"
+                           class="form-control w-full !border-white/10 !bg-dark-1 !text-slate-100">
+                    <p class="mt-1.5 text-fs-xs !text-slate-500">{{ 'aacp.fonts.field.url_hint'|trans }}</p>
+                </div>
+
+                <div>
+                    <label class="form-label !text-slate-400" for="font-name">{{ 'aacp.fonts.field.name'|trans }}</label>
+                    <input type="text" id="font-name" name="name"
+                           placeholder="{{ 'aacp.fonts.field.name_placeholder'|trans }}"
+                           class="form-control w-full max-w-md !border-white/10 !bg-dark-1 !text-slate-100">
+                    <p class="mt-1.5 text-fs-xs !text-slate-500">{{ 'aacp.fonts.field.name_hint'|trans }}</p>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <twig:ux:icon name="heroicons:arrow-down-tray" class="h-4 w-4" />
+                    {{ 'aacp.fonts.action.install'|trans }}
+                </button>
+            </form>
+        </twig:cp:card>
+
+        <twig:cp:card title="{{ 'aacp.fonts.library_title'|trans }}" padded="{{ false }}">
+            {% if families is empty %}
+                <p class="px-sp-sm py-sp-sm text-fs-sm !text-slate-500">{{ 'aacp.fonts.library_empty'|trans }}</p>
+            {% else %}
+                <twig:cp:table headers="{{ [
+                    'aacp.fonts.column.family'|trans,
+                    'aacp.fonts.column.weights'|trans,
+                    'aacp.fonts.column.files'|trans,
+                    'aacp.fonts.column.source'|trans,
+                    '',
+                ] }}">
+                    <twig:block name="rows">
+                        {% for family in families %}
+                            <tr>
+                                <td class="!text-slate-200 font-medium">
+                                    {{ family.name }}
+                                    <span class="block font-mono text-fs-xs !text-slate-500">{{ family.slug }}</span>
+                                </td>
+                                <td class="!text-slate-400 text-fs-xs">{{ family.weights|join(', ') }}</td>
+                                <td class="!text-slate-400">
+                                    {{ family.fileCount }}
+                                    <span class="!text-slate-500">· {{ (family.bytes / 1024)|round }} KB</span>
+                                </td>
+                                <td class="max-w-[220px] truncate !text-slate-500 text-fs-xs" title="{{ family.source ?: '—' }}">
+                                    {{ family.source ?: '—' }}
+                                </td>
+                                <td class="text-right">
+                                    <form method="post" action="{{ path('aacp_fonts_delete', {slug: family.slug}) }}"
+                                          data-confirm="{{ 'aacp.fonts.delete_confirm'|trans({'name': family.name}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                        <button type="submit" class="btn btn-sm btn-danger">{{ 'aacp.fonts.action.delete'|trans }}</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+            {% endif %}
+        </twig:cp:card>
+
+        <twig:cp:card title="{{ 'aacp.fonts.assign_title'|trans }}">
+            <p class="mb-sp-sm text-fs-sm !text-slate-400">{{ 'aacp.fonts.assign_desc'|trans }}</p>
+
+            <form method="post" action="{{ path('aacp_fonts_assign') }}" class="space-y-sp-sm">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+                {% for row in roles %}
+                    <div class="system-setting-field">
+                        <label class="form-label !text-slate-400" for="font-role-{{ row.role }}">{{ row.label|trans }}</label>
+                        <select id="font-role-{{ row.role }}" name="fonts[{{ row.role }}]"
+                                class="form-select w-full max-w-xl !border-white/10 !bg-dark-1 !text-slate-100">
+                            {% for value, label in row.options %}
+                                <option value="{{ value }}" {{ row.value == value ? 'selected' : '' }}>{{ label|trans }}</option>
+                            {% endfor %}
+                        </select>
+                        <p class="mt-1.5 text-fs-xs !text-slate-500">{{ row.hint|trans }}</p>
+                    </div>
+                {% endfor %}
+
+                <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 !bg-dark-1/60 px-sp-sm py-3">
+                    <p class="text-fs-xs !text-slate-500">
+                        {% if stylesheet %}
+                            {{ 'aacp.fonts.stylesheet_at'|trans({'path': stylesheet}) }}
+                        {% else %}
+                            {{ 'aacp.fonts.stylesheet_none'|trans }}
+                        {% endif %}
+                    </p>
+                    <div class="flex gap-2">
+                        <button type="submit" formaction="{{ path('aacp_fonts_rebuild') }}" class="btn btn-sm btn-neutral">
+                            {{ 'aacp.fonts.action.rebuild'|trans }}
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <twig:ux:icon name="heroicons:check" class="h-4 w-4" />
+                            {{ 'aacp.settings.save'|trans }}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </twig:cp:card>
+    </div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'admin/_auth_layout.html.twig' %}
+
+{% block title %}{{ 'studio.login.title'|trans({'app_name': siteName}) }}{% endblock %}
+
+{% block notices %}
+    {# The session is gone by the time this renders, so the reason arrives
+       in the query string. Only the guard's own reasons are honoured. #}
+    {% set sessionExpired = app.request.query.get('session_expired') %}
+    {% if sessionExpired in ['idle_timeout', 'absolute_timeout', 'revoked', 'user_agent_changed', 'ip_changed'] %}
+        <div
+            role="status"
+            class="mb-sp-sm flex items-start gap-3 rounded-lg border border-warning-500/40 bg-warning-500/10 px-4 py-3 text-fs-sm !text-warning-200"
+        >
+            <twig:ux:icon name="heroicons:clock" class="mt-0.5 h-4 w-4 shrink-0 text-warning-400" />
+            <p>{{ ('account.login.session_expired.' ~ sessionExpired)|trans }}</p>
+        </div>
+    {% endif %}
+
+    {% if error is not null %}
+        <div
+            role="alert"
+            class="mb-sp-sm flex items-start gap-3 rounded-lg border border-danger-500/40 bg-danger-950/60 px-4 py-3 text-fs-sm text-danger-200"
+        >
+            <twig:ux:icon name="heroicons:exclamation-triangle" class="mt-0.5 h-4 w-4 shrink-0 text-danger-400" />
+            <p>{{ error.messageKey|trans(error.messageData) }}</p>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block subtitle %}{{ 'studio.login.subtitle'|trans }}{% endblock %}
+{% block heading %}{{ 'studio.login.heading'|trans }}{% endblock %}
+
+{% block card %}
+    <form method="post" class="space-y-sp-sm">
+        <div>
+            <label for="username" class="form-label !text-neutral-400">{{ 'studio.login.email'|trans }}</label>
+            <input
+                type="email"
+                id="username"
+                name="_username"
+                value="{{ last_username }}"
+                autocomplete="email"
+                required
+                autofocus
+                class="form-control !border-white/10 !bg-neutral-900 !text-neutral-100 placeholder-neutral-600"
+            >
+        </div>
+
+        <div>
+            <div class="flex items-center justify-between">
+                <label for="password" class="form-label !text-neutral-400">{{ 'studio.login.password'|trans }}</label>
+                <a href="{{ path('account_password_forgot') }}" class="text-fs-xs text-primary-400">{{ 'account.password_reset.forgot_link'|trans }}</a>
+            </div>
+            <input
+                type="password"
+                id="password"
+                name="_password"
+                autocomplete="current-password"
+                required
+                class="form-control !border-white/10 !bg-neutral-900 !text-neutral-100 placeholder-neutral-600"
+            >
+        </div>
+
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+        <button type="submit" class="btn btn-primary w-full">
+            {{ 'studio.login.submit'|trans }}
+        </button>
+    </form>
+{% endblock %}

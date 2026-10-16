@@ -1,0 +1,158 @@
+{# Same output for every visitor: hidden until the script below finds no saved choice. #}
+<div id="cp-consent" class="cp-consent" role="dialog" aria-live="polite" aria-label="{{ 'consent.title'|trans }}" hidden>
+    <p class="cp-consent__text">
+        {{ message ?: 'consent.message'|trans }}
+        {% if privacyUrl %}<a href="{{ privacyUrl }}">{{ privacyLabel ?: 'consent.privacy_label'|trans }}</a>{% endif %}
+    </p>
+    <div class="cp-consent__panel" data-cp-consent-panel hidden>
+        {% for category in categories %}
+            <label class="cp-consent__cat">
+                <input type="checkbox" data-cp-consent-cat="{{ category.id }}"{% if category.locked %} checked disabled{% endif %}>
+                <span>
+                    <strong>{{ category.label ?: ('consent.cat.' ~ category.id ~ '.label')|trans }}</strong>
+                    <small>{{ category.desc ?: ('consent.cat.' ~ category.id ~ '.desc')|trans }}</small>
+                </span>
+            </label>
+        {% endfor %}
+    </div>
+    <div class="cp-consent__actions">
+        <button type="button" data-cp-consent-choice="rejected">{{ reject ?: 'consent.reject'|trans }}</button>
+        <button type="button" data-cp-consent-choice="preferences" aria-expanded="false">{{ preferences ?: 'consent.preferences'|trans }}</button>
+        <button type="button" data-cp-consent-choice="save" hidden>{{ save ?: 'consent.save'|trans }}</button>
+        <button type="button" data-cp-consent-choice="accepted">{{ accept ?: 'consent.accept'|trans }}</button>
+    </div>
+</div>
+<style{{ csp_nonce_attr() }}>
+.cp-consent{position:fixed;left:1rem;right:1rem;bottom:1rem;z-index:2147483000;max-width:42rem;margin:0 auto;padding:1rem 1.25rem;border-radius:.75rem;background:#111827;color:#f9fafb;box-shadow:0 10px 30px rgba(0,0,0,.35);font:14px/1.5 system-ui,sans-serif}
+.cp-consent[hidden],.cp-consent [hidden]{display:none}
+.cp-consent a{color:#93c5fd;margin-left:.35rem}
+.cp-consent__panel{margin-top:.75rem;display:grid;gap:.6rem}
+.cp-consent__cat{display:flex;gap:.6rem;align-items:flex-start;cursor:pointer}
+.cp-consent__cat input{margin-top:.3rem}
+.cp-consent__cat small{display:block;color:#9ca3af}
+.cp-consent__actions{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:flex-end;margin-top:.75rem}
+.cp-consent button{cursor:pointer;border:1px solid #4b5563;border-radius:.5rem;padding:.45rem .9rem;background:transparent;color:inherit;font:inherit}
+.cp-consent button[data-cp-consent-choice=accepted],.cp-consent button[data-cp-consent-choice=save]{background:#2563eb;border-color:#2563eb}
+</style>
+<script{{ csp_nonce_attr() }}>
+(function () {
+    var banner = document.getElementById('cp-consent');
+    if (!banner) { return; }
+    var NAME = 'cp_consent';
+    var CATS = ['analytics', 'marketing'];
+    var panel = banner.querySelector('[data-cp-consent-panel]');
+    var toggle = banner.querySelector('[data-cp-consent-choice="preferences"]');
+    var saveBtn = banner.querySelector('[data-cp-consent-choice="save"]');
+
+    function stored() {
+        var m = document.cookie.match(new RegExp('(?:^|; )' + NAME + '=([^;]*)'));
+        return m ? m[1] : null;
+    }
+
+    function known(v) { return v === 'accepted' || v === 'rejected' || (!!v && v.indexOf('custom_') === 0); }
+
+    // "accepted" = every category, "rejected" = necessary only, custom_a_b = the listed ones.
+    function parse(v) {
+        var g = { analytics: false, marketing: false };
+        if (v === 'accepted') { g.analytics = g.marketing = true; }
+        else if (v && v.indexOf('custom_') === 0) {
+            v.slice(7).split('_').forEach(function (c) { if (c in g) { g[c] = true; } });
+        }
+        return g;
+    }
+
+    function serialize(g) {
+        var on = CATS.filter(function (c) { return g[c]; });
+        if (on.length === CATS.length) { return 'accepted'; }
+        return on.length ? 'custom_' + on.join('_') : 'rejected';
+    }
+
+    // Scripts that need consent are written as <script type="text/plain" data-cp-consent="analytics" src="...">
+    // and start once their category is granted ("necessary" always runs).
+    function release(g) {
+        document.querySelectorAll('script[type="text/plain"][data-cp-consent]').forEach(function (old) {
+            var cat = old.getAttribute('data-cp-consent');
+            if (cat !== 'necessary' && !g[cat]) { return; }
+            var s = document.createElement('script');
+            for (var i = 0; i < old.attributes.length; i++) {
+                var a = old.attributes[i];
+                if (a.name !== 'type' && a.name !== 'data-cp-consent') { s.setAttribute(a.name, a.value); }
+            }
+            if (old.nonce) { s.nonce = old.nonce; }
+            s.text = old.text;
+            old.parentNode.replaceChild(s, old);
+        });
+    }
+
+    function gtagUpdate(g) {
+        if (typeof window.gtag !== 'function') { return; }
+        window.gtag('consent', 'update', {
+            analytics_storage: g.analytics ? 'granted' : 'denied',
+            ad_storage: g.marketing ? 'granted' : 'denied',
+            ad_user_data: g.marketing ? 'granted' : 'denied',
+            ad_personalization: g.marketing ? 'granted' : 'denied'
+        });
+    }
+
+    function announce(value) {
+        var g = parse(value);
+        document.dispatchEvent(new CustomEvent('cp:consent', { detail: { state: value, categories: g } }));
+        gtagUpdate(g);
+        release(g);
+    }
+
+    function showPanel(open) {
+        panel.hidden = !open;
+        saveBtn.hidden = !open;
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function syncChecks() {
+        var g = parse(stored());
+        banner.querySelectorAll('[data-cp-consent-cat]').forEach(function (box) {
+            if (!box.disabled) { box.checked = !!g[box.getAttribute('data-cp-consent-cat')]; }
+        });
+    }
+
+    function choose(value) {
+        document.cookie = NAME + '=' + value + '; Max-Age=15552000; Path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+        banner.hidden = true;
+        announce(value);
+    }
+
+    window.cpConsent = {
+        state: stored,
+        granted: function (category) { return category === 'necessary' || parse(stored())[category] === true; },
+        open: function () { syncChecks(); showPanel(true); banner.hidden = false; }
+    };
+
+    var current = stored();
+    if (known(current)) {
+        announce(current);
+    } else {
+        banner.hidden = false;
+    }
+
+    banner.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-cp-consent-choice]');
+        if (!button) { return; }
+        var choice = button.getAttribute('data-cp-consent-choice');
+        if (choice === 'preferences') { syncChecks(); showPanel(panel.hidden); return; }
+        if (choice === 'save') {
+            var g = { analytics: false, marketing: false };
+            banner.querySelectorAll('[data-cp-consent-cat]').forEach(function (box) {
+                var c = box.getAttribute('data-cp-consent-cat');
+                if (c in g) { g[c] = box.checked; }
+            });
+            choose(serialize(g));
+            return;
+        }
+        choose(choice);
+    });
+
+    // Any link or button with data-cp-consent-open (e.g. in the footer) re-opens the preferences.
+    document.addEventListener('click', function (event) {
+        if (event.target.closest('[data-cp-consent-open]')) { event.preventDefault(); window.cpConsent.open(); }
+    });
+})();
+</script>

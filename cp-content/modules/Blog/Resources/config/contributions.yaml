@@ -1,0 +1,45 @@
+node_show_routes:
+    post: blog_show
+
+category_show_route: blog_category
+
+queryable_fields:
+    post:
+        is_featured: int
+        post_sub_type: string
+
+schema_types:
+    post: BlogPosting
+
+homepage_modes:
+    blog:
+        route: blog_index
+        label: studio.homepage.mode.blog
+        priority: 10
+
+portal_blocks:
+    latest_blog_posts:
+        label: studio.homepage.blocks.latest_blog_posts
+        group: portal
+        supports_limit: true
+        supports_layout: true
+        hide_on_landing: true
+        requires_route: blog_index
+        legacy_widget_setting: homepage.widget.latest_blog_posts
+        default:
+            enabled: false
+            title: ''
+            limit: 6
+            layout: cards
+
+studio:
+    type_labels:
+        post: studio.dashboard.type.blog
+    edit_routes:
+        post: [admin_posts_edit, id]
+    view_routes:
+        post: [blog_show, slug]
+    quick_create:
+        - { label_key: studio.dashboard.create.post, route: admin_posts_create, icon: heroicons:document-plus }
+    quick_links:
+        - { label_key: studio.dashboard.link.categories, route: admin_categories_index, icon: heroicons:folder }

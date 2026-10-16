@@ -1,0 +1,36 @@
+{#
+    Header live search shared by AACP (dark) and Studio (light).
+    Params: panel ('aacp'|'studio'), dark (bool). Results come from /aacp/search/live or /admin/search/live.
+#}
+{% set searchUrl = panel == 'aacp' ? path('aacp_search_live') : path('admin_search_live') %}
+<div class="admin-search{{ dark ? ' admin-search--dark' : '' }} relative hidden md:block" data-admin-search data-live-skip
+     data-url="{{ searchUrl }}"
+     data-empty="{{ 'admin.search.empty'|trans({ term: '{term}' })|e('html_attr') }}"
+     data-hint="{{ 'admin.search.hint'|trans|e('html_attr') }}"
+     data-error="{{ 'admin.search.error'|trans|e('html_attr') }}">
+    <label class="relative block">
+        <span class="sr-only">{{ 'admin.search.placeholder'|trans }}</span>
+        <input type="search" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false"
+               class="form-control admin-search-input !w-48 lg:!w-64 !ps-9 {{ dark ? '!bg-dark-1 !border-white/10 !text-slate-200 placeholder-slate-600' : '' }}"
+               placeholder="{{ 'admin.search.placeholder'|trans }}">
+        <twig:ux:icon name="tabler:search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 {{ dark ? 'text-slate-500' : 'text-neutral-400' }}" />
+    </label>
+    <div data-admin-search-panel hidden role="listbox" class="admin-search-panel"></div>
+</div>
+
+<style{{ csp_nonce_attr() }}>
+    .admin-search-panel { position: absolute; top: calc(100% + 6px); right: 0; z-index: 60; width: 24rem; max-width: 90vw; max-height: 70vh; overflow-y: auto; padding: .35rem; border-radius: .6rem; background: #fff; border: 1px solid #e5e7eb; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    .admin-search--dark .admin-search-panel { background: #161a23; border-color: rgba(255,255,255,.1); box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+    .admin-search-group { padding: .5rem .6rem .2rem; font-size: .7rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: #6b7280; }
+    .admin-search--dark .admin-search-group { color: #94a3b8; }
+    .admin-search-hit { display: flex; flex-direction: column; gap: .1rem; padding: .45rem .6rem; border-radius: .4rem; text-decoration: none; color: #111827; }
+    .admin-search--dark .admin-search-hit { color: #e2e8f0; }
+    .admin-search-hit:hover, .admin-search-hit.is-active { background: rgba(37,99,235,.1); }
+    .admin-search--dark .admin-search-hit:hover, .admin-search--dark .admin-search-hit.is-active { background: rgba(255,255,255,.07); }
+    .admin-search-title { font-size: .875rem; font-weight: 500; overflow-wrap: anywhere; }
+    .admin-search-sub { font-size: .75rem; color: #6b7280; }
+    .admin-search--dark .admin-search-sub { color: #94a3b8; }
+    .admin-search-message { padding: .75rem; font-size: .85rem; color: #6b7280; }
+    .admin-search--dark .admin-search-message { color: #94a3b8; }
+</style>
+<script{{ csp_nonce_attr() }} src="/js/admin-live-search.js" defer></script>

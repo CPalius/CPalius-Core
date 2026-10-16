@@ -1,0 +1,555 @@
+/*
+ * Studio — the compositor's case.
+ *
+ * Loaded after app.css by admin/layout.html.twig only; AACP keeps its own
+ * shell. Plain CSS so it needs no Tailwind rebuild.
+ *
+ * The world: a type case. Every kind of work has a labelled compartment,
+ * ruled in a thin brass-toned line; nothing floats, nothing casts a shadow,
+ * corners are square. White stock by day, a black key plate by night.
+ *
+ * Three inks share it, chosen by an administrator in AACP (cp_studio_appearance):
+ *   process  full colour: cyan accent, magenta for attention, yellow for warning
+ *   key      black ink only: the brand-neutral white-label shell
+ *   spot     one admin-chosen colour (--spot, with --on-spot for text on it)
+ * Mode is light, dark, or follows the device.
+ *
+ * Tailwind v4 utilities read var(--color-*), so re-declaring the ramps on
+ * body.studio-app re-themes every template that still says bg-neutral-50,
+ * text-primary-600 or bg-white without touching it.
+ */
+
+/* ───────── Tokens: light stock ───────── */
+
+body.studio-app {
+    --paper: oklch(0.985 0.004 230);
+    --rail: oklch(0.962 0.006 230);
+    --stock: oklch(1 0 0);
+    --ink: oklch(0.225 0.016 250);
+    --ink-soft: oklch(0.440 0.016 250);
+    --ink-faint: oklch(0.520 0.014 250);
+    --rule: oklch(0.800 0.038 85);
+    --rule-soft: oklch(0.905 0.014 85);
+
+    --accent: var(--studio-accent, oklch(0.520 0.115 232));
+    --on-accent: var(--on-studio-accent, oklch(0.99 0 0));
+    --attention: oklch(0.520 0.190 8);
+    --caution: oklch(0.820 0.155 88);
+    --caution-ink: oklch(0.440 0.090 80);
+    --ok: oklch(0.520 0.120 155);
+
+    --radius: 2px;
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+    --font-label: 'Roboto Condensed', 'Roboto', system-ui, sans-serif;
+}
+
+
+/* ───────── Tokens: black key plate ───────── */
+
+body.studio-app[data-studio-mode='dark'] {
+    --paper: oklch(0.175 0.009 250);
+    --rail: oklch(0.145 0.009 250);
+    --stock: oklch(0.215 0.010 250);
+    --ink: oklch(0.945 0.006 230);
+    --ink-soft: oklch(0.780 0.010 230);
+    --ink-faint: oklch(0.690 0.012 230);
+    --rule: oklch(0.420 0.038 85);
+    --rule-soft: oklch(0.300 0.018 85);
+    --accent: var(--studio-accent-lit, oklch(0.740 0.115 232));
+    --on-accent: var(--on-studio-accent, oklch(0.18 0.01 250));
+    --attention: oklch(0.730 0.170 8);
+    --caution: oklch(0.840 0.150 90);
+    --caution-ink: oklch(0.850 0.120 90);
+    --ok: oklch(0.760 0.130 155);
+    color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+    body.studio-app[data-studio-mode='auto'] {
+        --paper: oklch(0.175 0.009 250);
+        --rail: oklch(0.145 0.009 250);
+        --stock: oklch(0.215 0.010 250);
+        --ink: oklch(0.945 0.006 230);
+        --ink-soft: oklch(0.780 0.010 230);
+        --ink-faint: oklch(0.690 0.012 230);
+        --rule: oklch(0.420 0.038 85);
+        --rule-soft: oklch(0.300 0.018 85);
+        --accent: var(--studio-accent-lit, oklch(0.740 0.115 232));
+        --on-accent: var(--on-studio-accent, oklch(0.18 0.01 250));
+        --attention: oklch(0.730 0.170 8);
+        --caution: oklch(0.840 0.150 90);
+        --caution-ink: oklch(0.850 0.120 90);
+        --ok: oklch(0.760 0.130 155);
+        color-scheme: dark;
+    }
+}
+
+/* ───────── Re-theme the Tailwind ramps from the tokens ───────── */
+
+body.studio-app {
+    --color-white: var(--stock);
+    --color-neutral-50: var(--paper);
+    --color-neutral-100: var(--rail);
+    --color-neutral-200: var(--rule-soft);
+    --color-neutral-300: var(--rule);
+    --color-neutral-400: color-mix(in oklab, var(--ink) 45%, var(--paper));
+    --color-neutral-500: var(--ink-faint);
+    --color-neutral-600: var(--ink-soft);
+    --color-neutral-700: color-mix(in oklab, var(--ink) 82%, var(--paper));
+    --color-neutral-800: color-mix(in oklab, var(--ink) 92%, var(--paper));
+    --color-neutral-900: var(--ink);
+
+    --color-primary-50: color-mix(in oklab, var(--accent) 7%, var(--paper));
+    --color-primary-100: color-mix(in oklab, var(--accent) 14%, var(--paper));
+    --color-primary-200: color-mix(in oklab, var(--accent) 26%, var(--paper));
+    --color-primary-300: color-mix(in oklab, var(--accent) 44%, var(--paper));
+    --color-primary-400: color-mix(in oklab, var(--accent) 66%, var(--paper));
+    --color-primary-500: color-mix(in oklab, var(--accent) 86%, var(--paper));
+    --color-primary-600: var(--accent);
+    --color-primary-700: color-mix(in oklab, var(--accent) 86%, var(--ink));
+    --color-primary-800: color-mix(in oklab, var(--accent) 70%, var(--ink));
+    --color-primary-900: color-mix(in oklab, var(--accent) 55%, var(--ink));
+
+    --color-danger-50: color-mix(in oklab, var(--attention) 8%, var(--paper));
+    --color-danger-100: color-mix(in oklab, var(--attention) 15%, var(--paper));
+    --color-danger-200: color-mix(in oklab, var(--attention) 28%, var(--paper));
+    --color-danger-300: color-mix(in oklab, var(--attention) 45%, var(--paper));
+    --color-danger-500: var(--attention);
+    --color-danger-600: var(--attention);
+    --color-danger-700: color-mix(in oklab, var(--attention) 82%, var(--ink));
+    --color-warning-50: color-mix(in oklab, var(--caution) 14%, var(--paper));
+    --color-warning-100: color-mix(in oklab, var(--caution) 26%, var(--paper));
+    --color-warning-300: color-mix(in oklab, var(--caution) 55%, var(--paper));
+    --color-warning-500: var(--caution);
+    --color-warning-800: var(--caution-ink);
+    --color-success-50: color-mix(in oklab, var(--ok) 8%, var(--paper));
+    --color-success-100: color-mix(in oklab, var(--ok) 15%, var(--paper));
+    --color-success-300: color-mix(in oklab, var(--ok) 45%, var(--paper));
+    --color-success-500: var(--ok);
+    --color-success-600: var(--ok);
+    --color-success-700: color-mix(in oklab, var(--ok) 82%, var(--ink));
+    --color-info-100: var(--color-primary-100);
+    --color-info-700: var(--color-primary-700);
+
+    font-family: var(--studio-font, 'Roboto'), system-ui, 'Segoe UI', sans-serif;
+    background: var(--paper);
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+    caret-color: var(--accent);
+    accent-color: var(--accent);
+    scrollbar-color: var(--rule) transparent;
+}
+body.studio-app ::selection { background: color-mix(in oklab, var(--accent) 28%, transparent); color: var(--ink); }
+body.studio-app :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+body.studio-app :focus:not(:focus-visible) { outline: none; }
+body.studio-app a { text-underline-offset: 0.2em; }
+
+/* ───────── Rail: the case's labelled compartments ───────── */
+
+body.studio-app .sidebar {
+    background: var(--rail);
+    border-inline-end: 1px solid var(--rule);
+}
+body.studio-app .sidebar-logo {
+    height: 64px;
+    padding: 0 1.25rem;
+    gap: 0.75rem;
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+}
+body.studio-app .sidebar-logo img { max-height: 1.75rem; }
+body.studio-app .sidebar-logo p:first-child { font-size: 0.9375rem; font-weight: 700; letter-spacing: -0.005em; color: var(--ink); }
+body.studio-app .sidebar-logo p:last-child { font-size: 0.75rem; color: var(--ink-faint); }
+
+body.studio-app .sidebar-menu-area {
+    height: calc(100vh - 64px);
+    padding: 0 0 2rem;
+    border: 0;
+    scrollbar-width: thin;
+}
+body.studio-app .sidebar-menu { display: block; margin: 0; padding: 0; list-style: none; }
+
+/* A compartment label sits under a full-width rule. */
+body.studio-app .sidebar-menu-group-title {
+    margin: 0;
+    padding: 1.125rem 1.25rem 0.375rem;
+    border-top: 1px solid var(--rule);
+    font-family: var(--font-label);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+body.studio-app .sidebar-menu-group-title:first-child { border-top: 0; padding-top: 1rem; }
+
+body.studio-app .sidebar-menu > li > a,
+body.studio-app .sidebar-menu li > a {
+    position: relative;
+    gap: 0.75rem;
+    min-height: 2.5rem;
+    padding: 0.4375rem 1.25rem 0.4375rem 1.75rem;
+    border-radius: 0;
+    background: transparent;
+    font-size: 0.9375rem;
+    font-weight: 400;
+    color: var(--ink-soft);
+    transition: background-color 120ms var(--ease), color 120ms var(--ease);
+}
+body.studio-app .sidebar-menu li > a:hover { background: color-mix(in oklab, var(--ink) 5%, transparent); color: var(--ink); }
+body.studio-app .sidebar-menu li > a .menu-icon { width: 1.125rem; height: 1.125rem; color: var(--ink-faint); }
+
+/* The active item is the sort locked into the forme: a filled square key. */
+body.studio-app .sidebar-menu li > a.active-page,
+body.studio-app .sidebar-menu li.dropdown.open > a {
+    background: var(--stock);
+    color: var(--ink);
+    font-weight: 600;
+}
+body.studio-app .sidebar-menu li > a.active-page::before,
+body.studio-app .sidebar-menu li.dropdown.open > a::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0.75rem;
+    top: 50%;
+    width: 0.375rem;
+    height: 0.375rem;
+    translate: 0 -50%;
+    background: var(--accent);
+}
+body.studio-app .sidebar-menu li > a.active-page .menu-icon,
+body.studio-app .sidebar-menu li.dropdown.open > a .menu-icon { color: var(--ink); }
+body.studio-app .sidebar-menu li > a.active-page:hover { background: var(--stock); }
+body.studio-app .submenu-caret { color: var(--ink-faint); border-radius: 0; }
+
+/* Children are stops on the same line: indented, ruled, icon-free. */
+body.studio-app .sidebar-menu .sidebar-submenu {
+    display: none;
+    margin: 0 0 0.25rem 2.0625rem;
+    padding: 0;
+    border-inline-start: 1px solid var(--rule);
+}
+body.studio-app .sidebar-menu .sidebar-submenu.open { display: block; }
+body.studio-app .sidebar-menu .sidebar-submenu li > a {
+    min-height: 2.125rem;
+    padding: 0.25rem 1rem 0.25rem 0.875rem;
+    font-size: 0.875rem;
+}
+body.studio-app .sidebar-menu .sidebar-submenu li > a svg { display: none; }
+body.studio-app .sidebar-menu .sidebar-submenu li > a.active-page { background: transparent; color: var(--ink); font-weight: 600; }
+body.studio-app .sidebar-menu .sidebar-submenu li > a.active-page::before {
+    inset-inline-start: -1px;
+    top: 0.375rem;
+    bottom: 0.375rem;
+    width: 2px;
+    height: auto;
+    translate: none;
+}
+body.studio-app .sidebar-meta { border-color: var(--rule); font-size: 0.75rem; color: var(--ink-faint); }
+
+/* Collapsed rail: icons only, children fly out. */
+body.studio-app .sidebar.active .sidebar-menu-group-title {
+    height: 0;
+    padding: 0;
+    overflow: hidden;
+    font-size: 0;
+    border-top: 1px solid var(--rule);
+    margin: 0.5rem 0;
+}
+body.studio-app .sidebar.active .sidebar-menu li > a { padding-inline: 0; }
+body.studio-app .sidebar.active .sidebar-menu li > a.active-page::before { inset-inline-start: 0.25rem; }
+body.studio-app .sidebar.active .sidebar-menu > li.dropdown:hover > .sidebar-submenu,
+body.studio-app .sidebar.active .sidebar-menu > li.dropdown:focus-within > .sidebar-submenu {
+    margin: 0;
+    padding: 0.25rem 0;
+    border: 1px solid var(--rule);
+    background: var(--stock);
+}
+
+/* ───────── Header: one rule, the title, the actions ───────── */
+
+body.studio-app .dashboard-main { background: var(--paper); }
+body.studio-app .navbar-header {
+    min-height: 64px;
+    padding: 0 1.75rem;
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+}
+body.studio-app .navbar-header h1 {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+}
+/* The one registration mark: it sits where the work starts. */
+body.studio-app .studio-reg { flex: none; width: 1rem; height: 1rem; color: var(--accent); }
+body.studio-app .navbar-header .sidebar-toggle,
+body.studio-app .navbar-header .sidebar-mobile-toggle { color: var(--ink-soft); }
+body.studio-app .navbar-header a.border,
+body.studio-app .navbar-header button.border {
+    width: 2.5rem; height: 2.5rem;
+    border-color: transparent;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--ink-soft);
+}
+body.studio-app .navbar-header a.border:hover,
+body.studio-app .navbar-header button.border:hover { background: color-mix(in oklab, var(--ink) 7%, transparent); color: var(--ink); border-color: transparent; }
+body.studio-app .navbar-header [data-dropdown-trigger] { min-height: 2.5rem; border-radius: var(--radius); border-color: var(--rule); }
+body.studio-app .navbar-header [data-dropdown-trigger] > span:first-child { flex: none; border-radius: 0; background: var(--accent); color: var(--on-accent); }
+
+body.studio-app .dashboard-main > .p-sp-md { padding: 2rem 1.75rem 4rem; }
+
+/* ───────── Components ───────── */
+
+/* A card is a ruled compartment. Never nested, never shadowed. */
+body.studio-app .card { background: transparent; border: 1px solid var(--rule); border-radius: 0; box-shadow: none; }
+body.studio-app .card .card { border: 0; border-top: 1px solid var(--rule-soft); }
+body.studio-app .card-header { padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--rule); }
+body.studio-app .card-header h3 { font-family: var(--font-label); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); }
+body.studio-app .card-body { padding: 1.25rem; }
+
+/* Buttons. Primary is a solid sort in the accent; everything else is ruled. */
+body.studio-app .btn {
+    min-height: 2.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    transition: background-color 120ms var(--ease), border-color 120ms var(--ease), color 120ms var(--ease), opacity 120ms var(--ease);
+}
+body.studio-app .btn-sm { min-height: 2.25rem; padding: 0.375rem 0.875rem; font-size: 0.875rem; }
+body.studio-app .btn-primary { background: var(--accent); color: var(--on-accent); border: 1px solid var(--accent); }
+body.studio-app .btn-primary:hover { background: color-mix(in oklab, var(--accent) 86%, var(--ink)); border-color: transparent; }
+body.studio-app .btn-primary:active { background: color-mix(in oklab, var(--accent) 74%, var(--ink)); }
+body.studio-app .btn-outline-primary,
+body.studio-app .btn-neutral { background: transparent; border: 1px solid var(--rule); color: var(--ink); }
+body.studio-app .btn-outline-primary:hover,
+body.studio-app .btn-neutral:hover { background: color-mix(in oklab, var(--ink) 6%, transparent); border-color: var(--ink-faint); color: var(--ink); }
+body.studio-app .btn-danger { background: var(--attention); border: 1px solid var(--attention); color: var(--paper); }
+body.studio-app .btn-outline-danger { background: transparent; border-color: var(--rule); color: var(--attention); }
+body.studio-app .btn-outline-danger:hover { background: var(--attention); border-color: var(--attention); color: var(--paper); }
+body.studio-app .btn:disabled { opacity: 0.45; }
+
+/* Status is a dot and a word, set in the body face. */
+body.studio-app .badge { gap: 0.5rem; padding: 0; border-radius: 0; background: transparent; font-size: 0.8125rem; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ink-soft); }
+body.studio-app .badge.uppercase { text-transform: none; }
+body.studio-app .badge > span:first-child { width: 0.5rem; height: 0.5rem; border-radius: 0; }
+body.studio-app .badge-success { background: transparent; color: var(--ink); }
+body.studio-app .badge-danger { background: transparent; color: var(--attention); }
+body.studio-app .badge-warning { background: transparent; color: var(--caution-ink); }
+body.studio-app .badge-info { background: transparent; color: var(--accent); }
+body.studio-app .badge-neutral { background: transparent; color: var(--ink-faint); }
+
+/* Tables: ruled lines, condensed column labels, no zebra, no frame. */
+body.studio-app .table { border: 0; border-top: 1px solid var(--rule); border-radius: 0; }
+body.studio-app .table th {
+    padding: 0.625rem 1rem;
+    background: transparent;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--font-label);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    border-radius: 0 !important;
+}
+body.studio-app .table td { padding: 0.875rem 1rem; border-color: var(--rule-soft); font-size: 0.9375rem; color: var(--ink-soft); border-radius: 0 !important; }
+body.studio-app .table td.font-medium { color: var(--ink); }
+body.studio-app .table tbody tr:hover td { background: color-mix(in oklab, var(--accent) 5%, transparent); }
+body.studio-app .table-compact th { padding: 0.5rem 0.75rem; }
+body.studio-app .table-compact td { padding: 0.75rem; font-size: 0.875rem; }
+
+/* Forms. */
+body.studio-app .form-label { margin-bottom: 0.375rem; font-size: 0.875rem; font-weight: 600; color: var(--ink); }
+body.studio-app .form-control,
+body.studio-app .form-select {
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--stock);
+    font-size: 0.9375rem;
+    color: var(--ink);
+}
+body.studio-app .form-control::placeholder { color: var(--ink-faint); }
+body.studio-app .form-control:hover,
+body.studio-app .form-select:hover { border-color: var(--ink-faint); }
+body.studio-app .form-control:focus,
+body.studio-app .form-select:focus { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); --tw-ring-shadow: 0 0 #0000; outline: none; }
+body.studio-app .form-control[readonly],
+body.studio-app .form-control:disabled { background: var(--rail); color: var(--ink-faint); }
+body.studio-app .form-check-input { border-radius: 0; }
+
+body.studio-app .dropdown-menu { padding: 0.25rem 0; border: 1px solid var(--rule); border-radius: 0; background: var(--stock); box-shadow: none; }
+body.studio-app .dropdown-menu a,
+body.studio-app .dropdown-menu button { min-height: 2.25rem; padding: 0.375rem 1rem; border-radius: 0; font-size: 0.9375rem; color: var(--ink-soft); }
+body.studio-app .dropdown-menu a:hover,
+body.studio-app .dropdown-menu button:hover { background: color-mix(in oklab, var(--ink) 6%, transparent); color: var(--ink); }
+
+body.studio-app .toast { border: 1px solid var(--rule); border-radius: 0; background: var(--stock); color: var(--ink); box-shadow: none; font-weight: 400; }
+body.studio-app .toast-success { border-inline-start: 1px solid var(--ok); }
+body.studio-app .toast-error { border-color: var(--attention); color: var(--attention); }
+
+body.studio-app .modal-overlay { background: color-mix(in oklab, var(--paper) 55%, oklch(0.1 0.01 250 / 0.55)); }
+body.studio-app .modal-panel { border: 1px solid var(--ink-faint); border-radius: 0; background: var(--stock); box-shadow: none; }
+body.studio-app .modal-header,
+body.studio-app .modal-footer { border-color: var(--rule); }
+
+/* ───────── Command desk: the case ───────── */
+
+body.studio-app .studio-cmd { display: block; max-width: 1360px; padding: 0; }
+body.studio-app .studio-cmd > * { margin-block: 0; }
+body.studio-app .studio-cmd > * + * { margin-top: 2rem; }
+
+body.studio-app .studio-cmd-actionbar { align-items: flex-end; }
+body.studio-app .studio-cmd-welcome { font-size: 1.75rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; color: var(--ink); text-wrap: balance; }
+body.studio-app .studio-cmd-welcome-sub { margin-top: 0.375rem; max-width: 60ch; font-size: 1rem; color: var(--ink-soft); }
+body.studio-app .studio-cmd-dropdown-menu { border: 1px solid var(--rule); border-radius: 0; background: var(--stock); box-shadow: none; padding: 0.25rem 0; }
+body.studio-app .studio-cmd-dropdown-item { min-height: 2.5rem; font-size: 0.9375rem; color: var(--ink-soft); }
+body.studio-app .studio-cmd-dropdown-item:hover { background: color-mix(in oklab, var(--ink) 6%, transparent); color: var(--ink); }
+
+/* The case itself: compartments share their rules. */
+body.studio-app .studio-cmd-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    border: 1px solid var(--rule);
+}
+@media (min-width: 1024px) {
+    body.studio-app .studio-cmd-grid { grid-template-columns: minmax(0, 1fr) 22rem; }
+    body.studio-app .studio-cmd-side { border-inline-start: 1px solid var(--rule); }
+}
+body.studio-app .studio-cmd-side { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--rule); }
+@media (min-width: 1024px) { body.studio-app .studio-cmd-side { border-top: 0; } }
+
+body.studio-app .studio-cmd-panel { position: relative; padding: 1.25rem; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+body.studio-app .studio-cmd-side .studio-cmd-panel + .studio-cmd-panel { border-top: 1px solid var(--rule); }
+body.studio-app .studio-cmd-panel-title {
+    margin: 0 0 0.875rem;
+    font-family: var(--font-label);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+body.studio-app .studio-cmd-panel[data-studio-widget] > :first-child { padding-inline-end: 1.75rem; }
+body.studio-app .studio-widget-toggle { inset-block-start: 0.875rem; inset-inline-end: 1rem; width: 1.5rem; height: 1.5rem; border: 0; border-radius: 0; background: transparent; color: var(--ink-faint); }
+body.studio-app .studio-widget-toggle:hover { background: color-mix(in oklab, var(--ink) 7%, transparent); color: var(--ink); }
+body.studio-app .studio-cmd-panel.is-collapsed { padding-block: 0.875rem; }
+body.studio-app .studio-cmd-panel.is-collapsed .studio-cmd-panel-title { margin-bottom: 0; }
+body.studio-app .studio-cmd-panel .table { border-top: 0; }
+body.studio-app .studio-cmd-panel .table th:first-child,
+body.studio-app .studio-cmd-panel .table td:first-child { padding-inline-start: 0; }
+
+/* Plain label / value rows: totals are read, not displayed. */
+body.studio-app .studio-ledger { margin: 0; }
+body.studio-app .studio-ledger > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; min-height: 2.5rem; padding: 0.5rem 0; border-top: 1px solid var(--rule-soft); }
+body.studio-app .studio-ledger > div:first-child { border-top: 0; }
+body.studio-app .studio-ledger dt { font-size: 0.9375rem; color: var(--ink-soft); }
+body.studio-app .studio-ledger dd { margin: 0; font-size: 1.0625rem; font-weight: 600; color: var(--ink); }
+body.studio-app .studio-ledger .is-waiting dt { color: var(--ink); font-weight: 600; }
+body.studio-app .studio-ledger .is-waiting dd { color: var(--accent); }
+
+body.studio-app .studio-cmd-workbench { gap: 0; }
+body.studio-app .studio-cmd-workbench li { min-height: 2.5rem; padding: 0.5rem 0; border: 0; border-top: 1px solid var(--rule-soft); border-radius: 0; background: transparent; font-size: 0.9375rem; color: var(--ink-soft); }
+body.studio-app .studio-cmd-workbench li:first-child { border-top: 0; }
+body.studio-app .studio-cmd-workbench li.is-actionable { background: transparent; color: var(--ink); font-weight: 600; }
+body.studio-app .studio-cmd-workbench li.is-actionable .studio-cmd-workbench-count { color: var(--accent); }
+body.studio-app .studio-cmd-workbench-count { font-family: inherit; }
+body.studio-app .studio-cmd-workbench-note { font-size: 0.875rem; color: var(--ink-faint); }
+
+body.studio-app .studio-cmd-shortcuts { gap: 0; }
+body.studio-app .studio-cmd-shortcut { min-height: 2.5rem; padding: 0.5rem 0; border: 0; border-top: 1px solid var(--rule-soft); border-radius: 0; background: transparent; font-size: 0.9375rem; font-weight: 400; color: var(--ink-soft); }
+body.studio-app .studio-cmd-shortcut:first-child { border-top: 0; }
+body.studio-app .studio-cmd-shortcut:hover { background: transparent; color: var(--ink); border-color: var(--rule-soft); }
+body.studio-app .studio-cmd-shortcut:hover svg { color: var(--accent); }
+
+/* ───────── Small screens: the rail becomes a drawer, rules stay ───────── */
+
+@media (max-width: 767px) {
+    body.studio-app .navbar-header { padding-inline: 1rem; }
+    body.studio-app .dashboard-main > .p-sp-md { padding: 1.25rem 1rem 3rem; }
+    body.studio-app .studio-cmd-welcome { font-size: 1.375rem; }
+    body.studio-app .studio-cmd-panel { padding: 1rem; }
+    body.studio-app .studio-cmd-actionbar .btn { min-height: 2.75rem; }
+}
+@media (pointer: coarse) {
+    body.studio-app .btn,
+    body.studio-app .form-control,
+    body.studio-app .form-select,
+    body.studio-app .sidebar-menu li > a { min-height: 2.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.studio-app *,
+    body.studio-app *::before,
+    body.studio-app *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/* Content mix: label, count, and a thin proportion line beneath. */
+body.studio-app .studio-mix { margin: 0; padding: 0; list-style: none; }
+body.studio-app .studio-mix li { display: grid; grid-template-columns: 1fr auto; gap: 0.375rem 1rem; padding: 0.625rem 0; border-top: 1px solid var(--rule-soft); }
+body.studio-app .studio-mix li:first-child { border-top: 0; }
+body.studio-app .studio-mix-label { font-size: 0.9375rem; color: var(--ink-soft); }
+body.studio-app .studio-mix-count { font-size: 0.9375rem; font-weight: 600; color: var(--ink); }
+body.studio-app .studio-mix-bar { grid-column: 1 / -1; height: 2px; background: var(--rule-soft); }
+body.studio-app .studio-mix-bar > span { display: block; height: 100%; background: var(--accent); }
+
+/* Wide tables scroll inside their compartment instead of crushing columns. */
+body.studio-app .studio-cmd-panel { min-width: 0; }
+body.studio-app .table-responsive > .table { min-width: 38rem; }
+
+/* ───────── Phones and tablets: content entry happens here too ───────── */
+
+body.studio-app { overflow-x: clip; }
+body.studio-app .dashboard-main { overflow-x: clip; }
+@media (max-width: 1199px) {
+    /* The rail is a drawer below 1200px. */
+    body.studio-app .sidebar { width: min(19rem, 88vw); padding-bottom: env(safe-area-inset-bottom); }
+    body.studio-app .sidebar-menu-area { padding-bottom: calc(2rem + env(safe-area-inset-bottom)); overscroll-behavior: contain; }
+    body.studio-app .navbar-header { padding-inline: max(1.25rem, env(safe-area-inset-left)) max(1.25rem, env(safe-area-inset-right)); }
+    body.studio-app .table-responsive .table td:not(:first-child), body.studio-app .table-responsive .table th { white-space: nowrap; }
+    body.studio-app .table-responsive > .table { min-width: 38rem; }
+    body.studio-app .sidebar-mobile-toggle { min-width: 2.75rem; min-height: 2.75rem; justify-content: center; align-items: center; }
+}
+@media (max-width: 767px) {
+    body.studio-app .navbar-header { flex-wrap: wrap; row-gap: 0.5rem; padding-block: 0.5rem; height: auto; }
+    body.studio-app .navbar-header > div:last-child { margin-inline-start: auto; }
+    body.studio-app .dashboard-main > .p-sp-md { padding-bottom: calc(3rem + env(safe-area-inset-bottom)); }
+    /* 16px stops iOS zooming into a field on focus. */
+    body.studio-app input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']),
+    body.studio-app select,
+    body.studio-app textarea { font-size: 1rem; }
+    body.studio-app .card-header { flex-wrap: wrap; row-gap: 0.5rem; }
+    body.studio-app .modal-overlay { align-items: flex-end; padding: 0; }
+    body.studio-app .modal-panel { max-width: none; max-height: 92dvh; border-radius: 16px 16px 0 0; }
+    body.studio-app .modal-body { max-height: 70dvh; }
+    body.studio-app [data-toast-stack] { left: 1rem; right: 1rem; top: 4.5rem; }
+    body.studio-app .table-responsive { margin-inline: -0.25rem; padding-inline: 0.25rem; -webkit-overflow-scrolling: touch; }
+    body.studio-app .table-responsive > .table { min-width: 36rem; }
+    body.studio-app .dropdown-menu { max-width: calc(100vw - 2rem); }
+    body.studio-app .table-responsive .table td:not(:first-child), body.studio-app .table-responsive .table th { white-space: nowrap; }
+    body.studio-app .studio-cmd-actionbar { flex-direction: column; align-items: stretch; }
+    body.studio-app .studio-cmd-actionbar .studio-cmd-dropdown, body.studio-app .studio-cmd-actionbar > .btn { width: 100%; }
+    body.studio-app .studio-cmd-actionbar .studio-cmd-dropdown > .btn { width: 100%; min-height: 2.75rem; }
+    body.studio-app .studio-cmd-dropdown-menu { left: 0; right: 0; }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+    body.studio-app .dashboard-main > .p-sp-md { padding-inline: max(1.5rem, env(safe-area-inset-left)); }
+}
+@media (pointer: coarse) {
+    body.studio-app .btn, body.studio-app .form-control, body.studio-app .form-select { min-height: 2.75rem; }
+    body.studio-app .sidebar-menu li > a { min-height: 2.75rem; }
+    body.studio-app .dropdown-menu a, body.studio-app .dropdown-menu button { min-height: 2.75rem; }
+}
+
+/* Premium-only dashboard pieces stay out of this theme. */
+body.studio-app .studio-avatar, body.studio-app .studio-split, body.studio-app .studio-mix-dot, body.studio-app .studio-attn { display: none; }
+body.studio-app .studio-author { display: inline; }

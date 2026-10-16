@@ -1,0 +1,57 @@
+framework:
+    html_sanitizer:
+        sanitizers:
+            # Sanitizes rich-text HTML before save (Manifesto Law 5.3).
+            # Generic sanitizer usable by any module with rich-text fields.
+            #
+            # Used by: Blog body, profile bio, forum posts, Roadmap body.
+            cpalius_richtext:
+                allow_safe_elements: true
+                allow_static_elements: true
+                allow_elements:
+                    img: ['src', 'alt', 'width', 'height', 'class', 'title']
+                    a: ['href', 'title', 'target', 'rel']
+                    blockquote: ['data-post', 'class']
+                    div: ['class']
+                allow_attributes:
+                    class: '*'
+                    data-post: ['blockquote']
+
+                # Hardening (Phase 1 validation): allow_static_elements is script-safe,
+                # not phishing-safe — embedded forms and full-screen overlays were blocked.
+                #
+                # block_elements strips tags but keeps inner text — visible content is preserved.
+                block_elements:
+                    # Phishing surface
+                    - form
+                    - input
+                    - button
+                    - select
+                    - option
+                    - optgroup
+                    - textarea
+                    - label
+                    - fieldset
+                    - legend
+                    - datalist
+                    - output
+                    # Embedded/external content loaders
+                    - object
+                    - embed
+                    - applet
+                    - param
+                    # Document context hijackers: <base> retargets relative URLs;
+                    # <link> loads external stylesheets.
+                    - base
+                    - link
+
+                # "style" is never needed in rich text — formatting uses "class"
+                # (allowed above as '*') and theme CSS.
+                drop_attributes:
+                    style: '*'
+
+                allowed_link_schemes: ['http', 'https']
+                allow_relative_links: true
+                # img src="/uploads/..." is a relative media URL. Without this,
+                # Symfony drops src and leaves a broken <img width height>.
+                allow_relative_medias: true

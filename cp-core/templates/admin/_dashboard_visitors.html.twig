@@ -1,0 +1,8 @@
+{# Visitor statistics card for the Classic Studio desk. The premium desk draws the same body inside its card list.
+   Expects: visitors (array|null), hiddenWidgets. Null = hidden (no module / no capability). #}
+{% if visitors is not null %}
+    <section class="studio-cmd-panel{{ hiddenWidgets["studio.visitors"] is defined ? ' is-collapsed' }}" data-studio-widget="studio.visitors">
+        <h3 class="studio-cmd-panel-title">{{ 'studio.dashboard.visitors.title'|trans }}</h3>
+        {{ include('admin/_dashboard_visitors_body.html.twig', {visitors: visitors}, with_context: false) }}
+    </section>
+{% endif %}

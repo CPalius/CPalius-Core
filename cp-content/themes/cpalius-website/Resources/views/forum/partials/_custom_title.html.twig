@@ -1,0 +1,8 @@
+{% if user.customTitle %}
+    {% set titleColor = user.customTitleColor ?: '#6B7280' %}
+    {% set titleStyle = user.customTitleStyle %}
+    <div class="forum-postbit__title forum-postbit__title--{{ titleStyle }}"
+         style="color: {{ titleColor }};{% if titleStyle == 'badge' %} background: color-mix(in srgb, {{ titleColor }} 16%, white); padding: 1px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; font-weight: 600;{% elseif titleStyle == 'bold' %} font-weight: 700;{% endif %}">
+        {% if user.customTitleIcon %}<i class="bi {{ user.customTitleIcon }}"></i> {% endif %}{{ user.customTitle }}
+    </div>
+{% endif %}

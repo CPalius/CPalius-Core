@@ -1,0 +1,8 @@
+{#
+    Unread-messages count on the avatar, next to the blue notifications one.
+    Red, because a direct message is addressed to you personally — the colour is
+    the only thing telling the two counts apart at a glance.
+#}
+<span class="navbar-user__count navbar-user__count--red"
+      data-inbox-count="messages"
+      {% if channel.unread|default(0) == 0 %}hidden{% endif %}>{{ channel.unread|default(0) }}</span>

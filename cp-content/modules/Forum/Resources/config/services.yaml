@@ -1,0 +1,65 @@
+parameters:
+    forum.settings_cards: []
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Modules\Forum\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    Modules\Forum\Service\:
+        resource: '../../Service/'
+
+    Modules\Forum\Repository\:
+        resource: '../../Repository/'
+
+    # Install/ holds the module installer (found by the lifecycle manager, not
+    # the container) plus ReputationSchema, which IS injected — so the directory
+    # has to be registered, and the installer excluded because it is constructed
+    # by ModuleLifecycleManager with no arguments.
+    Modules\Forum\Install\:
+        resource: '../../Install/'
+        exclude:
+            - '../../Install/ModuleInstaller.php'
+
+    # Migrate/ destinations for the core Migrate API. Forum owns its entities,
+    # so Forum owns what it means to write one; an importer supplies the source.
+    Modules\Forum\Migrate\:
+        resource: '../../Migrate/'
+
+    Modules\Forum\Settings\:
+        resource: '../../Settings/'
+
+    # EventListener/ is not autoloaded otherwise (same pattern as Blog Hooks/Twig).
+    Modules\Forum\EventListener\:
+        resource: '../../EventListener/'
+
+    # #[CpHook] listeners — HookRegistrationPass only sees services already in the container.
+    Modules\Forum\Hooks\:
+        resource: '../../Hooks/'
+
+    Modules\Forum\Twig\:
+        resource: '../../Twig/'
+
+    Modules\Forum\Security\:
+        resource: '../../Security/'
+
+    Modules\Forum\Command\:
+        resource: '../../Command/'
+
+    Modules\Forum\Studio\:
+        resource: '../../Studio/'
+
+    Modules\Forum\Account\:
+        resource: '../../Account/'
+
+    Modules\Forum\Rebuild\:
+        resource: '../../Rebuild/'
+
+    Modules\Forum\Portal\:
+        resource: '../../Portal/'
+
+    Modules\Roadmap\Contract\RoadmapForumFeedProviderInterface: '@Modules\Forum\Service\RoadmapForumFeedProvider'

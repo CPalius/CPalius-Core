@@ -1,0 +1,17 @@
+{# Visible Q&A under the article. The same pairs go out as FAQPage JSON-LD (Seo module): both must
+   say the same thing, and the page must show them — that is what makes them eligible and quotable. #}
+{% if faq|default([]) is not empty %}
+    <section class="post-faq" id="faq" aria-labelledby="post-faq-title">
+        <div class="container container-narrow">
+            <h2 id="post-faq-title">{{ 'blog.faq.title'|trans }}</h2>
+            <dl class="post-faq__list">
+                {% for item in faq %}
+                    <div class="post-faq__item">
+                        <dt><h3>{{ item.question }}</h3></dt>
+                        <dd><p>{{ item.answer }}</p></dd>
+                    </div>
+                {% endfor %}
+            </dl>
+        </div>
+    </section>
+{% endif %}

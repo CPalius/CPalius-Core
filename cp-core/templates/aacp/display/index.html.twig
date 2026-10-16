@@ -1,0 +1,35 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.display.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <p class="text-fs-sm !text-slate-500">{{ 'aacp.display.intro'|trans }}</p>
+
+        <twig:cp:card padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.fields.column.bundle'|trans,
+                'aacp.fields.column.field_count'|trans,
+                '',
+            ] }}" empty="{{ bundles is empty }}" emptyText="{{ 'aacp.fields.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for bundle, count in bundles %}
+                        <tr>
+                            <td class="!text-slate-200">
+                                <a href="{{ path('aacp_display_bundle', {bundle: bundle}) }}" class="hover:text-primary-400">
+                                    {{ bundle }}
+                                </a>
+                            </td>
+                            <td class="text-fs-sm !text-slate-400">{{ count }}</td>
+                            <td class="text-right">
+                                <a href="{{ path('aacp_display_bundle', {bundle: bundle}) }}" class="text-fs-xs font-medium !text-primary-400 hover:!text-success-300">
+                                    {{ 'aacp.display.manage'|trans }}
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+{% endblock %}

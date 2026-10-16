@@ -1,0 +1,60 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.revisions.header'|trans({'title': node.title}) }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        {% if app.request.query.get('restored') %}
+            <div class="toast toast-success">{{ 'aacp.revisions.restored'|trans }}</div>
+        {% endif %}
+
+        <div class="flex items-center justify-between">
+            <p class="text-fs-sm !text-slate-500">
+                {{ 'aacp.revisions.intro'|trans }}
+                <span class="font-mono text-fs-xs">{{ node.type }} #{{ node.id }}</span>
+            </p>
+            {% if editRoute %}
+                <a href="{{ path(editRoute[0], { (editRoute[1]): node.id }) }}" class="text-fs-sm !text-slate-400 hover:!text-slate-200">{{ 'aacp.revisions.back_to_edit'|trans }}</a>
+            {% endif %}
+        </div>
+
+        <twig:cp:card title="{{ 'aacp.revisions.history'|trans }}" padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.revisions.column.when'|trans,
+                'aacp.revisions.column.author'|trans,
+                'aacp.revisions.column.message'|trans,
+                'aacp.revisions.column.title'|trans,
+                '',
+            ] }}" empty="{{ revisions is empty }}" emptyText="{{ 'aacp.revisions.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for revision in revisions %}
+                        <tr class="{{ loop.first ? 'bg-primary-500/5' : '' }}">
+                            <td class="text-fs-xs !text-slate-400">
+                                {{ revision.createdAt|date('d.m.Y H:i:s') }}
+                                {% if loop.first %}<span class="ml-1 badge badge-success">{{ 'aacp.revisions.current'|trans }}</span>{% endif %}
+                            </td>
+                            <td class="text-fs-xs !text-slate-500">{{ revision.author ? (revision.author.username ?? revision.author.email) : '—' }}</td>
+                            <td class="text-fs-xs !text-slate-400">{{ revision.logMessage ?? '—' }}</td>
+                            <td class="text-fs-xs !text-slate-300">{{ revision.title }}</td>
+                            <td class="text-right">
+                                <div class="flex items-center justify-end gap-3">
+                                    <details class="inline-block text-left">
+                                        <summary class="cursor-pointer text-fs-xs font-medium !text-slate-400 hover:!text-slate-200">{{ 'aacp.revisions.view'|trans }}</summary>
+                                        <pre class="mt-2 max-h-72 w-96 overflow-auto whitespace-pre-wrap rounded-lg bg-dark-1 p-sp-xs font-mono text-fs-xs !text-slate-400">{{ revision.snapshot|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                                    </details>
+                                    {% if not loop.first %}
+                                        <form method="post" action="{{ path('aacp_content_revisions_restore', {id: node.id, rev: revision.id}) }}"
+                                              onsubmit="return confirm({{ 'aacp.revisions.restore_confirm'|trans|json_encode|raw }});">
+                                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                            <button type="submit" class="text-fs-xs font-medium !text-primary-400 hover:!text-success-300">{{ 'aacp.revisions.restore'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+{% endblock %}

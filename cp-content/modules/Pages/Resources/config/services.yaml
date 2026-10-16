@@ -1,0 +1,29 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Modules\Pages\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    Modules\Pages\Form\:
+        resource: '../../Form/'
+
+    Modules\Pages\Field\:
+        resource: '../../Field/'
+
+    Modules\Pages\Twig\:
+        resource: '../../Twig/'
+
+    Modules\Pages\Service\:
+        resource: '../../Service/'
+
+    Modules\Pages\Hooks\:
+        resource: '../../Hooks/'
+
+    Modules\Pages\Api\:
+        resource: '../../Api/'
+
+    Modules\Pages\Studio\:
+        resource: '../../Studio/'

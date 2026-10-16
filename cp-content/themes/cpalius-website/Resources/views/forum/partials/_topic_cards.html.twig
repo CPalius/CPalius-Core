@@ -1,0 +1,34 @@
+{#
+    Latest and popular topics under the forum pages. Studio → Forum → Settings → Topic cards decides
+    whether they show, from which category and how many rows. Expects nothing; reads forum_topic_cards().
+#}
+{% set cards = forum_topic_cards() %}
+{% if cards %}
+    {% set blocks = {latest: ['bi-clock-history', 'forum.cards.latest'], popular: ['bi-fire', 'forum.cards.popular']} %}
+    <div class="forum-cards fade-in">
+        {% for kind, meta in blocks %}
+            {% if cards[kind] is not null %}
+                <section class="forum-cards__card" aria-labelledby="forum-cards-{{ kind }}">
+                    <h2 class="forum-cards__title" id="forum-cards-{{ kind }}"><i class="bi {{ meta[0] }}" aria-hidden="true"></i> {{ meta[1]|trans }}</h2>
+                    {% if cards[kind] is empty %}
+                        <p class="forum-cards__empty">{{ 'forum.cards.empty'|trans }}</p>
+                    {% else %}
+                        <ol class="forum-cards__list">
+                            {% for topic in cards[kind] %}
+                                <li class="forum-cards__row">
+                                    <a class="forum-cards__link" href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug ?? '', _locale: topic.locale}) }}">{{ topic.title }}</a>
+                                    <span class="forum-cards__meta">
+                                        <a href="{{ path('forum_section', {sectionSlug: topic.section.slug}) }}">{{ topic.section.title }}</a>
+                                        · {{ topic.firstPosterName }}
+                                        · {{ kind == 'popular' ? topic.viewCount|number_format(0, ',', '.') ~ ' ' ~ 'forum.cards.views'|trans : topic.replyCount|number_format(0, ',', '.') ~ ' ' ~ 'forum.cards.replies'|trans }}
+                                        · {{ topic.updatedAt|forum_relative_time }}
+                                    </span>
+                                </li>
+                            {% endfor %}
+                        </ol>
+                    {% endif %}
+                </section>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endif %}

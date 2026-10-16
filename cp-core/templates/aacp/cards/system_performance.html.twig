@@ -1,0 +1,47 @@
+        {% set perf = system.performance|default({}) %}
+        {% set origin = perf.cpalius|default({online: false, count: 0, sizeLabel: '—', meta: '', pages: []}) %}
+        <section class="aacp-cmd-panel aacp-perf{{ hiddenWidgets["system.performance"] is defined ? ' is-collapsed' }}" data-aacp-widget="system.performance" data-card-id="system.performance">
+            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <h3 class="aacp-cmd-panel-title !mb-0">{{ 'aacp.dashboard.perf.title'|trans }}</h3>
+                <a href="{{ path('aacp_performance') }}" class="font-mono text-[0.65rem] uppercase tracking-wide text-emerald-400 hover:text-emerald-300">{{ 'aacp.dashboard.perf.settings'|trans }} →</a>
+            </div>
+            <div class="aacp-perf-grid">
+                {% for key in ['cpalius', 'redis', 'memcached', 'varnish', 'pagespeed', 'opcache'] %}
+                    {% set row = perf[key]|default({online: false, count: null, sizeLabel: '—', meta: '', countUnavailable: false}) %}
+                    <div class="aacp-perf-card" data-perf-backend="{{ key }}">
+                        <span class="aacp-perf-card-name">{{ ('aacp.dashboard.perf.backend.' ~ key)|trans }}</span>
+                        <span class="aacp-perf-card-status {{ row.online ? 'is-on' : 'is-off' }}" data-perf-field="status">{{ row.online ? 'aacp.dashboard.perf.online'|trans : 'aacp.dashboard.perf.offline'|trans }}</span>
+                        <span class="aacp-perf-card-count" data-perf-field="count">{{ row.countUnavailable|default(false) ? 'aacp.dashboard.perf.count_na'|trans : (row.count is not null ? row.count : '—') }}</span>
+                        <span class="aacp-perf-card-size" data-perf-field="size">{{ row.sizeLabel|default('—') }}</span>
+                        <span class="aacp-perf-card-meta" data-perf-field="meta">{{ row.meta|default('') }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+            <h4 class="aacp-cmd-panel-title mt-3">{{ 'aacp.dashboard.perf.pages.title'|trans }}</h4>
+            <div class="overflow-x-auto">
+                <table class="aacp-cmd-feed">
+                    <thead>
+                        <tr>
+                            <th>{{ 'aacp.dashboard.perf.pages.path'|trans }}</th>
+                            <th>{{ 'aacp.dashboard.perf.pages.size'|trans }}</th>
+                            <th>{{ 'aacp.dashboard.perf.pages.time'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody data-perf-pages>
+                        {% if origin.pages is empty %}
+                            <tr data-perf-pages-empty>
+                                <td colspan="3" class="!text-slate-500">{{ 'aacp.dashboard.perf.pages.empty'|trans }}</td>
+                            </tr>
+                        {% else %}
+                            {% for page in origin.pages|slice(0, card.limitValue) %}
+                                <tr>
+                                    <td class="!break-all">{{ page.path }}</td>
+                                    <td>{{ page.sizeLabel }}</td>
+                                    <td>{{ page.mtimeLabel }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>

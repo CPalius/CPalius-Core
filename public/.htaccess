@@ -1,0 +1,101 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Eğer projeniz bir alt klasördeyse (örn: localhost/CPalius-CMF/public/)
+    # ve yönlendirme çalışmazsa aşağıdaki RewriteBase satırının başındaki # işaretini kaldırın.
+    # RewriteBase /
+
+    # index.php içeren URL'leri temiz URL'ye yönlendir (SEO ve mükerrer içerik koruması)
+    RewriteCond %{ENV:REDIRECT_STATUS} ^$
+    RewriteRule ^index\.php(?:/(.*)|$) %{ENV:BASE}/$1 [R=301,L]
+
+    # Eğer talep edilen dosya veya klasör fiziksel olarak diskte varsa doğrudan onu oku (CSS, JS, Görseller vb.)
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Pre-compressed copy of a snapshot (index.html.gz, written beside index.html) for clients that accept
+    # gzip: served as it is, so Apache spends no CPU compressing a page it could have compressed once.
+    RewriteCond %{DOCUMENT_ROOT}/page-cache/.enabled -f
+    RewriteCond %{REQUEST_METHOD} GET
+    RewriteCond %{QUERY_STRING} ^$
+    RewriteCond %{HTTP:Accept-Encoding} gzip
+    RewriteCond %{HTTP_COOKIE} !PHPSESSID [NC]
+    RewriteCond %{HTTP_COOKIE} !REMEMBERME [NC]
+    RewriteCond %{REQUEST_URI} ^/([a-z]{2})(/|$) [NC]
+    RewriteCond %{DOCUMENT_ROOT}/page-cache/_ctx/%1/anon%{REQUEST_URI}/index.html.gz -f
+    RewriteRule ^(.*)$ page-cache/_ctx/%1/anon/$1/index.html.gz [E=CP_PAGECACHE:1,E=CP_GZIP:1,L]
+    # CPalius origin HTML cache (anonymous GET, empty query, sentinel present).
+    # Prefer locale-aware GC1 path: page-cache/_ctx/{locale}/anon/{uri}/index.html
+    RewriteCond %{DOCUMENT_ROOT}/page-cache/.enabled -f
+    RewriteCond %{REQUEST_METHOD} GET
+    RewriteCond %{QUERY_STRING} ^$
+    RewriteCond %{HTTP_COOKIE} !PHPSESSID [NC]
+    RewriteCond %{HTTP_COOKIE} !REMEMBERME [NC]
+    RewriteCond %{REQUEST_URI} ^/([a-z]{2})(/|$) [NC]
+    RewriteCond %{DOCUMENT_ROOT}/page-cache/_ctx/%1/anon%{REQUEST_URI}/index.html -f
+    RewriteRule ^(.*)$ page-cache/_ctx/%1/anon/$1/index.html [E=CP_PAGECACHE:1,L]
+
+    # Legacy pre-GC1 snapshots (no _ctx prefix) — kept until they age out.
+    RewriteCond %{DOCUMENT_ROOT}/page-cache/.enabled -f
+    RewriteCond %{REQUEST_METHOD} GET
+    RewriteCond %{QUERY_STRING} ^$
+    RewriteCond %{HTTP_COOKIE} !PHPSESSID [NC]
+    RewriteCond %{HTTP_COOKIE} !REMEMBERME [NC]
+    RewriteCond %{DOCUMENT_ROOT}/page-cache%{REQUEST_URI}/index.html -f
+    RewriteRule ^(.*)$ page-cache/$1/index.html [E=CP_PAGECACHE:1,L]
+
+    # Geri kalan tüm istekleri index.php dosyasına gönder (Symfony Router devralır)
+    RewriteRule ^ %{ENV:BASE}/index.php [L]
+</IfModule>
+
+# Cached HTML is served by Apache without PHP, so Symfony's security headers never reach it.
+# Add the conservative ones here (setifempty: PHP-generated responses keep their own values).
+# CSP and HSTS are deliberately NOT set here: CSP nonces and the operator's HSTS choice live in PHP.
+# The env var is REDIRECT_-prefixed after the internal rewrite, hence both names.
+<IfModule mod_headers.c>
+    Header setifempty X-Content-Type-Options "nosniff" env=CP_PAGECACHE
+    Header setifempty X-Content-Type-Options "nosniff" env=REDIRECT_CP_PAGECACHE
+    Header setifempty Referrer-Policy "strict-origin-when-cross-origin" env=CP_PAGECACHE
+    Header setifempty Referrer-Policy "strict-origin-when-cross-origin" env=REDIRECT_CP_PAGECACHE
+    Header setifempty X-Frame-Options "SAMEORIGIN" env=CP_PAGECACHE
+    Header setifempty X-Frame-Options "SAMEORIGIN" env=REDIRECT_CP_PAGECACHE
+</IfModule>
+
+# The gzip snapshot is a stored file, not a compressed response: say so, and let caches key on the encoding.
+<IfModule mod_headers.c>
+    <FilesMatch "\.html\.gz$">
+        ForceType "text/html; charset=UTF-8"
+        Header set Content-Encoding gzip
+        Header merge Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.html$">
+        ForceType "text/html; charset=UTF-8"
+    </FilesMatch>
+</IfModule>
+
+# Static files. A browser that is told nothing revalidates every stylesheet, script, font and image on
+# every page, one conditional request each. Versioned URLs (?v=…, /build/…, the content-hashed
+# page-cache/img/ copies) can never change under the same address, so they are cached for a year;
+# everything else static for a week. setifempty: a file PHP generates keeps the header it chose.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(?:css|js|mjs|woff2?|ttf|otf|eot|svg|png|jpe?g|gif|webp|avif|ico)$">
+        Header setifempty Cache-Control "public, max-age=604800"
+    </FilesMatch>
+    <If "%{REQUEST_URI} =~ m#\.(?:css|js|mjs|woff2?|ttf|otf)$# && %{QUERY_STRING} =~ m#(?:^|&)v=#">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </If>
+    <If "%{REQUEST_URI} =~ m#^/(?:build|page-cache/img|page-cache/assets)/#">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </If>
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json image/svg+xml
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    <IfModule mod_alias.c>
+        # mod_rewrite pasifse fallback olarak yönlendir
+        RedirectMatch 302 ^/$ /index.php/
+    </IfModule>
+</IfModule>

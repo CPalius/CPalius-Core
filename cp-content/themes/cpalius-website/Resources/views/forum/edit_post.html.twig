@@ -1,0 +1,78 @@
+{% extends '@Theme/forum/layout.html.twig' %}
+
+{% block title %}{{ 'forum.edit_post.title'|trans }} — {{ 'forum.breadcrumb.home_title'|trans }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-crumb fade-in" aria-label="{{ 'forum.nav_aria'|trans }}">
+        <ol class="forum-crumb__list">
+            <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+            <li><a href="{{ path('forum_index') }}">{{ 'forum.breadcrumb.home_title'|trans }}</a></li>
+            <li><a href="{{ path('forum_section', {sectionSlug: section.slug}) }}">{{ section.title }}</a></li>
+            <li><a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}">{{ topic.title|length > 40 ? topic.title|slice(0, 40) ~ '...' : topic.title }}</a></li>
+            <li class="is-active"><i class="bi bi-pencil"></i> {{ 'forum.action.edit'|trans }}</li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap(['forum-editor-init']) }}
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-form fade-in">
+    <div class="forum-form__title"><i class="bi bi-pencil-square"></i> {{ isFirstPost ? 'forum.edit_post.edit_topic_title'|trans : 'forum.edit_post.title'|trans }}</div>
+    <form action="{{ path('forum_edit_post', {postId: post.id}) }}" method="post">
+        {% if isFirstPost %}
+            <div class="forum-field">
+                <label for="fe-title">{{ 'forum.edit_post.topic_title_label'|trans }}</label>
+                <input type="text" id="fe-title" name="title" value="{{ formValues.title }}" maxlength="255" required autofocus>
+            </div>
+        {% endif %}
+
+        <div class="forum-field">
+            <label>{{ 'forum.field.message'|trans }}</label>
+            {% include '@Theme/forum/partials/editor_textarea.html.twig' with {
+                name: 'body',
+                id: 'fe-body',
+                required: true,
+                value: formValues.body,
+                section: section,
+                attachmentsEnabled: attachmentsEnabled|default(false),
+            } only %}
+            {# "May be limited" is only useful before you have lost anything. Once
+               the window is known, say how much of it is left. #}
+            {% if editMinutesLeft|default(0) > 0 %}
+                <p class="forum-field-hint">{{ 'forum.edit_post.time_limit_left'|trans({'minutes': editMinutesLeft}) }}</p>
+            {% else %}
+                <p class="forum-field-hint">{{ 'forum.edit_post.time_limit_hint'|trans }}</p>
+            {% endif %}
+        </div>
+
+        {% if isFirstPost and ai_auto_translate is defined and ai_auto_translate.on_edit|default(false) %}
+            {% if missingTranslationLocales|default([]) is empty and existingTranslationLocales|default([]) is not empty %}
+                <div class="forum-field">
+                    <p class="forum-field-hint">{{ 'ai.form.already_exists'|trans({'locales': existingTranslationLocales|join(', ')}) }}</p>
+                </div>
+            {% else %}
+                <div class="forum-field">
+                    <label class="forum-checkbox">
+                        <input type="checkbox" name="auto_translate" value="1">
+                        {{ 'ai.form.auto_translate_edit'|trans }}
+                    </label>
+                    <p class="forum-field-hint">{{ 'ai.form.auto_translate_edit_help'|trans }}</p>
+                    {% if existingTranslationLocales|default([]) is not empty %}
+                        <p class="forum-field-hint">{{ 'ai.form.already_exists'|trans({'locales': existingTranslationLocales|join(', ')}) }}</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endif %}
+
+        <div class="forum-form__actions">
+            <input type="hidden" name="_token" value="{{ csrf_token('forum_edit_post') }}">
+            <button type="submit" class="btn btn-primary btn-sm">{{ 'forum.action.update'|trans }}</button>
+            <a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}" class="forum-form__cancel">{{ 'forum.action.cancel'|trans }}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{#
+    <twig:studio:locale_filter locales="{{ locales }}" current="{{ currentLocale }}" route="admin_categories_index" />
+
+    Phase 3 — list screen locale filter (Studio / light theme).
+
+    Shows which locale is listed and switches between them; hidden when locales|length < 2.
+
+    Props: locales, current, route, extraParams
+#}
+{% props locales = [], current = null, route = null, extraParams = {} %}
+
+{% if locales|length > 1 and route %}
+    <div {{ attributes.defaults({class: 'mb-sp-sm flex flex-wrap items-center gap-1'}) }}>
+        <span class="me-2 text-fs-xs uppercase tracking-wider text-neutral-400">
+            {{ 'cp.form.locale'|trans }}
+        </span>
+
+        {% for locale in locales %}
+            <a href="{{ path(route, extraParams|merge({locale: locale.code})) }}"
+               class="rounded-md px-3 py-1.5 text-fs-sm font-medium {{ locale.code == current
+                   ? 'bg-primary-50 text-primary-700'
+                   : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900' }}">
+                {{ locale.nativeName }}
+                <span class="font-mono text-fs-xs uppercase text-neutral-400">{{ locale.code }}</span>
+            </a>
+        {% endfor %}
+    </div>
+{% endif %}

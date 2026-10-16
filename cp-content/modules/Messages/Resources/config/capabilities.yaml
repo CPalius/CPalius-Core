@@ -1,0 +1,13 @@
+# Capabilities this module adds to CapabilityRegistry. The admin role holds "*"
+# and therefore gets all of them; every other role is opt-in via the installer.
+#
+# Threads have two participants, not a single owner, so there is no OwnableInterface
+# .own/.any pair here. Membership is decided in MessagesAccess, not CPaliusVoter.
+capabilities:
+    - messages.send
+    - messages.report
+    - messages.block
+    - messages.moderate
+    - messages.report.moderate
+    - messages.settings.manage
+    - messages.quota.exempt

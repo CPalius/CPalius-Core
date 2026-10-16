@@ -1,0 +1,38 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.logs.show.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="max-w-3xl space-y-sp-sm">
+        <a href="{{ path('aacp_logs_index') }}" class="text-fs-sm !text-slate-500 hover:!text-slate-200">← {{ 'aacp.logs.back'|trans }}</a>
+
+        <twig:cp:card>
+            <dl class="space-y-sp-sm text-fs-sm">
+                <div>
+                    <dt class="!text-slate-500">{{ 'aacp.logs.column.created'|trans }}</dt>
+                    <dd class="!text-slate-200">{{ entry.createdAt|date('d.m.Y H:i:s') }}</dd>
+                </div>
+                <div>
+                    <dt class="!text-slate-500">{{ 'aacp.logs.column.level'|trans }}</dt>
+                    <dd><code>{{ entry.level }}</code></dd>
+                </div>
+                <div>
+                    <dt class="!text-slate-500">{{ 'aacp.logs.column.channel'|trans }}</dt>
+                    <dd class="!text-slate-200">{{ entry.channel }}</dd>
+                </div>
+                <div>
+                    <dt class="!text-slate-500">{{ 'aacp.logs.column.message'|trans }}</dt>
+                    <dd class="!text-slate-100 whitespace-pre-wrap">{{ entry.message }}</dd>
+                </div>
+                <div>
+                    <dt class="!text-slate-500">{{ 'aacp.logs.column.context'|trans }}</dt>
+                    <dd><pre class="overflow-x-auto rounded bg-dark-2 p-3 text-fs-xs !text-slate-300">{{ entry.context|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></dd>
+                </div>
+                <div>
+                    <dt class="!text-slate-500">{{ 'aacp.logs.column.extra'|trans }}</dt>
+                    <dd><pre class="overflow-x-auto rounded bg-dark-2 p-3 text-fs-xs !text-slate-300">{{ entry.extra|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></dd>
+                </div>
+            </dl>
+        </twig:cp:card>
+    </div>
+{% endblock %}

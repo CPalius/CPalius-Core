@@ -1,0 +1,67 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ module.name }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('aacp_modules') }}" class="btn btn-sm btn-neutral">{{ 'aacp.modules.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        {% if notice == 'updated' %}
+            <div class="toast toast-success">{{ 'aacp.modules.notice.updated'|trans }}</div>
+        {% endif %}
+        {% if error %}
+            <div class="toast toast-error">{{ error }}</div>
+        {% endif %}
+
+        <twig:cp:card title="{{ 'aacp.modules.edit.header'|trans }}">
+            <dl class="mb-sp-sm grid gap-2 text-fs-sm md:grid-cols-2">
+                <div>
+                    <dt class="text-slate-500">{{ 'aacp.modules.column.version'|trans }}</dt>
+                    <dd class="font-mono text-slate-200">{{ module.version }}</dd>
+                </div>
+                <div>
+                    <dt class="text-slate-500">{{ 'aacp.modules.column.status'|trans }}</dt>
+                    <dd><twig:cp:badge status="{{ module.status }}" /></dd>
+                </div>
+                <div class="md:col-span-2">
+                    <dt class="text-slate-500">{{ 'aacp.modules.column.class'|trans }}</dt>
+                    <dd class="font-mono text-fs-xs text-slate-400">{{ module.class ?? '—' }}</dd>
+                </div>
+            </dl>
+
+            <form method="post" action="{{ path('aacp_module_update', {dirName: module.dirName}) }}" class="space-y-sp-sm">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <div>
+                    <label class="form-label !text-slate-300">{{ 'aacp.modules.edit.author'|trans }}</label>
+                    <input type="text" name="author" value="{{ module.author }}" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label !text-slate-300">{{ 'aacp.modules.edit.description'|trans }}</label>
+                    <textarea name="description" rows="3" class="form-control">{{ module.description }}</textarea>
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary">{{ 'aacp.modules.edit.save'|trans }}</button>
+            </form>
+        </twig:cp:card>
+
+        <twig:cp:card title="{{ 'aacp.modules.contract.header'|trans }}">
+            <ul class="space-y-1 text-fs-sm">
+                <li class="{{ hasEnglish ? 'text-success-300' : 'text-danger-300' }}">
+                    {{ hasEnglish ? 'aacp.modules.contract.english_ok'|trans : 'aacp.modules.contract.english_missing'|trans }}
+                </li>
+                <li class="{{ hasInstaller ? 'text-success-300' : 'text-danger-300' }}">
+                    {{ hasInstaller ? 'aacp.modules.contract.installer_ok'|trans : 'aacp.modules.contract.installer_missing'|trans }}
+                </li>
+            </ul>
+            {% if contractProblems is not empty %}
+                <ul class="mt-sp-sm list-disc ps-5 text-fs-sm text-danger-300">
+                    {% for problem in contractProblems %}
+                        <li>{{ problem }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            <p class="mt-sp-sm text-fs-xs text-slate-500">{{ 'aacp.modules.contract.help'|trans }}</p>
+        </twig:cp:card>
+    </div>
+{% endblock %}

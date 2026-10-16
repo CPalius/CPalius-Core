@@ -1,0 +1,64 @@
+{% extends '@Theme/account/layout.html.twig' %}
+
+{% block title %}{{ 'account.two_factor.setup_title'|trans }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-nav fade-in" aria-label="{{ 'account.nav_aria'|trans }}">
+        <div class="container">
+            <div class="forum-nav__inner">
+                <ol class="forum-nav__crumbs">
+                    <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+                    <li class="is-active">{{ 'account.two_factor.setup_breadcrumb'|trans }}</li>
+                </ol>
+            </div>
+        </div>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in" style="text-align:center; max-width: 520px; margin: 0 auto var(--sp-lg);">
+    <span class="section-label">{{ 'account.two_factor.label'|trans }}</span>
+    <h1 class="section-title">{{ 'account.two_factor.method_heading'|trans }}</h1>
+    <p class="forum-header__desc" style="margin: 0 auto;">{{ 'account.two_factor.method_desc'|trans }}</p>
+</div>
+
+{% if mandatory %}
+    <div class="forum-flash forum-flash--warning" style="max-width: 520px; margin: 0 auto var(--sp-md);">
+        {{ 'account.two_factor.mandatory_notice'|trans }}
+    </div>
+{% endif %}
+
+{% if error is not null %}
+    <div class="forum-flash forum-flash--error" style="max-width: 520px; margin: 0 auto var(--sp-md);">{{ error }}</div>
+{% endif %}
+
+<div class="forum-form fade-in" style="max-width: 520px; margin: 0 auto;">
+    {% for method in methods %}
+        <div style="margin-bottom: var(--sp-md); padding: var(--sp-sm); border: 1px solid var(--slw-border); border-radius: 8px;">
+            <p style="margin: 0 0 var(--sp-xs); font-weight: 600;">
+                {{ ('account.two_factor.method.' ~ method ~ '.title')|trans }}
+            </p>
+            <p style="margin: 0 0 var(--sp-sm); font-size: var(--fs-sm); color: var(--slw-text-muted);">
+                {% if method == 'email' %}
+                    {{ 'account.two_factor.method.email.desc'|trans({'email': maskedEmail, 'minutes': minutes}) }}
+                {% else %}
+                    {{ 'account.two_factor.method.totp.desc'|trans }}
+                {% endif %}
+            </p>
+
+            <form method="post" action="{{ path('account_two_factor_setup') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('account_two_factor_setup') }}">
+                <input type="hidden" name="action" value="method">
+                <input type="hidden" name="method" value="{{ method }}">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    {{ ('account.two_factor.method.' ~ method ~ '.choose')|trans }}
+                </button>
+            </form>
+        </div>
+    {% endfor %}
+
+    <p style="margin-top: var(--sp-md); text-align:center; font-size: var(--fs-sm); color: var(--slw-text-muted);">
+        <a href="{{ path('account_security') }}" style="color: var(--cp-accent); text-decoration: underline;">{{ 'account.two_factor.back_to_security'|trans }}</a>
+    </p>
+</div>
+{% endblock %}

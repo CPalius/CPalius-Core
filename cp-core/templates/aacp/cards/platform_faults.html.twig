@@ -1,0 +1,39 @@
+    <section class="aacp-cmd-panel{{ hiddenWidgets["platform.faults"] is defined ? ' is-collapsed' }}" data-aacp-widget="platform.faults" data-card-id="platform.faults">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 class="aacp-cmd-panel-title !mb-0">{{ 'aacp.pulse.faults.title'|trans }}</h3>
+            <a href="{{ path('aacp_logs_index') }}" class="aacp-pulse-link">{{ 'aacp.pulse.open_logs'|trans }} →</a>
+        </div>
+        {% if not pulse.faults.available|default(false) %}
+            <p class="aacp-pulse-unavailable">{{ 'aacp.pulse.unavailable'|trans }}</p>
+        {% else %}
+            <dl class="aacp-pulse-metrics">
+                <div>
+                    <dt>{{ 'aacp.pulse.faults.errors'|trans({ hours: pulse.faults.hours }) }}</dt>
+                    <dd class="{{ pulse.faults.errors > 0 ? 'aacp-pulse-bad' : 'aacp-pulse-ok' }}">{{ pulse.faults.errors }}</dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.faults.critical'|trans }}</dt>
+                    <dd class="{{ pulse.faults.critical > 0 ? 'aacp-pulse-bad' : 'aacp-pulse-ok' }}">{{ pulse.faults.critical }}</dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.faults.quarantined'|trans }}</dt>
+                    {# null means discovery itself failed: "cannot tell" must not read as "none". #}
+                    <dd class="{{ pulse.faults.quarantinedModules ? 'aacp-pulse-bad' : '' }}">
+                        {{ pulse.faults.quarantinedModules is null ? 'aacp.pulse.unknown'|trans : pulse.faults.quarantinedModules }}
+                    </dd>
+                </div>
+            </dl>
+            {% if pulse.faults.topChannels is empty %}
+                <p class="aacp-pulse-note aacp-pulse-ok">{{ 'aacp.pulse.faults.clean'|trans }}</p>
+            {% else %}
+                <ul class="aacp-top-ips mt-2">
+                    {% for row in pulse.faults.topChannels|slice(0, card.limitValue) %}
+                        <li>
+                            <span class="min-w-0 truncate font-mono text-slate-100" title="{{ row.channel }}">{{ row.channel }}</span>
+                            <span class="shrink-0 font-mono text-danger-300">{{ row.count }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endif %}
+    </section>

@@ -1,0 +1,14 @@
+{# Default markup of {{ cp_menu_location() }}. item.attributes is validated on save and escaped in FrontMenuRuntime. #}
+{% macro list(items, depth) %}
+    <ul class="cp-menu__list cp-menu__list--{{ depth }}">
+        {% for item in items %}
+            <li class="cp-menu__item{{ item.children is not empty ? ' cp-menu__item--parent' : '' }}">
+                <a href="{{ item.url }}"{{ item.attributes|raw }}{% if item.icon %} data-icon="{{ item.icon }}"{% endif %}>{{ item.label }}</a>
+                {% if item.children is not empty %}{{ _self.list(item.children, depth + 1) }}{% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{% endmacro %}
+<nav class="cp-menu cp-menu--{{ location }}" data-menu-location="{{ location }}">
+    {{ _self.list(items, 0) }}
+</nav>

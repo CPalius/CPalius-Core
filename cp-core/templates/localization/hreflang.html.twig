@@ -1,0 +1,11 @@
+{#
+    Phase 4 — SEO hreflang tags for <head>.
+
+    One rel="alternate" per locale plus x-default; URLs from LocaleSwitchService (never 404).
+
+    Expects: links, defaultUrl
+#}
+{% for link in links %}
+    <link rel="alternate" hreflang="{{ link.code }}" href="{{ link.url }}">
+{% endfor %}
+<link rel="alternate" hreflang="x-default" href="{{ defaultUrl }}">

@@ -1,0 +1,25 @@
+{#
+    Related posts — full-width section under the comments. Expects: related
+    ({enabled, title, posts}), built by BlogAppearanceService::resolveRelatedPosts().
+
+    Reuses the feed cards rather than the old cramped sidebar list: at this width
+    a suggestion can show its cover and excerpt, which is the whole reason to
+    put it where the reader arrives having just finished the article.
+#}
+{% if related.enabled|default(false) and related.posts is not empty %}
+    <section class="section post-related" id="post-related">
+        <div class="container">
+            <h2 class="section-title">{{ related.title ?: 'blog.show.related_title'|trans }}</h2>
+
+            <div class="features-grid blog-post-grid">
+                {% for relatedPost in related.posts %}
+                    {% set relatedSubType = relatedPost.getDataValue('post_sub_type', 'makale') %}
+                    {% include [
+                        '@Theme/blog/cards/_' ~ relatedSubType ~ '.html.twig',
+                        '@Theme/blog/cards/_makale.html.twig',
+                    ] with { post: relatedPost } only %}
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+{% endif %}

@@ -1,0 +1,53 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.moderation.header'|trans({'title': node.title}) }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md lg:w-[61.8%]">
+        {% if app.request.query.get('applied') %}<div class="toast toast-success">{{ 'aacp.moderation.applied'|trans }}</div>{% endif %}
+        {% if app.request.query.get('error') %}<div class="toast toast-error">{{ app.request.query.get('error') }}</div>{% endif %}
+
+        <div class="flex items-center justify-between">
+            <p class="text-fs-sm !text-slate-500">
+                {{ node.type }} #{{ node.id }} ·
+                {{ 'aacp.moderation.publication'|trans }}: <span class="font-mono">{{ node.status }}</span>
+            </p>
+            <div class="flex items-center gap-3">
+                <a href="{{ path('aacp_content_revisions', {id: node.id}) }}" class="text-fs-sm !text-slate-400 hover:!text-slate-200">{{ 'aacp.moderation.revisions'|trans }}</a>
+                {% if editRoute %}
+                    <a href="{{ path(editRoute[0], { (editRoute[1]): node.id }) }}" class="text-fs-sm !text-slate-400 hover:!text-slate-200">{{ 'aacp.revisions.back_to_edit'|trans }}</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <twig:cp:card title="{{ 'aacp.moderation.state'|trans }}">
+            <div class="flex flex-wrap items-center gap-2">
+                {% for place in workflow.places %}
+                    <span class="badge {{ place == state ? 'badge-success' : 'badge-neutral' }}">{{ workflow.placeLabel(place) }}</span>
+                    {% if not loop.last %}<span class="!text-slate-600">&rarr;</span>{% endif %}
+                {% endfor %}
+            </div>
+        </twig:cp:card>
+
+        <twig:cp:card title="{{ 'aacp.moderation.actions'|trans }}">
+            {% if transitions is empty %}
+                <p class="text-fs-sm !text-slate-500">{{ 'aacp.moderation.no_actions'|trans }}</p>
+            {% else %}
+                <div class="space-y-sp-sm">
+                    {% for t in transitions %}
+                        <form method="post" action="{{ path('aacp_content_moderation_apply', {id: node.id, transition: t.name}) }}"
+                              class="flex items-end gap-3">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <div class="flex-1">
+                                <label class="form-label !text-slate-400">{{ (t.label ?? t.name) }} <span class="!text-slate-600">&rarr; {{ workflow.placeLabel(t.to) }}</span></label>
+                                <input type="text" name="comment" placeholder="{{ 'aacp.moderation.comment_placeholder'|trans }}"
+                                       class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                            </div>
+                            <button type="submit" class="btn btn-primary">{{ (t.label ?? t.name) }}</button>
+                        </form>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </twig:cp:card>
+    </div>
+{% endblock %}

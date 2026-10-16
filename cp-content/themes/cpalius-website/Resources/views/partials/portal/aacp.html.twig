@@ -1,0 +1,63 @@
+{% set t = 'portal' %}
+<section class="section" id="aacp">
+    <div class="container">
+        <div class="section-header fade-in">
+            <span class="section-label">{{ 'aacp.label'|trans({}, t) }}</span>
+            <h2 class="section-title">{{ 'aacp.title'|trans({}, t) }}</h2>
+            <p class="section-desc">{{ 'aacp.desc'|trans({}, t) }}</p>
+        </div>
+
+        <div class="defense-timeline fade-in">
+            <div class="defense-item">
+                <div class="defense-number"><i class="bi bi-heart-pulse"></i></div>
+                <span class="defense-label">{{ 'aacp.safe_label'|trans({}, t) }}</span>
+                <h3 class="defense-title">{{ 'aacp.safe_title'|trans({}, t) }}</h3>
+                <p class="defense-text">{{ 'aacp.safe_text_html'|trans({}, t)|raw }}</p>
+            </div>
+
+            <div class="defense-item">
+                <div class="defense-number"><i class="bi bi-activity"></i></div>
+                <span class="defense-label">{{ 'aacp.monitor_label'|trans({}, t) }}</span>
+                <h3 class="defense-title">{{ 'aacp.monitor_title'|trans({}, t) }}</h3>
+                <p class="defense-text">{{ 'aacp.monitor_text_html'|trans({}, t)|raw }}</p>
+            </div>
+
+            <div class="defense-item">
+                <div class="defense-number"><i class="bi bi-shield-exclamation"></i></div>
+                <span class="defense-label">{{ 'aacp.quarantine_label'|trans({}, t) }}</span>
+                <h3 class="defense-title">{{ 'aacp.quarantine_title'|trans({}, t) }}</h3>
+                <p class="defense-text">{{ 'aacp.quarantine_text_html'|trans({}, t)|raw }}</p>
+            </div>
+
+            <div class="defense-item">
+                <div class="defense-number"><i class="bi bi-translate"></i></div>
+                <span class="defense-label">{{ 'aacp.locale_label'|trans({}, t) }}</span>
+                <h3 class="defense-title">{{ 'aacp.locale_title'|trans({}, t) }}</h3>
+                <p class="defense-text">{{ 'aacp.locale_text_html'|trans({}, t)|raw }}</p>
+            </div>
+        </div>
+
+        <div class="grid-4 fade-in" style="margin-top: var(--sp-xl);">
+            <div class="card">
+                <div class="card-icon"><i class="bi bi-key"></i></div>
+                <h5 class="card-title">{{ 'aacp.card_api_title'|trans({}, t) }}</h5>
+                <p class="card-text">{{ 'aacp.card_api_text'|trans({}, t) }}</p>
+            </div>
+            <div class="card">
+                <div class="card-icon"><i class="bi bi-clock"></i></div>
+                <h5 class="card-title">{{ 'aacp.card_cron_title'|trans({}, t) }}</h5>
+                <p class="card-text">{{ 'aacp.card_cron_text'|trans({}, t) }}</p>
+            </div>
+            <div class="card">
+                <div class="card-icon"><i class="bi bi-signpost-split"></i></div>
+                <h5 class="card-title">{{ 'aacp.card_hook_title'|trans({}, t) }}</h5>
+                <p class="card-text">{{ 'aacp.card_hook_text'|trans({}, t) }}</p>
+            </div>
+            <div class="card">
+                <div class="card-icon"><i class="bi bi-globe2"></i></div>
+                <h5 class="card-title">{{ 'aacp.card_locale_title'|trans({}, t) }}</h5>
+                <p class="card-text">{{ 'aacp.card_locale_text'|trans({}, t) }}</p>
+            </div>
+        </div>
+    </div>
+</section>

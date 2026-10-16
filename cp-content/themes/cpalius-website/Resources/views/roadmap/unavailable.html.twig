@@ -1,0 +1,46 @@
+{% extends '@Theme/layout.html.twig' %}
+
+{% block title %}{{ heading }} — {{ 'site.roadmap.meta.title'|trans }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
+{% block meta_robots %}noindex, follow{% endblock %}
+
+{% block content %}
+<section class="section" id="roadmap-unavailable">
+    <div class="container container-narrow">
+        <ul class="slw-breadcrumb fade-in">
+            <li><a href="{{ path('roadmap_index') }}">~/roadmap</a></li>
+            <li>{{ 'site.roadmap.unavailable.breadcrumb'|trans }}</li>
+        </ul>
+
+        <div class="section-header fade-in">
+            <span class="section-label">{{ 'site.roadmap.meta.title'|trans }}</span>
+            <h1 class="section-title">{{ heading }}</h1>
+            {% if sourceEntry %}
+                <p class="section-desc">
+                    {{ 'site.roadmap.unavailable.translation_body'|trans({
+                        title: sourceEntry.title,
+                        locale: sourceEntry.locale|upper
+                    }) }}
+                </p>
+            {% else %}
+                <p class="section-desc">
+                    {{ 'site.roadmap.unavailable.not_found_body'|trans({slug: requestedSlug}) }}
+                </p>
+            {% endif %}
+        </div>
+
+        <div class="fade-in" style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-top:1.5rem;">
+            {% if sourceEntry %}
+                <a class="btn btn-primary" href="{{ path('roadmap_show', {_locale: sourceEntry.locale, slug: sourceEntry.slug}) }}">
+                    {{ 'site.roadmap.unavailable.open_original'|trans({locale: sourceEntry.locale|upper}) }}
+                </a>
+            {% endif %}
+            <a class="btn btn-secondary" href="{{ path('roadmap_index') }}">
+                {{ 'site.roadmap.unavailable.back'|trans }}
+            </a>
+            <a class="btn btn-secondary" href="{{ path('theme_cpalius_website_home') }}">
+                {{ 'site.roadmap.unavailable.back_home'|trans }}
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

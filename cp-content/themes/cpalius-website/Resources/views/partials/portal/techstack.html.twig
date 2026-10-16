@@ -1,0 +1,47 @@
+{% set t = 'portal' %}
+<section class="section section-light" id="techstack">
+    <div class="container">
+        <div class="section-header fade-in" style="text-align:center;">
+            <span class="section-label">{{ 'tech.label'|trans({}, t) }}</span>
+            <h2 class="section-title section-title--center">{{ 'tech.title'|trans({}, t) }}</h2>
+        </div>
+
+        <div class="tech-bar fade-in">
+            <div class="tech-item">
+                <i class="bi bi-filetype-php"></i>
+                <div>
+                    <h5>PHP 8.4+</h5>
+                    <p>{{ 'tech.php_role'|trans({}, t) }}</p>
+                </div>
+            </div>
+            <div class="tech-item">
+                <i class="bi bi-box-seam"></i>
+                <div>
+                    <h5>Symfony 7.4 LTS</h5>
+                    <p>{{ 'tech.symfony_role'|trans({}, t) }}</p>
+                </div>
+            </div>
+            <div class="tech-item">
+                <i class="bi bi-database-gear"></i>
+                <div>
+                    <h5>Doctrine ORM</h5>
+                    <p>{{ 'tech.doctrine_role'|trans({}, t) }}</p>
+                </div>
+            </div>
+            <div class="tech-item">
+                <i class="bi bi-file-earmark-zip"></i>
+                <div>
+                    <h5>AssetMapper</h5>
+                    <p>{{ 'tech.asset_role'|trans({}, t) }}</p>
+                </div>
+            </div>
+            <div class="tech-item">
+                <i class="bi bi-palette"></i>
+                <div>
+                    <h5>Tailwind CSS</h5>
+                    <p>{{ 'tech.tailwind_role'|trans({}, t) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

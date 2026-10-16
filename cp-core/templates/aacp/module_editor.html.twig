@@ -1,0 +1,95 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.editor.header'|trans }}{% endblock %}
+
+{% block javascripts %}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'aacp-code-editor']) }}
+{% endblock %}
+
+{% block body %}
+    <link rel="stylesheet" href="{{ cp_asset('styles/aacp-code-editor.css') }}">
+
+    {% if module is null %}
+        <twig:cp:card>
+            <p class="text-fs-sm text-slate-500">{{ 'aacp.editor.no_module'|trans }}</p>
+        </twig:cp:card>
+    {% else %}
+        {% if saved %}
+            <p class="mb-2 text-fs-xs text-success-300">{{ 'aacp.editor.saved'|trans }}</p>
+        {% endif %}
+        {% if error or app.request.query.get('error') %}
+            <pre class="mb-2 whitespace-pre-wrap rounded-md border border-danger-500/40 bg-danger-500/10 p-sp-sm text-fs-xs text-danger-200">{{ error ?: app.request.query.get('error') }}</pre>
+        {% endif %}
+        {% if lint %}
+            <pre class="mb-2 whitespace-pre-wrap rounded-md border border-warning-500/40 bg-warning-500/10 p-sp-sm text-fs-xs text-warning-200">{{ lint }}</pre>
+        {% endif %}
+
+        <div class="ce"
+             data-code-editor
+             data-module="{{ module.dirName }}"
+             data-current="{{ current ? current.path : '' }}"
+             data-editor-url="{{ path('aacp_module_editor') }}"
+             data-lint-url="{{ path('aacp_module_editor_lint') }}"
+             data-files="{{ files|json_encode|e('html_attr') }}"
+             data-labels="{{ {
+                 ok: 'aacp.editor.syntax_ok'|trans,
+                 problems: 'aacp.editor.syntax_problems'|trans({count: '{count}'}),
+                 checking: 'aacp.editor.checking'|trans,
+                 checkFailed: 'aacp.editor.check_failed'|trans,
+                 position: 'aacp.editor.position'|trans({line: '{line}', col: '{col}'}),
+                 confirm: 'aacp.themes.editor.confirm_save'|trans,
+                 strict: 'aacp.editor.strict'|trans,
+                 unsaved: 'aacp.editor.unsaved'|trans
+             }|json_encode|e('html_attr') }}">
+
+            <aside class="ce-side">
+                <form method="get" action="{{ path('aacp_module_editor') }}" class="ce-side-head">
+                    <select name="module" aria-label="{{ 'aacp.editor.module'|trans }}" data-autosubmit data-ce-leave>
+                        {% for item in modules %}
+                            <option value="{{ item.dirName }}" {{ item.dirName == module.dirName ? 'selected' : '' }}>{{ item.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="search" data-ce-filter placeholder="{{ 'aacp.editor.filter'|trans }}" autocomplete="off">
+                </form>
+                <nav class="ce-tree" data-ce-tree aria-label="{{ 'aacp.themes.editor.files'|trans }}"></nav>
+            </aside>
+
+            <section class="ce-main">
+                {% if current %}
+                    <form method="post" action="{{ path('aacp_module_editor_save') }}" data-ce-form class="contents">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="theme" value="{{ module.dirName }}">
+                        <input type="hidden" name="file" value="{{ current.path }}">
+                        <input type="hidden" name="force" value="0" data-ce-force>
+
+                        <div class="ce-bar">
+                            <span class="ce-path" title="{{ module.dirName }}/{{ current.path }}">{{ module.dirName }} / {{ current.path }}</span>
+                            <span class="ce-dirty" data-ce-dirty hidden>● {{ 'aacp.editor.modified'|trans }}</span>
+                            <span class="ce-state" data-ce-status data-state="wait">…</span>
+                            <a href="{{ path('aacp_module_show', {dirName: module.dirName}) }}" class="ce-details" data-ce-leave>{{ 'aacp.editor.details'|trans }}</a>
+                            <button type="submit" class="ce-save">{{ 'aacp.themes.editor.save'|trans }} <small>Ctrl+S</small></button>
+                        </div>
+
+                        <div class="ce-pane">
+                            <div class="ce-gutter" data-ce-gutter aria-hidden="true"></div>
+                            <div class="ce-stack">
+                                <pre class="ce-highlight" aria-hidden="true" data-ce-highlight><code data-ce-code></code></pre>
+                                <textarea name="content" class="ce-input" data-ce-input data-kind="{{ current.kind }}" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off">{{ current.content }}</textarea>
+                            </div>
+                        </div>
+
+                        <pre class="ce-problems" data-ce-problems hidden></pre>
+                        <div class="ce-foot">
+                            <span data-ce-position>Ln 1, Col 1</span>
+                            <span>{{ current.kind|upper }}</span>
+                            <span>{{ (current.bytes / 1024)|number_format(1) }} KB</span>
+                            <span>{{ 'aacp.editor.hint'|trans }}</span>
+                        </div>
+                    </form>
+                {% else %}
+                    <p class="ce-empty">{{ 'aacp.themes.editor.pick'|trans }}</p>
+                {% endif %}
+            </section>
+        </div>
+    {% endif %}
+{% endblock %}

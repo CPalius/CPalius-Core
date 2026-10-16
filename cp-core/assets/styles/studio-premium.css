@@ -1,0 +1,610 @@
+/*
+ * Studio — Premium theme.
+ *
+ * A calm, modern workspace for people who spend the day entering content.
+ * Loaded after app.css by admin/layout.html.twig when the administrator picks
+ * "Premium" in AACP → Studio appearance. Plain CSS: no Tailwind rebuild.
+ *
+ * Direction
+ *   - A deep ink rail beside a porcelain work surface. The rail is the only dark
+ *     mass in light mode, so the eye rests on the content.
+ *   - One accent (administrator's choice), used for the primary action, the
+ *     current location and state. Everything else is tinted neutral.
+ *   - Soft, real depth: a hairline plus a two-layer shadow with an offset. Radii
+ *     are generous but consistent (14 cards, 10 controls).
+ *   - Quiet type: sentence case labels, tabular numerals, no shouting caps.
+ *   - Details: status dots carry a halo, focus is a soft ring, hovers are tonal.
+ *
+ * Tailwind v4 utilities read var(--color-*), so the ramps are re-derived from
+ * the tokens below: every template still saying bg-neutral-50 or
+ * text-primary-600 follows the theme and the dark mode without being edited.
+ */
+
+/* ───────── Tokens: light ───────── */
+
+body.studio-app {
+    --bg: oklch(0.975 0.005 195);
+    --surface: oklch(1 0 0);
+    --surface-2: oklch(0.985 0.004 195);
+    --line: oklch(0.925 0.006 200);
+    --line-strong: oklch(0.865 0.009 200);
+    --ink: oklch(0.235 0.022 235);
+    --ink-2: oklch(0.440 0.020 235);
+    --ink-3: oklch(0.540 0.016 235);
+
+    --rail: oklch(0.215 0.022 235);
+    --rail-line: oklch(1 0 0 / 0.08);
+    --rail-ink: oklch(0.880 0.010 225);
+    --rail-ink-2: oklch(0.700 0.014 228);
+
+    --accent: var(--studio-accent, #0f8f7e);
+    --on-accent: var(--on-studio-accent, #fff);
+    --accent-lit: var(--studio-accent-lit, color-mix(in oklab, var(--accent) 70%, white));
+    --accent-wash: color-mix(in oklab, var(--accent) 9%, var(--surface));
+    --attention: oklch(0.560 0.185 22);
+    --caution: oklch(0.760 0.150 78);
+    --caution-ink: oklch(0.470 0.100 70);
+    --ok: oklch(0.600 0.130 155);
+
+    --r-card: 14px;
+    --r-control: 10px;
+    --shadow-1: 0 1px 2px oklch(0.2 0.02 235 / 0.05), 0 1px 1px oklch(0.2 0.02 235 / 0.03);
+    --shadow-2: 0 1px 2px oklch(0.2 0.02 235 / 0.06), 0 12px 28px -14px oklch(0.2 0.02 235 / 0.16);
+    --shadow-3: 0 2px 4px oklch(0.2 0.02 235 / 0.08), 0 24px 48px -16px oklch(0.2 0.02 235 / 0.28);
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ───────── Tokens: dark ───────── */
+
+body.studio-app[data-studio-mode='dark'] {
+    --bg: oklch(0.170 0.014 235);
+    --surface: oklch(0.215 0.016 235);
+    --surface-2: oklch(0.240 0.017 235);
+    --line: oklch(0.300 0.016 235);
+    --line-strong: oklch(0.380 0.018 235);
+    --ink: oklch(0.950 0.006 220);
+    --ink-2: oklch(0.790 0.010 225);
+    --ink-3: oklch(0.690 0.012 228);
+    --rail: oklch(0.140 0.016 235);
+    --accent: var(--studio-accent-lit, #35c2ae);
+    --accent-wash: color-mix(in oklab, var(--accent) 12%, var(--surface));
+    --attention: oklch(0.730 0.165 22);
+    --caution: oklch(0.830 0.145 85);
+    --caution-ink: oklch(0.850 0.120 88);
+    --ok: oklch(0.770 0.130 155);
+    --shadow-1: 0 1px 2px oklch(0 0 0 / 0.30);
+    --shadow-2: 0 1px 2px oklch(0 0 0 / 0.35), 0 12px 28px -14px oklch(0 0 0 / 0.55);
+    --shadow-3: 0 2px 4px oklch(0 0 0 / 0.4), 0 24px 48px -16px oklch(0 0 0 / 0.7);
+    color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+    body.studio-app[data-studio-mode='auto'] {
+        --bg: oklch(0.170 0.014 235);
+        --surface: oklch(0.215 0.016 235);
+        --surface-2: oklch(0.240 0.017 235);
+        --line: oklch(0.300 0.016 235);
+        --line-strong: oklch(0.380 0.018 235);
+        --ink: oklch(0.950 0.006 220);
+        --ink-2: oklch(0.790 0.010 225);
+        --ink-3: oklch(0.690 0.012 228);
+        --rail: oklch(0.140 0.016 235);
+        --accent: var(--studio-accent-lit, #35c2ae);
+        --accent-wash: color-mix(in oklab, var(--accent) 12%, var(--surface));
+        --attention: oklch(0.730 0.165 22);
+        --caution: oklch(0.830 0.145 85);
+        --caution-ink: oklch(0.850 0.120 88);
+        --ok: oklch(0.770 0.130 155);
+        --shadow-1: 0 1px 2px oklch(0 0 0 / 0.30);
+        --shadow-2: 0 1px 2px oklch(0 0 0 / 0.35), 0 12px 28px -14px oklch(0 0 0 / 0.55);
+        --shadow-3: 0 2px 4px oklch(0 0 0 / 0.4), 0 24px 48px -16px oklch(0 0 0 / 0.7);
+        color-scheme: dark;
+    }
+}
+
+/* ───────── Re-theme the Tailwind ramps ───────── */
+
+body.studio-app {
+    --color-white: var(--surface);
+    --color-neutral-50: var(--bg);
+    --color-neutral-100: var(--surface-2);
+    --color-neutral-200: var(--line);
+    --color-neutral-300: var(--line-strong);
+    --color-neutral-400: color-mix(in oklab, var(--ink) 40%, var(--bg));
+    --color-neutral-500: var(--ink-3);
+    --color-neutral-600: var(--ink-2);
+    --color-neutral-700: color-mix(in oklab, var(--ink) 84%, var(--bg));
+    --color-neutral-800: color-mix(in oklab, var(--ink) 92%, var(--bg));
+    --color-neutral-900: var(--ink);
+
+    --color-primary-50: color-mix(in oklab, var(--accent) 8%, var(--surface));
+    --color-primary-100: color-mix(in oklab, var(--accent) 15%, var(--surface));
+    --color-primary-200: color-mix(in oklab, var(--accent) 27%, var(--surface));
+    --color-primary-300: color-mix(in oklab, var(--accent) 45%, var(--surface));
+    --color-primary-400: color-mix(in oklab, var(--accent) 68%, var(--surface));
+    --color-primary-500: color-mix(in oklab, var(--accent) 88%, var(--surface));
+    --color-primary-600: var(--accent);
+    --color-primary-700: color-mix(in oklab, var(--accent) 86%, var(--ink));
+    --color-primary-800: color-mix(in oklab, var(--accent) 72%, var(--ink));
+    --color-primary-900: color-mix(in oklab, var(--accent) 58%, var(--ink));
+
+    --color-danger-50: color-mix(in oklab, var(--attention) 8%, var(--surface));
+    --color-danger-100: color-mix(in oklab, var(--attention) 15%, var(--surface));
+    --color-danger-200: color-mix(in oklab, var(--attention) 28%, var(--surface));
+    --color-danger-300: color-mix(in oklab, var(--attention) 46%, var(--surface));
+    --color-danger-500: var(--attention);
+    --color-danger-600: var(--attention);
+    --color-danger-700: color-mix(in oklab, var(--attention) 82%, var(--ink));
+    --color-warning-50: color-mix(in oklab, var(--caution) 14%, var(--surface));
+    --color-warning-100: color-mix(in oklab, var(--caution) 26%, var(--surface));
+    --color-warning-300: color-mix(in oklab, var(--caution) 55%, var(--surface));
+    --color-warning-500: var(--caution);
+    --color-warning-800: var(--caution-ink);
+    --color-success-50: color-mix(in oklab, var(--ok) 8%, var(--surface));
+    --color-success-100: color-mix(in oklab, var(--ok) 15%, var(--surface));
+    --color-success-300: color-mix(in oklab, var(--ok) 45%, var(--surface));
+    --color-success-500: var(--ok);
+    --color-success-600: var(--ok);
+    --color-success-700: color-mix(in oklab, var(--ok) 82%, var(--ink));
+    --color-info-100: var(--color-primary-100);
+    --color-info-700: var(--color-primary-700);
+
+    font-family: var(--studio-font, ui-sans-serif), system-ui, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+    caret-color: var(--accent);
+    accent-color: var(--accent);
+    scrollbar-color: var(--line-strong) transparent;
+    text-rendering: optimizeLegibility;
+}
+body.studio-app ::selection { background: color-mix(in oklab, var(--accent) 26%, transparent); color: var(--ink); }
+body.studio-app :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+body.studio-app :focus:not(:focus-visible) { outline: none; }
+body.studio-app a { text-underline-offset: 0.2em; }
+body.studio-app .studio-reg { display: none; }
+
+/* ───────── Rail ───────── */
+
+body.studio-app .sidebar { background: var(--rail); border: 0; color: var(--rail-ink); }
+body.studio-app .sidebar-logo {
+    height: 68px;
+    padding: 0 1.125rem;
+    gap: 0.75rem;
+    border: 0;
+    border-bottom: 1px solid var(--rail-line);
+}
+/* The logo is transparent with a white wordmark: it belongs on the dark rail as it is. */
+body.studio-app .sidebar-logo img { max-height: 2rem; }
+body.studio-app .sidebar-logo p:first-child { font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.01em; color: oklch(0.97 0.004 230); }
+body.studio-app .sidebar-logo p:last-child { font-size: 0.75rem; color: var(--rail-ink-2); }
+
+body.studio-app .sidebar-menu-area {
+    height: calc(100vh - 68px);
+    padding: 0.75rem 0.75rem 2rem;
+    border: 0;
+    scrollbar-width: thin;
+    scrollbar-color: oklch(1 0 0 / 0.18) transparent;
+}
+body.studio-app .sidebar-menu { display: block; margin: 0; padding: 0; list-style: none; }
+body.studio-app .sidebar-menu > li + li { margin-top: 2px; }
+
+body.studio-app .sidebar-menu-group-title {
+    margin: 1.25rem 0 0.375rem;
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    color: var(--rail-ink-2);
+}
+body.studio-app .sidebar-menu-group-title:first-child { margin-top: 0.25rem; }
+
+body.studio-app .sidebar-menu li > a {
+    position: relative;
+    gap: 0.75rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    background: transparent;
+    font-size: 0.9375rem;
+    font-weight: 450;
+    color: var(--rail-ink);
+    transition: background-color 150ms var(--ease), color 150ms var(--ease);
+}
+body.studio-app .sidebar-menu li > a:hover { background: oklch(1 0 0 / 0.06); color: oklch(0.99 0 0); }
+body.studio-app .sidebar-menu li > a .menu-icon { width: 1.25rem; height: 1.25rem; color: var(--rail-ink-2); transition: color 150ms var(--ease); }
+body.studio-app .sidebar-menu li > a:hover .menu-icon { color: var(--rail-ink); }
+
+/* Current location: a lifted tonal plate, accent icon, a small lit dot. */
+body.studio-app .sidebar-menu li > a.active-page,
+body.studio-app .sidebar-menu li.dropdown.open > a {
+    background: oklch(1 0 0 / 0.09);
+    color: oklch(0.99 0 0);
+    font-weight: 550;
+    box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.05);
+}
+body.studio-app .sidebar-menu li > a.active-page .menu-icon,
+body.studio-app .sidebar-menu li.dropdown.open > a .menu-icon { color: var(--accent-lit); }
+body.studio-app .sidebar-menu li > a.active-page:hover { background: oklch(1 0 0 / 0.11); color: oklch(0.99 0 0); }
+body.studio-app .sidebar-menu li > a.active-page::after {
+    content: '';
+    position: absolute;
+    inset-inline-end: 0.875rem;
+    top: 50%;
+    width: 0.375rem;
+    height: 0.375rem;
+    translate: 0 -50%;
+    border-radius: 50%;
+    background: var(--accent-lit);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent-lit) 22%, transparent);
+}
+body.studio-app .sidebar-menu li.dropdown > a.active-page::after { display: none; }
+body.studio-app .submenu-caret { color: var(--rail-ink-2); border-radius: 6px; }
+body.studio-app .submenu-caret:hover { background: oklch(1 0 0 / 0.08); }
+
+body.studio-app .sidebar-menu .sidebar-submenu {
+    display: none;
+    margin: 0.125rem 0 0.375rem 1.5rem;
+    padding: 0 0 0 0.375rem;
+    border-inline-start: 1px solid var(--rail-line);
+}
+body.studio-app .sidebar-menu .sidebar-submenu.open { display: block; }
+body.studio-app .sidebar-menu .sidebar-submenu li > a { min-height: 2.125rem; padding: 0.3125rem 0.75rem; font-size: 0.875rem; box-shadow: none; }
+body.studio-app .sidebar-menu .sidebar-submenu li > a svg { display: none; }
+body.studio-app .sidebar-menu .sidebar-submenu li > a.active-page { background: transparent; color: oklch(0.99 0 0); box-shadow: none; }
+body.studio-app .sidebar-menu .sidebar-submenu li > a.active-page::after { inset-inline-end: 0.625rem; }
+body.studio-app .sidebar-meta { border-color: var(--rail-line); color: var(--rail-ink-2); font-size: 0.75rem; }
+
+/* Collapsed rail. */
+body.studio-app .sidebar.active .sidebar-menu-group-title {
+    height: 1px; margin: 0.75rem 0.5rem; padding: 0; overflow: hidden; font-size: 0; background: var(--rail-line);
+}
+body.studio-app .sidebar.active .sidebar-menu li > a.active-page::after { display: none; }
+body.studio-app .sidebar.active .sidebar-menu > li.dropdown:hover > .sidebar-submenu,
+body.studio-app .sidebar.active .sidebar-menu > li.dropdown:focus-within > .sidebar-submenu {
+    margin: 0 0 0 0.375rem;
+    padding: 0.375rem;
+    border: 1px solid var(--rail-line);
+    border-radius: 12px;
+    background: var(--rail);
+    box-shadow: var(--shadow-3);
+}
+
+/* ───────── Header ───────── */
+
+body.studio-app .dashboard-main { background: var(--bg); }
+body.studio-app .navbar-header {
+    min-height: 68px;
+    padding: 0 2rem;
+    background: color-mix(in oklab, var(--bg) 82%, transparent);
+    backdrop-filter: saturate(1.4) blur(14px);
+    border-bottom: 1px solid var(--line);
+}
+body.studio-app .navbar-header h1 { font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); }
+body.studio-app .navbar-header .sidebar-toggle,
+body.studio-app .navbar-header .sidebar-mobile-toggle { width: 2.25rem; height: 2.25rem; align-items: center; justify-content: center; border-radius: 10px; color: var(--ink-2); }
+body.studio-app .navbar-header .sidebar-toggle:hover,
+body.studio-app .navbar-header .sidebar-mobile-toggle:hover { background: color-mix(in oklab, var(--ink) 7%, transparent); }
+body.studio-app .navbar-header a.border,
+body.studio-app .navbar-header button.border {
+    width: 2.25rem; height: 2.25rem;
+    border-color: transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ink-2);
+    transition: background-color 150ms var(--ease), color 150ms var(--ease);
+}
+body.studio-app .navbar-header a.border:hover,
+body.studio-app .navbar-header button.border:hover { background: color-mix(in oklab, var(--ink) 7%, transparent); color: var(--ink); border-color: transparent; }
+body.studio-app .navbar-header [data-dropdown-trigger] {
+    min-height: 2.5rem;
+    padding-block: 0.25rem;
+    border-radius: 999px;
+    border-color: var(--line-strong);
+    background: var(--surface);
+    box-shadow: var(--shadow-1);
+}
+body.studio-app .navbar-header [data-dropdown-trigger]:hover { background: var(--surface-2); }
+body.studio-app .navbar-header [data-dropdown-trigger] > span:first-child { flex: none; width: 1.875rem; height: 1.875rem; background: var(--accent); color: var(--on-accent); font-weight: 600; }
+body.studio-app .navbar-header [data-dropdown-trigger] > span:last-child { color: var(--ink-2); }
+
+body.studio-app .dashboard-main > .p-sp-md { padding: 2rem 2rem 4rem; }
+
+/* ───────── Components ───────── */
+
+body.studio-app .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-1);
+}
+body.studio-app .card .card { border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; background: transparent; }
+body.studio-app .card-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); }
+body.studio-app .card-header h3 { font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.005em; color: var(--ink); }
+body.studio-app .card-body { padding: 1.5rem; }
+
+body.studio-app .btn {
+    min-height: 2.5rem;
+    padding: 0.5rem 1.125rem;
+    border-radius: var(--r-control);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    transition: background-color 150ms var(--ease), border-color 150ms var(--ease), color 150ms var(--ease), box-shadow 150ms var(--ease), transform 150ms var(--ease);
+}
+body.studio-app .btn-sm { min-height: 2.25rem; padding: 0.375rem 0.875rem; font-size: 0.875rem; }
+body.studio-app .btn:active { transform: translateY(0.5px); }
+body.studio-app .btn-primary {
+    background: var(--accent);
+    color: var(--on-accent);
+    border: 1px solid color-mix(in oklab, var(--accent) 88%, black);
+    box-shadow: var(--shadow-1), inset 0 1px 0 oklch(1 0 0 / 0.16);
+}
+body.studio-app .btn-primary:hover { background: color-mix(in oklab, var(--accent) 90%, black); }
+body.studio-app .btn-outline-primary,
+body.studio-app .btn-neutral {
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    box-shadow: var(--shadow-1);
+}
+body.studio-app .btn-outline-primary:hover,
+body.studio-app .btn-neutral:hover { background: var(--surface-2); border-color: color-mix(in oklab, var(--ink) 30%, var(--line-strong)); color: var(--ink); }
+body.studio-app .btn-danger { background: var(--attention); border: 1px solid color-mix(in oklab, var(--attention) 85%, black); color: #fff; }
+body.studio-app .btn-outline-danger { background: var(--surface); border-color: var(--line-strong); color: var(--attention); }
+body.studio-app .btn-outline-danger:hover { background: var(--attention); border-color: var(--attention); color: #fff; }
+body.studio-app .btn:disabled { opacity: 0.5; box-shadow: none; }
+
+/* Status: a dot with a soft halo, then the word. */
+body.studio-app .badge { gap: 0.5rem; padding: 0; border-radius: 0; background: transparent; font-size: 0.875rem; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+body.studio-app .badge.uppercase { text-transform: none; }
+body.studio-app .badge > span:first-child { width: 0.5rem; height: 0.5rem; box-shadow: 0 0 0 3px color-mix(in oklab, currentColor 14%, transparent); }
+body.studio-app .badge-success { background: transparent; color: var(--ok); }
+body.studio-app .badge-success > span:first-child { background: var(--ok); }
+body.studio-app .badge-success { color: var(--ink); }
+body.studio-app .badge-danger { background: transparent; color: var(--attention); }
+body.studio-app .badge-warning { background: transparent; color: var(--caution-ink); }
+body.studio-app .badge-info { background: transparent; color: var(--accent); }
+body.studio-app .badge-neutral { background: transparent; color: var(--ink-3); }
+
+/* Tables. */
+body.studio-app .table { border: 0; border-radius: 0; }
+body.studio-app .table th {
+    padding: 0.625rem 1rem;
+    background: transparent;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink-3);
+    border-radius: 0 !important;
+}
+body.studio-app .table td { padding: 0.9375rem 1rem; border-color: var(--line); font-size: 0.9375rem; color: var(--ink-2); border-radius: 0 !important; }
+body.studio-app .table td.font-medium { color: var(--ink); font-weight: 550; }
+body.studio-app .table tbody tr { transition: background-color 120ms var(--ease); }
+body.studio-app .table tbody tr:hover td { background: var(--surface-2); }
+body.studio-app .table-compact th { padding: 0.5rem 0.75rem; }
+body.studio-app .table-compact td { padding: 0.8125rem 0.75rem; font-size: 0.9375rem; }
+
+/* Forms. */
+body.studio-app .form-label { margin-bottom: 0.375rem; font-size: 0.875rem; font-weight: 550; color: var(--ink); }
+body.studio-app .form-control,
+body.studio-app .form-select {
+    min-height: 2.625rem;
+    padding: 0.5625rem 0.875rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-control);
+    background: var(--surface);
+    font-size: 0.9375rem;
+    color: var(--ink);
+    box-shadow: var(--shadow-1);
+    transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease);
+}
+body.studio-app .form-control::placeholder { color: var(--ink-3); }
+body.studio-app .form-control:hover,
+body.studio-app .form-select:hover { border-color: color-mix(in oklab, var(--ink) 32%, var(--line-strong)); }
+body.studio-app .form-control:focus,
+body.studio-app .form-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent);
+    --tw-ring-shadow: 0 0 #0000;
+    outline: none;
+}
+body.studio-app .form-control[readonly],
+body.studio-app .form-control:disabled { background: var(--surface-2); color: var(--ink-3); box-shadow: none; }
+body.studio-app .form-check-input { border-radius: 5px; }
+
+body.studio-app .dropdown-menu { padding: 0.375rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-3); }
+body.studio-app .dropdown-menu a,
+body.studio-app .dropdown-menu button { min-height: 2.375rem; padding: 0.4375rem 0.75rem; border-radius: 8px; font-size: 0.9375rem; color: var(--ink-2); }
+body.studio-app .dropdown-menu a:hover,
+body.studio-app .dropdown-menu button:hover { background: var(--surface-2); color: var(--ink); }
+
+body.studio-app .toast { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow-3); font-weight: 450; }
+body.studio-app .toast-success { background: color-mix(in oklab, var(--ok) 7%, var(--surface)); }
+body.studio-app .toast-error { background: color-mix(in oklab, var(--attention) 7%, var(--surface)); color: var(--ink); }
+
+body.studio-app .modal-overlay { background: oklch(0.12 0.02 235 / 0.5); }
+body.studio-app .modal-panel { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-3); }
+body.studio-app .modal-header,
+body.studio-app .modal-footer { border-color: var(--line); }
+
+/* ───────── Command desk ───────── */
+
+body.studio-app .studio-cmd { display: block; max-width: 1360px; padding: 0; }
+body.studio-app .studio-cmd > * { margin-block: 0; }
+body.studio-app .studio-cmd > * + * { margin-top: 1.75rem; }
+
+body.studio-app .studio-cmd-actionbar { align-items: flex-end; }
+body.studio-app .studio-cmd-welcome { font-size: 1.75rem; font-weight: 650; line-height: 1.15; letter-spacing: -0.025em; color: var(--ink); text-wrap: balance; }
+body.studio-app .studio-cmd-welcome-sub { margin-top: 0.375rem; max-width: 60ch; font-size: 1rem; color: var(--ink-2); }
+body.studio-app .studio-cmd-dropdown-menu { padding: 0.375rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-3); }
+body.studio-app .studio-cmd-dropdown-item { min-height: 2.5rem; border-radius: 8px; font-size: 0.9375rem; color: var(--ink-2); }
+body.studio-app .studio-cmd-dropdown-item:hover { background: var(--surface-2); color: var(--ink); }
+
+body.studio-app .studio-cmd-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+@media (min-width: 1100px) { body.studio-app .studio-cmd-grid { grid-template-columns: minmax(0, 1fr) 21.5rem; } }
+body.studio-app .studio-cmd-side { display: flex; flex-direction: column; gap: 1.25rem; }
+
+body.studio-app .studio-cmd-panel {
+    position: relative;
+    min-width: 0;
+    padding: 1.375rem 1.5rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--surface);
+    box-shadow: var(--shadow-1);
+}
+body.studio-app .studio-cmd-panel-title { margin: 0 0 1rem; font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.005em; text-transform: none; color: var(--ink); }
+body.studio-app .studio-cmd-panel[data-studio-widget] > :first-child { padding-inline-end: 2rem; }
+body.studio-app .studio-widget-toggle { inset-block-start: 1.125rem; inset-inline-end: 1.125rem; width: 1.5rem; height: 1.5rem; border: 0; border-radius: 6px; background: transparent; color: var(--ink-3); }
+body.studio-app .studio-widget-toggle:hover { background: var(--surface-2); color: var(--ink); }
+body.studio-app .studio-cmd-panel.is-collapsed { padding-block: 1rem; }
+body.studio-app .studio-cmd-panel.is-collapsed .studio-cmd-panel-title { margin-bottom: 0; }
+body.studio-app .studio-cmd-panel .table th:first-child,
+body.studio-app .studio-cmd-panel .table td:first-child { padding-inline-start: 0; }
+body.studio-app .studio-cmd-panel .table th:last-child,
+body.studio-app .studio-cmd-panel .table td:last-child { padding-inline-end: 0; }
+
+/* Status list: rows, with the one that needs a person lifted onto a wash. */
+body.studio-app .studio-ledger { margin: 0; display: grid; gap: 0.125rem; }
+body.studio-app .studio-ledger > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; min-height: 2.5rem; padding: 0.5rem 0.75rem; margin-inline: -0.75rem; border: 0; border-radius: 10px; }
+body.studio-app .studio-ledger dt { font-size: 0.9375rem; color: var(--ink-2); }
+body.studio-app .studio-ledger dd { margin: 0; font-size: 1rem; font-weight: 600; color: var(--ink); }
+body.studio-app .studio-ledger .is-waiting { background: var(--accent-wash); }
+body.studio-app .studio-ledger .is-waiting dt { color: var(--ink); font-weight: 550; }
+body.studio-app .studio-ledger .is-waiting dd { color: var(--accent); }
+
+body.studio-app .studio-cmd-workbench { gap: 0.125rem; }
+body.studio-app .studio-cmd-workbench li { min-height: 2.5rem; padding: 0.5rem 0.75rem; margin-inline: -0.75rem; border: 0; border-radius: 10px; background: transparent; font-size: 0.9375rem; color: var(--ink-2); }
+body.studio-app .studio-cmd-workbench li.is-actionable { background: var(--accent-wash); color: var(--ink); font-weight: 550; }
+body.studio-app .studio-cmd-workbench li.is-actionable .studio-cmd-workbench-count { color: var(--accent); }
+body.studio-app .studio-cmd-workbench-count { font-family: inherit; }
+body.studio-app .studio-cmd-workbench-note { font-size: 0.875rem; color: var(--ink-3); }
+
+body.studio-app .studio-cmd-shortcuts { gap: 0.125rem; }
+body.studio-app .studio-cmd-shortcut {
+    min-height: 2.625rem;
+    padding: 0.5rem 0.75rem;
+    margin-inline: -0.75rem;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    font-size: 0.9375rem;
+    font-weight: 450;
+    color: var(--ink-2);
+    transition: background-color 150ms var(--ease), color 150ms var(--ease);
+}
+body.studio-app .studio-cmd-shortcut svg { color: var(--ink-3); transition: color 150ms var(--ease); }
+body.studio-app .studio-cmd-shortcut:hover { background: var(--surface-2); color: var(--ink); border: 0; }
+body.studio-app .studio-cmd-shortcut:hover svg { color: var(--accent); }
+
+body.studio-app .studio-mix { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.875rem; }
+body.studio-app .studio-mix li { display: grid; grid-template-columns: 1fr auto; gap: 0.375rem 1rem; }
+body.studio-app .studio-mix-label { font-size: 0.9375rem; color: var(--ink-2); }
+body.studio-app .studio-mix-count { font-size: 0.9375rem; font-weight: 600; color: var(--ink); }
+body.studio-app .studio-mix-bar { grid-column: 1 / -1; height: 0.375rem; border-radius: 999px; background: var(--line); overflow: hidden; }
+body.studio-app .studio-mix-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+
+/* ───────── Small screens ───────── */
+
+body.studio-app .table-responsive > .table { min-width: 38rem; }
+@media (max-width: 767px) {
+    body.studio-app .navbar-header { padding-inline: 1rem; min-height: 60px; }
+    body.studio-app .dashboard-main > .p-sp-md { padding: 1.25rem 1rem 3rem; }
+    body.studio-app .studio-cmd-welcome { font-size: 1.5rem; }
+    body.studio-app .studio-cmd-panel { padding: 1.125rem 1.125rem; border-radius: 12px; }
+    body.studio-app .studio-cmd-actionbar .btn { min-height: 2.75rem; }
+}
+@media (pointer: coarse) {
+    body.studio-app .btn,
+    body.studio-app .form-control,
+    body.studio-app .form-select,
+    body.studio-app .sidebar-menu li > a { min-height: 2.75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    body.studio-app *, body.studio-app *::before, body.studio-app *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/* ───────── Phones and tablets: content entry happens here too ───────── */
+
+body.studio-app { overflow-x: clip; }
+body.studio-app .dashboard-main { overflow-x: clip; }
+@media (max-width: 1199px) {
+    /* The rail is a drawer below 1200px. */
+    body.studio-app .sidebar { width: min(19rem, 88vw); padding-bottom: env(safe-area-inset-bottom); }
+    body.studio-app .sidebar-menu-area { padding-bottom: calc(2rem + env(safe-area-inset-bottom)); overscroll-behavior: contain; }
+    body.studio-app .navbar-header { padding-inline: max(1.25rem, env(safe-area-inset-left)) max(1.25rem, env(safe-area-inset-right)); }
+    body.studio-app .table-responsive .table td:not(:first-child), body.studio-app .table-responsive .table th { white-space: nowrap; }
+    body.studio-app .table-responsive > .table { min-width: 38rem; }
+    body.studio-app .sidebar-mobile-toggle { min-width: 2.75rem; min-height: 2.75rem; justify-content: center; align-items: center; }
+}
+@media (max-width: 767px) {
+    body.studio-app .navbar-header { flex-wrap: wrap; row-gap: 0.5rem; padding-block: 0.5rem; height: auto; }
+    body.studio-app .navbar-header > div:last-child { margin-inline-start: auto; }
+    body.studio-app .dashboard-main > .p-sp-md { padding-bottom: calc(3rem + env(safe-area-inset-bottom)); }
+    /* 16px stops iOS zooming into a field on focus. */
+    body.studio-app input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']),
+    body.studio-app select,
+    body.studio-app textarea { font-size: 1rem; }
+    body.studio-app .card-header { flex-wrap: wrap; row-gap: 0.5rem; }
+    body.studio-app .modal-overlay { align-items: flex-end; padding: 0; }
+    body.studio-app .modal-panel { max-width: none; max-height: 92dvh; border-radius: 16px 16px 0 0; }
+    body.studio-app .modal-body { max-height: 70dvh; }
+    body.studio-app [data-toast-stack] { left: 1rem; right: 1rem; top: 4.5rem; }
+    body.studio-app .table-responsive { margin-inline: -0.25rem; padding-inline: 0.25rem; -webkit-overflow-scrolling: touch; }
+    body.studio-app .table-responsive > .table { min-width: 36rem; }
+    body.studio-app .dropdown-menu { max-width: calc(100vw - 2rem); }
+    body.studio-app .table-responsive .table td:not(:first-child), body.studio-app .table-responsive .table th { white-space: nowrap; }
+    body.studio-app .studio-cmd-actionbar { flex-direction: column; align-items: stretch; }
+    body.studio-app .studio-cmd-actionbar .studio-cmd-dropdown, body.studio-app .studio-cmd-actionbar > .btn { width: 100%; }
+    body.studio-app .studio-cmd-actionbar .studio-cmd-dropdown > .btn { width: 100%; min-height: 2.75rem; }
+    body.studio-app .studio-cmd-dropdown-menu { left: 0; right: 0; }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+    body.studio-app .dashboard-main > .p-sp-md { padding-inline: max(1.5rem, env(safe-area-inset-left)); }
+}
+@media (pointer: coarse) {
+    body.studio-app .btn, body.studio-app .form-control, body.studio-app .form-select { min-height: 2.75rem; }
+    body.studio-app .sidebar-menu li > a { min-height: 2.75rem; }
+    body.studio-app .dropdown-menu a, body.studio-app .dropdown-menu button { min-height: 2.75rem; }
+}
+
+/* ───────── Premium dashboard details ───────── */
+
+body.studio-app .studio-hello { display: flex; align-items: center; gap: 1rem; min-width: 0; }
+body.studio-app .studio-avatar { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: var(--accent-wash); color: var(--accent); font-size: 0.75rem; font-weight: 600; }
+body.studio-app .studio-avatar-lg { width: 3.25rem; height: 3.25rem; font-size: 1.25rem; background: var(--accent); color: var(--on-accent); box-shadow: var(--shadow-2), inset 0 1px 0 oklch(1 0 0 / 0.2); }
+body.studio-app .studio-author { display: inline-flex; align-items: center; gap: 0.625rem; }
+
+body.studio-app .studio-attn {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.875rem 1.25rem;
+    border: 1px solid color-mix(in oklab, var(--accent) 24%, var(--surface));
+    border-radius: var(--r-card);
+    background: var(--accent-wash);
+    font-size: 0.9375rem; font-weight: 500; color: var(--ink);
+}
+body.studio-app .studio-attn strong { margin-inline-start: auto; font-size: 1.25rem; font-weight: 650; color: var(--accent); }
+body.studio-app .studio-attn-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 22%, transparent); }
+
+body.studio-app .studio-split { display: flex; gap: 3px; height: 0.5rem; margin-bottom: 1.125rem; overflow: hidden; border-radius: 999px; }
+body.studio-app .studio-split > span { min-width: 4px; border-radius: 999px; background: var(--accent); }
+body.studio-app .studio-mix li { grid-template-columns: auto 1fr auto; align-items: center; column-gap: 0.75rem; }
+body.studio-app .studio-mix-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--accent); }
+body.studio-app .studio-mix-bar { display: none; }
+
+body.studio-app .studio-cmd-panel { transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease); }
+body.studio-app .studio-cmd-panel:hover { border-color: var(--line-strong); box-shadow: var(--shadow-2); }
+@media (hover: hover) {
+    body.studio-app .studio-cmd-panel .table td:last-child a { opacity: 0.55; transition: opacity 150ms var(--ease); }
+    body.studio-app .studio-cmd-panel .table tr:hover td:last-child a { opacity: 1; }
+}
+@media (max-width: 767px) {
+    body.studio-app .studio-avatar-lg { width: 2.75rem; height: 2.75rem; font-size: 1.0625rem; }
+    body.studio-app .studio-hello { gap: 0.75rem; }
+    body.studio-app .studio-attn { padding: 0.75rem 1rem; }
+}

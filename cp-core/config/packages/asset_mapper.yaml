@@ -1,0 +1,15 @@
+framework:
+    asset_mapper:
+        # Pristine Root: assets live under cp-core/assets, not project root.
+        # Modules may add Resources/assets via their bundle definitions.
+        paths:
+            - cp-core/assets/
+        missing_import_mode: strict
+        # vendor_dir must be absolute under cp-core/assets (Pristine Root).
+        # Relative paths resolve against runtime CWD and break vendor assets.
+        vendor_dir: '%kernel.project_dir%/cp-core/assets/vendor'
+
+when@prod:
+    framework:
+        asset_mapper:
+            missing_import_mode: warn

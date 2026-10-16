@@ -1,0 +1,3 @@
+studio:
+    quick_create:
+        - { label_key: studio.dashboard.create.media, route: admin_media_index, icon: heroicons:photo }

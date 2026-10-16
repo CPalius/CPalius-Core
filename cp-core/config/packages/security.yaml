@@ -1,0 +1,70 @@
+security:
+    # https://symfony.com/doc/current/security.html#registering-the-user-hashing-passwords
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+
+    # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
+    #
+    # Two providers:
+    #   - cpalius_users: entity provider, email only (UserRepository::loadUserByIdentifier).
+    #   - cpalius_users_by_login: CpUserProvider — email or username login.
+    providers:
+        cpalius_users:
+            entity:
+                class: App\Entity\User
+                property: email
+        cpalius_users_by_login:
+            id: App\Core\Security\CpUserProvider
+
+    firewalls:
+        dev:
+            # Ensure dev tools and static assets are always allowed
+            pattern: ^/(_profiler|_wdt|assets|build)/
+            security: false
+        main:
+            lazy: true
+            provider: cpalius_users_by_login
+            user_checker: App\Core\Security\AccountUserChecker
+
+            form_login:
+                login_path: admin_login
+                check_path: admin_login
+                default_target_path: admin_dashboard
+                enable_csrf: true
+                # Off-origin _target_path / session target is refused by this handler.
+                success_handler: App\Core\Security\Http\SameOriginAuthenticationSuccessHandler
+
+            logout:
+                path: admin_logout
+                target: admin_login
+
+            # Activate different ways to authenticate:
+            # https://symfony.com/doc/current/security.html#the-firewall
+
+            # https://symfony.com/doc/current/security/impersonating_user.html
+            # switch_user: true
+
+    # Note: hard-coded ROLE_* checks are forbidden (CPaliusVoter, Manifesto Law 4).
+    # access_control only enforces authentication; authorization uses is_granted() capabilities.
+    #
+    # /aacp/recovery is PUBLIC_ACCESS (Manifesto Law 2.3) — token auth in AACPController.
+    # Recovery path must precede the general /aacp rule (first match wins).
+    #
+    # /api is PUBLIC_ACCESS: ApiGatewayController uses X-CP-API-KEY, not form_login/session.
+    access_control:
+        - { path: ^/login, roles: PUBLIC_ACCESS }
+        - { path: ^/aacp/recovery, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: PUBLIC_ACCESS }
+        - { path: ^/admin, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/aacp, roles: IS_AUTHENTICATED_FULLY }
+
+when@test:
+    security:
+        password_hashers:
+            # Password hashers are resource-intensive by design to ensure security.
+            # In tests, it's safe to reduce their cost to improve performance.
+            Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+                algorithm: auto
+                cost: 4 # Lowest possible value for bcrypt
+                time_cost: 3 # Lowest possible value for argon
+                memory_cost: 10 # Lowest possible value for argon

@@ -1,0 +1,6 @@
+{# Postbit block: join date. Expects post, authorStats. #}
+{% if authorStats and post.author %}
+    <div class="forum-postbit__joined">
+        <i class="bi bi-calendar3"></i> {{ 'post.joined'|trans({}, 'forums') }} {{ post.author.createdAt|date('d.m.Y') }}
+    </div>
+{% endif %}

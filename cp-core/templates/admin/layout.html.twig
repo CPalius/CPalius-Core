@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('en') }}" class="h-full">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        {#
+            A module can claim this panel (see App\Core\Admin\StudioShell). When
+            one has, the platform name and mark step aside for its own — the
+            operator of a hosting panel is running a hosting panel, not a content
+            workspace that happens to contain one. Nothing else changes: the
+            layout, the console and /aacp are exactly where they were.
+        #}
+        {% set studioShell = cp_studio_shell() %}
+        {% set shellBrand = studioShell.brandText ?? (studioShell.brandKey ? studioShell.brandKey|trans : null) %}
+
+        <title>{% block title %}{{ shellBrand ?? 'studio.layout.title.default'|trans }}{% endblock %}</title>
+        <meta name="robots" content="noindex, nofollow">
+
+        {# Studio uses core AssetMapper (app.css/app.js), not theme/module assets.
+           The sheet is linked rather than imported from JS: a CSS import
+           resolves to a data: URL script that our CSP refuses, and a refused
+           static import rejects the entire module graph (see app.js). #}
+        {% block stylesheets %}
+            <link rel="stylesheet" href="{{ cp_asset('styles/app.css') }}">
+        {% endblock %}
+        {% block javascripts %}
+            {{ importmap(['app', 'studio-quick-cache-clear']) }}
+        {% endblock %}
+        <script type="application/json" id="cp-media-picker-i18n">{{ {
+            title: 'media.picker.title'|trans,
+            close: 'media.picker.close'|trans,
+            loading: 'media.picker.loading'|trans,
+            uploadFailed: 'media.picker.upload_failed'|trans,
+            listFailed: 'media.picker.list_failed'|trans,
+        }|json_encode|raw }}</script>
+    </head>
+    <body class="h-full bg-neutral-50 text-neutral-700 antialiased text-fs-base font-sans">
+        <div class="flex h-full">
+            <div data-sidebar-overlay class="sidebar-overlay"></div>
+
+            <aside data-sidebar class="sidebar">
+                <button type="button" data-sidebar-close class="sidebar-close-btn">
+                    <twig:ux:icon name="tabler:x" class="h-3.5 w-3.5" />
+                </button>
+
+                <a class="sidebar-logo" href="{{ path(studioShell.homeRoute ?? 'admin_dashboard') }}">
+                    {% if studioShell.logoUrl %}
+                        <img src="{{ studioShell.logoUrl }}" alt="{{ shellBrand }}" class="h-6 w-auto shrink-0">
+                    {% else %}
+                        <img src="/CPalius.png" alt="{{ shellBrand ?? 'CPalius' }}" class="h-6 w-auto shrink-0">
+                    {% endif %}
+                    <div class="leading-tight">
+                        <p class="text-fs-sm font-semibold text-neutral-900">
+                            {{ shellBrand ?? 'studio.layout.brand.name'|trans }}
+                        </p>
+                        <p class="text-fs-xs text-neutral-500">
+                            {{ studioShell.subtitleKey ? studioShell.subtitleKey|trans : 'studio.layout.brand.subtitle'|trans }}
+                        </p>
+                    </div>
+                </a>
+
+                <nav class="sidebar-menu-area">
+                    <ul class="sidebar-menu" id="sidebar-menu">
+                        {% set currentGroup = null %}
+                        {% for item in cp_admin_menu('studio') %}
+                            {% if item.group is not null and item.group != currentGroup %}
+                                <li class="sidebar-menu-group-title">{{ item.group|trans }}</li>
+                                {% set currentGroup = item.group %}
+                            {% endif %}
+
+                            {% set currentRoute = app.request.attributes.get('_route') %}
+                            {% set itemActive = currentRoute == item.routeName or (item.routePrefix != item.routeName and currentRoute starts with item.routePrefix) %}
+                            {% set childActive = false %}
+                            {% for child in item.children %}
+                                {% if currentRoute == child.routeName or (child.routePrefix != child.routeName and currentRoute starts with child.routePrefix) %}
+                                    {% set childActive = true %}
+                                {% endif %}
+                            {% endfor %}
+
+                            <li{% if item.children is not empty %} class="dropdown{{ (itemActive or childActive) ? ' open' : '' }}"{% endif %}>
+                                <a href="{{ path(item.routeName) }}"
+                                   title="{{ item.label|trans }}"
+                                   class="{{ (itemActive or childActive) ? 'active-page' : '' }}{{ item.children is not empty ? ' has-submenu-trigger' : '' }}">
+                                    <twig:ux:icon name="{{ item.icon }}" class="menu-icon shrink-0" />
+                                    <span>{{ item.label|trans }}</span>
+                                    {% if item.children is not empty %}
+                                        <span data-sidebar-dropdown-trigger class="submenu-caret ms-auto">
+                                            <twig:ux:icon name="tabler:chevron-down" class="h-3.5 w-3.5 shrink-0" />
+                                        </span>
+                                    {% endif %}
+                                </a>
+
+                                {% if item.children is not empty %}
+                                    <ul class="sidebar-submenu{{ (itemActive or childActive) ? ' open' : '' }}">
+                                        {% for child in item.children %}
+                                            {% set isChildActive = currentRoute == child.routeName or (child.routePrefix != child.routeName and currentRoute starts with child.routePrefix) %}
+                                            <li{% if isChildActive %} class="active-page"{% endif %}>
+                                                <a href="{{ path(child.routeName) }}"
+                                                   title="{{ child.label|trans }}"
+                                                   class="{{ isChildActive ? 'active-page' : '' }}">
+                                                    <twig:ux:icon name="{{ child.icon }}" class="h-3.5 w-3.5 shrink-0" />
+                                                    <span>{{ child.label|trans }}</span>
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </nav>
+
+                {#
+                    The platform name, its version and its update notice.
+
+                    Hidden while a module owns the panel: the point of a
+                    takeover is that the operator is looking at their
+                    application, and a footer naming the framework underneath is
+                    the one line that gives the game away. None of it is lost —
+                    AACP still shows all three, and AACP is where somebody who
+                    cares about the platform version is working anyway.
+                #}
+                {% if not studioShell.active %}
+                    <div class="sidebar-meta border-t border-neutral-200 px-sp-sm py-sp-xs text-fs-xs text-neutral-500 font-mono">
+                        {{ cp_app_name|default('CPalius CMF') }} · v{{ cp_app_version|default('1.0.0') }}
+                        {# Null status means "no successful check yet" — render nothing
+                           rather than implying the installation is current. #}
+                        {% set cp_release = cp_release_status() %}
+                        {% if cp_release and cp_release.outdated %}
+                            <a href="{{ cp_release.notes_url|default('https://com.net.tr/CPalius/') }}"
+                               target="_blank" rel="noopener"
+                               class="mt-1 block font-sans {{ cp_release.critical ? 'text-red-600' : 'text-amber-600' }}">
+                                {{ cp_release.critical ? '⚠' : '↑' }}
+                                {{ 'aacp.update.available'|trans({ version: cp_release.version }) }}
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </aside>
+
+            <main data-sidebar-main class="dashboard-main">
+                <header class="navbar-header">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <button type="button" data-sidebar-toggle class="sidebar-toggle">
+                            <twig:ux:icon name="tabler:menu-2" class="h-5 w-5" />
+                        </button>
+                        <button type="button" data-sidebar-mobile-toggle class="sidebar-mobile-toggle">
+                            <twig:ux:icon name="tabler:menu-2" class="h-5 w-5" />
+                        </button>
+                        <h1 class="min-w-0 truncate text-fs-md font-semibold text-neutral-900">{% block header %}{{ 'studio.layout.header.default'|trans }}{% endblock %}</h1>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-2">
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            {% block header_actions %}{% endblock %}
+                        </div>
+
+                        <a href="{{ path('theme_cpalius_website_home') }}"
+                           target="_blank"
+                           rel="noopener"
+                           title="{{ 'studio.layout.go_website'|trans }}"
+                           class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-neutral-500 transition hover:border-primary-600 hover:text-primary-600">
+                            <twig:ux:icon name="tabler:external-link" class="h-4 w-4" />
+                        </a>
+
+                        {% if is_granted('system.aacp.access') %}
+                            <button type="button"
+                                    data-quick-cache-clear-trigger
+                                    data-quick-cache-clear-url="{{ path('aacp_cache_rebuild_clear_symfony') }}"
+                                    data-quick-cache-clear-csrf="{{ csrf_token('aacp_cache_rebuild') }}"
+                                    title="{{ 'studio.layout.clear_cache'|trans }}"
+                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-neutral-500 transition hover:border-primary-600 hover:text-primary-600">
+                                <twig:ux:icon name="heroicons:bolt" class="h-4 w-4" />
+                            </button>
+                        {% endif %}
+
+                        {{ include('admin/_header_actions.html.twig') }}
+                    </div>
+                </header>
+
+                {% if is_granted('system.aacp.access') %}
+                    <div data-quick-cache-clear-modal class="modal-overlay">
+                        <div class="modal-panel">
+                            <div class="modal-header">
+                                <h2 class="text-fs-md font-semibold text-neutral-900">{{ 'studio.layout.clear_cache_modal.title'|trans }}</h2>
+                                <button type="button" data-quick-cache-clear-modal-close class="text-neutral-400 hover:text-neutral-600">
+                                    <twig:ux:icon name="tabler:x" class="h-5 w-5" />
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <p data-quick-cache-clear-modal-status
+                                   data-running-text="{{ 'studio.layout.clear_cache_modal.running'|trans }}"
+                                   data-success-text="{{ 'studio.layout.clear_cache_modal.success'|trans }}"
+                                   data-error-text="{{ 'studio.layout.clear_cache_modal.error'|trans }}"
+                                   data-request-failed="{{ 'aacp.cache_rebuild.log.request_failed'|trans({error: '{error}'}) }}"
+                                   data-not-json="{{ 'aacp.cache_rebuild.log.not_json'|trans({status: '{status}'}) }}"
+                                   class="mb-3 text-fs-sm text-neutral-600">
+                                    {{ 'studio.layout.clear_cache_modal.running'|trans }}
+                                </p>
+                                <div data-quick-cache-clear-modal-log class="space-y-1"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" data-quick-cache-clear-modal-close class="btn btn-sm btn-neutral">
+                                    {{ 'studio.layout.clear_cache_modal.close'|trans }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="pointer-events-none fixed right-sp-md top-[5.25rem] z-40 flex flex-col gap-2" data-toast-stack>
+                    {% for label, messages in app.flashes %}
+                        {% for message in messages %}
+                            <div class="toast {{ label == 'error' ? 'toast-error' : 'toast-success' }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+
+                <div class="p-sp-md">
+                    {% block body %}{% endblock %}
+                </div>
+            </main>
+        </div>
+    </body>
+</html>

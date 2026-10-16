@@ -1,0 +1,11 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.moderation.header'|trans({'title': node.title}) }}{% endblock %}
+
+{% block body %}
+    <twig:cp:card title="{{ 'aacp.moderation.state'|trans }}">
+        <p class="text-fs-sm !text-slate-500">
+            {{ 'aacp.moderation.disabled'|trans({'type': node.type}) }}
+        </p>
+    </twig:cp:card>
+{% endblock %}

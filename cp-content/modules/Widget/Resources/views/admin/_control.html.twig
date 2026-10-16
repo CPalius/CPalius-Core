@@ -1,0 +1,18 @@
+{# One input of a widget type's own settings. A partial rather than a macro: the settings sit inside a
+   <twig:studio:card>, whose content renders in its own scope where this template's macros do not exist.
+   Expects: field, name, value, lang. #}
+{% if field.type == 'number' %}
+    <input type="number" name="{{ name }}" value="{{ value }}" min="{{ field.min }}"{% if field.max > 0 %} max="{{ field.max }}"{% endif %} class="form-control">
+{% elseif field.type == 'select' %}
+    <select name="{{ name }}" class="form-select">
+        {% for optionValue, optionLabel in field.options %}
+            <option value="{{ optionValue }}" {{ value == optionValue ? 'selected' : '' }}>{{ optionLabel|trans }}</option>
+        {% endfor %}
+    </select>
+{% elseif field.type in ['textarea', 'html'] %}
+    <textarea name="{{ name }}" rows="{{ field.type == 'html' ? 8 : 4 }}" class="form-control {{ field.type == 'html' ? 'font-mono text-fs-xs' : '' }}"{% if lang %} lang="{{ lang }}"{% endif %}>{{ value }}</textarea>
+{% elseif field.type == 'url' %}
+    <input type="text" inputmode="url" name="{{ name }}" value="{{ value }}" class="form-control" placeholder="https://">
+{% else %}
+    <input type="text" name="{{ name }}" value="{{ value }}" class="form-control"{% if lang %} lang="{{ lang }}"{% endif %}>
+{% endif %}

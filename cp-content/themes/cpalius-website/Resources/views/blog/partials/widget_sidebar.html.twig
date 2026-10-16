@@ -1,0 +1,4 @@
+{#
+    Embeds BlogWidgetPlugin in sidebar — cp_plugin() returns empty if inactive or on error (PluginRuntime); never breaks page render.
+#}
+{{ cp_plugin('blog_widget', {locale: app.request.locale}) }}

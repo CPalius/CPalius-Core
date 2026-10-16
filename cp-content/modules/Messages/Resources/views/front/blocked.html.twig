@@ -1,0 +1,32 @@
+{% extends '@MessagesModule/front/layout.html.twig' %}
+
+{% block title %}{{ 'messages.blocked.title'|trans }}{% endblock %}
+
+{% block messages_main %}
+<div class="messages-page">
+    <h1>{{ 'messages.blocked.heading'|trans }}</h1>
+    <nav class="messages-nav">
+        <a href="{{ path('messages_inbox') }}">{{ 'messages.nav.inbox'|trans }}</a>
+        <a href="{{ path('messages_blocked') }}" class="is-active">{{ 'messages.nav.blocked'|trans }}</a>
+    </nav>
+
+    {% if blocks is empty %}
+        <p class="messages-empty">{{ 'messages.blocked.empty'|trans }}</p>
+    {% else %}
+        <ul class="messages-list">
+            {% for block in blocks %}
+                <li>
+                    <div class="row">
+                        <strong>{{ block.blocked.publicDisplayName }}</strong>
+                        <span class="meta">{{ block.createdAt|date('d.m.Y') }}{% if block.reason %} · {{ block.reason }}{% endif %}</span>
+                        <form method="post" action="{{ path('messages_unblock', {id: block.blocked.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
+                            <button class="messages-btn messages-btn--ghost">{{ 'messages.action.unblock'|trans }}</button>
+                        </form>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+{% endblock %}

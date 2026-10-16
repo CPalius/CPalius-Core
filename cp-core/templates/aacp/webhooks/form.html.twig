@@ -1,0 +1,59 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ subscription ? 'aacp.webhooks.form.header_edit'|trans : 'aacp.webhooks.form.header_create'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md lg:w-[61.8%]">
+        {% if app.request.query.get('error') %}
+            <div class="toast toast-error">{{ app.request.query.get('error') }}</div>
+        {% endif %}
+
+        <twig:cp:card title="{{ 'aacp.webhooks.form.section_info'|trans }}">
+            <form method="post" action="{{ path('aacp_webhooks_save') }}" class="space-y-sp-sm">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                {% if subscription %}
+                    <input type="hidden" name="id" value="{{ subscription.id }}">
+                {% endif %}
+
+                <div>
+                    <label class="form-label !text-slate-400">{{ 'aacp.webhooks.form.label'|trans }}</label>
+                    <input type="text" name="label" value="{{ subscription ? subscription.label : '' }}" required maxlength="191"
+                           placeholder="{{ 'aacp.webhooks.form.label_placeholder'|trans }}"
+                           class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                </div>
+
+                <div>
+                    <label class="form-label !text-slate-400">{{ 'aacp.webhooks.form.url'|trans }}</label>
+                    <input type="url" name="url" value="{{ subscription ? subscription.url : '' }}" required inputmode="url"
+                           placeholder="https://example.com/webhooks/cpalius"
+                           class="form-control !border-white/10 !bg-dark-1 font-mono !text-slate-100">
+                    <p class="mt-1 text-fs-xs !text-slate-600">{{ 'aacp.webhooks.form.url_hint'|trans }}</p>
+                </div>
+
+                <div>
+                    <label class="form-label !text-slate-400">{{ 'aacp.webhooks.form.events'|trans }}</label>
+                    <textarea name="events" rows="4" required
+                              placeholder="resource.invoice.created&#10;resource.invoice.updated"
+                              class="form-control !border-white/10 !bg-dark-1 font-mono !text-slate-100">{{ subscription ? subscription.events|join("\n") : '' }}</textarea>
+                    <p class="mt-1 text-fs-xs !text-slate-600">{{ 'aacp.webhooks.form.events_hint'|trans }}</p>
+                </div>
+
+                {% if subscription %}
+                    <p class="text-fs-xs !text-slate-500">
+                        {{ 'aacp.webhooks.form.secret_current'|trans }} <span class="font-mono">••••{{ subscription.secretLast4 }}</span>
+                        — {{ 'aacp.webhooks.form.secret_rotate_hint'|trans }}
+                    </p>
+                {% endif %}
+
+                <div class="rounded-lg bg-dark-1 p-sp-xs text-fs-xs !text-slate-500">
+                    {{ 'aacp.webhooks.form.signature_note'|trans({'header': signatureHeader}) }}
+                </div>
+
+                <div class="flex items-center gap-3 pt-sp-xs">
+                    <button type="submit" class="btn btn-primary">{{ 'aacp.settings.save'|trans }}</button>
+                    <a href="{{ path('aacp_webhooks') }}" class="text-fs-sm !text-slate-400 hover:!text-slate-200">{{ 'aacp.cron.form.cancel'|trans }}</a>
+                </div>
+            </form>
+        </twig:cp:card>
+    </div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'media.settings.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_media_index') }}" class="btn btn-sm btn-neutral">{{ 'media.settings.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <form method="post" class="space-y-sp-sm">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_media_settings') }}">
+
+        <twig:studio:card title="{{ 'media.settings.types.title'|trans }}">
+            <p class="mb-3 text-fs-sm text-neutral-600">{{ 'media.settings.types.lead'|trans }}</p>
+            {% for group, extensions in catalog %}
+                <fieldset class="mb-4">
+                    <legend class="mb-1 text-fs-sm font-semibold text-neutral-800">{{ ('media.settings.group.' ~ group)|trans }}</legend>
+                    <div class="flex flex-wrap gap-x-5 gap-y-2">
+                        {% for extension in extensions %}
+                            <label class="flex items-center gap-2 text-fs-sm">
+                                <input type="checkbox" name="extensions[]" value="{{ extension }}" {{ extension in enabled ? 'checked' : '' }}>
+                                <span class="font-mono">.{{ extension }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+            {% endfor %}
+            <p class="mb-0 text-fs-xs text-neutral-500">{{ 'media.settings.types.safety'|trans }}</p>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'media.settings.size.title'|trans }}">
+            <label class="form-label" for="media-max-mb">{{ 'media.settings.size.label'|trans }}</label>
+            <div class="flex max-w-xs items-center gap-2">
+                <input id="media-max-mb" type="number" name="max_mb" class="form-control" min="0" max="100000" value="{{ maxMb }}">
+                <span class="text-fs-sm text-neutral-500">MB</span>
+            </div>
+            <p class="mt-2 mb-0 text-fs-xs text-neutral-500">{{ 'media.settings.size.help'|trans({server: serverLabel, effective: effectiveLabel}) }}</p>
+        </twig:studio:card>
+
+        <button type="submit" class="btn btn-primary">{{ 'media.settings.save'|trans }}</button>
+    </form>
+{% endblock %}

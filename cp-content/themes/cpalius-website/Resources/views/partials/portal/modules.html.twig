@@ -1,0 +1,28 @@
+{% set t = 'portal' %}
+<section class="section section-light" id="modules">
+    <div class="container">
+        <div class="section-header fade-in">
+            <span class="section-label">{{ 'modules.label'|trans({}, t) }}</span>
+            <h2 class="section-title">{{ 'modules.title'|trans({}, t) }}</h2>
+            <p class="section-desc">{{ 'modules.desc'|trans({}, t) }}</p>
+        </div>
+
+        <div class="grid-3 fade-in">
+            <div class="card">
+                <div class="card-icon"><i class="bi bi-file-earmark-text"></i></div>
+                <h5 class="card-title">{{ 'modules.blog_title'|trans({}, t) }}</h5>
+                <p class="card-text">{{ 'modules.blog_text_html'|trans({}, t)|raw }}</p>
+            </div>
+            <div class="card">
+                <div class="card-icon"><i class="bi bi-images"></i></div>
+                <h5 class="card-title">{{ 'modules.media_title'|trans({}, t) }}</h5>
+                <p class="card-text">{{ 'modules.media_text_html'|trans({}, t)|raw }}</p>
+            </div>
+            <div class="card">
+                <div class="card-icon"><i class="bi bi-list-nested"></i></div>
+                <h5 class="card-title">{{ 'modules.menu_title'|trans({}, t) }}</h5>
+                <p class="card-text">{{ 'modules.menu_text_html'|trans({}, t)|raw }}</p>
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,27 @@
+{% if captchaEnabled and captchaConfig.site_key %}
+    {% if captchaConfig.provider == 'recaptcha' and captchaConfig.recaptcha_version == 'v2' %}
+        <script{{ csp_nonce_attr() }} src="https://www.google.com/recaptcha/api.js" async defer></script>
+    {% elseif captchaConfig.provider == 'recaptcha' %}
+        <script{{ csp_nonce_attr() }} src="https://www.google.com/recaptcha/api.js?render={{ captchaConfig.site_key }}"></script>
+        <script{{ csp_nonce_attr() }}>
+            (function () {
+                const form = document.querySelector('form[method="post"]');
+                if (!form || typeof grecaptcha === 'undefined') return;
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    grecaptcha.ready(function () {
+                        grecaptcha.execute('{{ captchaConfig.site_key }}', { action: 'submit' }).then(function (token) {
+                            const input = document.getElementById('g-recaptcha-response');
+                            if (input) input.value = token;
+                            form.submit();
+                        });
+                    });
+                });
+            })();
+        </script>
+    {% elseif captchaConfig.provider == 'turnstile' %}
+        <script{{ csp_nonce_attr() }} src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    {% elseif captchaConfig.provider == 'hcaptcha' %}
+        <script{{ csp_nonce_attr() }} src="https://js.hcaptcha.com/1/api.js" async defer></script>
+    {% endif %}
+{% endif %}

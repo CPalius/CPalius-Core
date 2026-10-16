@@ -1,0 +1,154 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.languages.header'|trans }}{% endblock %}
+
+{% block javascripts %}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'aacp-languages']) }}
+{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md" data-languages-root
+         data-i18n-running="{{ 'aacp.languages.ai.running'|trans }}"
+         data-i18n-done="{{ 'aacp.languages.ai.done'|trans }}"
+         data-i18n-partial="{{ 'aacp.languages.ai.partial'|trans }}"
+         data-i18n-error="{{ 'aacp.languages.ai.error'|trans }}">
+
+        <p class="text-fs-sm !text-slate-400">{{ 'aacp.languages.intro'|trans({source: sourceCode}) }}</p>
+
+        <twig:cp:card title="{{ 'aacp.languages.add.title'|trans }}">
+            <form method="post" action="{{ path('aacp_languages_add') }}" class="space-y-sp-sm">
+                <input type="hidden" name="_token" value="{{ csrf_token('aacp_languages') }}">
+
+                <div class="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <div>
+                        <label for="preset" class="form-label !text-slate-400">{{ 'aacp.languages.add.preset'|trans }}</label>
+                        <select id="preset" name="preset" class="form-select !border-white/10 !bg-dark-1 !text-slate-100">
+                            <option value="">{{ 'aacp.languages.add.preset_none'|trans }}</option>
+                            {% for code, lang in presets %}
+                                <option value="{{ code }}">{{ lang.native }} — {{ lang.name }} ({{ code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button type="submit" class="btn btn-primary">
+                            <twig:ux:icon name="heroicons:plus" class="h-3.5 w-3.5" />
+                            {{ 'aacp.languages.add.submit'|trans }}
+                        </button>
+                    </div>
+                </div>
+
+                <details class="rounded-lg border border-white/10 px-3 py-2">
+                    <summary class="cursor-pointer text-fs-sm !text-slate-400">{{ 'aacp.languages.add.manual'|trans }}</summary>
+                    <div class="mt-sp-sm grid gap-3 md:grid-cols-3">
+                        <div>
+                            <label for="code" class="form-label !text-slate-400">{{ 'aacp.locales.form.code'|trans }}</label>
+                            <input type="text" id="code" name="code" maxlength="5" placeholder="{{ 'aacp.locales.form.placeholder.code'|trans }}"
+                                   class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                        </div>
+                        <div>
+                            <label for="name" class="form-label !text-slate-400">{{ 'aacp.locales.form.name'|trans }}</label>
+                            <input type="text" id="name" name="name" placeholder="{{ 'aacp.locales.form.placeholder.name'|trans }}"
+                                   class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                        </div>
+                        <div>
+                            <label for="native_name" class="form-label !text-slate-400">{{ 'aacp.locales.form.native_name'|trans }}</label>
+                            <input type="text" id="native_name" name="native_name" placeholder="{{ 'aacp.locales.form.placeholder.native_name'|trans }}"
+                                   class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                        </div>
+                    </div>
+                    <p class="mt-2 text-fs-xs !text-slate-500">{{ 'aacp.languages.add.manual_hint'|trans }}</p>
+                </details>
+            </form>
+        </twig:cp:card>
+
+        <twig:cp:card padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.system_settings.locales.code'|trans,
+                'aacp.languages.col.language'|trans,
+                'aacp.system_settings.locales.status'|trans,
+                'aacp.languages.col.translated'|trans,
+                'aacp.languages.col.content'|trans,
+                'aacp.system_settings.locales.actions'|trans,
+            ] }}" empty="{{ locales is empty }}" emptyText="{{ 'aacp.system_settings.locales.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for locale in locales %}
+                        {% set stat = completeness[locale.code] %}
+                        <tr data-language-row="{{ locale.code }}">
+                            <td><span class="inline-flex items-center rounded-md border border-white/10 !bg-dark-1 px-2 py-0.5 font-mono text-fs-xs !text-slate-300">{{ locale.code }}</span></td>
+                            <td>
+                                <a href="{{ path('aacp_locales_edit', {id: locale.id}) }}" class="font-medium !text-slate-200 hover:!text-primary-300">{{ locale.name }}</a>
+                                <div class="text-fs-xs !text-slate-500">{{ locale.nativeName }}</div>
+                            </td>
+                            <td>
+                                <div class="flex flex-wrap gap-1">
+                                    {% if locale.default %}<span class="badge badge-primary !bg-primary-500/15 !text-primary-300">{{ 'aacp.system_settings.locales.default_badge'|trans }}</span>{% endif %}
+                                    <span class="badge {{ locale.active ? 'badge-success !bg-success-500/15 !text-success-300' : 'badge-neutral !bg-white/5 !text-slate-400' }}">
+                                        {{ locale.active ? 'aacp.system_settings.locales.active'|trans : 'aacp.system_settings.locales.inactive'|trans }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="min-w-[11rem]">
+                                {% if locale.code == sourceCode %}
+                                    <span class="text-fs-xs !text-slate-500">{{ 'aacp.languages.source'|trans }}</span>
+                                {% else %}
+                                    <div class="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                                        <div class="h-full rounded-full bg-primary-500" data-ai-bar style="width: {{ stat.percent }}%"></div>
+                                    </div>
+                                    <div class="mt-1 text-fs-xs !text-slate-400">
+                                        <span data-ai-percent>{{ stat.percent }}</span>% · <span data-ai-remaining>{{ stat.total - stat.translated }}</span> {{ 'aacp.languages.missing'|trans }}
+                                    </div>
+                                    <div class="text-fs-xs !text-slate-500" data-ai-status aria-live="polite"></div>
+                                {% endif %}
+                            </td>
+                            <td class="!text-slate-400">{{ usage[locale.code]|default(0) }}</td>
+                            <td>
+                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                    <a href="{{ path('aacp_localization', {locale: locale.code}) }}" class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-300">{{ 'aacp.languages.action.texts'|trans }}</a>
+                                    <a href="{{ path('aacp_locales_edit', {id: locale.id}) }}" class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-300">{{ 'aacp.system_settings.locales.edit'|trans }}</a>
+
+                                    {% if aiAvailable and not locale.default and locale.active and stat.percent < 100 %}
+                                        <button type="button" data-ai-translate data-url="{{ path('aacp_languages_ai_translate', {code: locale.code}) }}" data-token="{{ csrf_token('aacp_languages') }}"
+                                                class="text-fs-xs font-semibold !text-primary-400 hover:!text-primary-300">
+                                            ✨ {{ 'aacp.languages.action.ai'|trans }}
+                                        </button>
+                                    {% endif %}
+
+                                    {% if not locale.default and locale.active %}
+                                        <form method="post" action="{{ path('aacp_languages_default', {id: locale.id}) }}" class="inline">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('aacp_languages') }}">
+                                            <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-300">{{ 'aacp.system_settings.locales.make_default'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+
+                                    {% if not (locale.default and locale.active) %}
+                                        <form method="post" action="{{ path('aacp_languages_toggle', {id: locale.id}) }}" class="inline">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('aacp_languages') }}">
+                                            <button type="submit" class="text-fs-xs font-medium {{ locale.active ? '!text-slate-400 hover:!text-warning-300' : '!text-primary-400 hover:!text-success-300' }}">
+                                                {{ locale.active ? 'aacp.system_settings.locales.deactivate'|trans : 'aacp.system_settings.locales.activate'|trans }}
+                                            </button>
+                                        </form>
+                                    {% endif %}
+
+                                    {% if not locale.default %}
+                                        <form method="post" action="{{ path('aacp_languages_delete', {id: locale.id}) }}" class="inline"
+                                              data-confirm="{{ 'aacp.languages.confirm_delete'|trans({name: locale.name}) }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('aacp_languages') }}">
+                                            <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">{{ 'aacp.languages.action.delete'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+
+        <div class="flex flex-wrap gap-sp-sm text-fs-sm">
+            <a href="{{ path('aacp_localization') }}" class="!text-primary-400 hover:!text-primary-300">{{ 'aacp.languages.link.editor'|trans }}</a>
+            {% if not aiAvailable %}
+                <span class="!text-slate-500">{{ 'aacp.languages.ai.unavailable'|trans }}</span>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,1246 @@
+@import "tailwindcss";
+
+/* Tailwind'in tarayacağı şablon kaynakları: çekirdek + tüm modül arayüzleri.
+   AssetMapper/Node.js olmadığı için içerik yolları CSS içinden @source ile
+   tanımlanır (Tailwind v4 "Zero Node.js" yaklaşımı). */
+@source "../../templates/**/*.twig";
+@source "../../../cp-content/modules/*/Resources/views/**/*.twig";
+@source "../../../cp-content/themes/**/*.twig";
+
+/*
+ * CPalius Design System — Wowdash Entegrasyonu
+ *
+ * Bu token seti, satın alınan "Wowdash" (wowtheme7) Tailwind admin temasının
+ * renk paleti, tipografi ölçeği ve bileşen dilinden üretilmiştir
+ * (bkz. Tailwind-CSS-admin-panel/src/assets/scss). Kaynak tema klasörüne
+ * runtime bağımlılığı YOKTUR — tüm değerler burada birebir taşınmıştır,
+ * kaynak klasör silinse bile bu dosya bağımsız çalışır.
+ *
+ * Spacing/font-size token adları (sp-*, fs-*) geriye dönük uyumluluk için
+ * korunmuştur; şablonlar bu adları değiştirmeden kullanmaya devam eder.
+ */
+@theme {
+    /* Wowdash Primary (mavi) */
+    --color-primary-50: #E4F1FF;
+    --color-primary-100: #BFDCFF;
+    --color-primary-200: #95C7FF;
+    --color-primary-300: #6BB1FF;
+    --color-primary-400: #519FFF;
+    --color-primary-500: #458EFF;
+    --color-primary-600: #487FFF;
+    --color-primary-700: #486CEA;
+    --color-primary-800: #4759D6;
+    --color-primary-900: #4536B6;
+
+    /* Wowdash Neutral (gri tonları) */
+    --color-neutral-50: #F5F6FA;
+    --color-neutral-100: #F3F4F6;
+    --color-neutral-200: #EBECEF;
+    --color-neutral-300: #D1D5DB;
+    --color-neutral-400: #9CA3AF;
+    --color-neutral-500: #6B7280;
+    --color-neutral-600: #4B5563;
+    --color-neutral-700: #374151;
+    --color-neutral-800: #1F2937;
+    --color-neutral-900: #111827;
+
+    /* Wowdash Danger */
+    --color-danger-50: #FEF2F2;
+    --color-danger-100: #FEE2E2;
+    --color-danger-200: #FECACA;
+    --color-danger-300: #FCA5A5;
+    --color-danger-400: #F87171;
+    --color-danger-500: #EF4444;
+    --color-danger-600: #DC2626;
+    --color-danger-700: #B91C1C;
+    --color-danger-800: #991B1B;
+    --color-danger-900: #7F1D1D;
+
+    /* Wowdash Success */
+    --color-success-50: #F0FDF4;
+    --color-success-100: #DCFCE7;
+    --color-success-200: #BBF7D0;
+    --color-success-300: #86EFAC;
+    --color-success-400: #4ADE80;
+    --color-success-500: #22C55E;
+    --color-success-600: #16A34A;
+    --color-success-700: #15803D;
+    --color-success-800: #166534;
+    --color-success-900: #14532D;
+
+    /* Wowdash Warning */
+    --color-warning-50: #FEFCE8;
+    --color-warning-100: #FEF9C3;
+    --color-warning-200: #FEF08A;
+    --color-warning-300: #FDE047;
+    --color-warning-400: #FACC15;
+    --color-warning-500: #EAB308;
+    --color-warning-600: #FF9F29;
+    --color-warning-700: #F39016;
+    --color-warning-800: #E58209;
+    --color-warning-900: #D77907;
+
+    /* Wowdash Info */
+    --color-info-50: #EFF6FF;
+    --color-info-100: #DBEAFE;
+    --color-info-200: #BFDBFE;
+    --color-info-300: #93C5FD;
+    --color-info-400: #60A5FA;
+    --color-info-500: #3B82F6;
+    --color-info-600: #2563EB;
+    --color-info-700: #1D4ED8;
+    --color-info-800: #1E40AF;
+    --color-info-900: #1E3A8A;
+
+    /* Wowdash Dark yüzey tonları (AACP koyu kabuk için) */
+    --color-dark-1: #1B2431;
+    --color-dark-2: #273142;
+    --color-dark-3: #323D4E;
+
+    /* Wowdash marka vurgu renkleri */
+    --color-purple: #8252E9;
+    --color-lilac-600: #8252E9;
+    --color-lilac-700: #6F37E6;
+    --color-lilac-800: #601EEF;
+    --color-cyan-600: #00B8F2;
+
+    /* Font ailesi */
+    --font-sans: 'Inter', sans-serif;
+
+    /* Spacing (geriye dönük token adları, Wowdash spacing ölçeğine eşlendi) */
+    --spacing-sp-xs: 0.625rem;
+    --spacing-sp-sm: 1rem;
+    --spacing-sp-md: 1.5rem;
+    --spacing-sp-lg: 2.5rem;
+
+    /* Font Sizes (geriye dönük token adları) */
+    --text-fs-xs: 0.75rem;
+    --text-fs-sm: 0.875rem;
+    --text-fs-base: 0.9375rem;
+    --text-fs-md: 1rem;
+    --text-fs-lg: 1.125rem;
+    --text-fs-xl: 1.5rem;
+
+    /* Border Radius (Wowdash: yumuşak, modern köşeler) */
+    --radius-sm: 0.375rem;
+    --radius-DEFAULT: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+
+    /* Ekran genişlikleri (Wowdash ölçeği) */
+    --breakpoint-sm: 576px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 992px;
+    --breakpoint-xl: 1200px;
+    --breakpoint-2xl: 1400px;
+    --breakpoint-3xl: 1650px;
+}
+
+/*
+ * Wowdash Bileşen Katmanı
+ *
+ * Wowdash'ın SCSS @apply katmanlarından (layouts/_sidebar.scss,
+ * layouts/_navbar.scss, components/_card.scss, components/_button.scss,
+ * components/_table.scss, components/_dropdown.scss, components/_form.scss)
+ * birebir taşınmış, Tailwind v4 @layer components sözdizimine çevrilmiştir.
+ */
+@layer components {
+    /* --- Sidebar --- */
+    .sidebar {
+        @apply fixed start-[-105%] xl:start-0 top-0 w-[250px] xl:w-[220px] 2xl:w-[250px] h-screen bg-white z-30 transition-all duration-300;
+    }
+    .sidebar.sidebar-open {
+        @apply start-0;
+    }
+    .sidebar.active {
+        @apply xl:start-0 xl:w-[72px] xl:overflow-visible;
+    }
+    .sidebar.active .sidebar-logo {
+        @apply justify-center px-2;
+    }
+    .sidebar.active .sidebar-logo > div,
+    .sidebar.active .sidebar-meta,
+    .sidebar.active .sidebar-menu-group-title,
+    .sidebar.active .submenu-caret,
+    .sidebar.active .sidebar-menu > li > a > span {
+        @apply hidden;
+    }
+    .sidebar.active .sidebar-menu-area {
+        @apply overflow-visible px-2;
+    }
+    .sidebar.active .sidebar-menu > li {
+        @apply relative;
+    }
+    .sidebar.active .sidebar-menu > li > a {
+        @apply justify-center px-2;
+    }
+    .sidebar.active .sidebar-submenu {
+        @apply !hidden;
+    }
+    .sidebar.active .sidebar-menu > li.dropdown:hover > .sidebar-submenu,
+    .sidebar.active .sidebar-menu > li.dropdown:focus-within > .sidebar-submenu {
+        @apply !block absolute start-full top-0 z-40 ms-1 min-w-[13rem] !ps-0 !pt-2 rounded-lg border border-neutral-200 bg-white py-2 shadow-lg;
+    }
+    .sidebar.active .sidebar-submenu li a {
+        @apply justify-start;
+    }
+    .sidebar.active .sidebar-submenu li a span {
+        @apply inline;
+    }
+    .aacp-shell .sidebar.active .sidebar-menu > li.dropdown:hover > .sidebar-submenu,
+    .aacp-shell .sidebar.active .sidebar-menu > li.dropdown:focus-within > .sidebar-submenu {
+        @apply !border-white/10 !bg-dark-2;
+    }
+    .sidebar-close-btn {
+        @apply absolute top-0 end-[0.625rem] w-[1.75rem] h-[1.75rem] border border-neutral-300 rounded-full inline-flex justify-center items-center xl:hidden;
+    }
+    .sidebar-logo {
+        @apply h-[72px] px-4 py-[14px] border-e border-b border-neutral-200 flex items-center justify-start gap-2;
+    }
+    .sidebar-logo img {
+        @apply max-h-[3.4375rem];
+    }
+    .sidebar-menu-area {
+        @apply h-[calc(100vh-72px)] px-4 py-3 overflow-y-auto border-e border-neutral-200;
+    }
+    .sidebar-menu-group-title {
+        @apply text-neutral-500 font-semibold my-2 text-fs-xs uppercase tracking-wider px-3 pt-3;
+    }
+    .sidebar-menu {
+        @apply space-y-1;
+    }
+    .sidebar-menu li a {
+        @apply px-3 py-2.5 font-medium flex items-center gap-2 text-neutral-600 transition rounded-lg text-fs-sm;
+    }
+    .sidebar-menu li a:hover {
+        @apply text-primary-600 bg-primary-50;
+    }
+    .sidebar-menu li a.active-page,
+    .sidebar-menu li.dropdown.open > a,
+    .sidebar-menu li.dropdown.dropdown-open > a {
+        @apply bg-primary-600 text-white;
+    }
+    .sidebar-menu li a.active-page:hover,
+    .sidebar-menu li.dropdown.open > a:hover,
+    .sidebar-menu li.dropdown.dropdown-open > a:hover {
+        @apply text-white;
+    }
+    .sidebar-menu li a .menu-icon {
+        @apply text-[1.125rem] shrink-0;
+    }
+    .submenu-caret {
+        @apply flex h-6 w-6 shrink-0 items-center justify-center rounded transition-transform duration-200 hover:bg-black/10;
+    }
+    .sidebar-menu li.dropdown.open > a .submenu-caret {
+        @apply rotate-180;
+    }
+    .sidebar-menu .sidebar-submenu {
+        @apply pt-3 hidden ps-6 space-y-1;
+    }
+    .sidebar-menu .sidebar-submenu.open {
+        @apply block;
+    }
+    .sidebar-menu .sidebar-submenu li a {
+        @apply px-3 py-1.5 text-fs-xs;
+    }
+    .sidebar-menu .sidebar-submenu li.active-page a {
+        @apply bg-primary-50 text-primary-700 font-semibold;
+    }
+
+    /* --- Dashboard main (sidebar sabit/fixed olduğu için, içeriğin
+       sidebar'ın altında kalmaması adına sidebar genişliği kadar
+       margin-inline-start verir; bkz. Wowdash _dashboard-body.scss) --- */
+    .dashboard-main {
+        @apply ms-0 xl:ms-[220px] 2xl:ms-[250px] min-w-0 flex-1 overflow-y-auto transition-all duration-300;
+    }
+    .dashboard-main.sidebar-collapsed {
+        @apply xl:ms-[72px];
+    }
+
+    /* --- Navbar / Header --- */
+    .navbar-header {
+        @apply sticky top-0 z-20 flex min-h-[4.5rem] min-w-0 items-center justify-between gap-3 border-b border-neutral-200 bg-white px-6 py-4;
+    }
+    .sidebar-toggle,
+    .sidebar-mobile-toggle {
+        @apply leading-none text-neutral-900 cursor-pointer;
+    }
+    .sidebar-toggle {
+        @apply hidden xl:inline-flex;
+    }
+    .sidebar-mobile-toggle {
+        @apply inline-flex xl:hidden;
+    }
+    .navbar-search {
+        @apply relative hidden lg:inline-block;
+    }
+    .navbar-search input {
+        @apply w-[24.25rem] h-10 bg-neutral-50 border border-neutral-300 rounded-lg py-[0.3125rem] ps-10 pe-5 text-neutral-900 text-fs-sm;
+    }
+    .navbar-search input:focus {
+        @apply border-primary-600 outline-none ring-1 ring-primary-600;
+    }
+    .navbar-search .icon {
+        @apply absolute top-1/2 -translate-y-1/2 start-3 text-[1.125rem] text-neutral-500;
+    }
+    .header-icon-btn {
+        @apply flex h-10 w-10 items-center justify-center rounded-full transition;
+    }
+
+    /* --- Overlay (mobil sidebar) --- */
+    .sidebar-overlay {
+        @apply fixed inset-0 z-20 hidden bg-neutral-900/50;
+    }
+    .sidebar-overlay.open {
+        @apply block xl:hidden;
+    }
+
+    /* --- Kart --- */
+    .card {
+        @apply bg-white rounded-lg border border-neutral-200 shadow-sm;
+    }
+    .card-header {
+        @apply border-b border-neutral-200 px-6 py-3 flex items-center justify-between gap-3;
+    }
+    .card-body {
+        @apply px-6 py-5;
+    }
+
+    /* --- Buton --- */
+    .btn {
+        @apply rounded-lg py-2.5 px-5 inline-flex items-center justify-center gap-2 transition text-fs-sm font-medium cursor-pointer disabled:cursor-not-allowed disabled:opacity-60;
+    }
+    .btn-sm {
+        @apply py-1.5 px-3.5 text-fs-xs;
+    }
+    .btn-primary {
+        @apply bg-primary-600 text-white hover:bg-primary-700;
+    }
+    .btn-outline-primary {
+        @apply border border-primary-600 text-primary-600 hover:text-white hover:bg-primary-600;
+    }
+    .btn-danger {
+        @apply bg-danger-600 text-white hover:bg-danger-700;
+    }
+    .btn-outline-danger {
+        @apply border border-danger-300 text-danger-600 hover:text-white hover:bg-danger-600;
+    }
+    .btn-neutral {
+        @apply border border-neutral-300 text-neutral-700 hover:bg-neutral-100;
+    }
+
+    /* --- Rozet (badge) --- */
+    .badge {
+        @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-fs-xs font-medium;
+    }
+    .badge-success {
+        @apply bg-success-100 text-success-700;
+    }
+    .badge-danger {
+        @apply bg-danger-100 text-danger-700;
+    }
+    .badge-warning {
+        @apply bg-warning-100 text-warning-800;
+    }
+    .badge-info {
+        @apply bg-info-100 text-info-700;
+    }
+    .badge-neutral {
+        @apply bg-neutral-100 text-neutral-700;
+    }
+
+    /* --- Tablo --- */
+    .table-responsive {
+        @apply overflow-x-auto;
+    }
+    .table {
+        @apply w-full border-separate border-spacing-0 rounded-lg border border-neutral-200;
+    }
+    .table th {
+        @apply px-4 py-3 bg-neutral-50 text-start font-semibold text-fs-xs uppercase tracking-wider text-neutral-600 first:rounded-tl-lg last:rounded-tr-lg;
+    }
+    .table td {
+        @apply px-4 py-3 text-start border-b border-neutral-200 text-fs-sm text-neutral-700;
+    }
+    .table tr:last-child td {
+        @apply border-b-0;
+    }
+    .table tr:last-child td:first-child {
+        @apply rounded-bl-lg;
+    }
+    .table tr:last-child td:last-child {
+        @apply rounded-br-lg;
+    }
+
+    /* --- Form --- */
+    .form-label {
+        @apply text-fs-sm font-semibold text-neutral-700 inline-block mb-2;
+    }
+    .form-control,
+    .form-select {
+        @apply border border-neutral-300 rounded-lg bg-white px-4 py-2.5 w-full text-fs-sm text-neutral-900 transition;
+    }
+    .form-control:focus,
+    .form-select:focus {
+        @apply outline-none border-primary-600 ring-1 ring-primary-600;
+    }
+    .form-control[readonly],
+    .form-control:disabled {
+        @apply bg-neutral-100 border-neutral-300 text-neutral-500;
+    }
+    .form-check-input {
+        @apply border-neutral-400 rounded;
+    }
+
+    /* --- Dropdown --- */
+    .dropdown {
+        @apply relative;
+    }
+    .dropdown-menu {
+        @apply absolute z-40 mt-2 min-w-[12rem] rounded-xl border-0 bg-white p-2 shadow-[0px_13px_30px_10px_rgba(46,45,116,0.08)] hidden;
+    }
+    .dropdown-menu.open {
+        @apply block;
+    }
+    .dropdown-menu a,
+    .dropdown-menu button {
+        @apply flex w-full items-center gap-2 rounded-lg px-3 py-2 text-fs-sm text-neutral-700 transition hover:bg-neutral-50 hover:text-primary-600;
+    }
+
+    /* --- Toast --- */
+    .toast {
+        @apply pointer-events-auto flex items-center gap-2 rounded-lg border px-4 py-3 text-fs-sm font-medium shadow-lg;
+    }
+    .toast-success {
+        @apply border-success-300 bg-success-50 text-success-700;
+    }
+    .toast-error {
+        @apply border-danger-300 bg-danger-50 text-danger-700;
+    }
+
+    /* --- Modal --- */
+    .modal-overlay {
+        @apply fixed inset-0 z-50 hidden items-center justify-center bg-neutral-900/60 p-sp-md;
+    }
+    .modal-overlay.open {
+        @apply flex;
+    }
+    .modal-panel {
+        @apply w-full max-w-lg rounded-xl bg-white shadow-2xl;
+    }
+    .modal-header {
+        @apply flex items-center justify-between border-b border-neutral-200 px-5 py-4;
+    }
+    .modal-body {
+        @apply max-h-[60vh] overflow-y-auto px-5 py-4;
+    }
+    .modal-footer {
+        @apply flex items-center justify-end gap-2 border-t border-neutral-200 px-5 py-4;
+    }
+    .modal-log-line {
+        @apply font-mono text-fs-xs leading-relaxed;
+    }
+
+    .table-compact th {
+        @apply px-3 py-2;
+    }
+    .table-compact td {
+        @apply px-3 py-1.5 text-fs-xs;
+    }
+
+    /* --- Studio Command Desk --- */
+    .studio-cmd {
+        @apply mx-auto w-full max-w-[1600px] space-y-sp-sm pb-sp-sm;
+    }
+    .studio-cmd-actionbar {
+        @apply flex flex-wrap items-start justify-between gap-3;
+    }
+    .studio-cmd-welcome {
+        @apply text-fs-lg font-semibold text-neutral-900;
+    }
+    .studio-cmd-welcome-sub {
+        @apply mt-0.5 text-fs-xs text-neutral-500;
+    }
+    .studio-cmd-dropdown {
+        @apply relative;
+    }
+    .studio-cmd-dropdown-menu {
+        @apply absolute right-0 z-20 mt-1 min-w-[14rem] rounded-lg border border-neutral-200 bg-white py-1 shadow-lg;
+    }
+    .studio-cmd-dropdown-item {
+        @apply flex items-center gap-2 px-3 py-2 text-fs-sm text-neutral-700 hover:bg-neutral-50;
+    }
+    .studio-cmd-kpis {
+        @apply grid grid-cols-2 gap-sp-xs lg:grid-cols-4;
+    }
+    .studio-cmd-kpi {
+        @apply rounded-lg border border-neutral-200 bg-white px-sp-sm py-sp-xs shadow-sm;
+    }
+    .studio-cmd-kpi--action {
+        @apply border-warning-300 bg-warning-50;
+    }
+    .studio-cmd-kpi-label {
+        @apply block text-[0.65rem] font-semibold uppercase tracking-wide text-neutral-500;
+    }
+    .studio-cmd-kpi--action .studio-cmd-kpi-label {
+        @apply text-warning-800;
+    }
+    .studio-cmd-kpi-value {
+        @apply mt-1 block text-xl font-bold leading-none text-neutral-900;
+        font-family: 'Roboto Condensed', Arial, sans-serif;
+    }
+    .studio-cmd-grid {
+        @apply grid grid-cols-1 gap-sp-sm;
+    }
+    @media (min-width: 1024px) {
+        .studio-cmd-grid {
+            grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
+        }
+    }
+    .studio-cmd-side {
+        @apply flex flex-col gap-sp-sm;
+    }
+    .studio-cmd-panel {
+        @apply relative rounded-lg border border-neutral-200 bg-white p-sp-sm shadow-sm;
+    }
+    /* Collapsible panels — same contract as the AACP desk: fold everything
+       after the panel's own header, and never the control that unfolds it. */
+    .studio-cmd-panel[data-studio-widget] > :first-child {
+        @apply pe-7;
+    }
+    .studio-cmd-panel.is-collapsed > :not(:first-child):not(.studio-widget-toggle) {
+        display: none !important;
+    }
+    .studio-cmd-panel.is-collapsed {
+        @apply py-2;
+    }
+    .studio-widget-toggle {
+        @apply absolute end-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded border border-neutral-200 bg-neutral-50 font-mono text-fs-sm leading-none text-neutral-500 transition hover:border-primary-300 hover:text-primary-700;
+    }
+    .studio-cmd-panel-title {
+        @apply mb-2 text-[0.65rem] font-semibold uppercase tracking-wide text-neutral-500;
+    }
+    .studio-cmd-donut {
+        @apply relative mx-auto w-full;
+        height: 11rem;
+        max-height: 11rem;
+    }
+    .studio-cmd-donut canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+    }
+    /* Workbench — workflow places still waiting on a human. */
+    .studio-cmd-workbench {
+        @apply flex flex-col gap-1.5;
+    }
+    .studio-cmd-workbench li {
+        @apply flex items-center justify-between gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-fs-sm text-neutral-600;
+    }
+    .studio-cmd-workbench li.is-actionable {
+        @apply border-primary-300 bg-primary-50 text-primary-800;
+    }
+    .studio-cmd-workbench-label {
+        @apply min-w-0 truncate font-medium;
+    }
+    .studio-cmd-workbench-count {
+        @apply shrink-0 font-mono font-semibold;
+    }
+    .studio-cmd-workbench-note {
+        @apply mt-2 text-fs-xs text-neutral-500;
+    }
+    .studio-cmd-shortcuts {
+        @apply flex flex-col gap-1.5;
+    }
+    .studio-cmd-shortcut {
+        @apply inline-flex items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-fs-sm font-medium text-neutral-700 transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700;
+    }
+
+    /* --- AACP (dark admin shell) --- */
+    .aacp-shell .dashboard-main {
+        @apply bg-dark-1;
+    }
+    .aacp-main-content {
+        @apply mx-auto w-full max-w-[1400px];
+    }
+    .aacp-cmd {
+        @apply space-y-sp-sm;
+    }
+    .aacp-cmd-status {
+        @apply flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-dark-2 px-sp-sm py-sp-xs;
+    }
+    .aacp-cmd-status-left {
+        @apply flex flex-wrap items-center gap-2;
+    }
+    .aacp-cmd-dot {
+        @apply relative flex h-2.5 w-2.5;
+    }
+    .aacp-cmd-dot-ping {
+        @apply absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75;
+    }
+    .aacp-cmd-dot-core {
+        @apply relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.85)];
+    }
+    .aacp-cmd-dot-core.is-down {
+        @apply bg-danger-500 shadow-[0_0_10px_rgba(239,68,68,0.85)];
+    }
+    .aacp-cmd-dot-ping.is-down {
+        @apply bg-danger-400;
+    }
+    .aacp-cmd-status-label {
+        @apply font-mono text-fs-xs font-semibold uppercase tracking-wide text-emerald-400;
+    }
+    .aacp-cmd-status-label.is-down {
+        @apply text-danger-400;
+    }
+    .aacp-cmd-uptime {
+        @apply font-mono text-fs-xs text-slate-500;
+    }
+    .aacp-cmd-actions {
+        @apply flex flex-wrap items-center gap-1.5;
+    }
+    .aacp-cyber-btn {
+        @apply inline-flex items-center gap-1.5 rounded border border-emerald-400/40 bg-emerald-500/10 px-2.5 py-1.5 font-mono text-[0.65rem] font-semibold uppercase tracking-wide text-emerald-300 transition hover:border-emerald-300 hover:bg-emerald-500/20 disabled:cursor-wait disabled:opacity-60;
+    }
+    .aacp-cmd-kpis {
+        @apply grid grid-cols-2 gap-sp-xs lg:grid-cols-4;
+    }
+    .aacp-cmd-kpi {
+        @apply rounded-lg border border-white/10 bg-dark-2 px-sp-sm py-sp-xs;
+    }
+    .aacp-cmd-kpi-label {
+        @apply block text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500;
+    }
+    .aacp-cmd-kpi-value {
+        @apply mt-1 block font-mono text-lg font-semibold leading-none text-slate-100;
+    }
+    .aacp-cmd-kpi-meta {
+        @apply mt-1 block font-mono text-fs-xs text-slate-500;
+    }
+    .aacp-neon-bar {
+        @apply mt-2 h-1 overflow-hidden rounded-full bg-white/10;
+    }
+    .aacp-neon-bar-fill {
+        @apply h-full rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)];
+    }
+    .aacp-cmd-grid {
+        @apply grid grid-cols-1 gap-sp-sm;
+    }
+    @media (min-width: 1024px) {
+        .aacp-cmd-grid {
+            grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
+        }
+    }
+    .aacp-cmd-panel {
+        @apply relative rounded-lg border border-white/10 bg-dark-2 p-sp-sm;
+    }
+    /* Collapsible panels: the first child is the panel's own header, so folding
+       is "hide everything after the title". The toggle is excluded explicitly —
+       it is appended last by the script, and hiding the control that expands
+       the panel would make the fold one-way. */
+    .aacp-cmd-panel[data-aacp-widget] > :first-child {
+        @apply pe-7;
+    }
+    .aacp-cmd-panel.is-collapsed > :not(:first-child):not(.aacp-widget-toggle) {
+        display: none !important;
+    }
+    .aacp-cmd-panel.is-collapsed {
+        @apply py-2;
+    }
+    .aacp-widget-toggle {
+        @apply absolute end-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded border border-white/10 bg-white/5 font-mono text-fs-sm leading-none text-slate-400 transition hover:border-emerald-400/50 hover:text-emerald-300;
+    }
+    .aacp-cmd-panel-title {
+        @apply mb-2 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500;
+    }
+    .aacp-cmd-feed {
+        @apply w-full border-separate border-spacing-0;
+    }
+    .aacp-cmd-feed th {
+        @apply border-b border-white/10 px-2 py-2 text-start font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-cmd-feed td {
+        @apply border-b border-white/5 px-2 py-2 font-mono text-fs-xs text-slate-300;
+    }
+    .aacp-cmd-feed tr:last-child td {
+        @apply border-b-0;
+    }
+    .aacp-perf {
+        @apply mt-sp-sm;
+    }
+    .aacp-perf-grid {
+        @apply grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6;
+    }
+    .aacp-perf-card {
+        @apply rounded-md border border-white/10 bg-dark-1 px-2.5 py-2;
+    }
+    .aacp-perf-card-name {
+        @apply block font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-perf-card-status {
+        @apply mt-1 inline-block font-mono text-[0.65rem] uppercase;
+    }
+    .aacp-perf-card-status.is-on {
+        @apply text-emerald-300;
+    }
+    .aacp-perf-card-status.is-off {
+        @apply text-slate-500;
+    }
+    .aacp-perf-card-count {
+        @apply mt-1 block font-mono text-lg text-slate-100;
+    }
+    .aacp-perf-card-size {
+        @apply block font-mono text-fs-xs text-emerald-300;
+    }
+    .aacp-perf-card-meta {
+        @apply mt-0.5 block font-mono text-[0.65rem] text-slate-500;
+    }
+    .aacp-sev {
+        @apply inline-flex rounded px-1.5 py-0.5 font-mono text-[0.65rem] font-semibold uppercase tracking-wide;
+    }
+    .aacp-sev-info {
+        @apply border border-emerald-400/40 bg-emerald-500/10 text-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.35)];
+    }
+    .aacp-sev-warning {
+        @apply border border-warning-400/50 bg-warning-500/10 text-warning-300 shadow-[0_0_8px_rgba(250,204,21,0.35)];
+    }
+    .aacp-sev-critical {
+        @apply border border-warning-600/50 bg-warning-600/15 text-warning-200 shadow-[0_0_8px_rgba(255,159,41,0.4)];
+    }
+    .aacp-sev-threat {
+        @apply border border-danger-400/50 bg-danger-500/15 text-danger-300 shadow-[0_0_8px_rgba(248,113,113,0.45)];
+    }
+    .aacp-chart-box {
+        position: relative;
+        height: 9.5rem;
+    }
+    .aacp-chart-box--donut {
+        height: 11rem;
+    }
+    .aacp-top-ips {
+        @apply space-y-1.5;
+    }
+    .aacp-top-ips li {
+        @apply flex items-center justify-between gap-2 rounded-md border border-white/10 bg-dark-1 px-2.5 py-1.5;
+    }
+    .aacp-modal {
+        @apply fixed inset-0 z-50 items-center justify-center bg-neutral-900/70 p-sp-md;
+        display: none;
+    }
+    .aacp-modal.is-open {
+        display: flex;
+    }
+    .aacp-modal-panel {
+        @apply w-full max-w-2xl overflow-y-auto rounded-lg border border-white/10 bg-dark-2 p-sp-sm shadow-2xl;
+        max-height: 85vh;
+    }
+    .aacp-modal-fields {
+        @apply mt-3 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2;
+    }
+    .aacp-modal-fields dt {
+        @apply font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-modal-fields dd {
+        @apply break-all font-mono text-fs-xs text-slate-200;
+    }
+    .aacp-modal-fields-span {
+        @apply sm:col-span-2;
+    }
+    .aacp-visitor-kpis {
+        @apply mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4;
+    }
+    .aacp-visitor-kpis > div {
+        @apply rounded-md border border-white/10 bg-dark-1 px-2.5 py-2;
+    }
+    .aacp-visitor-kpis span {
+        @apply block font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-visitor-kpis strong {
+        @apply mt-0.5 block font-mono text-lg text-emerald-300;
+    }
+    /* Platform pulse — the four ops panels above the traffic feed. */
+    .aacp-pulse {
+        @apply grid grid-cols-1 gap-sp-xs md:grid-cols-2 xl:grid-cols-4;
+    }
+    .aacp-pulse-link {
+        @apply font-mono text-[0.65rem] uppercase tracking-wide text-emerald-400 hover:text-emerald-300;
+    }
+    .aacp-pulse-metrics {
+        @apply grid grid-cols-2 gap-x-3 gap-y-1.5;
+    }
+    .aacp-pulse-metrics dt {
+        @apply font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-pulse-metrics dd {
+        @apply font-mono text-fs-xs text-slate-200;
+    }
+    .aacp-pulse-note {
+        @apply mt-2 font-mono text-[0.65rem] leading-relaxed;
+    }
+    .aacp-pulse-unavailable {
+        @apply font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-pulse-ok {
+        @apply !text-emerald-300;
+    }
+    .aacp-pulse-bad {
+        @apply !text-danger-300;
+    }
+    .aacp-pulse-muted {
+        @apply !text-slate-500;
+    }
+    .aacp-pulse-findings {
+        @apply mt-2 space-y-1.5;
+    }
+    .aacp-pulse-findings li {
+        @apply flex items-center gap-2 rounded-md border border-white/10 bg-dark-1 px-2.5 py-1.5;
+    }
+    .aacp-pulse-finding-title {
+        @apply min-w-0 truncate font-mono text-fs-xs text-slate-200;
+    }
+    /* Rich-text / source toggle above a #[CpField(widget: 'richtext')] field. */
+    .aacp-editor-bar {
+        @apply mb-2 flex flex-wrap items-center gap-2;
+    }
+    .aacp-editor-hint {
+        @apply font-mono text-[0.65rem] leading-snug text-slate-500;
+    }
+    .aacp-cmd-subsys {
+        @apply space-y-2;
+    }
+    .aacp-cmd-subsys-item {
+        @apply rounded-md border border-white/10 bg-dark-1 px-3 py-2;
+    }
+    .aacp-cmd-subsys-name {
+        @apply font-mono text-fs-xs font-semibold uppercase tracking-wide text-slate-400;
+    }
+    .aacp-cmd-subsys-value {
+        @apply mt-0.5 break-all font-mono text-fs-xs text-slate-200;
+    }
+    .aacp-cmd-db {
+        @apply mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5;
+    }
+    .aacp-cmd-db dt {
+        @apply font-mono text-[0.65rem] uppercase tracking-wide text-slate-500;
+    }
+    .aacp-cmd-db dd {
+        @apply font-mono text-fs-xs text-slate-200;
+    }
+    .aacp-cmd-log {
+        @apply mt-2 max-h-40 overflow-y-auto font-mono text-[0.65rem] leading-relaxed text-slate-500;
+    }
+    .aacp-page {
+        @apply space-y-sp-md;
+    }
+    .aacp-page-intro {
+        @apply rounded-xl border border-white/10 bg-dark-2/80 px-sp-sm py-sp-sm;
+    }
+    .aacp-page-intro-title {
+        @apply text-fs-sm font-semibold text-slate-200;
+    }
+    .aacp-page-intro-desc {
+        @apply mt-1 text-fs-sm leading-relaxed text-slate-400;
+    }
+    .aacp-alert {
+        @apply flex items-start gap-3 rounded-lg border px-sp-sm py-3 text-fs-sm;
+    }
+    .aacp-alert-success {
+        @apply border-success-500/30 bg-success-500/10 text-success-300;
+    }
+    .aacp-alert-error {
+        @apply border-danger-500/30 bg-danger-500/10 text-danger-300;
+    }
+    .aacp-alert-warning {
+        @apply border-warning-500/30 bg-warning-500/10 text-warning-300;
+    }
+    .aacp-settings-shell {
+        @apply overflow-hidden rounded-xl border border-white/10 bg-dark-2 shadow-sm;
+    }
+    .aacp-settings-tabs {
+        @apply flex gap-1 overflow-x-auto border-b border-white/10 bg-dark-2 px-sp-xs py-sp-xs;
+        scrollbar-width: thin;
+    }
+    .aacp-settings-tab {
+        @apply inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-fs-sm font-medium text-slate-400 transition;
+    }
+    .aacp-settings-tab:hover {
+        @apply bg-white/5 text-slate-200;
+    }
+    .aacp-settings-tab.is-active {
+        @apply bg-primary-500/15 text-primary-300;
+    }
+    .aacp-settings-panel {
+        @apply p-sp-sm;
+    }
+    .aacp-settings-table {
+        @apply w-full border-separate border-spacing-0;
+    }
+    .aacp-settings-table thead th {
+        @apply border-b border-white/10 bg-white/[0.03] px-4 py-3 text-start text-fs-xs font-semibold uppercase tracking-wider text-slate-500;
+    }
+    .aacp-settings-table tbody tr {
+        @apply transition hover:bg-white/[0.02];
+    }
+    .aacp-settings-table tbody td {
+        @apply border-b border-white/10 px-4 py-3 align-top text-fs-sm;
+    }
+    .aacp-settings-table tbody tr:last-child td {
+        @apply border-b-0;
+    }
+    .aacp-settings-label-cell {
+        @apply w-[34%] min-w-[200px] max-w-[320px];
+    }
+    .aacp-settings-label {
+        @apply block font-medium text-slate-200;
+    }
+    .aacp-settings-hint {
+        @apply mt-1 block text-fs-xs leading-relaxed text-slate-500;
+    }
+    .aacp-settings-value-cell .form-control,
+    .aacp-settings-value-cell .form-select {
+        @apply max-w-xl border-white/10 bg-dark-1 text-slate-100;
+    }
+    .aacp-settings-value-cell .form-control:focus,
+    .aacp-settings-value-cell .form-select:focus {
+        @apply border-primary-500 ring-primary-500/30;
+    }
+    .aacp-settings-value-cell textarea.form-control {
+        @apply min-h-[5.5rem];
+    }
+    .aacp-settings-footer {
+        @apply mt-sp-sm flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-dark-1/60 px-sp-sm py-3;
+    }
+    .aacp-settings-footer-hint {
+        @apply text-fs-xs text-slate-500;
+    }
+    .aacp-locale-stats {
+        @apply mb-sp-sm grid grid-cols-1 gap-sp-xs sm:grid-cols-3;
+    }
+    .aacp-stat-card {
+        @apply rounded-lg border border-white/10 bg-dark-1/50 px-sp-sm py-3;
+    }
+    .aacp-stat-label {
+        @apply text-fs-xs font-medium uppercase tracking-wider text-slate-500;
+    }
+    .aacp-stat-value {
+        @apply mt-1 text-fs-lg font-semibold text-slate-100;
+    }
+    .aacp-toolbar {
+        @apply mb-sp-sm flex flex-wrap items-center justify-between gap-sp-xs;
+    }
+    .aacp-action-group {
+        @apply inline-flex items-center gap-1;
+    }
+    .aacp-action-btn {
+        @apply inline-flex items-center gap-1 rounded-md px-2 py-1 text-fs-xs font-medium text-slate-400 transition hover:bg-white/5 hover:text-primary-300;
+    }
+    .aacp-action-btn-danger:hover {
+        @apply text-danger-300;
+    }
+    .aacp-action-btn-success:hover {
+        @apply text-success-300;
+    }
+
+    /* Security Center — compact CSS ring (no SVG: default circle fill was blowing the layout) */
+    .aacp-security-posture {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        align-items: center;
+    }
+    @media (min-width: 1024px) {
+        .aacp-security-posture {
+            flex-direction: row;
+            align-items: center;
+        }
+    }
+    .aacp-security-gauge {
+        position: relative;
+        width: 9rem;
+        height: 9rem;
+        flex-shrink: 0;
+        --aacp-score: 0;
+        --aacp-gauge-color: rgb(248 113 113);
+    }
+    .aacp-security-gauge.is-good {
+        --aacp-gauge-color: rgb(52 211 153);
+    }
+    .aacp-security-gauge.is-warn {
+        --aacp-gauge-color: rgb(251 191 36);
+    }
+    .aacp-security-gauge.is-bad {
+        --aacp-gauge-color: rgb(248 113 113);
+    }
+    .aacp-security-gauge-ring {
+        width: 9rem;
+        height: 9rem;
+        border-radius: 9999px;
+        background:
+            radial-gradient(closest-side, rgb(15 23 42) 78%, transparent 79% 100%),
+            conic-gradient(var(--aacp-gauge-color) calc(var(--aacp-score) * 1%), rgb(255 255 255 / 0.08) 0);
+    }
+    .aacp-security-gauge-value {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+    }
+    .aacp-security-gauge-number {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 1.875rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--aacp-gauge-color);
+    }
+    .aacp-security-gauge-denom {
+        margin-top: 0.25rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.75rem;
+        color: rgb(100 116 139);
+    }
+    .aacp-security-sev {
+        @apply rounded-lg border px-sp-sm py-2;
+    }
+    .aacp-security-sev.critical {
+        @apply border-danger-500/30 bg-danger-500/10 text-danger-300;
+    }
+    .aacp-security-sev.high {
+        @apply border-danger-500/20 bg-danger-500/5 text-danger-200;
+    }
+    .aacp-security-sev.medium {
+        @apply border-warning-500/30 bg-warning-500/10 text-warning-300;
+    }
+    .aacp-security-sev.low {
+        @apply border-white/10 bg-white/5 text-slate-300;
+    }
+    .aacp-security-sev.pass {
+        @apply border-success-500/30 bg-success-500/10 text-success-300;
+    }
+    .aacp-security-sev-track {
+        @apply mt-2 h-1.5 overflow-hidden rounded-full bg-black/20;
+    }
+    .aacp-security-sev-fill {
+        @apply block h-full rounded-full bg-current opacity-80 transition-[width] duration-700 ease-out;
+    }
+
+    /* ------------------------------------------------------------------
+       AACP dark shell
+       ------------------------------------------------------------------
+       Every component above is written for the light Studio panel, and AACP
+       renders on #1B2431. Until now only two of them had a dark counterpart,
+       which is why so much of the console was grey text on a navy card and why
+       AACP templates are full of hand-written !text-slate-* patches: each
+       screen was fixing the palette for itself, one element at a time, and any
+       element nobody had got to yet stayed unreadable.
+
+       The fix belongs here rather than in the templates. A component gets its
+       dark form once, every screen inherits it, and a new screen is correct
+       without its author having to know the palette. The !important markers
+       match the ones the components already carry; without them the utility
+       classes sprinkled through the markup would keep winning.
+       ------------------------------------------------------------------ */
+
+    /* --- Shell chrome --- */
+    .aacp-shell .sidebar {
+        @apply bg-dark-2;
+    }
+    .aacp-shell .sidebar-logo,
+    .aacp-shell .sidebar-menu-area {
+        @apply border-white/10;
+    }
+    .aacp-shell .sidebar-menu-group-title {
+        @apply text-slate-500;
+    }
+    .aacp-shell .sidebar-menu li a {
+        @apply text-slate-400;
+    }
+    .aacp-shell .sidebar-menu li a:hover {
+        @apply bg-white/5 text-slate-100;
+    }
+    .aacp-shell .sidebar-menu .sidebar-submenu li.active-page a {
+        @apply bg-primary-500/15 text-primary-200;
+    }
+    .aacp-shell .sidebar-close-btn {
+        @apply border-white/20 text-slate-300;
+    }
+    .aacp-shell .navbar-header {
+        @apply border-white/10 bg-dark-2 text-slate-100;
+    }
+    .aacp-shell .sidebar-toggle,
+    .aacp-shell .sidebar-mobile-toggle {
+        @apply text-slate-300 hover:text-slate-100;
+    }
+    .aacp-shell .navbar-search input {
+        @apply border-white/10 bg-dark-1 text-slate-100 placeholder:text-slate-500;
+    }
+    .aacp-shell .navbar-search .icon {
+        @apply text-slate-500;
+    }
+    .aacp-shell .header-icon-btn {
+        @apply text-slate-300 hover:bg-white/5 hover:text-slate-100;
+    }
+
+    /* --- Surfaces --- */
+    .aacp-shell .card {
+        @apply border-white/10 bg-dark-2 text-slate-200 shadow-none;
+    }
+    .aacp-shell .card-header {
+        @apply border-white/10 text-slate-200;
+    }
+
+    /* --- Buttons --- */
+    .aacp-shell .btn-neutral {
+        @apply border-white/15 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white;
+    }
+    .aacp-shell .btn-outline-primary {
+        @apply border-primary-400 text-primary-300 hover:bg-primary-500 hover:text-white;
+    }
+    .aacp-shell .btn-outline-danger {
+        @apply border-danger-500/60 text-danger-300 hover:bg-danger-600 hover:text-white;
+    }
+
+    /* --- Badges ---
+       The light badges are a pale tint behind a dark ink, which on this shell
+       reads as a bright block with text that disappears into it. Inverted here:
+       a dim tint behind bright ink, with a hairline so the shape survives. */
+    .aacp-shell .badge-success {
+        @apply border border-success-500/30 bg-success-500/10 text-success-300;
+    }
+    .aacp-shell .badge-danger {
+        @apply border border-danger-500/30 bg-danger-500/10 text-danger-300;
+    }
+    .aacp-shell .badge-warning {
+        @apply border border-warning-500/30 bg-warning-500/10 text-warning-200;
+    }
+    .aacp-shell .badge-info {
+        @apply border border-info-500/30 bg-info-500/10 text-info-300;
+    }
+    .aacp-shell .badge-neutral {
+        @apply border border-white/15 bg-white/5 text-slate-300;
+    }
+
+    /* --- Tables --- */
+    .aacp-shell .table {
+        @apply border-white/10;
+    }
+    .aacp-shell .table th {
+        @apply border-white/10 bg-white/5 text-slate-400;
+    }
+    .aacp-shell .table td {
+        @apply border-white/10 text-slate-300;
+    }
+    .aacp-shell .table tbody tr:hover td {
+        @apply bg-white/[0.03];
+    }
+
+    /* --- Forms --- */
+    .aacp-shell .form-label {
+        @apply text-slate-300;
+    }
+    .aacp-shell .form-control,
+    .aacp-shell .form-select {
+        @apply border-white/15 bg-dark-1 text-slate-100 placeholder:text-slate-500;
+    }
+    .aacp-shell .form-control:focus,
+    .aacp-shell .form-select:focus {
+        @apply border-primary-400 ring-primary-400;
+    }
+    .aacp-shell .form-control[readonly],
+    .aacp-shell .form-control:disabled {
+        @apply border-white/10 bg-white/5 text-slate-500;
+    }
+    /* A native select drops its options on the page background, so the option
+       list needs the colour set too or it renders white-on-white on Windows. */
+    .aacp-shell .form-select option {
+        @apply bg-dark-2 text-slate-100;
+    }
+    .aacp-shell .form-check-input {
+        @apply border-white/25 bg-dark-1;
+    }
+
+    /* --- Dropdown, modal, toast --- */
+    .aacp-shell .dropdown-menu {
+        @apply border border-white/10 bg-dark-2 shadow-2xl;
+    }
+    .aacp-shell .dropdown-menu a,
+    .aacp-shell .dropdown-menu button {
+        @apply text-slate-300 hover:bg-white/5 hover:text-slate-100;
+    }
+    .aacp-shell .modal-panel {
+        @apply border border-white/10 bg-dark-2 text-slate-200;
+    }
+    .aacp-shell .modal-header,
+    .aacp-shell .modal-footer {
+        @apply border-white/10;
+    }
+    .aacp-shell .toast-success {
+        @apply border-success-500/40 bg-success-500/10 text-success-200;
+    }
+    .aacp-shell .toast-error {
+        @apply border-danger-500/40 bg-danger-500/10 text-danger-200;
+    }
+
+    /* --- Typography escaping from light-panel markup ---
+       AACP screens inherit snippets written for Studio, and those reach for the
+       neutral scale. On a navy card neutral-900 is very nearly the background.
+       Remapping the three that actually appear costs nothing and removes a
+       whole class of "I cannot read this" report. */
+    .aacp-shell .text-neutral-900 {
+        @apply !text-slate-100;
+    }
+    .aacp-shell .text-neutral-700,
+    .aacp-shell .text-neutral-600 {
+        @apply !text-slate-300;
+    }
+    .aacp-shell .text-neutral-500,
+    .aacp-shell .text-neutral-400 {
+        @apply !text-slate-400;
+    }
+    .aacp-shell hr {
+        @apply border-white/10;
+    }
+    .aacp-shell code,
+    .aacp-shell kbd {
+        @apply text-slate-300;
+    }
+    .aacp-shell a:not(.btn):not(.sidebar-menu a) {
+        @apply text-primary-300 hover:text-primary-200;
+    }
+
+    /* ------------------------------------------------------------------
+       Table overflow
+       ------------------------------------------------------------------
+       A table cell holding something like a fully qualified class name has no
+       space in it, so the browser cannot wrap it and widens the table until the
+       page scrolls sideways. Two tools, used deliberately:
+
+       .cell-truncate clips to one line with an ellipsis. Use it where the value
+       is an identifier the operator recognises from its start — a path, a class,
+       an email. Always pair it with a title attribute so the full value is one
+       hover away.
+
+       .cell-wrap breaks anywhere. Use it where the value has to be read in full
+       and losing the end would lose the meaning.
+       ------------------------------------------------------------------ */
+    .cell-truncate {
+        @apply block max-w-[22ch] truncate align-middle;
+    }
+    .cell-truncate-sm {
+        @apply block max-w-[14ch] truncate align-middle;
+    }
+    .cell-truncate-lg {
+        @apply block max-w-[36ch] truncate align-middle;
+    }
+    .cell-wrap {
+        @apply break-words [overflow-wrap:anywhere];
+    }
+    /* Long values in a narrow column still have to give somewhere; without this
+       a single unbroken token defeats every max-width above it. */
+    .table td,
+    .table th {
+        @apply [overflow-wrap:anywhere];
+    }
+}

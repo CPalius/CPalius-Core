@@ -1,0 +1,466 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+    # Phase 3 fallback chain terminus. LocaleProvider uses this only when
+    # CPALIUS_LOCALES is unset in .env and the database is unreachable.
+    #
+    # Note: %cpalius.locales_pattern% for route constraints is built at
+    # compile time by LocalesPatternPass (see Kernel::build()), not here.
+    cpalius.fallback_locales: 'tr,en'
+
+    # The running core version. Sourced from the CpVersion constant rather than
+    # CP_APP_VERSION in .env: .env survives an update untouched (it holds the
+    # DB password), so a version read from there freezes at the INSTALLED
+    # version and UpdateRunner re-offers every already-applied hook forever.
+    # See App\Core\Version\CpVersion for the full reasoning.
+    cpalius.version: !php/const App\Core\Version\CpVersion::VERSION
+    cpalius.module.contributions:
+        node_show_routes: []
+        category_show_route: null
+        queryable_fields: []
+        studio:
+            type_labels: []
+            edit_routes: []
+            view_routes: []
+            quick_create: []
+            quick_links: []
+            hidden_node_types: []
+        homepage_modes: []
+        portal_blocks: []
+        schema_types: []
+        account:
+            post_login_route: null
+            post_login_priority: 0
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+        bind:
+            string $projectDir: '%kernel.project_dir%'
+
+    _instanceof:
+        # Async queue handlers → QueueWorker::$handlers (a broken one is skipped, not fatal).
+        App\Core\Queue\AsyncJobHandlerInterface:
+            tags: ['cp.async_job_handler']
+        # Config sync sources → ConfigManager.
+        App\Core\Config\ConfigProviderInterface:
+            tags: ['cp.config_provider']
+        # Token value resolvers (one per type: node/term/user/site) → TokenReplacer.
+        App\Core\Token\TokenValueProviderInterface:
+            tags: ['cp.token_value_provider']
+        App\Core\TextFormat\TextFilterInterface:
+            tags: ['cp.text_filter']
+        App\Core\Notification\NotificationChannelInterface:
+            tags: ['cpalius.notification.channel']
+        App\Core\Inbox\InboxPulseChannelInterface:
+            tags: ['cpalius.inbox_pulse_channel']
+
+    # Shared Redis connection for cache.default_redis_provider and session.handler.redis.
+    #
+    # lazy: true is required — without it, createConnection() runs at instantiation
+    # and throws before FailoverRedisSessionHandler can fall back to file sessions.
+    Redis:
+        class: Redis
+        lazy: true
+        factory: ['Symfony\Component\Cache\Adapter\RedisAdapter', 'createConnection']
+        arguments:
+            - '%env(REDIS_URL)%'
+
+    # prefix defaults to the literal 'sf_s' otherwise, identical on every install
+    # sharing a Redis server — see RedisSessionPrefixFactory for why.
+    session.handler.redis.primary:
+        class: Symfony\Component\HttpFoundation\Session\Storage\Handler\RedisSessionHandler
+        factory: ['App\Core\Session\RedisSessionPrefixFactory', 'create']
+        arguments:
+            - '@Redis'
+            - '%env(APP_SECRET)%'
+
+    # Used by framework.yaml session.handler_id when Redis is unreachable;
+    # falls back to file storage if the primary handler throws (see FailoverRedisSessionHandler).
+    session.handler.redis:
+        class: App\Core\Session\FailoverRedisSessionHandler
+        arguments:
+            - '@session.handler.redis.primary'
+            - '%kernel.project_dir%/cp-core/var/sessions/%kernel.environment%'
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+        # Migrate sources are value objects, not services: a CSV reader needs a
+        # path and a foreign database needs credentials, neither of which exists
+        # at container-build time. They are constructed by the migration that
+        # uses them. Left in, autowiring tries to build them from their scalar
+        # constructors and fails the whole container.
+        exclude:
+            - '../src/Core/Migrate/Source/'
+            # Same reasoning: constructed per-listener by ModuleEventListenerGuardPass
+            # with scalar/object arguments autowiring cannot infer (an inner service,
+            # a method name, an event name...). Left in, the blanket resource above
+            # also registers it under its own FQCN and autowiring fails the container.
+            - '../src/Core/Module/ModuleEventListenerGuard.php'
+
+    # N+1 tripwire: autoconfigure OFF, on purpose.
+    #
+    # DoctrineBundle calls registerForAutoconfiguration(Driver\Middleware) and
+    # tags EVERY service implementing that interface with doctrine.middleware.
+    # QueryCounterMiddleware implements it and is picked up by App\ above, so
+    # with autoconfigure on it was armed in EVERY environment — production
+    # included — no matter that services.yaml only tags it under when@dev.
+    #
+    # In prod that guard throws MaxQueriesExceededException inside a live
+    # request. OriginCacheWriter catches it and logs "Origin cache write
+    # failed", so the visible symptom is a warning on every page while the
+    # real damage is silent: the origin cache never writes, and the site
+    # serves every page uncached.
+    #
+    # The class comment claiming "zero cost in prod" was wrong for as long as
+    # it stood. The tag is now granted explicitly, and only under when@dev /
+    # when@test below.
+    App\Core\Database\Middleware\QueryCounterMiddleware:
+        autoconfigure: false
+
+    # Override stock importmap() so inline importmap/module tags carry the CSP nonce.
+    # Must sit after App\ so this definition wins over the autoconfigured one.
+    # Lower Twig priority loads later and overwrites the stock importmap() function.
+    App\Core\Security\Twig\CpImportMapExtension:
+        autoconfigure: false
+        arguments:
+            $importMapRuntime: '@twig.runtime.importmap'
+        tags:
+            - { name: twig.extension, priority: -100 }
+
+    App\Core\Logging\Monolog\DoctrineLogHandler:
+        public: true
+
+    # Two classes implement MigrationMapInterface. ArrayMigrationMap is a real
+    # implementation (the runner layers one over the persistent map to dry-run
+    # without writing), so autowiring has a genuine choice to make and has to be
+    # told which one is "the map".
+    App\Core\Migrate\Map\MigrationMapInterface: '@App\Core\Migrate\Map\DoctrineMigrationMap'
+
+    # Destinations and the map hold this for the life of a request. A failed
+    # flush closes the real manager; this wrapper reopens it so one bad row
+    # does not take the rest of the import with it.
+    App\Core\Migrate\Map\DoctrineMigrationMap:
+        arguments:
+            $entityManager: '@App\Core\Migrate\ImportEntityManager'
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones
+    App\Core\Module\ModuleRegistry:
+        arguments:
+            $activeModulesFile: '%kernel.project_dir%/cp-core/config/active_modules.php'
+            $quarantineLogFile: '%kernel.project_dir%/cp-core/var/log/module_quarantine.log'
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+
+    # Reads the homepage declarations of inactive modules too, so the settings
+    # screen can show the whole set instead of only what happens to be booted.
+    App\Core\Portal\HomepageModeCatalog:
+        arguments:
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+
+    # A module that has claimed the Studio panel supplies its live name and logo
+    # through the tagged interface; the static claim lives in contributions.yaml.
+    App\Core\Admin\StudioShell:
+        arguments:
+            $brandingSuppliers: !tagged_iterator cpalius.studio_shell_branding
+
+    App\Core\Module\ActiveModulesFileWriter:
+        arguments:
+            $activeModulesFile: '%kernel.project_dir%/cp-core/config/active_modules.php'
+
+    # Phase 6: module lifecycle services. Both need the modules directory and the
+    # running core version, neither of which is autowirable.
+    App\Core\Module\ModuleDependencyChecker:
+        arguments:
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+            $coreVersion: '%cpalius.version%'
+
+    App\Core\Module\ModuleLifecycleManager:
+        arguments:
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+            $projectDir: '%kernel.project_dir%'
+
+    App\Core\Module\ModuleActivator:
+        arguments:
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+
+    App\Core\Theme\ThemeRegistry:
+        arguments:
+            $themesDir: '%kernel.project_dir%/cp-content/themes'
+
+    App\Core\Theme\ThemeFileEditor:
+        arguments:
+            $themesDir: '%kernel.project_dir%/cp-content/themes'
+
+    App\Core\Routing\SafeModuleRouteLoader:
+        tags:
+            - { name: 'routing.loader' }
+
+    # Phase 3 — single source of truth for the multi-locale engine.
+    #
+    # $fallbackLocales / $fallbackDefaultLocale apply only when the DB is unreachable
+    # or cp_locales is empty; env(default:...) keeps the container buildable without .env vars.
+    App\Core\Localization\LocaleProvider:
+        arguments:
+            $cache: '@cache.app'
+            $fallbackLocales: '%env(default:cpalius.fallback_locales:CPALIUS_LOCALES)%'
+            $fallbackDefaultLocale: '%env(default:kernel.default_locale:CPALIUS_DEFAULT_LOCALE)%'
+
+    App\Core\Settings\SettingsRegistry:
+        arguments:
+            $cache: '@cache.app'
+            $variantProviders: !tagged_iterator cpalius.setting_variant_provider
+
+    App\Core\Taxonomy\VocabularyRegistry:
+        arguments:
+            $cache: '@cache.app'
+
+    App\Core\Display\EntityDisplayRegistry:
+        arguments:
+            $cache: '@cache.app'
+
+    # LocaleListener no longer receives a fixed locale list; supported locales
+    # are resolved at runtime via LocaleProvider.
+    App\Core\EventListener\LocaleListener: ~
+
+    App\Core\Security\RoleConfigManager:
+        arguments:
+            $syncDir: '%kernel.project_dir%/cp-content/config/sync'
+            $cache: '@cache.app'
+
+    App\Core\Localization\TranslationFileLocator:
+        arguments:
+            $coreTranslationsDir: '%kernel.project_dir%/cp-content/translations'
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+
+    App\Core\Module\ModuleContributionCatalog:
+        arguments:
+            $data: '%cpalius.module.contributions%'
+
+    App\Core\Module\ModulePackageService:
+        arguments:
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
+
+    App\Core\Theme\ThemePackageService:
+        arguments:
+            $themesDir: '%kernel.project_dir%/cp-content/themes'
+
+    App\Core\Portal\PortalCopyService:
+        arguments:
+            $translationsDir: '%kernel.project_dir%/cp-content/translations'
+
+    App\Controller\Admin\AACPController:
+        arguments:
+            $recoveryToken: '%env(AACP_RECOVERY_TOKEN)%'
+
+    # HookManager: $attributeHooks from HookRegistrationPass; $serviceLocator is
+    # injected by the same pass — null here prevents autowire from guessing a service.
+    App\Core\Hook\HookManager:
+        arguments:
+            $serviceLocator: null
+            $attributeHooks: '%cpalius.hook_definitions%'
+
+    # ApiGatewayController: $apiEndpoints from ApiRegistrationPass (#[CpApi] list);
+    # $serviceLocator is wired by the same pass via setArgument().
+    App\Core\Api\Controller\ApiGatewayController:
+        arguments:
+            $serviceLocator: null
+            $apiEndpoints: '%cpalius.api_definitions%'
+
+    # EntityTypeRegistry: $rawDefinitions is wired by EntityTypeRegistrationPass
+    # (#[CpEntityType] scan). Empty here so the container stays buildable.
+    App\Core\Entity\EntityTypeRegistry:
+        arguments:
+            $rawDefinitions: []
+
+    # FieldTypeRegistry: both args are wired by FieldTypeRegistrationPass
+    # (#[CpFieldType] scan → service locator + id map).
+    App\Core\Field\FieldTypeRegistry:
+        arguments:
+            $locator: null
+            $serviceByType: []
+
+    # Entity query API. Public so the compiler keeps it before a consumer lands.
+    App\Core\Entity\Query\CpEntityQueryFactory: { public: true }
+
+    # Field API surface for modules. Kept public so a fresh install (no module
+    # consuming them yet) does not let the compiler prune the entrypoints.
+    App\Core\Field\FieldDefinitionSeeder: { public: true }
+    App\Core\Field\FieldValueNormalizer: { public: true }
+    App\Core\Field\FieldValidator: { public: true }
+    App\Core\Field\FieldValuePersister: { public: true }
+    App\Core\Field\Form\FieldableFormBuilder: { public: true }
+    App\Core\Field\Display\FieldRenderer: { public: true }
+    App\Core\Field\Api\FieldValueSerializer: { public: true }
+
+    # Taxonomy surface for modules — same "no consumer yet" pruning guard.
+    App\Core\Taxonomy\VocabularySeeder: { public: true }
+
+    # AACPApiKeyController: $apiDefinitions feeds the "known capabilities" datalist
+    # in the key-create form (same #[CpApi] list the gateway matches against).
+    App\Controller\Admin\AACPApiKeyController:
+        arguments:
+            $apiDefinitions: '%cpalius.api_definitions%'
+
+    # CronManager: $cronDefinitions from CronRegistrationPass (#[CpCronJob] + cron.*.php);
+    # $serviceLocator is wired by the same pass via setArgument().
+    App\Core\Cron\CronManager:
+        arguments:
+            $serviceLocator: null
+            $cronDefinitions: '%cpalius.cron_definitions%'
+
+    # Enqueue-only queue contract → the concrete Doctrine-backed bus.
+    App\Core\Queue\AsyncJobDispatcherInterface: '@App\Core\Queue\AsyncJobBus'
+
+    # WorkflowDefinitionLoader: config-as-code workflows under config/sync/workflow/.
+    App\Core\Workflow\WorkflowDefinitionLoader:
+        arguments:
+            $workflowDir: '%kernel.project_dir%/cp-content/config/sync/workflow'
+
+    # Config Management (CMI) — export/import DB config as YAML under config/sync/.
+    App\Core\Config\ConfigFile:
+        arguments:
+            $syncDir: '%kernel.project_dir%/cp-content/config/sync'
+
+    App\Core\Config\ConfigManager:
+        arguments:
+            $providers: !tagged_iterator cp.config_provider
+
+    App\Core\Token\TokenReplacer:
+        arguments:
+            $providers: !tagged_iterator cp.token_value_provider
+
+    App\Core\Mail\Template\MailTemplateRegistry:
+        arguments:
+            $providers: !tagged_iterator cpalius.mail.template_provider
+
+    # Operator-created templates are declared last on purpose: the registry keeps
+    # the first declaration of a key, so a custom row can never take over a
+    # shipped account mail by reusing its key.
+    App\Core\Mail\Template\CustomMailTemplateProvider:
+        tags:
+            - { name: 'cpalius.mail.template_provider', priority: -100 }
+
+    App\Core\TextFormat\TextFormatProcessor:
+        arguments:
+            $filters: !tagged_iterator cp.text_filter
+
+    # Narrow hook-dispatch contract → the concrete isolated HookManager.
+    App\Core\Hook\HookDispatcherInterface: '@App\Core\Hook\HookManager'
+
+    # "Which remote target does this purpose use" → the registry that also owns
+    # credentials and probes. Media offload and backup shipping bind to the
+    # narrow contract so neither is one refactor away from rewriting a secret.
+    App\Core\Storage\TargetResolverInterface: '@App\Core\Storage\StorageTargetRegistry'
+
+    # SecretBox: symmetric encryption for secrets at rest (webhook secrets, etc.),
+    # keyed off the application secret. Never expose the key or plaintext.
+    App\Core\Security\SecretBox:
+        arguments:
+            $appSecret: '%kernel.secret%'
+
+    # Recovery codes are HMAC'd with the same application secret, so rotating
+    # APP_SECRET invalidates them — the same trade-off SecretBox already makes.
+    App\Core\Security\TwoFactor\TwoFactorService:
+        arguments:
+            $appSecret: '%kernel.secret%'
+
+    # E-mailed one-time codes are HMAC'd with the same secret, for the same
+    # reason: a database read alone must not yield a usable six-digit code.
+    App\Core\Security\TwoFactor\EmailOtpService:
+        arguments:
+            $appSecret: '%kernel.secret%'
+
+    # The audit reports on the running kernel, so it has to be told which kernel.
+    App\Core\Security\Audit\SecurityAuditor:
+        arguments:
+            $debug: '%kernel.debug%'
+            $environment: '%kernel.environment%'
+
+    # QueueWorker: $handlers is the tagged set of AsyncJobHandlerInterface services
+    # (core + module). Order is registration order; first supports() match wins.
+    App\Core\Queue\QueueWorker:
+        arguments:
+            $handlers: !tagged_iterator cp.async_job_handler
+
+    App\Core\Queue\MessengerConsumeTask:
+        arguments:
+            $environment: '%kernel.environment%'
+
+    App\Core\Notification\NotificationDispatcher:
+        arguments:
+            $channels: !tagged_iterator cpalius.notification.channel
+
+    App\Core\Inbox\InboxPulse:
+        arguments:
+            $channels: !tagged_iterator cpalius.inbox_pulse_channel
+
+
+    # CronExecuteController: auth secret for externally triggered /cron/execute.
+    # Same pattern as AACP_RECOVERY_TOKEN but a separate env var (recovery vs cron).
+    App\Controller\CronExecuteController:
+        arguments:
+            $cronToken: '%env(CRON_TOKEN)%'
+
+    # The same secret, read-only, so /aacp/cron can print the URL a host has to
+    # call. Without it the endpoint exists and nobody knows its address.
+    App\Controller\Admin\AACPCronController:
+        arguments:
+            $cronToken: '%env(CRON_TOKEN)%'
+
+when@dev:
+    services:
+        # when@dev does not inherit root _defaults — redeclare autowire here or
+        # tag-only services like QueryCounterMiddleware fail with "Too few arguments".
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        # Manifesto Law 6.1: this tag is dev-only; classes stay registered via App\:
+        # but are never instantiated in prod unless pulled from the middleware chain.
+        App\Core\Database\QueryCounter:
+            arguments:
+                $maxQueriesPerTable: 10
+
+        App\Core\Database\Middleware\QueryCounterMiddleware:
+            autoconfigure: false
+            tags:
+                - { name: 'doctrine.middleware' }
+
+when@test:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        # NOTE: this does NOT put the tripwire in front of the test suite, and
+        # the comment that used to claim it did was wrong for as long as it
+        # stood. QueryCounterMiddleware::wrap() returns the driver unwrapped
+        # when PHP_SAPI is "cli", and PHPUnit is CLI — so the middleware below
+        # is registered and then declines to wrap anything. A real N+1 CAN hide
+        # in test, and one did: an import of more than ten rows died in the
+        # browser while every test stayed green (see
+        # MigrationRunnerQueryBudgetTest, which holds that behaviour by driving
+        # the counter directly because an integration test cannot).
+        #
+        # The definitions stay so the services resolve identically in both
+        # environments; turning the guard on for tests is a real change with a
+        # real blast radius and is recorded as a decision, not done in passing.
+        App\Core\Database\QueryCounter:
+            arguments:
+                $maxQueriesPerTable: 10
+
+        App\Core\Database\Middleware\QueryCounterMiddleware:
+            autoconfigure: false
+            tags:
+                - { name: 'doctrine.middleware' }

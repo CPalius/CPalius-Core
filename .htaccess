@@ -1,0 +1,18 @@
+# When the hosting panel cannot point the domain at public/, this file
+# keeps cp-core, vendor and .env off the web and serves public/ instead.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    RewriteRule ^cp-core(/|$) - [F,L]
+    RewriteRule ^cp-includes(/|$) - [F,L]
+    RewriteRule ^cp-content(/|$) - [F,L]
+    RewriteRule ^(?:composer\.(?:json|lock)|symfony\.lock|\.env.*)$ - [F,L]
+
+    RewriteRule ^$ public/index.php [L]
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>

@@ -1,0 +1,92 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.mail_templates.send.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <div class="flex flex-wrap items-center justify-between gap-sp-sm">
+            <div>
+                <p class="font-medium !text-slate-200">{{ definition.custom ? definition.labelKey : definition.labelKey|trans }}</p>
+                <p class="mt-1 font-mono text-fs-xs !text-slate-600">{{ definition.key }}</p>
+            </div>
+            <a href="{{ path('aacp_mail_templates_edit', {key: definition.key}) }}" class="btn btn-sm btn-outline">
+                {{ 'aacp.mail_templates.back'|trans }}
+            </a>
+        </div>
+
+        {% if not mailConfigured %}
+            <twig:cp:card variant="danger">
+                <p class="text-fs-sm !text-danger-300">{{ 'aacp.mail_templates.mail_disabled'|trans }}</p>
+            </twig:cp:card>
+        {% else %}
+            <twig:cp:card title="{{ 'aacp.mail_templates.send.audience_heading'|trans }}">
+                <p class="text-fs-sm !text-slate-400">{{ 'aacp.mail_templates.send.intro'|trans }}</p>
+
+                <form method="post" action="{{ path('aacp_mail_templates_send', {key: definition.key}) }}"
+                      class="mt-sp-sm space-y-sp-sm"
+                      onsubmit="return confirm({{ 'aacp.mail_templates.send.confirm'|trans|json_encode|raw }});">
+                    <input type="hidden" name="_token" value="{{ csrf_token('aacp_mail_template_send') }}">
+
+                    <label class="flex items-start gap-2 text-fs-sm !text-slate-300">
+                        <input type="radio" name="audience" value="user" checked class="mt-1" data-send-audience>
+                        <span>
+                            {{ 'aacp.mail_templates.send.audience.user'|trans }}
+                            <input type="text" name="recipient" data-send-field="user"
+                                   placeholder="{{ 'aacp.mail_templates.send.recipient_placeholder'|trans }}"
+                                   class="mt-1 block w-full rounded-lg bg-dark-1 px-sp-sm py-2 text-fs-sm !text-slate-200">
+                        </span>
+                    </label>
+
+                    <label class="flex items-start gap-2 text-fs-sm !text-slate-300">
+                        <input type="radio" name="audience" value="role" class="mt-1" data-send-audience>
+                        <span>
+                            {{ 'aacp.mail_templates.send.audience.role'|trans }}
+                            <select name="role" data-send-field="role"
+                                    class="mt-1 block w-full rounded-lg bg-dark-1 px-sp-sm py-2 text-fs-sm !text-slate-200">
+                                {% for roleId, roleLabel in roles %}
+                                    <option value="{{ roleId }}">{{ roleLabel }}</option>
+                                {% endfor %}
+                            </select>
+                        </span>
+                    </label>
+
+                    <label class="flex items-start gap-2 text-fs-sm !text-slate-300">
+                        <input type="radio" name="audience" value="all" class="mt-1" data-send-audience>
+                        <span>{{ 'aacp.mail_templates.send.audience.all'|trans }}</span>
+                    </label>
+
+                    <p class="text-fs-xs !text-slate-600">
+                        {{ 'aacp.mail_templates.send.hint'|trans({'max': maxRecipients}) }}
+                    </p>
+
+                    <button type="submit" class="btn btn-primary">{{ 'aacp.mail_templates.send.submit'|trans }}</button>
+                </form>
+            </twig:cp:card>
+        {% endif %}
+    </div>
+
+    <script{{ csp_nonce_attr() }}>
+        (function () {
+            // Only the selected audience's field stays enabled, so a stale value
+            // in the other one cannot be submitted alongside it.
+            var radios = document.querySelectorAll('[data-send-audience]');
+            var fields = document.querySelectorAll('[data-send-field]');
+            if (!radios.length) return;
+
+            function sync() {
+                var selected = document.querySelector('[data-send-audience]:checked');
+                var value = selected ? selected.value : '';
+                fields.forEach(function (field) {
+                    var active = field.getAttribute('data-send-field') === value;
+                    field.disabled = !active;
+                    field.style.opacity = active ? '1' : '0.4';
+                });
+            }
+
+            radios.forEach(function (radio) {
+                radio.addEventListener('change', sync);
+            });
+            sync();
+        })();
+    </script>
+{% endblock %}

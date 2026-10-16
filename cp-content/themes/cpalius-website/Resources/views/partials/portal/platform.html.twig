@@ -1,0 +1,77 @@
+{% set t = 'portal' %}
+<section class="section section-dark" id="platform">
+    <div class="container">
+        <div class="section-header fade-in">
+            <span class="section-label">{{ 'platform.label'|trans({}, t) }}</span>
+            <h2 class="section-title">{{ 'platform.title'|trans({}, t) }}</h2>
+            <p class="section-desc">{{ 'platform.desc'|trans({}, t) }}</p>
+        </div>
+
+        <div class="defense-timeline fade-in">
+            <div class="defense-item">
+                <div class="defense-number"><i class="bi bi-hdd-network"></i></div>
+                <span class="defense-label">{{ 'platform.api_label'|trans({}, t) }}</span>
+                <h3 class="defense-title">{{ 'platform.api_title'|trans({}, t) }}</h3>
+                <p class="defense-text">{{ 'platform.api_text_html'|trans({}, t)|raw }}</p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <i class="bi bi-file-code"></i> {{ 'platform.api_code_header'|trans({}, t) }}
+                    </div>
+                    <pre>{{ 'platform.api_code'|trans({}, t) }}</pre>
+                </div>
+            </div>
+
+            <div class="defense-item">
+                <div class="defense-number"><i class="bi bi-plug"></i></div>
+                <span class="defense-label">{{ 'platform.hook_label'|trans({}, t) }}</span>
+                <h3 class="defense-title">{{ 'platform.hook_title'|trans({}, t) }}</h3>
+                <p class="defense-text">{{ 'platform.hook_text_html'|trans({}, t)|raw }}</p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <i class="bi bi-file-code"></i> {{ 'platform.hook_code_header'|trans({}, t) }}
+                    </div>
+                    <pre>{{ 'platform.hook_code'|trans({}, t) }}</pre>
+                </div>
+            </div>
+
+            <div class="defense-item">
+                <div class="defense-number"><i class="bi bi-clock-history"></i></div>
+                <span class="defense-label">{{ 'platform.cron_label'|trans({}, t) }}</span>
+                <h3 class="defense-title">{{ 'platform.cron_title'|trans({}, t) }}</h3>
+                <p class="defense-text">{{ 'platform.cron_text_html'|trans({}, t)|raw }}</p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <i class="bi bi-file-code"></i> {{ 'platform.cron_code_header'|trans({}, t) }}
+                    </div>
+                    <pre>{{ 'platform.cron_code'|trans({}, t) }}</pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="features-grid" style="margin-top: var(--sp-xl);">
+            <div class="feature-card fade-in" data-delay="0">
+                <div class="feature-icon"><i class="bi bi-puzzle"></i></div>
+                <h4>{{ 'platform.plugin_title'|trans({}, t) }}</h4>
+                <p>{{ 'platform.plugin_text_html'|trans({}, t)|raw }}</p>
+            </div>
+
+            <div class="feature-card fade-in" data-delay="100">
+                <div class="feature-icon"><i class="bi bi-diagram-2"></i></div>
+                <h4>{{ 'platform.n1_title'|trans({}, t) }}</h4>
+                <p>{{ 'platform.n1_text_html'|trans({}, t)|raw }}</p>
+            </div>
+
+            <div class="feature-card fade-in" data-delay="200">
+                <div class="feature-icon"><i class="bi bi-envelope-paper"></i></div>
+                <h4>{{ 'platform.messenger_title'|trans({}, t) }}</h4>
+                <p>{{ 'platform.messenger_text_html'|trans({}, t)|raw }}</p>
+            </div>
+
+            <div class="feature-card fade-in" data-delay="0">
+                <div class="feature-icon"><i class="bi bi-sliders"></i></div>
+                <h4>{{ 'platform.settings_title'|trans({}, t) }}</h4>
+                <p>{{ 'platform.settings_text_html'|trans({}, t)|raw }}</p>
+            </div>
+        </div>
+    </div>
+</section>

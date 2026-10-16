@@ -1,0 +1,84 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.logs.mail.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <p class="text-fs-sm !text-slate-500">{{ 'aacp.logs.mail.intro'|trans }}</p>
+            <div class="flex gap-2">
+                <a href="{{ path('aacp_logs_index') }}" class="btn btn-sm">{{ 'aacp.logs.tab.app'|trans }}</a>
+                <a href="{{ path('aacp_logs_mail') }}" class="btn btn-sm btn-primary">{{ 'aacp.logs.tab.mail'|trans }}</a>
+            </div>
+        </div>
+
+        <twig:cp:card>
+            <form method="get" class="mb-sp-sm grid gap-3 md:grid-cols-3">
+                <div>
+                    <label class="form-label" for="status">{{ 'aacp.logs.mail.filter.status'|trans }}</label>
+                    <select id="status" name="status" class="form-select !border-white/10 !bg-dark-1 !text-slate-100">
+                        <option value="">{{ 'aacp.logs.filter.any'|trans }}</option>
+                        {% for status in statuses %}
+                            <option value="{{ status }}" {{ filters.status == status ? 'selected' : '' }}>{{ ('aacp.logs.mail.status.' ~ status)|trans }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label" for="q">{{ 'aacp.logs.filter.q'|trans }}</label>
+                    <div class="flex gap-2">
+                        <input id="q" type="search" name="q" value="{{ filters.q }}" class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                        <button type="submit" class="btn btn-primary">{{ 'aacp.logs.filter.submit'|trans }}</button>
+                    </div>
+                </div>
+            </form>
+
+            <twig:cp:table headers="{{ [
+                'aacp.logs.column.created'|trans,
+                'aacp.logs.mail.column.to'|trans,
+                'aacp.logs.mail.column.subject'|trans,
+                'aacp.logs.mail.column.status'|trans,
+                'aacp.logs.mail.column.attempts'|trans,
+                '',
+            ] }}" empty="{{ items is empty }}">
+                <twig:block name="rows">
+                    {% for mail in items %}
+                        <tr>
+                            <td class="text-fs-xs !text-slate-500 whitespace-nowrap">{{ mail.createdAt|date('d.m.Y H:i:s') }}</td>
+                            <td class="!text-slate-300">{{ mail.to }}</td>
+                            <td class="!text-slate-200 max-w-md truncate">{{ mail.subject }}</td>
+                            <td>
+                                <span class="badge {{ mail.status == 'failed' ? 'badge-danger' : (mail.status == 'sent' ? 'badge-success' : 'badge-info') }}">
+                                    {{ ('aacp.logs.mail.status.' ~ mail.status)|trans }}
+                                </span>
+                                {% if mail.error %}
+                                    <p class="mt-1 text-fs-xs !text-rose-400 max-w-xs truncate" title="{{ mail.error }}">{{ mail.error }}</p>
+                                {% endif %}
+                            </td>
+                            <td class="!text-slate-400">{{ mail.attempts }}</td>
+                            <td>
+                                <form method="post" action="{{ path('aacp_logs_mail_resend', {id: mail.id}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('aacp_logs_mail') }}">
+                                    <button type="submit" class="btn btn-sm btn-primary">{{ 'aacp.logs.mail.resend'|trans }}</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+
+            {% if items.totalPages > 1 %}
+                <nav class="mt-sp-md flex items-center justify-between border-t border-white/10 pt-sp-sm" aria-label="{{ 'aacp.pagination.aria_label'|trans }}">
+                    <span class="text-fs-sm !text-slate-500">{{ items.currentPage }} / {{ items.totalPages }}</span>
+                    <div class="flex gap-2">
+                        {% if items.hasPreviousPage %}
+                            <a class="btn btn-sm" href="{{ path('aacp_logs_mail', filters|merge({page: items.currentPage - 1})) }}">‹ {{ 'aacp.pagination.previous'|trans }}</a>
+                        {% endif %}
+                        {% if items.hasNextPage %}
+                            <a class="btn btn-sm" href="{{ path('aacp_logs_mail', filters|merge({page: items.currentPage + 1})) }}">{{ 'aacp.pagination.next'|trans }} ›</a>
+                        {% endif %}
+                    </div>
+                </nav>
+            {% endif %}
+        </twig:cp:card>
+    </div>
+{% endblock %}

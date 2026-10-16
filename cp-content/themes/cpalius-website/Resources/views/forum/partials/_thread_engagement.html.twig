@@ -1,0 +1,63 @@
+{% set readers = topicReaders|default({members: [], memberCount: 0, guestCount: 0}) %}
+{% set reactors = topicReactors|default({members: [], total: 0}) %}
+<div class="forum-engagement fade-in">
+    <section class="forum-engagement__block" aria-label="{{ 'forum.thread.readers.title'|trans }}">
+        <h2 class="forum-engagement__title">
+            <i class="bi bi-eye"></i>
+            {{ 'forum.thread.readers.title'|trans }}
+            <span class="forum-engagement__count">{{ 'forum.thread.readers.summary'|trans({members: readers.memberCount, guests: readers.guestCount}) }}</span>
+        </h2>
+        {% if readers.members is not empty or readers.guestCount > 0 %}
+            <ul class="forum-engagement__list">
+                {% for member in readers.members %}
+                    <li>
+                        <a href="{{ path('forum_profile', {username: member.slug}) }}" class="forum-engagement__member" title="{{ member.name }}">
+                            {% include '@Theme/forum/partials/_avatar.html.twig' with {name: member.name, user: member.user, size: 'xs'} %}
+                            <span>{{ member.name }}</span>
+                        </a>
+                    </li>
+                {% endfor %}
+                {% if readers.guestCount > 0 %}
+                    <li>
+                        <span class="forum-engagement__member forum-engagement__member--guest" title="{{ 'forum.thread.readers.guest'|trans }}">
+                            {% include '@Theme/forum/partials/_avatar.html.twig' with {name: 'forum.thread.readers.guest'|trans, user: null, size: 'xs'} %}
+                            <span>{{ 'forum.thread.readers.guest'|trans }}{% if readers.guestCount > 1 %} · {{ readers.guestCount }}{% endif %}</span>
+                        </span>
+                    </li>
+                {% endif %}
+            </ul>
+            {% if readers.memberCount > readers.members|length %}
+                <p class="forum-engagement__more">{{ 'forum.thread.readers.more'|trans({count: readers.memberCount - readers.members|length}) }}</p>
+            {% endif %}
+        {% else %}
+            <p class="forum-engagement__empty">{{ 'forum.thread.readers.empty'|trans }}</p>
+        {% endif %}
+    </section>
+
+    <section class="forum-engagement__block" aria-label="{{ 'forum.thread.reactors.title'|trans }}">
+        <h2 class="forum-engagement__title">
+            <i class="bi bi-heart"></i>
+            {{ 'forum.thread.reactors.title'|trans }}
+            <span class="forum-engagement__count">{{ reactors.total }}</span>
+        </h2>
+        {% if reactors.members is not empty %}
+            <ul class="forum-engagement__list">
+                {% for member in reactors.members %}
+                    <li>
+                        <a href="{{ path('forum_profile', {username: member.slug}) }}" class="forum-engagement__member" title="{{ member.name }}">
+                            {% include '@Theme/forum/partials/_avatar.html.twig' with {name: member.name, user: member.user, size: 'xs'} %}
+                            <span>{{ member.name }}</span>
+                            {% if member.liked %}<i class="bi bi-hand-thumbs-up-fill" title="{{ 'forum.action.like'|trans }}"></i>{% endif %}
+                            {% if member.disliked %}<i class="bi bi-hand-thumbs-down-fill" title="{{ 'forum.action.dislike'|trans }}"></i>{% endif %}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+            {% if reactors.total > reactors.members|length %}
+                <p class="forum-engagement__more">{{ 'forum.thread.reactors.more'|trans({count: reactors.total - reactors.members|length}) }}</p>
+            {% endif %}
+        {% else %}
+            <p class="forum-engagement__empty">{{ 'forum.thread.reactors.empty'|trans }}</p>
+        {% endif %}
+    </section>
+</div>

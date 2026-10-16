@@ -1,0 +1,8 @@
+{#
+    Postbit block: module-contributed buttons (Messages "send message", etc).
+    Expects post, authorStats. Guarded on authorStats so a deleted author does
+    not get a "message this member" button pointing at nobody.
+#}
+{% if authorStats and post.author %}
+    {{ cp_hook('forum.post.author.actions', { user: post.author, author: post.author }) }}
+{% endif %}

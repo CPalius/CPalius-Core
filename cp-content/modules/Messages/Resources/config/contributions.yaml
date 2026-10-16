@@ -1,0 +1,16 @@
+# Declarative wiring into core surfaces. Nothing here imports another module.
+
+studio:
+    quick_links:
+        - { label_key: messages.studio.link_desk, route: admin_messages_dashboard, icon: heroicons:chat-bubble-left-right }
+        - { label_key: messages.studio.link_reports, route: admin_messages_reports_index, icon: heroicons:flag }
+        - { label_key: messages.studio.link_settings, route: admin_messages_settings_index, icon: heroicons:cog-6-tooth }
+
+notification_types:
+    messages.new:
+        label: messages.notification.new
+        module: Messages
+        preference_key: messages_notif_new
+        default_channels: [in_app]
+        mail_template: messages.new
+        expose_in_account: true

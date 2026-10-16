@@ -1,0 +1,42 @@
+{# Card layout editor, shared by the Studio and AACP desks. Expects: cards (arranged, each with id, labelKey, icon,
+   column, removed, limit, limitValue), columns (count). Driven by assets/dashboard-layout.js. #}
+<dialog class="cp-layout-modal" data-cp-layout-modal aria-labelledby="cp-layout-title">
+    <form method="dialog" class="cp-layout-form">
+        <header class="cp-layout-head">
+            <h3 id="cp-layout-title">{{ 'studio.dashboard.layout.title'|trans }}</h3>
+            <button type="button" class="cp-layout-x" data-cp-layout-close aria-label="{{ 'studio.dashboard.layout.cancel'|trans }}">×</button>
+        </header>
+        <p class="cp-layout-help">{{ 'studio.dashboard.layout.help'|trans }}</p>
+        <div class="cp-layout-body">
+            {% for col in 0..(columns - 1) %}
+                <h4 class="cp-layout-col">{{ ('studio.dashboard.layout.col.' ~ col)|trans }}</h4>
+                <ul class="cp-layout-list" data-cp-layout-list data-col="{{ col }}">
+                    {% for card in cards %}
+                        {% if card.column == col %}
+                            <li class="cp-layout-row" data-card-id="{{ card.id }}">
+                                <span class="cp-layout-grip" data-cp-layout-grip title="{{ 'studio.dashboard.layout.drag'|trans }}" aria-hidden="true">⋮⋮</span>
+                                <label class="cp-layout-name">
+                                    <input type="checkbox" data-cp-layout-show {{ card.removed ? '' : 'checked' }}>
+                                    <twig:ux:icon name="{{ card.icon }}" class="h-4 w-4" />
+                                    <span>{{ card.labelKey|trans }}</span>
+                                </label>
+                                {% if card.limit is not null %}
+                                    <label class="cp-layout-limit">
+                                        <span>{{ 'studio.dashboard.layout.rows'|trans }}</span>
+                                        <input type="number" data-cp-layout-limit min="{{ card.limit[1] }}" max="{{ card.limit[2] }}" value="{{ card.limitValue }}">
+                                    </label>
+                                {% endif %}
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            {% endfor %}
+        </div>
+        <footer class="cp-layout-foot">
+            <button type="button" class="cp-layout-btn" data-cp-layout-reset>{{ 'studio.dashboard.layout.reset'|trans }}</button>
+            <span class="grow"></span>
+            <button type="button" class="cp-layout-btn" data-cp-layout-close>{{ 'studio.dashboard.layout.cancel'|trans }}</button>
+            <button type="button" class="cp-layout-btn is-primary" data-cp-layout-save>{{ 'studio.dashboard.layout.save'|trans }}</button>
+        </footer>
+    </form>
+</dialog>

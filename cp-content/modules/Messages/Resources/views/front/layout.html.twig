@@ -1,0 +1,17 @@
+{#
+    Page chrome for every public messages screen.
+#}
+{% extends messagesParentLayout %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    {% include '@MessagesModule/front/partials/_styles.html.twig' %}
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {% block messages_javascripts %}{% endblock %}
+{% endblock %}
+
+{% block content %}{% block messages_main %}{% endblock %}{% endblock %}
+{% block body %}{{ block('messages_main') }}{% endblock %}

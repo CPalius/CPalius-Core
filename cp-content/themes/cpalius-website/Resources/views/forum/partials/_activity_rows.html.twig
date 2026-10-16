@@ -1,0 +1,6 @@
+{#
+    AJAX load-more rows — <li> list only. Expects: items (list).
+#}
+{% for item in items %}
+    {% include '@Theme/forum/partials/_activity_row.html.twig' with { item: item } %}
+{% endfor %}

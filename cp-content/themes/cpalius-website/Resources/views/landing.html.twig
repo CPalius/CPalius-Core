@@ -1,0 +1,15 @@
+{% extends '@Theme/layout.html.twig' %}
+
+{% block title %}{{ 'meta.title'|trans({}, 'portal') }}{% endblock %}
+{% block meta_description %}{{ 'meta.description'|trans({}, 'portal') }}{% endblock %}
+
+{% block content %}
+{% for portalBlock in portalBlocks|default([]) %}
+    {% include '@Theme/partials/portal/' ~ portalBlock.id ~ '.html.twig' ignore missing with {
+        portalBlock: portalBlock,
+        data: portalData[portalBlock.id]|default({}),
+        forumAvailable: forumAvailable|default(false),
+        blogAvailable: blogAvailable|default(false)
+    } only %}
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.blog.comments.index.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_blog_settings_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.blog.settings.menu'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <div class="mb-sp-sm flex flex-wrap gap-2">
+        {% for status, count in {
+            pending: counts.pending,
+            approved: counts.approved,
+            spam: counts.spam,
+            rejected: counts.rejected,
+            all: null
+        } %}
+            <a href="{{ path('admin_blog_comments_index', {status: status}) }}"
+               class="btn btn-sm {{ currentStatus == status ? 'btn-primary' : 'btn-neutral' }}">
+                {{ ('studio.blog.comments.status.' ~ status)|trans }}{% if count is not null %} ({{ count }}){% endif %}
+            </a>
+        {% endfor %}
+    </div>
+
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'studio.blog.comments.column.author'|trans,
+            'studio.blog.comments.column.post'|trans,
+            'studio.blog.comments.column.body'|trans,
+            'studio.blog.comments.column.status'|trans,
+            'studio.blog.comments.column.date'|trans,
+            '',
+        ] }}" empty="{{ comments is empty }}" emptyText="{{ 'studio.blog.comments.empty'|trans }}">
+            <twig:block name="rows">
+                {% for comment in comments %}
+                    {% set post = comment.node %}
+                    <tr>
+                        <td>
+                            <p class="font-medium text-neutral-900">{{ comment.displayName }}</p>
+                            {% if comment.guestEmail %}
+                                <p class="text-fs-xs text-neutral-500">{{ comment.guestEmail }}</p>
+                            {% elseif comment.author %}
+                                <p class="text-fs-xs text-neutral-500">{{ comment.author.email }}</p>
+                            {% endif %}
+                            {% if comment.parent %}
+                                <p class="text-fs-xs text-neutral-500">{{ 'studio.blog.comments.reply_to'|trans({'name': comment.parent.displayName}) }}</p>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if post.type == 'post' %}
+                                <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}#comment-{{ comment.id }}" class="font-medium text-neutral-900 hover:text-primary-600" target="_blank">{{ post.title }}</a>
+                                <p class="text-fs-xs text-neutral-500">/{{ post.locale }}/{{ post.slug }}</p>
+                            {% else %}
+                                {{ post.title }}
+                            {% endif %}
+                        </td>
+                        <td class="max-w-sm">
+                            <p class="text-fs-sm text-neutral-800 line-clamp-4">{{ comment.body }}</p>
+                        </td>
+                        <td>
+                            <span class="badge badge-neutral">{{ ('studio.blog.comments.status.' ~ comment.status)|trans }}</span>
+                        </td>
+                        <td class="text-fs-xs text-neutral-500">{{ comment.createdAt|date('d.m.Y H:i') }}</td>
+                        <td class="text-right">
+                            <div class="flex flex-col items-end gap-2">
+                                <div class="flex flex-wrap items-center justify-end gap-2">
+                                    {% if comment.status != 'approved' %}
+                                        <form method="post" action="{{ path('admin_blog_comments_approve', {id: comment.id, status: currentStatus}) }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('admin_blog_comment') }}">
+                                            <button type="submit" class="btn btn-sm btn-primary">{{ 'studio.blog.comments.action.approve'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                    {% if comment.status != 'spam' %}
+                                        <form method="post" action="{{ path('admin_blog_comments_spam', {id: comment.id, status: currentStatus}) }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('admin_blog_comment') }}">
+                                            <button type="submit" class="btn btn-sm btn-neutral">{{ 'studio.blog.comments.action.spam'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                    {% if comment.status != 'rejected' %}
+                                        <form method="post" action="{{ path('admin_blog_comments_reject', {id: comment.id, status: currentStatus}) }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('admin_blog_comment') }}">
+                                            <button type="submit" class="btn btn-sm btn-neutral">{{ 'studio.blog.comments.action.reject'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                    <a href="{{ path('admin_blog_comments_edit', {id: comment.id}) }}" class="btn btn-sm btn-neutral">{{ 'studio.blog.comments.action.edit'|trans }}</a>
+                                    <form method="post" action="{{ path('admin_blog_comments_delete', {id: comment.id, status: currentStatus}) }}" onsubmit="return confirm({{ 'studio.blog.comments.delete_confirm'|trans|json_encode|raw }});">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('admin_blog_comment') }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'studio.blog.comments.action.delete'|trans }}</button>
+                                    </form>
+                                </div>
+                                <form method="post" action="{{ path('admin_blog_comments_reply', {id: comment.id, status: currentStatus}) }}" class="flex w-full max-w-md items-end gap-2">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_blog_comment') }}">
+                                    <textarea name="body" rows="2" class="form-control" placeholder="{{ 'studio.blog.comments.reply_placeholder'|trans }}"></textarea>
+                                    <button type="submit" class="btn btn-sm btn-primary whitespace-nowrap">{{ 'studio.blog.comments.action.reply'|trans }}</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+
+    <twig:studio:pagination result="{{ comments }}" route="admin_blog_comments_index" routeParams="{{ {status: currentStatus} }}" />
+{% endblock %}

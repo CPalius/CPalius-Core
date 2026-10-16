@@ -1,0 +1,90 @@
+/* Desk cards (Studio and AACP): independent columns plus the layout editor.
+   Colours fall back across the Ledger (--rule), Premium (--line) and AACP (dark) token names,
+   so one sheet follows whichever theme is active. */
+
+.cp-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+@media (min-width: 1100px) { .cp-cards { grid-template-columns: minmax(0, 1fr) 21.5rem; } }
+.cp-col { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; min-height: 4.5rem; }
+/* An empty column stays a visible drop target. */
+.cp-col:empty { border: 1px dashed var(--line, var(--rule, rgb(128 128 128 / .35))); border-radius: 12px; }
+
+.cp-cards .cp-card { position: relative; min-width: 0; }
+body.studio-app .cp-cards > .cp-col > .studio-cmd-panel {
+    border: 1px solid var(--line, var(--rule, #e5e7eb));
+    background: var(--surface, transparent);
+}
+.cp-cards [data-card-id] > :first-child { padding-inline-end: 3.75rem; }
+.cp-cards [data-card-id].is-collapsed > :not(:first-child):not(.studio-widget-toggle):not(.aacp-widget-toggle):not(.cp-card-grip) { display: none !important; }
+
+/* Drag handle, next to the collapse button. */
+.cp-card-grip {
+    position: absolute;
+    inset-block-start: 1rem;
+    inset-inline-end: 2.9rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ink-3, var(--ink-faint, rgb(148 163 184)));
+    cursor: grab;
+    font-size: 0.8rem;
+    line-height: 1;
+    letter-spacing: -0.15em;
+    touch-action: none;
+}
+.cp-card-grip:hover { background: var(--surface-2, rgb(128 128 128 / .15)); color: var(--ink, inherit); }
+.cp-card-grip:active { cursor: grabbing; }
+.cp-sort-ghost { opacity: 0.35; }
+.cp-sort-chosen { box-shadow: 0 8px 28px rgb(0 0 0 / 0.25); }
+
+/* Layout editor: a native <dialog>, centred by the global dialog:modal rule. */
+.cp-layout-modal {
+    width: min(36rem, calc(100vw - 2rem));
+    max-height: calc(100vh - 3rem);
+    padding: 0;
+    border: 1px solid var(--line-strong, var(--rule, rgb(128 128 128 / .4)));
+    border-radius: 12px;
+    background: var(--surface, var(--paper, #fff));
+    color: var(--ink, #111827);
+    overflow: hidden;
+}
+[data-studio-mode="dark"] .cp-layout-modal, .aacp-shell .cp-layout-modal { background: #1f2937; color: #f3f4f6; }
+.cp-layout-modal::backdrop { background: rgb(15 23 42 / 0.5); }
+.cp-layout-form { display: flex; flex-direction: column; max-height: calc(100vh - 3rem); }
+.cp-layout-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem 0.5rem; }
+.cp-layout-head h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.cp-layout-x { border: 0; background: transparent; color: inherit; font-size: 1.4rem; line-height: 1; cursor: pointer; opacity: 0.6; }
+.cp-layout-x:hover { opacity: 1; }
+.cp-layout-help { margin: 0; padding: 0 1.25rem 0.5rem; font-size: 0.8125rem; opacity: 0.65; }
+.cp-layout-body { overflow-y: auto; flex: 1 1 auto; padding: 0 1.25rem; }
+.cp-layout-col { margin: 0.75rem 0 0.4rem; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
+.cp-layout-list { margin: 0; padding: 0; list-style: none; min-height: 2.5rem; border-radius: 8px; }
+.cp-layout-list:empty { border: 1px dashed rgb(128 128 128 / .4); }
+.cp-layout-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-bottom: 0.4rem;
+    padding: 0.5rem 0.625rem;
+    border: 1px solid rgb(128 128 128 / .28);
+    border-radius: 8px;
+    background: rgb(128 128 128 / .06);
+}
+.cp-layout-grip { cursor: grab; opacity: 0.55; letter-spacing: -0.15em; user-select: none; }
+.cp-layout-name { display: flex; align-items: center; gap: 0.5rem; flex: 1 1 auto; min-width: 0; font-size: 0.875rem; cursor: pointer; }
+.cp-layout-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-layout-limit { display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; opacity: 0.85; }
+.cp-layout-limit input { width: 4.25rem; padding: 0.2rem 0.4rem; border: 1px solid rgb(128 128 128 / .4); border-radius: 6px; background: transparent; color: inherit; }
+.cp-layout-row:has([data-cp-layout-show]:not(:checked)) { opacity: 0.55; }
+.cp-layout-foot { display: flex; align-items: center; gap: 0.5rem; padding: 0.875rem 1.25rem 1.1rem; border-top: 1px solid rgb(128 128 128 / .28); }
+.cp-layout-foot .grow { flex: 1 1 auto; }
+.cp-layout-btn { padding: 0.4rem 0.8rem; border: 1px solid rgb(128 128 128 / .45); border-radius: 8px; background: transparent; color: inherit; font-size: 0.8125rem; cursor: pointer; }
+.cp-layout-btn:hover { background: rgb(128 128 128 / .12); }
+.cp-layout-btn.is-primary { background: var(--studio-accent, var(--accent, #4f46e5)); border-color: transparent; color: var(--on-studio-accent, var(--on-accent, #fff)); }
+.cp-layout-btn[disabled] { opacity: 0.5; cursor: default; }
+/* The grip stays reachable on a folded card (the themes hide everything after a folded card's title). */
+.cp-cards .cp-col [data-card-id].is-collapsed > .cp-card-grip { display: inline-flex !important; }

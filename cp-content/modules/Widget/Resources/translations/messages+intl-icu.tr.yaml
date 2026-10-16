@@ -1,0 +1,11 @@
+widget.test_message: "Widget modülü Türkçe konuşuyor."
+
+widget.settings.sidebar_enabled: "Kenar Çubuğunu Göster"
+widget.settings.sidebar_position: "Kenar Çubuğu Konumu"
+widget.settings.sidebar_title: "Kenar Çubuğu Başlığı"
+widget.settings.max_items_per_widget: "Widget Başına Maksimum Öğe"
+widget.settings.footer_enabled: "Alt Bilgi Widget Alanını Göster"
+widget.settings.footer_columns: "Alt Bilgi Sütun Sayısı"
+widget.settings.footer_note: "Alt Bilgi Notu"
+widget.settings.position.left: "Sol"
+widget.settings.position.right: "Sağ"

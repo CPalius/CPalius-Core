@@ -1,0 +1,511 @@
+title: 'CPalius CMF: Bir İçerik Yönetim Sisteminden "Kurşun Geçirmez" Kurumsal Uygulama Framework''üne Evrim'
+version: v1.3.0
+intro_html: |
+    <p><strong>Yayın Türü:</strong> Teknik İnceleme (Whitepaper) &amp; Mimari Yol Haritası (RFC)<br>
+    <strong>Sürüm:</strong> v1.2.0<br>
+    <strong>Hedef Kitle:</strong> Kıdemli PHP Geliştiricileri, Sistem Mimarları, Açık Kaynak Geliştiricileri ve Yapay Zeka Ajanları<br>
+    <strong>Yazar / Kurucu:</strong> Ali Çömez (slaweally)<br>
+    <strong>Teknoloji Yığını:</strong> PHP 8.4+, Symfony 7.4 LTS, Doctrine ORM, AssetMapper, Tailwind CSS Standalone Binary</p>
+
+    <p><strong>Giriş: Teori, Pratik ve "Tekerleği Yeniden İcat Etme" Sancısı</strong></p>
+
+    <p>Modern web ekosisteminde yeni bir projeye başlarken geliştiriciler kendilerini her zaman iki ucu keskin bir bıçağın üzerinde bulurlar. Bir yanda, hazır eklenti ve tema sistemleriyle donatılmış ancak hantal veritabanı şemaları, teknik borç dağları ve güvenlik zaafiyetleriyle boğuşan klasik CMS'ler (WordPress, Drupal) vardır. Diğer yanda ise her şeye sıfırdan başlamayı gerektiren, her projede auth, ACL, dosya yönetimi ve admin paneli gibi temel bileşenleri sıfırdan yazarak zaman kaybettiren saf modern framework'ler (Symfony, Laravel) bulunur.</p>
+
+    <p>Sıfırdan kendi MVC yapısını yazmak kulağa romantik gelse de günümüz standartlarında rasyonel değildir. Bir framework sadece yönlendirme (routing) ve kontrolcülerden ibaret değildir; güvenlik (CSRF, XSS, SQLi engelleme), Dependency Injection (DI) Container yönetimi ve HTTP katmanı gibi devasa bir "görünmez buzdağı" barındırır.</p>
+
+    <p>İşte CPalius, bu iki dünya arasındaki köprüyü kurmak; geliştiriciyi tekerleği yeniden icat etme sancısından kurtarırken ona dünya standartlarında, optimize, güvenli ve genişletilebilir bir altyapı sunmak amacıyla doğdu. Bu döküman, CPalius'un en temiz skeleton kurulumundan, "çökmeyen" bir işletim sistemi mimarisine; ardından bir CMS'ten "Kurumsal Uygulama Framework'üne" uzanan teknik yolculuğunun en ince ayrıntısına kadar dökümüdür.</p>
+sections:
+    -
+        slug: pristine-root
+        title: '1. Bölüm: "Pristine Root" ve Klasör Mimarisi'
+        weight: 10
+        body_html: |
+            <p>Standart bir Symfony projesinde üçüncü parti paketler ve tarifler (recipes) yüklendikçe projenin ana dizini (root) dosya ve klasör çöplüğüne döner. Geliştiricinin kendi yazdığı kodlar ile framework'ün sistem dosyaları birbirine karışır. CPalius, projenin ilk gününde bu karmaşaya savaş açtı ve "Pristine Root" (Tertemiz Ana Dizin) politikasını benimsedi.</p>
+
+            <p>Ana dizinde sadece neyin nerede olduğunu gösteren 4 temel klasör, <code>.env</code> dosyası ve <code>composer.json</code> kalacak şekilde tüm mimariyi izole ettik.</p>
+
+            <p><strong>Klasör Hiyerarşisi</strong></p>
+
+            <pre><code>CPalius/ (Ana Dizin)
+            |
+            |-- cp-core/       # === KERNEL &amp; SYSTEM SPACE ===
+            |   |-- bin/          # Konsol komut araci (bin/console)
+            |   |-- config/       # Core konfigurasyonlari (bundles, packages, routes)
+            |   |-- migrations/   # Cekirdek veritabani goc dosyalari (Git'e tabi)
+            |   |-- src/          # Cekirdek PHP siniflari (App\ namespace)
+            |   `-- var/          # Cache, log ve SQLite dosyalari (yazma alani)
+            |
+            |-- cp-includes/   # === DEPENDENCIES SPACE ===
+            |   `-- vendor/       # Composer paketleri (Symfony ve kutuphaneler)
+            |
+            |-- cp-content/    # === USER &amp; DEVELOPER SPACE ===
+            |   |-- config/       # Config Sync alani (YAML olarak tasinan altyapi)
+            |   |-- modules/      # Bagimsiz moduller/eklentiler (Modules\ namespace)
+            |   |-- themes/       # Kullanici arayuz temalari
+            |   `-- translations/ # Global arayuz cevirileri (tr, en)
+            |
+            |-- public/        # === WEB ROOT === (Disariya acik tek klasor)
+            |   |-- index.php     # Front Controller (Tek giris kapisi)
+            |   `-- assets/       # Derlenmis/Semlink edilmis frontend varliklari
+            |
+            |-- .env           # Ortam yapilandirmalari
+            `-- composer.json  # CPalius ozel yol eslemeleri
+            </code></pre>
+
+            <p><strong>Symfony Flex'in İç Mekanizmalarını Bükmek</strong></p>
+
+            <p>Bu yapıyı kurabilmek için Symfony Flex ve Composer'ın yapılandırma yeteneklerini en uç sınırlarına kadar zorladık. <code>composer.json</code> dosyasını Flex'e kendi klasör yapımızı dikte edecek şekilde yapılandırdık: <code>vendor-dir</code>, <code>bin-dir</code> ve <code>extra</code> bloğu altındaki parametreler (<code>config-dir</code>, <code>src-dir</code>, <code>var-dir</code>, <code>public-dir</code> ve runtime <code>project_dir</code> / <code>dotenv_path</code>).</p>
+
+            <p><strong>Teknik Not:</strong> Sadece <code>config.vendor-dir</code> değiştirmek yetersizdir. Symfony Flex'in içindeki komutlar (<code>cache:clear</code>, <code>assets:install</code>), yolları hesaplarken composer'ın standart konfigürasyonlarından değil, <code>extra</code> bloğu altındaki parametrelerden beslenir. Bu parametreler eklenmediğinde sistem derleme aşamasında çöküyordu. Bu sayede tüm Flex tariflerinin doğrudan <code>cp-core</code> altına kurulmasını garanti altına aldık.</p>
+    -
+        slug: core-never-dies
+        title: '2. Bölüm: "Core Never Dies" (Çökmeyen Çekirdek) Mimarisi'
+        weight: 20
+        body_html: |
+            <p>Bir CMF geliştirirken en büyük kabus, kullanıcı alanından (<code>cp-content/modules</code>) gelebilecek kötü yazılmış veya bozuk kodların tüm sistemi kilitlemesidir. PHP'de gerçek bir işletim sistemi seviyesinde "sandbox" olmadığı için, CPalius çok kademeli bir Aktif Savunma ve Karantina Hattı geliştirmiştir.</p>
+
+            <p><strong>1. Savunma Hattı: Tavuk-Yumurta Probleminin Çözümü (bundles.php)</strong></p>
+
+            <p>Symfony boot edilirken ilk olarak <code>config/bundles.php</code> dosyası okunur. Bu aşamada henüz veritabanı bağlantısı, servis konteyneri veya autoloader tam olarak ayağa kalkmamıştır. Modüllerin aktiflik durumunu doğrudan veritabanından okumaya çalışırsak, sistem daha boot edilemeden kilitlenir.</p>
+
+            <p><strong>Çözüm:</strong> Bir modül aktif veya pasif edildiğinde CPalius, <code>cp-core/config/active_modules.php</code> adında statik, PHP opcache dostu bir dizi dosyası üretir. <code>bundles.php</code> sadece bu dosyayı okur; çekirdek bundle'lar her zaman yüklüdür ve her modül sınıfı yalnızca <code>class_exists()</code> başarılıysa eklenir.</p>
+
+            <p><strong>2. Savunma Hattı: Çalışma Zamanı İzolasyonu (Kernel::boot Override)</strong></p>
+
+            <p>Sınıfın fiziksel olarak var olması (<code>class_exists</code>), o modülün kodunun hatasız çalıştığı anlamına gelmez. Modülün kendi <code>boot()</code> metodu içinde fırlatacağı bir <code>TypeError</code> veya <code>RuntimeException</code> tüm sistemi çökertebilir. Bunu engellemek için <code>Kernel::boot()</code> override edilerek modül seviyesindeki tüm boot süreçleri <code>try/catch (\Throwable)</code> zırhıyla kuşatıldı; hatalı modül karantina günlüğüne yazılır, çekirdek çalışmaya devam eder.</p>
+
+            <p><strong>3. Savunma Hattı: Compile-Time Kilitlenme Koruması &amp; Dry-Run</strong></p>
+
+            <p>Eklentideki bir <code>services.yaml</code> dosyasında geçersiz bir YAML sözdizimi varsa veya yanlış bir DI tanımı yapıldıysa, Symfony container'ı derlenemez. Bu durumda sistem çöker ve terminalden <code>cp:module:deactivate</code> komutunu bile çalıştıramayız.</p>
+
+            <p><strong>Çözüm:</strong> Modül aktivasyonuna izole bir Dry-Run kontrolü entegre edildi. Modül sınıfı geçici olarak yazılır, <code>symfony/process</code> ile tamamen izole bir alt süreç başlatılır ve sırasıyla <code>cache:clear --no-warmup</code> &rarr; <code>lint:yaml</code> &rarr; <code>lint:container</code> koşturulur. Sıfır dışı bir exit code'da ana süreç <code>finally</code> bloğunda dosyayı geri getirir, aktivasyonu iptal eder ve modülü kalıcı karantinaya alır. Dosya asla bozuk haliyle kaydedilmez.</p>
+
+            <p><strong>4. Savunma Hattı: İzole Route Yükleyicisi</strong></p>
+
+            <p>Standart Symfony'de bir modülün <code>routes.yaml</code> dosyasındaki bir syntax hatası, rota yükleme anında tüm sistemi çökertir. <code>SafeModuleRouteLoader</code> her modülün rotalarını izole bir try/catch bloğunda yükler; hatalı modül atlanır, sistemin geri kalanı tamamen ayakta kalır.</p>
+    -
+        slug: hybrid-data
+        title: '3. Bölüm: Hibrit Veri Modeli ve Yüksek Performanslı Flat Index Sistemi'
+        weight: 30
+        body_html: |
+            <p>İçerik yönetiminde iki klasik yaklaşım da sorunludur:</p>
+
+            <ul>
+            <li><strong>EAV (Entity-Attribute-Value) Modeli (Drupal):</strong> Her yeni alan için yeni bir veritabanı tablosu açılır. 15 özel alanı olan bir sayfayı çekmek için 15 JOIN sorgusu atılır; veritabanı kilitlenir.</li>
+            <li><strong>Postmeta/Serialized Modeli (WordPress):</strong> Tüm özel alanlar tek bir meta tablosunda satır satır tutulur. Filtreleme ve sıralama yapmak tam bir performans felaketidir.</li>
+            </ul>
+
+            <p><strong>CPalius Hibrit Veri Modeli:</strong> Sık sorgulanan, filtrelenen ve indekslenen temel alanları (ID, Başlık, Slug, Tür, Durum, Dil, Tarihler) gerçek veritabanı sütunları olarak tutuyoruz. İçeriğin kendisine ait tüm dinamik, esnek ve her projede değişebilecek alanları (Gövde metni, öne çıkan görsel, galeri alanları, SEO verileri) ise tek bir SQL <code>json</code> sütununda (<code>data</code>) saklıyoruz.</p>
+
+            <p><strong>SQLite, MySQL ve Postgres Uyumluluğunda İndeksleme Çıkmazı</strong></p>
+
+            <p>Dinamik JSON verilerini veritabanı düzeyinde sorgulamak isterseniz, SQLite, MySQL ve Postgres arasında tamamen farklı SQL sözdizimleri kullanmanız gerekir. Ayrıca generated columns üzerinde indeks oluşturmak Doctrine ORM şema araçlarıyla son derece kırılgandır; Doctrine her şema güncellemesinde bu indeksleri silmeye çalışır.</p>
+
+            <p><strong>Çözüm: NodeFieldIndex ve Dinamik İndeksleme Motoru</strong></p>
+
+            <p>CPalius bu sorunu bir Flat Field Index tablosu ve bir Doctrine Event Listener ile çözer. Bağımsız bir indeks tablosu, sorgulanacak dinamik alanlar için tip-uygun kolonlar (<code>value_string</code>, <code>value_int</code>, <code>value_decimal</code>, <code>value_datetime</code>) taşır; her biri <code>field_name</code> üzerinden bileşik indekslidir.</p>
+
+            <p>Geliştiricinin belirlediği <code>QueryableFieldsRegistry</code> yapılandırmasına göre, bir Node kaydedildiğinde veya güncellendiğinde <code>NodeIndexListener</code> otomatik olarak JSON <code>data</code> sütununu parse eder, eski indeksleri temizler ve <code>postPersist</code> / <code>postUpdate</code> anında idempotent şekilde yardımcı tabloya yazar.</p>
+
+            <p>Artık hangi veritabanı motoru kullanılırsa kullanılsın, JSON verileri <code>NodeRepository::findByIndexedField()</code> (type, locale, fieldName, value, valueColumn, operator) ile tek bir standart SQL/DQL sorgusuyla ışık hızında sorgulanabilir.</p>
+    -
+        slug: i18n
+        title: '4. Bölüm: Çok Dilli Yapı ve Kompozit Benzersizlik Kısıtları'
+        weight: 40
+        body_html: |
+            <p>Çok dilli (i18n) yapı projelere sonradan eklendiğinde tüm veri modelini çökertir. CPalius, çoklu dili ilk günden çekirdeğin hücrelerine işlemiştir.</p>
+
+            <p><strong>Kompozit Unique Constraints (Benzersizlik Güvencesi)</strong></p>
+
+            <p>Çok dilli bir yapıda, klasik <code>unique: true</code> kısıtlamaları sistemi kilitler. Örneğin, Türkçe <code>/tr/hakkimizda</code> ile İngilizce <code>/en/hakkimizda</code> sayfalarının aynı anda var olabilmesi gerekir. Global tek bir slug unique kısıtlaması bunu engeller.</p>
+
+            <p><strong>CPalius Çözümü:</strong> Veritabanı şemamızda kompozit benzersizlik kısıtları kullandık:</p>
+
+            <ul>
+            <li><strong>Yönlendirme Benzersizliği:</strong> Aynı slug sadece aynı dilde unique olmalıdır: <code>UNIQUE(slug, locale)</code>.</li>
+            <li><strong>Çeviri Grubu Benzersizliği:</strong> Aynı çeviri grubunda aynı dilden sadece bir adet içerik bulunabilir: <code>UNIQUE(translation_group_id, locale)</code>.</li>
+            </ul>
+
+            <p>Aynı güvence, <code>UNIQUE(translation_group_id, locale)</code> ile dört entity'ye daha (categories, tags, menu_items, forum_sections) taşınmıştır; böylece "bir çeviri grubunda her dilden en fazla bir kayıt" kuralını eşzamanlı isteklerde bile veritabanının kendisi zorlar.</p>
+
+            <p><strong>Operatör arayüz katalogları</strong></p>
+
+            <p>AACP ve Studio kromu <code>cp-content/translations</code> altındaki ICU YAML'e ve her modülün <code>Resources/translations</code> dizinine bağlıdır. Kenar çubuğu etiketleri ve <code>#[CpAdminMenu]</code> öznitelikleri çeviri anahtarı kullanır. Sabit kodlanmış Türkçe (veya İngilizce) operatör metinleri PHP, Twig kromu veya JavaScript içinde yaşamaz.</p>
+    -
+        slug: entity-model
+        title: '5. Bölüm: "CMS"ten "Uygulama Framework''üne" Geçiş'
+        weight: 50
+        body_html: |
+            <p>CPalius sadece bir içerik yönetim sistemi (CMS) değildir; arkasında Oto Galeri, Turizm Acentası, Personel Yönetimi veya CRM/ERP sistemlerinin çalışabileceği esnek bir uygulama platformudur. Bu dönüşümü sağlamak için iki sınıf varlık tanımladık:</p>
+
+            <table>
+            <thead>
+            <tr><th>Özellik</th><th>Content Entities (Node)</th><th>Business Records (Resource)</th></tr>
+            </thead>
+            <tbody>
+            <tr><td><strong>Kavramsal Karşılık</strong></td><td>Sayfa, Yazı, İlan Vitrini, Blog</td><td>Araç, Fatura, Rezervasyon, Personel</td></tr>
+            <tr><td><strong>Özellikleri</strong></td><td>Slug var, çoklu dil var, yayın durumu var, SEO var.</td><td>Slug yok, dil yok, yayın yok, durum makinesi (workflow) var.</td></tr>
+            <tr><td><strong>Ortak Payda</strong></td><td colspan="2">Aynı Yetenek (Capability) modeli, aynı Twig bileşenleri, aynı CLI yönetimi, aynı Config Sync.</td></tr>
+            </tbody>
+            </table>
+
+            <p><strong>#[CpResource] Devrimi</strong></p>
+
+            <p>Geliştiricinin iş süreçlerini kodlamasını saniyeler seviyesine indirmek için özel bir PHP Attribute yapısı tasarladık. Tek bir anotasyon ile veritabanındaki ham bir Doctrine sınıfını platformun tüm güçleriyle birleştiriyoruz:</p>
+
+            <pre><code>#[CpResource(
+                name: 'vehicle',
+                module: 'oto-galeri',
+                capabilities: ['create', 'edit', 'delete', 'view'],
+                auditable: true,
+                multiTenant: true,
+                workflow: 'vehicle_lifecycle'
+            )]
+            #[ORM\Entity]
+            class Vehicle
+            {
+                private ?int $id = null;
+                private ?string $plate = null;
+                private ?string $brand = null;
+                private ?int $price = 0; // Kurus bazinda saklanir (Float asla!)
+            }
+            </code></pre>
+
+            <p>Bu tek nitelik (<code>#[CpResource]</code>) sayesinde:</p>
+
+            <ul>
+            <li>Rol ve yetenek matrisine (<code>vehicle.create</code>, <code>vehicle.edit</code> vb.) dinamik yetenekler otomatik kaydolur.</li>
+            <li>Otomatik CRUD formları ve liste ekranları bu tanıma göre dinamik olarak türetilir.</li>
+            <li>SaaS projeleri için çoklu kiracı (<code>multiTenant: true</code>) izolasyonu arka planda otomatik uygulanır.</li>
+            <li>Entity üzerinde yapılan tüm değişiklikler anlık olarak sürüm geçmişine (audit log) kaydedilir.</li>
+            </ul>
+    -
+        slug: content-platform
+        title: 'İçerik platformu: alanlar, revizyonlar, workflow ve satır bazlı erişim'
+        weight: 55
+        body_html: |
+            <p>Hibrit veri modeli hikâyenin yarısıdır. CPalius bunun etrafına, bir tabloyu uygulamaya çeviren sözleşmeleri kurdu: özel alanlar, revizyonlar, editöryel durum makinesi, görüntüleme modları, metin biçimleri ve satır bazlı izinler. Her biri, kendi kategorisinin lideri olan sistemdeki belirli bir zaafa karşı tasarlandı.</p>
+
+            <h3>Field API</h3>
+            <p>Alan tipleri, widget&apos;lar, formatter&apos;lar ve alan başına ayarlar; <code>FieldableInterface</code> uygulayan her entity&apos;ye takılabilir — bugün <code>Node</code> ve <code>User</code>, yarın <code>#[CpEntityType]</code> taşıyan her şey. Değerler entity&apos;nin JSON kolonunda durur; sorgulanan alanlar için ayrı bir düz indeks tablosu vardır. Entity referansları satır satır değil toplu çözülür.</p>
+            <p>Kaçınılan tuzak WordPress&apos;in <code>postmeta</code>&apos;sı ve klasik EAV tablosudur: ikisi de &quot;fiyatı 100&apos;den büyük her yazıyı ver&quot; sorgusunu bir join fırtınasına çevirir. Düz indeks, sorgulanabilir altkümeyi gerçek kolonlarda tutar; gerisi JSON&apos;da kalır ve okunana kadar hiçbir maliyeti olmaz.</p>
+
+            <h3>API&apos;nin de uyduğu görüntüleme modları</h3>
+            <p>Drupal&apos;ın Manage Display&apos;i olgun referanstır ve yapısal tek bir zaafı vardır: yalnızca temaya aittir. Bir &quot;teaser&quot; tanımlarsınız, JSON:API çıktısı onu görmezden gelir — şekli iki kez yazarsınız ve ikisi zamanla ayrışır. CPalius&apos;ta tek bir <code>EntityDisplayRegistry</code> hem Twig oluşturucuyu hem API serileştiricisini besler; bir görüntüleme modu bir kere tanımlanır ve ikisinde de tutarlıdır. Bir test bu özelliği tutar.</p>
+
+            <h3>Revizyon, moderasyon ve workflow</h3>
+            <p>Moderasyon durumu, yayın durumundan ayrı bir kolondur; çünkü &quot;incelemede&quot; ile &quot;yayında değil&quot; farklı olgulardır ve tek alan bunları birbirine karıştırır. Altındaki workflow motoru, herhangi bir özne üzerinde çalışan ve YAML&apos;da tanımlanan düz bir durum makinesidir: yerler, geçişler ve geçiş başına isteğe bağlı bir yetenek. İçerik moderasyonu onun tanımı değil, ilk tüketicisidir — yerleri <em>teklif &rarr; onaylı &rarr; faturalı</em> olan bir kurulum aynı motoru ve aynı ekranları kullanır.</p>
+
+            <h3>Metin biçimleri: yalnız çıkışta değil, girişte de filtre</h3>
+            <p>Drupal&apos;ın Filter API&apos;si referanstır ve yalnız çıktıda filtreler; bu da veritabanını temizlenmemiş işaretleme deposu olarak bırakır. Bir filtreyi kapatın, eski işaretleme canlanır. CPalius <em>kayıtta</em> allowlist, çıktıda dönüşüm uygular. Bir deny-list — <code>script</code>, <code>style</code>, <code>form</code>, kayıtta <code>iframe</code> — Full HTML dahil hiçbir biçim tarafından geçersiz kılınamaz. Yetki yazma anında yeniden kontrol edilir; <code>full_html</code> yetkisini kaybetmiş bir kullanıcının POST&apos;u güvenilmez, reddedilir. Markdown, işlemeden önce ham HTML&apos;i kaçırır.</p>
+
+            <h3>Yeniden inşa gerektirmeyen satır bazlı erişim</h3>
+            <p>Drupal&apos;ın node access grant&apos;leri referans uygulamadır ve bilinen dört maliyeti vardır: sıradan izinlerin yanında ikinci bir zihinsel model olan realm/gid yapısı; mantık her değiştiğinde gereken, atlandığında sessizce yanlış sonuç veren pahalı bir yeniden inşa; çekirdekte yalnız node desteği; ve verilen iznin gerçekten var olduğunu doğrulayan bir mekanizmanın olmaması.</p>
+            <p>CPalius dördüne de cevap verir. Grant&apos;ler her şeyle aynı yetenek ad alanında ifade edilir, ikinci bir model yoktur. Her grant yazıldığı an bağımsız olarak doğrudur — unutulacak bir yeniden inşa yoktur. Entity tipi bir dizedir, dolayısıyla her <code>#[CpEntityType]</code> katılır. Bilinmeyen bir yetenek saklanmaz, reddedilir; bir yazım hatası sessizce &quot;hiçbir şey&quot; veremez. Sorgu tarafında satır başına kontrole değil, tek bir <code>EXISTS</code> alt sorgusuna derlenir.</p>
+            <p>Dürüst eksik: tek bir kaydı tek bir kullanıcıyla paylaşmak için tarayıcı arayüzü yok. Drupal çekirdeğinde de yok.</p>
+    -
+        slug: security
+        title: '6. Bölüm: Güvenlik ve Performans Anayasası'
+        weight: 60
+        body_html: |
+            <p>Güvenlik ve performans, projenin son aşamasında "üzerine eklenen" birer cila değildir; sistemin en temel yapı taşlarıdır.</p>
+
+            <p><strong>1. Yetenek Tabanlı Erişim Kontrolü (CBAC)</strong></p>
+
+            <p>Standart Symfony <code>ROLE_ADMIN</code> veya <code>ROLE_USER</code> yaklaşımları hantaldır ve sonradan genişletilemez. CPalius'ta kodun hiçbir yerinde rol ismi kontrol edilmez; her zaman dinamik olarak üretilen yetenekler <code>denyAccessUnlessGranted('system.module.manage')</code> ile kontrol edilir.</p>
+
+            <ul>
+            <li><strong>Roller = Config (YAML):</strong> Rol tanımları ve yetenek matrisleri <code>cp-content/config/sync/</code> altında YAML dosyalarında tutulur ve Git ile taşınır.</li>
+            <li><strong>Kullanıcılar = Content (DB):</strong> Gerçek kullanıcı kayıtları veritabanında kalır, asla dışa aktarılmaz.</li>
+            </ul>
+
+            <p><strong>2. SaaS Veri Sızıntısı Koruması (Automatic Tenant SQLFilter)</strong></p>
+
+            <p>Çok kiracılı sistemlerde en büyük güvenlik açığı, yazılımcının bir sorgunun sonuna <code>WHERE tenant_id = ?</code> yazmayı unutmasıdır. CPalius'ta bu ihtimal platform seviyesinde yok edilmiştir: bir Doctrine <code>SQLFilter</code>, multi-tenant işaretli entity'ler için tenant kısıtını her sorguya enjekte eder.</p>
+
+            <p><strong>3. N+1 Sorgu Muhafızı (Dev-Mode N+1 Guard)</strong></p>
+
+            <p>Veritabanı şişmelerinin ve yavaşlıklarının en yaygın sebebi olan N+1 sorgu hatalarını engellemek için sadece dev ortamında tetiklenen bir Doctrine DBAL middleware'i devrededir. Tek bir HTTP isteğinde aynı tabloya atılan sorgu sayısı belirlenen limiti aşarsa, doğrudan <code>MaxQueriesExceededException</code> fırlatılır. Geliştirici bu hatayı lokalde çözmeden kodu canlıya alamaz. Zincir DBAL katmanında gerçektir: <code>QueryCounterConnection</code>, <code>Driver</code>, <code>Statement</code> ve <code>TableParser</code>.</p>
+
+            <p><strong>4. Voter-to-SQL Dönüşümü</strong></p>
+
+            <p>Liste ekranları her satır için PHP voter çalıştırmamalıdır (bu, yetkilendirmenin N+1'idir). <code>QueryScopeApplier</code>, çağıranın <code>.own</code> / <code>.any</code> yeteneklerini sorgu veritabanına gitmeden önce Doctrine <code>WHERE</code> koşuluna çevirir.</p>
+
+            <p><strong>5. Zero-Trust Payload ve Çekirdek XSS Sterilizasyonu</strong></p>
+
+            <p>Dışarıdan gelen HTTP gövdeleri sıkı DTO'lara map edilir ve denetleyicilere ulaşmadan doğrulanır. Veritabanına gidecek zengin metin <code>RichTextSanitizer</code> ile sterilize edilir (Manifesto Law 5.3). <code>SchemaOrgBuilder</code> aynı hibrit JSON'dan JSON-LD (BlogPosting, WebPage) üretir.</p>
+
+            <p><strong>6. İyimser Eşzamanlılık</strong></p>
+
+            <p>Yüksek yazma yolları tablo kilidi yerine optimistic locking kullanır; eşzamanlı mutasyonlar deadlock tiyatrosu olmadan izole edilir. Config (roller, yetenekler) Git'teki YAML'de kalır; kullanıcılar veritabanında kalır — Symfony TreeBuilder ile Drupal tarzı config sync.</p>
+    -
+        slug: platform-layer
+        title: '7. Bölüm: Platform Genişletilebilirliği — API, Hook, Cron, Plugin'
+        weight: 70
+        body_html: |
+            <p>İlk whitepaper taslağından bu yana çekirdeğe dört genişletme omurgası indi. Her biri aynı Core Never Dies zırhını taşır: çöken bir eklenti karantinaya alınır; çekirdek ayakta kalır.</p>
+
+            <p><strong>Kriptografik REST API Gateway</strong></p>
+
+            <p>Tek bir <code>/api/{path}</code> joker rotası, derleme zamanında <code>ApiRegistrationPass</code> ile <code>#[CpApi]</code> işaretli servis metotlarına bağlanır. Kimlik doğrulama <code>X-CP-API-KEY</code> header'ı, SHA-256 hash ve zamanlama-güvenli <code>hash_equals()</code> ile yapılır. Fail-closed: geçersiz anahtar hedef metoda asla ulaşmaz. Her uç kendi try/catch'inde çalışır; çöken bir metot gateway'i 500'e düşüremez.</p>
+
+            <p><strong>Çift kulvarlı izole Hook motoru</strong></p>
+
+            <p>Cotonti tarzı <code>Hooks/{hook_point}.php</code> dosyaları bağlı bir Closure içinde çalışır; <code>$this</code> sızıntısı olmaz. Symfony tarzı <code>#[CpHook]</code> servisleri <code>HookRegistrationPass</code> ile toplanır. Fırlatan hook karantina günlüğüne yazılır; sayfa yine render edilir.</p>
+
+            <p><strong>Birleşik hibrit Cron motoru</strong></p>
+
+            <p><code>CronManager</code> üç kaynağı tek listede birleştirir: <code>cp_cron_jobs</code> satırları, <code>#[CpCronJob]</code> metotları ve <code>Hooks/cron.{job}.php</code> dosyaları. Görevler izole alt süreçlerde çalışır ve <code>CronCommandWhitelist</code> ile yalnızca <code>cp:*</code> komutlarını çalıştırabilir. Operatörler <code>/aacp/cron</code> üzerinden izler ve &ldquo;Şimdi çalıştır&rdquo; der.</p>
+
+            <p><strong>Modülden bağımsız Plugin katmanı</strong></p>
+
+            <p><code>PluginInterface</code> işaretli servisler <code>PluginRegistry</code> tarafından toplanır; aktiflik <code>PluginToggleRepository</code>'dedir. Bir modül, kendisini kapatmadan opsiyonel widget'ları açıp kapatabilir.</p>
+
+            <p><strong>Lazy ayarlar</strong></p>
+
+            <p><code>#[CpSetting]</code> anahtarları <code>SettingsRegistry</code> üzerinden talep edilince yüklenir — boot'ta her anahtarı dökmez, sorulunca tek sorgu atar.</p>
+
+            <p><strong>WordPress tarzı modül paketleri</strong></p>
+
+            <p>Birinci parti bir modül <code>Resources/config/importmap.php</code> ve <code>contributions.yaml</code> taşıyabilir. <code>ModulePackageContract</code> disk düzenini doğrular; operatörler AACP'den ZIP yükleyebilir. Ana sayfa kipleri, portal akış blokları, şema türleri ve hesap giriş-sonrası iniş noktası contribution kataloğunda ilan edilir — çekirdek <code>forum_index</code> veya <code>blog_index</code>'i sabit kodlamaz.</p>
+    -
+        slug: migrate
+        title: 'Migrate: bir kurulumu başka bir CMS''ten taşımak'
+        weight: 75
+        body_html: |
+            <p>Kimse verisini taşıyamadığı bir framework&apos;e geçmez. CPalius göç motorunu çekirdekte, yabancı sistem okuyucularını modülde taşır — çekirdek CPalius yazar, modül başkasının şemasını okur. Beş kaynak sistem tek motor üstünde koşar: dosyadan WordPress; doğrudan veritabanından XenForo, MyBB ve Joomla; ve CSV.</p>
+
+            <h3>Referans uygulamanın zaaflarına karşı tasarım</h3>
+            <p>Drupal&apos;ın Migrate API&apos;si aşılması gereken standarttır ve dört maliyeti vardır. Kuru çalıştırma yoktur — ne yapacağını, yaptırarak öğrenirsiniz. Bir migration, yazım hataları koşumun ortasında patlayan tipsiz dizelerden oluşan bir YAML eklenti çorbasıdır. Çekirdek tek başına koşamaz; contrib bir araç gerekir ve çekirdek arayüzü yalnız Drupal&apos;dan Drupal&apos;a çalışır. Geri alma da id haritasının kaydettiği kadar iyidir.</p>
+            <p>CPalius dördünü de tersine çevirir. <strong>Kuru çalıştırma varsayılandır</strong> ve gerçeğiyle aynı sayaçları üretir; <code>--apply</code> bilinçli bir eylemdir. <strong>Dönüşümler düz PHP&apos;dir</strong>; IDE tamamlar, statik çözümleyici denetler. <strong>Koşucu çekirdektedir.</strong> <strong>Geri alma kesindir</strong>, çünkü haritayı koşucunun kendisi, hedefe yazma başarılı olduktan <em>sonra</em> yazar — öncesinde değil, migration da değil.</p>
+
+            <h3>Dört garanti</h3>
+            <ul>
+            <li><strong>Idempotent.</strong> <code>(migration_id, source_id)</code> üzerindeki tekil anahtar garantinin kendisidir — iki koşum çakıştığında bir satırın iki kez aktarılmasını kayıt tutma değil, veritabanı durdurur. Değişmemiş satır atlanır, değişmiş satır yerinde güncellenir.</li>
+            <li><strong>Satır başına izolasyon.</strong> Bozuk tek kayıt yalnız kendisi düşer; komşuları aktarılır.</li>
+            <li><strong>Bildirime göre sıra.</strong> Bağımlılıklar topolojik çözülür; döngü ya da tanınmayan bağımlılık sessizce atlanmaz, reddedilir.</li>
+            <li><strong>Akışlı.</strong> WordPress okuyucusu export&apos;u <code>XMLReader</code> ile gezer; WordPress&apos;in kendi içe aktarıcısı tüm dosyayı belleğe alır. Veritabanı kaynakları keyset ile sayfalanır, böylece koşum sırasında büyüyen bir tablo atlanan sayfaya yol açamaz.</li>
+            </ul>
+
+            <h3>Şemaların asıl öğrettiği</h3>
+            <p>İlginç iş asla boru hattı değildir, kaynaktır. MyBB kategorileri ve forumları tek tabloda, tek bir karakterle ayırarak tutar; bir bağlantı ise <code>linkto</code> değeri olan bir forumdur — tip kolonuna güvenmek, birinin bağlantısını boş bir bölümle değiştirirdi. <code>closed</code> kolonu <code>moved|tid</code> tutabilir, dolayısıyla <code>&quot;1&quot;</code> ile karşılaştırmak taşınmış bir konuyu açık okur. Joomla tablo ön ekini kurulumda rastgeleleştirir, <code>id = 1</code> kategorisi bir kategori değil nested-set çapasıdır ve makale gövdesi, birleştirilmezse her uzun makalenin sessizce kırpılmasına yol açan iki kolona bölünmüştür.</p>
+            <p>Bunlar kaydediliyor, çünkü <em>koşan</em> bir içe aktarma ile <em>doğru</em> bir içe aktarma arasındaki fark bunlardır.</p>
+
+            <h3>Kanıtın sınırı</h3>
+            <p>Sürücüler belgelenmiş şemalardan yazıldı ve onlara uygun kurulmuş fixture&apos;lara karşı test edildi. Bu, eşlemeyi kanıtlar. Her gerçek kurulumla uyumu kanıtlamaz — sürüm farkları, eklenti kolonları ve on yıllık bir forumun biriktirdiği tuhaflıklar gerçektir. Gerçek bir veritabanına karşı ilk koşum hâlâ gerçek bir testtir; kuru çalıştırmanın varsayılan olmasının ve hataların kaynak satır id&apos;siyle raporlanmasının sebebi tam olarak budur.</p>
+    -
+        slug: aacp-command
+        title: '8. Bölüm: AACP Komuta Masası, Studio ve Kurtarma'
+        weight: 80
+        body_html: |
+            <p>Orijinal yol haritasında vaat edilen Safe Mode / Kurtarma Konsolu artık üretim kodudur. AACP süs bir admin teması değil, sistem yönetim merkezidir.</p>
+
+            <p><strong>Kurtarma Konsolu (<code>/aacp/recovery</code>)</strong></p>
+
+            <p>Rota <code>security.yaml</code>'da bilinçli olarak <code>PUBLIC_ACCESS</code>'tir. Yetki, <code>.env</code>'deki <code>AACP_RECOVERY_TOKEN</code> ile zamanlama-güvenli <code>hash_equals()</code>'tir. Hiç Doctrine sorgusu çalıştırmaz; veritabanı yokken de ayaktadır. Boş token kapıyı kilitler (fail-safe).</p>
+
+            <p><strong>Canlı komuta masası (<code>/aacp</code>)</strong></p>
+
+            <p>Dashboard <code>/aacp/system/metrics</code>'i poll eder: PHP sürümü, load, istek süresi, bellek, OPcache hit oranı, veritabanı telemetrisi, kuyruk, cron son çalışma, modül karantinası. Cache Rebuild ve OPcache flush tek tık, CSRF korumalıdır. İçerik KPI'ları Studio <code>/admin</code>'dedir, AACP'de değil — AACP operasyon, Studio editoryal komuta masasıdır.</p>
+
+            <p><strong>Studio dashboard</strong></p>
+
+            <p>Her ilk parti modül bir <code>StudioDashboardStatsProvider</code> sunar (Blog, Forum, Medya, Menü, Roadmap, SEO). Studio Drupal tarzı bir komuta masasıdır: sayılar, kısayollar ve ana sayfa portal düzeni (blok sırası, <code>portal.{locale}.yaml</code> içinde çift dilli metin).</p>
+
+            <p><strong>Karantina, lokalizasyon, performans backend'leri</strong></p>
+
+            <p><code>/aacp/quarantine</code>, <code>module_quarantine.log</code>'un salt-okunur görünümüdür. <code>TranslationManager</code> çekirdek ve modül ICU YAML'ini atomik <code>.tmp</code> + <code>rename()</code> ile yazar. Performans ekranı Redis, Memcached, Varnish, Nginx PageSpeed ve CPalius Origin Cache'i test eder; &ldquo;aktif&rdquo; bayrağı yalnızca başarılı probe'dan sonra konur — sahte yeşil toggle yoktur. <code>/aacp/backup</code> Yedek Yönetimi masasıdır (<code>system.backup.manage</code> yeteneği): veritabanı dökümü, dosya ZIP'i veya tam arşiv; indirme ve silme dahildir.</p>
+    -
+        slug: operations
+        title: 'Bir kurulumu işletmek: güncelleme, teşhis, kuyruklar ve loglar'
+        weight: 85
+        body_html: |
+            <p>Bir sistemin ömrünün büyük kısmı kurulduktan sonra geçer. Aşağıdakiler o yarıyı ele alan sözleşmelerdir.</p>
+
+            <h3><code>cp:update</code> — sıralı ve devam ettirilebilir tek boru hattı</h3>
+            <p>Önce bekleyen migration&apos;lar, sonra çekirdek güncelleme kancaları, sonra her modülün kendi yükseltme adımı, sonra yapılandırma içe aktarımı, sonra cache yeniden inşası. Drupal&apos;ın <code>update.php</code>&apos;si ve WordPress&apos;in <code>wp core update-db</code>&apos;si şema kısmını yapar ama veri düzeltmelerini ayrı bir mekanizmaya bırakır. Burada bir güncelleme kancası, defteri olan tipli bir arayüzdür ve sürümle etiketlidir; birkaç sürüm atlansa bile yayın sırasıyla uygulanır.</p>
+            <p>Devam ettirilebilirlik sonradan eklenmedi, tasarımın kendisinde: defter kaydı kanca <em>döndükten sonra</em> yazılır, böylece yarıda kesilen bir kanca &quot;yapıldı&quot; sanılmak yerine tekrar çalışır. Bozuk bir defter boş okunur, asla &quot;hepsi bitti&quot; olarak değil. Patlayan bir kanca komşularını durdurmaz; boru hattını yalnızca migration hatası durdurur. <code>--dry-run</code> hiçbir şeye dokunmadan tüm planı raporlar — üretimde önce onu koşarsınız.</p>
+            <p>Kapattığı boşluk sıradan ve pahalıydı: manifest sürümü ilerleyen bir modül, yükseltme adımını yalnızca elle kapatılıp açıldığında çalıştırıyordu — ve operatörün hangi modüllerin buna ihtiyacı olduğunu bilmesinin bir yolu yoktu.</p>
+
+            <h3><code>cp:doctor</code> ve <code>cp:debug</code></h3>
+            <p>CPalius kendini büyük ölçüde attribute&apos;larla keşfeder — <code>#[CpHook]</code>, <code>#[CpCronJob]</code>, <code>#[CpResource]</code>, <code>#[CpEntityType]</code>, <code>#[CpFieldType]</code>. Bu, bir modüle çok az törenle çok geniş erişim kazandırır ve tek bir maliyeti vardır: bir kanca noktasındaki yazım hatası bir hata değil, <em>sessizliktir</em>. <code>cp:debug</code>, &quot;benimki kaydoldu mu?&quot; sorusunu breakpoint koymadan cevaplar; <code>cp:doctor</code> ise &quot;bu kurulum, kendi kodunun beklediği durumda mı?&quot; sorusunu.</p>
+            <p>İkisi de salt okunurdur, ikisi de CI için JSON üretir ve <code>cp:doctor</code>&apos;un bir hata eşiği vardır — geçersiz bir eşik, kapıyı sessizce kapatmak yerine reddedilir.</p>
+
+            <h3>Ayrı ayrı raporlanan iki kuyruk</h3>
+            <p>Mail ve bildirimler Symfony Messenger üstünde koşar; bu da yerel yeniden deneme ve hata taşıyıcıları getirir. Webhook&apos;lar platformun kendi <code>AsyncJob</code> tablosunda kalır; SSRF koruması ve imza yolu orada zaten olgundur. Yönetim ekranı ikisini ayrı sayılar olarak raporlar ve hiçbirini tarif etmeyecek tek bir toplamda birleştirmez.</p>
+
+            <h3>Kaydettiği şeyden sağ çıkan loglar</h3>
+            <p>Uygulama logları, mail logları ve güvenlik telemetrisi tek tablo değil, üç tablodur. Denetim kayıtları entity farklarını tutar; telemetri güvenlik olaylarını; watchdog uygulama arızalarını. Bunları tek tabloya sıkıştırmak her birini kötüleştirirdi. Log işleyicisi tamponlu, istek sonunda boşaltılan ve asla istisna fırlatmayan bir yapıdır — tarif ettiği isteği düşürebilen bir logger, yükümlülüktür.</p>
+    -
+        slug: origin-cache
+        title: '9. Bölüm: Origin HTML Cache ve Performans Envanteri'
+        weight: 90
+        body_html: |
+            <p>CPalius Origin Cache, Redis, Varnish veya CDN gerektirmeyen birinci parti bir HTML önbelleğidir. Bu backend'lerin yanında durur; sade paylaşımlı hostingde de çalışır.</p>
+
+            <p><strong>İsabet nasıl servis edilir</strong></p>
+
+            <p>Açık/kapalı durumu <code>public/page-cache/</code> altındaki disk sentinel'idir. <code>public/.htaccess</code> içindeki Apache rewrite, sorgu dizesi ve oturum çerezi (<code>PHPSESSID</code>, <code>REMEMBERME</code>) olmayan anonim GET isteklerinde <code>page-cache/{path}/index.html</code> dosyasını servis eder. PHP yazmayı ve sorgu-dizesi varyantlarını <code>OriginCacheWriter</code> / <code>OriginCacheReader</code> ile okumayı sürdürür.</p>
+
+            <p><strong>Ne saklanır</strong></p>
+
+            <p>HTML isteğe bağlı minify edilir. Bağlı CSS/JS kopyalanıp minify edilebilir; görseller WebP türevi olarak üretilebilir. İsteğe bağlı HTML kalkanı işaretlemeyi yeniden yazar. TTL, hariç tutulan yollar (<code>/aacp</code>, <code>/admin</code>, <code>/login</code>, API'ler, profiler), minify, asset/görsel sıkıştırma ve kalkan <code>performance.cpalius.*</code> ayarlarıdır. Cron <code>cpalius.origin_cache.purge</code> süresi dolan dosyaları 15 dakikada bir siler. Cache Rebuild origin HTML'i de temizler.</p>
+
+            <p><strong>Geçersiz kılma</strong></p>
+
+            <p><code>OriginCachePurger</code> Blog yazı/kategori/etiket yazımlarında (zamanlanmış yayın dahil), Forum konu mutasyonlarında, Roadmap kayıt kaydında ve Menü kaydında çalışır — editoryal değişiklik diskte bayat HTML bırakmaz.</p>
+
+            <p><strong>AACP Performans paneli</strong></p>
+
+            <p>Dashboard'daki Performans bölümü, PHP sürecinin görebileceği her backend'in envanterini çıkarır:</p>
+
+            <ul>
+            <li><strong>Origin Cache:</strong> HTML sayfa adedi, disk baytı, son yollar (boyut ve zaman).</li>
+            <li><strong>Redis:</strong> <code>DBSIZE</code> (anahtar sayısı) ve <code>INFO memory</code> (<code>used_memory</code>).</li>
+            <li><strong>Memcached:</strong> <code>curr_items</code> ve <code>bytes</code> (daemon cevaplıyorsa hit sayısı).</li>
+            <li><strong>OPcache:</strong> önbellekteki script'ler, kullanılan bellek, hit oranı.</li>
+            <li><strong>Varnish / PageSpeed:</strong> açık/kapalı ve TTL / son probe. Nesne sayıları host'ta <code>varnishstat</code> veya PageSpeed admin ister; PHP bu sayıları uydurmaz.</li>
+            </ul>
+
+            <p>Probe'lar izole edilir ve birkaç saniye önbelleğe alınır; takılan bir Redis dashboard'u 500'e düşüremez.</p>
+    -
+        slug: backup
+        title: '10. Bölüm: Yedek Yönetimi'
+        weight: 100
+        body_html: |
+            <p>Felaket kurtarma üçüncü parti bir eklenti değil, birinci parti bir AACP masasındır. <code>system.backup.manage</code> yeteneği <code>/aacp/backup</code> yolunu korur. Admin rolü bunu <code>*</code> ile miras alır; editörler menüyü görmez.</p>
+
+            <p><strong>Üç arşiv türü</strong></p>
+
+            <ul>
+            <li><strong>Veritabanı:</strong> Doctrine DBAL üzerinden PHP ile yazılan gzip SQL dökümü. <code>mysqldump</code> gerekmez; Windows'ta Laragon, Linux hosting ile aynı şekilde çalışır.</li>
+            <li><strong>Dosyalar:</strong> tüm CPalius ağacının ZIP'i; <code>cp-includes/vendor</code> ve tüm <code>public/</code> dizini (yüklemeler, derlenmiş asset'ler, temalar, front controller) dahildir. Dışarıda: her <code>.env*</code> dosyası, <code>.git</code>, <code>node_modules</code>, Symfony cache, Tailwind derleme önbelleği, oturumlar, Origin Cache HTML ve <code>cp-core/var/backups/</code> altındaki iç içe arşivler.</li>
+            <li><strong>Tam:</strong> aynı arşivin içine <code>database.sql.gz</code> eklenmiş dosya ZIP'i.</li>
+            </ul>
+
+            <p>Arşiv adları <code>cpalius-{db|files|full}-YYYYMMDD-HHMMSS.{sql.gz|zip}</code> biçimindedir ve <code>cp-core/var/backups/</code> altında durur (zaten gitignore). İndirme <code>/aacp/backup/archive/{stem}</code> kullanır (URL'de <code>.sql.gz</code> / <code>.zip</code> yoktur) ki nginx statik-dosya location'ı isteği kesmesin; <code>Content-Disposition</code> yine gerçek dosya adını gönderir. Silme CSRF korumalıdır. Path traversal dosya adı allowlist'i ile reddedilir. CLI <code>cp:backup:create</code> cron whitelist'indedir; operatörler web zaman aşımı olmadan döküm zamanlayabilir.</p>
+
+            <p>v1 tarayıcıdan canlı ağacı üzerine yazmaz. Geri yükleme önce staging'dir: dosyaları taze bir kurulumun yanına açın, SQL'i veritabanının bir kopyasına uygulayın, sonra yer değiştirin. Geri yüklemeyi tek tık AACP düğmesinin arkasına koymak Core Never Dies'ı ihlal eder.</p>
+    -
+        slug: telemetry
+        title: '11. Bölüm: Güvenlik Telemetrisi ve IP Denetimi'
+        weight: 110
+        body_html: |
+            <p>AACP, kamu sitesini karanlık-kalıp bir izleyiciye çevirmeden istek telemetrisi tutar. Ana anahtar <code>telemetry.security_enabled</code>'dır ve varsayılanı <strong>kapalı</strong>dır.</p>
+
+            <p><strong>Ziyaretçi modu (varsayılan)</strong></p>
+
+            <p>Dashboard sayfa görüntüleme, benzersiz IP, popüler yollar ve trafik grafiği gösterir. Tehdit akışı yoktur, Ban IP yoktur. Pazarlama sitesini, operatörün yüzüne bir WAF konsolu yapıştırmadan barındırmak için uygundur.</p>
+
+            <p><strong>Güvenlik modu</strong></p>
+
+            <p>Açıldığında <code>kernel.terminate</code> üzerindeki <code>TelemetrySubscriber</code>, <code>cp_system_telemetry_logs</code>'a satır yazar: IP, kullanıcı, metot, URI, user-agent, şiddet, olay türü, tehdit skoru ve JSON ayrıntı. <code>ThreatAnalyzer</code> SQLi, XSS, tarayıcı, path traversal ve giriş gürültüsünü skorlar. Canlı akış JSON poll eder; ayrıntı modalı satırı açar; Ban IP yalnızca <code>critical</code> / <code>threat</code> şiddette sunulur.</p>
+
+            <p><strong>IP ban</strong></p>
+
+            <p><code>IpBanService</code> <code>cp_banned_ips</code>'e yazar. <code>BannedIpSubscriber</code> yasaklı istemciyi yığının geri kalanı bütçe harcamadan reddeder. Bir cron görevi eski telemetri satırlarını siler; tablo sınırsız büyüyemez.</p>
+    -
+        slug: first-party
+        title: '12. Bölüm: İlk Parti Modüller, Medya Pipeline ve Deep-Localization'
+        weight: 120
+        body_html: |
+            <p>Blog, Medya, Menü, Forum, Roadmap, Pages ve SEO referans modülleridir: API, Hook, Cron, Plugin, Settings, contribution kataloğu ve Studio istatistiklerini üçüncü parti bir modülün kullanması gereken şekilde kullanırlar.</p>
+
+            <p><strong>Blog</strong> <code>Node::type = post</code> üzerindedir; kategori, etiket, zamanlanmış yayın (<code>PublishScheduledPostsTask</code>), <code>GET /api/blog/posts</code>, sidebar hook ve Schema.org BlogPosting. <strong>Pages</strong> <code>Node::type = page</code> üzerindedir; alan grupları <code>fg-</code> slug kullanır ve kamu rotası <code>/{_locale}/{slug}</code> adresindeki <code>page_show</code>'dur. <strong>Menü</strong> WordPress tarzı sürükle-bıraktır; öğeler node'a gevşek referans verir (sert FK yok) ki soft-delete dürüst kalsın. <strong>Roadmap</strong> yerli bir akıştır; portala ilişkili blog ve forum etkinliğini de çekebilir. <strong>SEO</strong> sitemap kaynakları ve JSON-LD üretir.</p>
+
+            <p><strong>Forum motoru</strong></p>
+
+            <p>Hiyerarşik panolar Node ağacını yeniden kullanır; önekler, CSRF korumalı rapor/moderasyon kuyruğu, rütbe/rozet ve 20/80 postbit (Altın Oran) CMF'in geri kalanıyla aynı yetenek modelinde çalışır.</p>
+
+            <p><strong>Medya pipeline (Manifesto Law 3.3)</strong></p>
+
+            <p><code>Asset</code> Node'dan bağımsızdır. Flysystem depolama ve sha256 dedup. <code>ImageProcessor</code> (GD) <code>crop</code> veya <code>fit</code> türevlerini <code>public/uploads/cache/</code> altına yazar; <code>cp_thumb</code> bir Asset, id, depolama anahtarı veya <code>/uploads/...</code> URL kabul eder. Başarısız türev orijinal URL'i döner (fail-soft). Kaynak değişince <code>purge()</code> tüm boyutları siler.</p>
+
+            <p><strong>Deep-localization</strong></p>
+
+            <p>Her satır kendi dilinde yaşar ve kardeşlerine <code>translation_group_id</code> UUID'si ile bağlanır; kural <code>UNIQUE(translation_group_id, locale)</code> ile zorlanır (kategoriler, etiketler, menü öğeleri, forum bölümleri dahil). <code>LocaleSwitchService</code> karşı URL'i üretir; kardeş yoksa o dilin ana sayfasına düşer — asla 404. AACP'de locale öneki yoktur; panel dili <code>cp_locale</code> çerezidir. Çeviri dosyaları atomik yazılır (<code>.tmp</code> + işletim sistemi <code>rename()</code>).</p>
+
+            <p><strong>Çekirdek arayüzde Zero Node.js</strong></p>
+
+            <p>Admin ve geliştirici kromu AssetMapper + Tailwind standalone binary kullanır. Bu yüzeyler için Node.js derlemesi yoktur. Kamu tema CSS'i yine statik bir tema varlığı olabilir.</p>
+    -
+        slug: quality
+        title: 'Bu belgedeki iddialar nasıl doğrulanıyor'
+        weight: 122
+        body_html: |
+            <p>Yukarıdaki her mimari iddia, onu doğru tutan kapı kadar değerlidir. CPalius her değişiklikte aşağıdakileri koşar; yapı uyarmaz, düşer.</p>
+
+            <ul>
+            <li><strong>PHPStan seviye 6</strong> — çekirdek, modüller ve testler; takip edilen bir baseline ile. Hatalar bastırılmaz, düzeltilir; bir baseline girdisi eşleşmeyi bıraktığında silinir — ölü kodun fark edilme yolu budur.</li>
+            <li><strong>İki test paketi.</strong> Birim testleri veritabanısız koşar; entegrasyon testleri gerçek bir çekirdeği gerçek bir MySQL şemasına karşı ayağa kaldırır ve testler arasında şemayı <em>eşlemeye değil veritabanına bakarak</em> sıfırlar — paketin kararsızlığının kökü tam olarak bu ayrımdı.</li>
+            <li><strong>Modüller için üçüncü bir paket</strong>, böylece bir modülün davranışı bağımlı olduğu çekirdekle aynı koşumda kanıtlanır.</li>
+            <li><strong>Statik lint kapıları:</strong> container (dev ve prod), YAML, Twig ve kod stili.</li>
+            <li><strong><code>cp:doctor</code></strong> yalnız destek aracı değil, bir yapı adımı: bekleyen migration&apos;lar, karantinadaki modüller, rollerde olup hiç kayıtlı olmayan yetenekler, kataloglar arası çeviri anahtarı eşliği, ortam yanlış yapılandırması, güvenlik duruşu ve çalışmamış güncelleme kancaları.</li>
+            </ul>
+
+            <h3>Bir şey kaçtığı için var olan iki kapı</h3>
+
+            <p><strong>Çeviri kontrolü satır sayısını değil anahtar kümesini karşılaştırır.</strong> Satır sayısı aynı olan iki katalog farklı anahtarlar taşıyabilir ve eksik olan, üretimde ham bir tanımlayıcı olarak ekrana basılır.</p>
+
+            <p><strong><code>cp:doctor</code> soyut olarak tasarlanmadı, bir olaydan sonra yazıldı.</strong> Beş migration birkaç geliştirme oturumu boyunca uygulanmadan durdu ve hiçbir şey yüksek sesle bozulmadı; çünkü o tablolara ihtiyaç duyan özellikler sessizce bozulacak şekilde yazılmıştı. Tek belirti, güvenlik telemetrisinin hiçbir yere yazmamasıydı. Bu yüzden uygulanmamış bir migration YÜKSEK olarak derecelendirilir: tehlike başarısız olması değil, <em>olmamasıdır</em>.</p>
+
+            <p><strong>Bir teşhis aracı, teşhis ettiği kurulumdan sağ çıkmalıdır.</strong> Bir kontrol patlarsa koşu devam eder ve istisna bir bulguya dönüşür. İlk gerçek problemde ölen bir doktor, tam ihtiyaç duyulduğu anda işe yaramaz.</p>
+    -
+        slug: benchmark
+        title: "Kıyas: CPalius'un Drupal, TYPO3, WordPress ve ProcessWire karşısındaki yeri"
+        weight: 125
+        body_html: |
+            <p>Bir framework sıfatlarla değil kanıtla seçilir. Bu bölüm, projenin en sık kıyaslandığı dört sisteme karşı tuttuğu skor kartıdır ve düzeltilmeden yayımlanır — CPalius&apos;un geride olduğu satırlar ve henüz hiç ölçülmemiş olan tek satır dahil.</p>
+
+            <p><strong>Ölçek.</strong> <code>D</code> yok &middot; <code>C</code> ilkel/parça &middot; <code>B</code> kısmi &middot; <code>A</code> olgun &middot; <code>A+</code> sınıfının en iyisi &middot; <code>A++</code> alanın önünde.<br>
+            <strong>Sütunlar.</strong> <code>CP</code> CPalius &middot; <code>DR</code> Drupal 10/11 &middot; <code>T3</code> TYPO3 v13 &middot; <code>WP</code> WordPress 6.x &middot; <code>PW</code> ProcessWire 3.x.</p>
+
+            <table><thead><tr><th>#</th><th>Yetenek alanı</th><th>CP</th><th>DR</th><th>T3</th><th>WP</th><th>PW</th></tr></thead><tbody><tr><td>1</td><td>Çökmeyen çekirdek / modül izolasyonu</td><td><strong>A+</strong></td><td>B</td><td>B</td><td>C</td><td>B</td></tr><tr><td>2</td><td>Güvenlik-varsayılan (CBAC, tenant, N+1 guard, XSS)</td><td><strong>A++</strong></td><td>A</td><td>A</td><td>C</td><td>A</td></tr><tr><td>3</td><td>Hibrit veri modeli + flat index</td><td>A</td><td>B</td><td>B</td><td>C</td><td>A</td></tr><tr><td>4</td><td>Entity API (tek fieldable/revision/i18n/access sözleşmesi)</td><td>B</td><td>A+</td><td>B</td><td>C</td><td>A</td></tr><tr><td>5</td><td>Field API (tip + widget + formatter + ayar)</td><td>B</td><td>A+</td><td>A</td><td>C</td><td>A</td></tr><tr><td>6</td><td>Sorgu API (EntityQuery / Selector)</td><td>B</td><td>A</td><td>B</td><td>B</td><td>A+</td></tr><tr><td>7</td><td>Satır-bazlı erişim (grant + query alter)</td><td><strong>A+</strong></td><td>A+</td><td>B</td><td>C</td><td>B</td></tr><tr><td>8</td><td>Taksonomi (fieldable vocabulary + term)</td><td><strong>A++</strong></td><td>A+</td><td>A</td><td>A</td><td>A</td></tr><tr><td>9</td><td>Revizyon + moderasyon + workflow</td><td>B</td><td>A+</td><td>A</td><td>B</td><td>C</td></tr><tr><td>10</td><td>Tipli entity yaşam döngüsü olayları</td><td><strong>A+</strong></td><td>A</td><td>B</td><td>C</td><td>A</td></tr><tr><td>12</td><td>Görüntüleme modları</td><td>A</td><td>A+</td><td>A</td><td>A</td><td>C</td></tr><tr><td>13</td><td>Cache API (tag/context) + reverse-proxy purge</td><td><strong>A++</strong></td><td>A+</td><td>A</td><td>C</td><td>B</td></tr><tr><td>14</td><td>Origin / tam-sayfa HTML cache (çekirdekte)</td><td>A</td><td>A</td><td>A</td><td>D</td><td>B</td></tr><tr><td>15</td><td>Text format + filtre hattı (rol bazlı)</td><td><strong>A+</strong></td><td>A+</td><td>B</td><td>B</td><td>B</td></tr><tr><td>16</td><td>Token + desen-bazlı path alias</td><td><strong>A+</strong></td><td>A+</td><td>A</td><td>B</td><td>B</td></tr><tr><td>17</td><td>Config management (kod olarak config)</td><td>A</td><td>A+</td><td>B</td><td>D</td><td>B</td></tr><tr><td>18</td><td>Çoklu dil — içerik + arayüz</td><td>A</td><td>A+</td><td>A+</td><td>C</td><td>A</td></tr><tr><td>19</td><td>Medya boru hattı + responsive image + oEmbed</td><td>B</td><td>A</td><td>A</td><td>A</td><td>A</td></tr><tr><td>20</td><td>Async kuyruk + bildirim primitifi</td><td><strong>A++</strong></td><td>B</td><td>B</td><td>B</td><td>C</td></tr><tr><td>21</td><td>Multisite / domain / organizasyon</td><td>C</td><td>A</td><td>A+</td><td>A</td><td>B</td></tr><tr><td>22</td><td>REST / JSON:API / headless auth</td><td>B</td><td>A+</td><td>B</td><td>A</td><td>B</td></tr><tr><td>23</td><td>Hook / eklenti ergonomisi</td><td>B</td><td>A</td><td>B</td><td>A+</td><td>A</td></tr><tr><td>24</td><td>Cron / zamanlanmış görevler</td><td>A</td><td>A</td><td>A</td><td>C</td><td>B</td></tr><tr><td>25</td><td>Modül paketleme + lifecycle + tek-tık kurulum</td><td>A</td><td>A</td><td>A</td><td>A+</td><td>B</td></tr><tr><td>26</td><td>Migrate / CMS-ten CMS-e veri taşıma</td><td><strong>A+</strong></td><td>A+</td><td>B</td><td>B</td><td>C</td></tr><tr><td>27</td><td>Admin UI + kurtarma konsolu</td><td><strong>A+</strong></td><td>A</td><td>A</td><td>A</td><td>A</td></tr><tr><td>28</td><td>Güvenlik telemetri + IP ban (çekirdekte)</td><td>A</td><td>C</td><td>C</td><td>C</td><td>C</td></tr><tr><td>29</td><td>Yedekleme (çekirdekte)</td><td>A</td><td>C</td><td>C</td><td>C</td><td>C</td></tr><tr><td>30</td><td>DX: maker + doctor + test kit + geliştirici dokümanı</td><td>A</td><td>A</td><td>B</td><td>B</td><td>B</td></tr><tr><td>31</td><td>Sürüm politikası + BC garantisi + LTS</td><td>D</td><td>A+</td><td>A+</td><td>A++</td><td>A</td></tr><tr><td>32</td><td>Kurulum deneyimi (beş dakika kuralı)</td><td>B</td><td>B</td><td>C</td><td>A++</td><td>A</td></tr><tr><td>33</td><td>Dokümantasyon</td><td>C</td><td>A+</td><td>A+</td><td>A+</td><td>A+</td></tr><tr><td>34</td><td>CI / otomatik kalite kapısı</td><td>A</td><td>A+</td><td>A</td><td>B</td><td>B</td></tr><tr><td>35</td><td>Paket ekosistemi + dağıtım kanalı</td><td>D</td><td>A+</td><td>A</td><td>A++</td><td>B</td></tr><tr><td>36</td><td>Güvenlik açığı bildirim süreci + CVE</td><td>B</td><td>A++</td><td>A+</td><td>A</td><td>B</td></tr><tr><td>37</td><td>Performans kanıtı (benchmark)</td><td>D</td><td>B</td><td>B</td><td>C</td><td>A</td></tr><tr><td>38</td><td>Erişilebilirlik (WCAG) — admin UI</td><td>?</td><td>A+</td><td>A</td><td>A</td><td>C</td></tr><tr><td>39</td><td>Gözlemlenebilirlik (log / metrik / health)</td><td>A</td><td>A</td><td>A</td><td>C</td><td>B</td></tr><tr><td>40</td><td>DB taşınabilirliği</td><td>C</td><td>A+</td><td>A</td><td>C</td><td>C</td></tr></tbody></table>
+
+            <p><em>11 numara bilinçli olarak yok. Eskiden &quot;Views / kodsuz listeleme&quot; yazıyordu ve yeniden numaralandırmak yerine kaldırıldı: site kurucu bir arayüz web sitelerine hizmet eder, bu çekirdeğin var olduğu CRM, ERP ve panel kurulumlarına değil. Numaralandırmadaki boşluk, görünür bırakılmış bir karardır.</em></p>
+
+            <h3>CPalius&apos;un önde olduğu yerler</h3>
+
+            <ul>
+            <li><strong>Çökmeyen çekirdek (satır 1).</strong> Dört savunma hattı — statik <code>active_modules.php</code>, modül boot&apos;unu saran <code>try/catch</code> kalkanı, etkinleştirme öncesi kuru çalıştırma lint&apos;i ve bozuk modüle rağmen ayakta kalan rota yükleyici. Hatalı modül karantinaya alınır; Drupal&apos;da aynı durum beyaz ekrandır.</li>
+            <li><strong>Güvenlik-varsayılan (satır 2).</strong> Bilinmeyeni reddeden yetenek tabanlı erişim, tenant SQL filtresi, geliştirmede N+1 tripwire&apos;ı, voter&apos;dan SQL&apos;e kapsamlama, nonce&apos;lu CSP, engelleyen WAF, CIDR ve süreli IP yasakları, akış ve kaba kuvvet savunması, HIBP parola politikası, çekirdekte TOTP iki faktör, şifreli ayar sırları ve puanlı <code>cp:security:audit</code>. Drupal&apos;da bunların her biri ayrı bir contrib modül; WordPress&apos;te birkaçı ücretli eklenti. Hiçbirinde tek bir ekran ve tek bir duruş puanı yok.</li>
+            <li><strong>Taksonomi, cache tag&apos;leri, async kuyruk (satır 8, 13, 20).</strong> Cache geçersizleştirme bir yeniden inşa adımı gerektirmez: bir entity kaydedilince tipli yaşam döngüsü olayı yayılır ve tag indeksi kendini temizler. Drupal&apos;ın karşılığı olgun ama erişim sistemi, atlandığında sessizce yanlış sonuç veren bir rebuild adımıyla ünlüdür.</li>
+            <li><strong>Yedekleme, telemetri, kurtarma konsolu (satır 27&ndash;29).</strong> Hepsi çekirdekte ve <code>/aacp/recovery</code> veritabanı olmadan çalışır — tam da veritabanının kendisi bozukken ihtiyaç duyduğunuz ekran.</li>
+            </ul>
+
+            <h3>CPalius&apos;un geride olduğu yerler, açıkça</h3>
+
+            <ul>
+            <li><strong>Sürüm politikası ve paket ekosistemi (satır 31, 35 — ikisi de D).</strong> Semantik sürüm sözü, geriye dönük uyumluluk belgesi ve modül deposu yok. Güncelleme makinesi var (<code>cp:update</code>); etrafındaki politika yok.</li>
+            <li><strong>Dokümantasyon (satır 33 — C).</strong> README ve SECURITY.md var. Geliştirici el kitabı yok. Karttaki en düşük not budur ve bir gözden kaçma değil, bitmemiş iştir.</li>
+            <li><strong>Performans kanıtı (satır 37 — D).</strong> Mimari hız için kurulmuş ve yayımlanmış tek bir ölçüm yok. Bir tane çıkana kadar iddia bir argümandır, ölçüm değil.</li>
+            <li><strong>Veritabanı taşınabilirliği (satır 40 — C).</strong> Her migration ham MySQL DDL&apos;i. ORM katmanı taşınabilir, kurulum değil.</li>
+            <li><strong>Erişilebilirlik (satır 38 — ölçülmedi).</strong> Yönetim arayüzü WCAG&apos;a karşı hiç denetlenmedi. Bunu &quot;bilinmiyor&quot; diye raporlamak, bir not uydurmaktan daha yararlıdır.</li>
+            </ul>
+    -
+        slug: roadmap
+        title: '13. Bölüm: Gelecek Yol Haritası ve Teknik İstişare (RFC)'
+        weight: 130
+        body_html: |
+            <p>CPalius'un çekirdek güvenlik, performans ve mimari omurgası tamamlanmıştır. Bu whitepaper'ın ilk taslağından bu yana teslim edilenler: AACP Safe Mode / Kurtarma Konsolu, izole Hook sistemi, birleşik Cron motoru, REST API Gateway, dördüncü savunma hattı (<code>SafeModuleRouteLoader</code>), anlık görsel pipeline'ı (<code>cp_thumb</code>), <code>#[CpResource]</code> audit log, Studio dashboard istatistikleri, CPalius Origin Cache, AACP performans envanteri, isteğe bağlı güvenlik telemetrisi (IP ban dahil), WordPress tarzı modül paketleri ve contribution kataloğu (ana sayfa, portal, şema, hesap inişi), Pages modülü, operatör arayüz katalog bağlama ve AACP Yedek Yönetimi (<code>cp:backup:create</code>).</p>
+
+            <p>Sıradaki geliştirme sprintlerinde aşağıdaki sistemleri inşa edeceğiz:</p>
+
+            <ul>
+            <li><strong>Workflow &amp; State Machine:</strong> Fatura, araç, rezervasyon gibi iş kayıtlarının geçiş süreçlerini (<code>draft &rarr; preparation &rarr; sold</code>) YAML tanımlarıyla yöneten ve her geçişi otomatik audit log'a ve bildirim kuyruğuna bağlayan mekanizma. <code>CpResource::$workflow</code> alanı zaten deklare edilmiştir.</li>
+            <li><strong>Messenger Async Kuyruk:</strong> Gerçek bir transport (Doctrine/Redis) bağlayarak e-posta ve bildirim işlemlerini asenkron kuyruğa taşımak. <code>symfony/messenger</code> kurulu ve AACP masasında görünür; henüz aktif transport bağlı değildir.</li>
+            </ul>
+    -
+        slug: community
+        title: 'Soru ve Görüşleriniz (Topluluk İstişaresi)'
+        weight: 140
+        body_html: |
+            <p>Bu mimariyi daha da kusursuzlaştırmak için siz değerli geliştiricilerden şu konularda geri bildirim bekliyoruz:</p>
+
+            <ul>
+            <li><strong>Flat Field Index Modeli:</strong> SQLite, MySQL ve Postgres uyumluluğu için tasarladığımız bu model sizce devasa veri hacimlerinde nasıl bir performans gösterir? İndeks tablosunun partition edilmesi gerekir mi?</li>
+            <li><strong>Config Sync Yaklaşımı:</strong> Drupal'ın config sync sistemini Symfony'nin TreeBuilder yapısıyla taklit etme fikrimiz hakkındaki düşünceleriniz nelerdir?</li>
+            <li><strong>Zero Node.js Israrı:</strong> Geliştirici ve admin panelinde AssetMapper + Standalone Tailwind kullanma kararımız, gelecekte çok karmaşık frontend bileşenleri yazarken bizi kısıtlar mı?</li>
+            </ul>
+
+            <p>Fikirlerinizi, eleştirilerinizi ve mimari önerilerinizi heyecanla bekliyoruz. CPalius, topluluğun gücüyle en sağlam uygulama framework'üne dönüşecek.</p>

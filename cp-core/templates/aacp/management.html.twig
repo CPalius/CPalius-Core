@@ -1,0 +1,337 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.system_settings.header'|trans }}{% endblock %}
+
+{% block body %}
+    {% set activeTabMeta = tabs[activeTab] %}
+    {% set localeActiveCount = locales|filter(l => l.active)|length %}
+    {% set localeDefault = locales|filter(l => l.default)|first %}
+    {% set providerKeys = ['security.recaptcha_site_key', 'security.recaptcha_secret_key', 'security.recaptcha_version', 'security.recaptcha_score_threshold'] %}
+    {% set turnstileKeys = ['security.turnstile_site_key', 'security.turnstile_secret_key'] %}
+    {% set hcaptchaKeys = ['security.hcaptcha_site_key', 'security.hcaptcha_secret_key'] %}
+
+    <div class="space-y-sp-md" data-system-settings-root>
+        {% if app.request.query.get('saved') %}
+            <div class="rounded-lg border border-success-500/30 bg-success-500/10 px-sp-sm py-3 text-fs-sm !text-success-300">
+                {{ 'aacp.system_settings.saved'|trans }}
+            </div>
+        {% endif %}
+
+        {% if app.request.query.get('invalid_setting') %}
+            <div class="rounded-lg border border-danger-500/30 bg-danger-500/10 px-sp-sm py-3 text-fs-sm !text-danger-300">
+                {{ 'aacp.settings.invalid_value'|trans({key: app.request.query.get('invalid_setting')}) }}
+            </div>
+        {% endif %}
+
+        {% if app.request.query.get('mail_sent') %}
+            <div class="rounded-lg border border-success-500/30 bg-success-500/10 px-sp-sm py-3 text-fs-sm !text-success-300">
+                {{ 'aacp.system_settings.mail.sent'|trans }}
+            </div>
+        {% endif %}
+
+        {% if app.request.query.get('mail_error') %}
+            <div class="rounded-lg border border-danger-500/30 bg-danger-500/10 px-sp-sm py-3 text-fs-sm !text-danger-300">
+                {% if app.request.query.get('mail_error') == 'invalid' %}
+                    {{ 'aacp.system_settings.mail.error_invalid'|trans }}
+                {% elseif app.request.query.get('mail_error') == 'not_configured' %}
+                    {{ 'aacp.system_settings.mail.error_not_configured'|trans }}
+                {% else %}
+                    {{ 'aacp.system_settings.mail.error_send_failed'|trans }}
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <twig:cp:card padded="{{ true }}">
+            <p class="text-fs-sm font-semibold !text-slate-200">{{ activeTabMeta.label|trans }}</p>
+            <p class="mt-1 text-fs-sm !text-slate-400">{{ activeTabMeta.description|trans }}</p>
+        </twig:cp:card>
+
+        {% if activeTab == 'security' and is_granted('system.security.manage') %}
+            <twig:cp:card padded="{{ true }}">
+                <div class="flex flex-wrap items-center justify-between gap-sp-sm">
+                    <div>
+                        <p class="text-fs-sm font-semibold !text-slate-200">{{ 'aacp.security.center_cta_title'|trans }}</p>
+                        <p class="mt-1 text-fs-sm !text-slate-400">{{ 'aacp.security.center_cta_desc'|trans }}</p>
+                    </div>
+                    <a href="{{ path('aacp_security_center') }}" class="btn btn-secondary btn-sm">
+                        <twig:ux:icon name="heroicons:shield-check" class="h-4 w-4" />
+                        {{ 'aacp.security.center_cta_link'|trans }}
+                    </a>
+                </div>
+            </twig:cp:card>
+        {% endif %}
+
+        <div class="flex flex-wrap gap-1 border-b border-white/10 pb-sp-xs" role="tablist" aria-label="{{ 'aacp.system_settings.tabs_aria'|trans }}">
+            {% for tabId, tabMeta in tabs %}
+                <a href="{{ path('aacp_advanced_management', {tab: tabId}) }}"
+                   role="tab"
+                   aria-selected="{{ activeTab == tabId ? 'true' : 'false' }}"
+                   class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-fs-sm font-medium transition-colors
+                          {{ activeTab == tabId ? '!bg-primary-500/15 !text-primary-300' : '!text-slate-400 hover:!bg-white/5 hover:!text-slate-200' }}">
+                    <twig:ux:icon name="{{ tabMeta.icon }}" class="h-4 w-4 shrink-0" />
+                    {{ tabMeta.label|trans }}
+                </a>
+            {% endfor %}
+        </div>
+
+        {% if activeTab == 'locales' %}
+            <div data-locales-root data-locales-csrf="{{ locales_csrf_token }}" data-i18n-error="{{ 'aacp.system_settings.js.error'|trans }}">
+                <div class="mb-sp-sm grid grid-cols-1 gap-sp-xs sm:grid-cols-3">
+                    <div class="rounded-lg border border-white/10 !bg-dark-1/50 px-sp-sm py-3">
+                        <p class="text-fs-xs font-medium uppercase tracking-wider !text-slate-500">{{ 'aacp.system_settings.locales.stat_total'|trans }}</p>
+                        <p class="mt-1 text-fs-lg font-semibold !text-slate-100">{{ locales|length }}</p>
+                    </div>
+                    <div class="rounded-lg border border-white/10 !bg-dark-1/50 px-sp-sm py-3">
+                        <p class="text-fs-xs font-medium uppercase tracking-wider !text-slate-500">{{ 'aacp.system_settings.locales.stat_active'|trans }}</p>
+                        <p class="mt-1 text-fs-lg font-semibold !text-slate-100">{{ localeActiveCount }}</p>
+                    </div>
+                    <div class="rounded-lg border border-white/10 !bg-dark-1/50 px-sp-sm py-3">
+                        <p class="text-fs-xs font-medium uppercase tracking-wider !text-slate-500">{{ 'aacp.system_settings.locales.stat_default'|trans }}</p>
+                        <p class="mt-1 font-mono text-fs-md font-semibold !text-slate-100">{{ localeDefault ? localeDefault.code : '—' }}</p>
+                    </div>
+                </div>
+
+                <div class="mb-sp-sm flex flex-wrap items-center justify-between gap-sp-xs">
+                    <p class="text-fs-sm !text-slate-400">{{ 'aacp.system_settings.locales.desc'|trans }}</p>
+                    <a href="{{ path('aacp_locales_create') }}" class="btn btn-sm btn-primary">
+                        <twig:ux:icon name="heroicons:plus" class="h-3.5 w-3.5" />
+                        {{ 'aacp.system_settings.locales.add'|trans }}
+                    </a>
+                </div>
+
+                <twig:cp:card padded="{{ false }}">
+                    <twig:cp:table headers="{{ [
+                        'aacp.system_settings.locales.code'|trans,
+                        'aacp.system_settings.locales.name'|trans,
+                        'aacp.system_settings.locales.native_name'|trans,
+                        'aacp.system_settings.locales.status'|trans,
+                        'aacp.system_settings.locales.default'|trans,
+                        'aacp.system_settings.locales.actions'|trans,
+                    ] }}" empty="{{ locales is empty }}" emptyText="{{ 'aacp.system_settings.locales.empty'|trans }}">
+                        <twig:block name="rows">
+                            {% for locale in locales %}
+                                <tr data-locale-row="{{ locale.id }}">
+                                    <td>
+                                        <span class="inline-flex items-center rounded-md border border-white/10 !bg-dark-1 px-2 py-0.5 font-mono text-fs-xs !text-slate-300">{{ locale.code }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ path('aacp_locales_edit', {id: locale.id}) }}" class="font-medium !text-slate-200 hover:!text-primary-300">{{ locale.name }}</a>
+                                    </td>
+                                    <td class="!text-slate-400">{{ locale.nativeName }}</td>
+                                    <td>
+                                        <span class="badge {{ locale.active ? 'badge-success !bg-success-500/15 !text-success-300' : 'badge-neutral !bg-white/5 !text-slate-400' }}">
+                                            {{ locale.active ? 'aacp.system_settings.locales.active'|trans : 'aacp.system_settings.locales.inactive'|trans }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if locale.default %}
+                                            <span class="badge badge-primary !bg-primary-500/15 !text-primary-300">{{ 'aacp.system_settings.locales.default_badge'|trans }}</span>
+                                        {% else %}
+                                            <button type="button" data-locale-set-default data-locale-id="{{ locale.id }}"
+                                                    class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-300">
+                                                {{ 'aacp.system_settings.locales.make_default'|trans }}
+                                            </button>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <a href="{{ path('aacp_localization', {locale: locale.code}) }}" class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-300">{{ 'aacp.system_settings.locales.manage'|trans }}</a>
+                                            <a href="{{ path('aacp_locales_edit', {id: locale.id}) }}" class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-300">{{ 'aacp.system_settings.locales.edit'|trans }}</a>
+                                            {% if not (locale.default and locale.active) %}
+                                                <button type="button" data-locale-toggle-active data-locale-id="{{ locale.id }}"
+                                                        class="text-fs-xs font-medium {{ locale.active ? '!text-slate-400 hover:!text-danger-300' : '!text-primary-400 hover:!text-success-300' }}">
+                                                    {{ locale.active ? 'aacp.system_settings.locales.deactivate'|trans : 'aacp.system_settings.locales.activate'|trans }}
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </twig:block>
+                    </twig:cp:table>
+                </twig:cp:card>
+            </div>
+        {% elseif tabs[activeTab].grouped|default(false) %}
+            {% set groups = tabGroups[activeTab]|default({}) %}
+            {% set values = tabValues[activeTab]|default({}) %}
+            {% set isSecuritySections = tabs[activeTab].securitySections|default(false) %}
+            {% set securitySectionOrder = ['security', 'security.headers', 'security.waf', 'security.flood', 'security.password', 'security.twofactor', 'security.aacp', 'security.session'] %}
+
+            {% if groups is empty %}
+                <twig:cp:card>
+                    <p class="text-fs-sm !text-slate-500">{{ 'aacp.settings.no_settings'|trans }}</p>
+                </twig:cp:card>
+            {% else %}
+                <form method="post" action="{{ path('aacp_advanced_management_update') }}" class="space-y-sp-sm" {% if isSecuritySections %}data-system-settings-security{% endif %}>
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="_tab" value="{{ activeTab }}">
+
+                    {% if isSecuritySections %}
+                        {% for groupName in securitySectionOrder %}
+                            {% if groups[groupName] is defined %}
+                                {% set sectionTitle = groupName == 'security'
+                                    ? 'aacp.security.section.security.captcha'|trans
+                                    : ('aacp.security.section.' ~ groupName)|trans %}
+                                {% set sectionDesc = groupName == 'security'
+                                    ? 'aacp.security.section_desc.security.captcha'|trans
+                                    : ('aacp.security.section_desc.' ~ groupName)|trans %}
+                                <twig:cp:card title="{{ sectionTitle }}">
+                                    <p class="mb-sp-sm text-fs-sm !text-slate-400">{{ sectionDesc }}</p>
+                                    <div class="space-y-sp-sm">
+                                        {% for setting in groups[groupName] %}
+                                            {% set captchaHidden = false %}
+                                            {% if setting.key in providerKeys and values['security.captcha_provider'] != 'recaptcha' %}
+                                                {% set captchaHidden = true %}
+                                            {% elseif setting.key in turnstileKeys and values['security.captcha_provider'] != 'turnstile' %}
+                                                {% set captchaHidden = true %}
+                                            {% elseif setting.key in hcaptchaKeys and values['security.captcha_provider'] != 'hcaptcha' %}
+                                                {% set captchaHidden = true %}
+                                            {% endif %}
+                                            <div class="{{ captchaHidden ? 'hidden' : '' }}"
+                                                 {% if setting.key in providerKeys %}data-captcha-recaptcha-row{% elseif setting.key in turnstileKeys %}data-captcha-turnstile-row{% elseif setting.key in hcaptchaKeys %}data-captcha-hcaptcha-row{% endif %}>
+                                                {% include 'aacp/partials/_system_setting_field.html.twig' with {
+                                                    setting: setting,
+                                                    value: values[setting.key]|default(null),
+                                                    compact: false,
+                                                } only %}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </twig:cp:card>
+                            {% endif %}
+                        {% endfor %}
+                        {% for groupName, settingDefs in groups %}
+                            {% if groupName not in securitySectionOrder %}
+                                <twig:cp:card title="{{ groupName|capitalize }}">
+                                    <div class="space-y-sp-sm">
+                                        {% for setting in settingDefs %}
+                                            {% include 'aacp/partials/_system_setting_field.html.twig' with {
+                                                setting: setting,
+                                                value: values[setting.key]|default(null),
+                                                compact: false,
+                                            } only %}
+                                        {% endfor %}
+                                    </div>
+                                </twig:cp:card>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        {% for groupName, settingDefs in groups %}
+                            {# A module may name its group card by declaring
+                               settings.group.<group>; Twig hands back the key when
+                               there is no such string, which is the fallback. #}
+                            {% set groupLabel = ('settings.group.' ~ groupName)|trans %}
+                            {% if groupLabel == 'settings.group.' ~ groupName %}
+                                {% set groupLabel = groupName|capitalize %}
+                            {% endif %}
+                            <twig:cp:card title="{{ groupLabel }}">
+                                <div class="space-y-sp-sm">
+                                    {% for setting in settingDefs %}
+                                        {% include 'aacp/partials/_system_setting_field.html.twig' with {
+                                            setting: setting,
+                                            value: values[setting.key]|default(null),
+                                            compact: false,
+                                        } only %}
+                                    {% endfor %}
+                                </div>
+                            </twig:cp:card>
+                        {% endfor %}
+                    {% endif %}
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 !bg-dark-1/60 px-sp-sm py-3">
+                        <p class="text-fs-xs !text-slate-500">{{ 'aacp.system_settings.save_hint'|trans }}</p>
+                        <button type="submit" class="btn btn-primary">
+                            <twig:ux:icon name="heroicons:check" class="h-4 w-4" />
+                            {{ 'aacp.settings.save'|trans }}
+                        </button>
+                    </div>
+                </form>
+            {% endif %}
+        {% else %}
+            {% set definitions = tabDefinitions[activeTab]|default([]) %}
+            {% set values = tabValues[activeTab]|default([]) %}
+
+            {% if definitions is empty %}
+                <twig:cp:card>
+                    <p class="text-fs-sm !text-slate-500">{{ 'aacp.settings.no_settings'|trans }}</p>
+                </twig:cp:card>
+            {% else %}
+                <form method="post" action="{{ path('aacp_advanced_management_update') }}" class="space-y-sp-sm">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="_tab" value="{{ activeTab }}">
+
+                    <twig:cp:card title="{{ tabs[activeTab].label|trans }}" padded="{{ false }}">
+                        <twig:cp:table headers="{{ [
+                            'aacp.system_settings.column.setting'|trans,
+                            'aacp.system_settings.column.value'|trans,
+                        ] }}">
+                            <twig:block name="rows">
+                                {% for setting in definitions %}
+                                    {% if activeTab == 'security' and setting.key in providerKeys %}
+                                        {% include 'aacp/partials/_system_setting_row.html.twig' with {
+                                            setting: setting,
+                                            value: values[setting.key],
+                                            rowClass: values['security.captcha_provider'] != 'recaptcha' ? 'hidden' : '',
+                                            captchaRow: 'recaptcha',
+                                        } %}
+                                    {% elseif activeTab == 'security' and setting.key in turnstileKeys %}
+                                        {% include 'aacp/partials/_system_setting_row.html.twig' with {
+                                            setting: setting,
+                                            value: values[setting.key],
+                                            rowClass: values['security.captcha_provider'] != 'turnstile' ? 'hidden' : '',
+                                            captchaRow: 'turnstile',
+                                        } %}
+                                    {% elseif activeTab == 'security' and setting.key in hcaptchaKeys %}
+                                        {% include 'aacp/partials/_system_setting_row.html.twig' with {
+                                            setting: setting,
+                                            value: values[setting.key],
+                                            rowClass: values['security.captcha_provider'] != 'hcaptcha' ? 'hidden' : '',
+                                            captchaRow: 'hcaptcha',
+                                        } %}
+                                    {% else %}
+                                        {% include 'aacp/partials/_system_setting_row.html.twig' with {
+                                            setting: setting,
+                                            value: values[setting.key],
+                                        } %}
+                                    {% endif %}
+                                {% endfor %}
+                            </twig:block>
+                        </twig:cp:table>
+                    </twig:cp:card>
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 !bg-dark-1/60 px-sp-sm py-3">
+                        <p class="text-fs-xs !text-slate-500">{{ 'aacp.system_settings.save_hint'|trans }}</p>
+                        <button type="submit" class="btn btn-primary">
+                            <twig:ux:icon name="heroicons:check" class="h-4 w-4" />
+                            {{ 'aacp.settings.save'|trans }}
+                        </button>
+                    </div>
+                </form>
+
+                {% if activeTab == 'email' %}
+                    <twig:cp:card title="{{ 'aacp.system_settings.mail.test_title'|trans }}">
+                        <p class="mb-sp-sm text-fs-sm !text-slate-400">{{ 'aacp.system_settings.mail.test_desc'|trans }}</p>
+                        {% if not mailConfigured %}
+                            <div class="mb-sp-sm rounded-lg border border-warning-500/30 bg-warning-500/10 px-sp-sm py-3 text-fs-sm !text-warning-300">
+                                {{ 'aacp.system_settings.mail.not_configured_hint'|trans }}
+                            </div>
+                        {% endif %}
+                        <form method="post" action="{{ path('aacp_advanced_management_test_email') }}" class="flex flex-wrap items-end gap-3">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <div class="min-w-[240px] flex-1">
+                                <label class="form-label !text-slate-400" for="test-email">{{ 'aacp.system_settings.mail.test_to'|trans }}</label>
+                                <input type="email" id="test-email" name="test_email" required
+                                       class="form-control !border-white/10 !bg-dark-1 !text-slate-100"
+                                       placeholder="admin@example.com">
+                            </div>
+                            <button type="submit" class="btn btn-secondary">
+                                <twig:ux:icon name="heroicons:paper-airplane" class="h-4 w-4" />
+                                {{ 'aacp.system_settings.mail.test_send'|trans }}
+                            </button>
+                        </form>
+                    </twig:cp:card>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+    </div>
+{% endblock %}

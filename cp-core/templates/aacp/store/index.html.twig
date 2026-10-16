@@ -1,0 +1,178 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.store.header'|trans }}{% endblock %}
+
+{% block body %}
+    {# The Appearance strip belongs to the theme store only; the extension store (modules, updates) is not part of Appearance. #}
+    {% if app.request.attributes.get('_route') == 'aacp_theme_store' %}
+        {% include 'aacp/_appearance_nav.html.twig' %}
+    {% endif %}
+    {% set token = csrf_token('aacp_store') %}
+    <div class="space-y-sp-md">
+        {% for message in app.flashes('store_ok') %}<div class="toast toast-success">{{ message }}</div>{% endfor %}
+        {% for message in app.flashes('store_error') %}<div class="toast toast-danger">{{ message }}</div>{% endfor %}
+
+        {% if securityError %}
+            <div class="toast toast-danger" role="alert">
+                <strong>{{ 'aacp.store.security.title'|trans }}</strong>
+                <div class="font-mono text-fs-xs">{{ securityError }}</div>
+            </div>
+        {% endif %}
+
+        <div class="flex flex-wrap items-center justify-between gap-sp-xs">
+            <nav class="flex flex-wrap gap-2 text-fs-sm" aria-label="{{ 'aacp.store.header'|trans }}">
+                {% for key in ['all', 'modules', 'themes', 'updates'] %}
+                    <a href="{{ path('aacp_store', {type: key, show: show, q: q}) }}"
+                       class="rounded-full border px-3 py-1 {{ tab == key ? '!border-primary-500 !text-primary-300' : '!border-white/10 !text-slate-300 hover:!bg-white/5' }}">
+                        {{ ('aacp.store.tab.' ~ key)|trans }}{% if key == 'updates' and updateCount > 0 %} <span class="ml-1 rounded-full bg-warning-500/20 px-2 text-fs-xs !text-warning-300">{{ updateCount }}</span>{% endif %}
+                    </a>
+                {% endfor %}
+            </nav>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <form method="get" action="{{ path('aacp_store') }}" class="flex items-center gap-2">
+                    <input type="hidden" name="type" value="{{ tab }}">
+                    <select name="show" class="form-select !w-40 !bg-dark-1 !border-white/10 !text-slate-200" data-store-show>
+                        {% for key in ['all', 'installed', 'available'] %}
+                            <option value="{{ key }}" {{ show == key ? 'selected' }}>{{ ('aacp.store.show.' ~ key)|trans }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="search" name="q" value="{{ q }}" placeholder="{{ 'aacp.store.search'|trans }}" class="form-control !w-64 !bg-dark-1 !border-white/10 !text-slate-200">
+                </form>
+                {% if updateCount > 0 %}
+                    <form method="post" action="{{ path('aacp_store_update_all') }}" data-confirm="{{ 'aacp.store.confirm_update_all'|trans({count: updateCount})|e('html_attr') }}">
+                        <input type="hidden" name="_token" value="{{ token }}">
+                        <button type="submit" class="btn btn-primary btn-sm">{{ 'aacp.store.update_all'|trans({count: updateCount}) }}</button>
+                    </form>
+                {% endif %}
+                <form method="post" action="{{ path('aacp_store_refresh') }}">
+                    <input type="hidden" name="_token" value="{{ token }}">
+                    <button type="submit" class="btn btn-secondary btn-sm">{{ 'aacp.store.refresh'|trans }}</button>
+                </form>
+            </div>
+        </div>
+
+        {% if not hasIndex %}
+            <div class="rounded-lg border border-white/10 bg-white/5 p-sp-sm text-fs-sm !text-slate-400">{{ 'aacp.store.no_index'|trans }}</div>
+        {% elseif checkedAt %}
+            <p class="text-fs-xs !text-slate-500">{{ 'aacp.store.checked'|trans({at: checkedAt}) }}</p>
+        {% endif %}
+
+        {% if entries is empty and hasIndex %}
+            <div class="rounded-lg border border-white/10 bg-white/5 p-sp-sm text-fs-sm !text-slate-400">{{ 'aacp.store.empty'|trans }}</div>
+        {% endif %}
+
+        <div class="grid gap-sp-sm sm:grid-cols-2 xl:grid-cols-3">
+            {% for e in entries %}
+                {% set shotUrl = e.screenshot ? path('aacp_store_screenshot', {type: e.type, name: e.name}) : null %}
+                <article class="flex flex-col overflow-hidden rounded-lg border border-white/10 bg-white/5">
+                    {% if shotUrl %}
+                        <a href="{{ shotUrl }}" target="_blank" rel="noopener" class="block bg-dark-1" title="{{ 'aacp.store.preview'|trans }}">
+                            <img src="{{ shotUrl }}" alt="{{ e.title }}" loading="lazy" class="h-44 w-full object-cover object-top">
+                        </a>
+                    {% else %}
+                        <div class="flex h-44 w-full items-center justify-center bg-dark-1 text-fs-sm !text-slate-600">{{ 'aacp.store.no_preview'|trans }}</div>
+                    {% endif %}
+
+                    <div class="flex flex-1 flex-col p-sp-sm">
+                        <div class="flex items-start justify-between gap-2">
+                            <h3 class="text-fs-base font-semibold !text-slate-100">{{ e.title }}{% if e.extends %} <span class="ml-1 rounded bg-primary-500/15 px-1.5 py-0.5 text-fs-xs font-normal !text-primary-300">{{ 'aacp.store.addon_of'|trans({parent: e.extends}) }}</span>{% endif %}</h3>
+                            <span class="shrink-0 rounded border border-white/10 px-2 py-0.5 text-fs-xs !text-slate-400">{{ e.type == 'themes' ? 'aacp.store.kind.theme'|trans : 'aacp.store.kind.module'|trans }}</span>
+                        </div>
+                        <p class="mt-1 flex-1 text-fs-sm !text-slate-400">{{ e.summary }}</p>
+
+                        <p class="mt-sp-xs text-fs-xs !text-slate-500">
+                            {% if e.installed %}{{ 'aacp.store.version_installed'|trans({v: e.installed}) }}{% if e.status == 'update' %} → <strong class="!text-warning-300">{{ e.latest }}</strong>{% endif %}{% else %}{{ 'aacp.store.version'|trans({v: e.latest}) }}{% endif %}
+                            {% if e.size %} · {{ (e.size / 1024)|round }} KB{% endif %}
+                            {% if e.bundled %} · {{ 'aacp.store.bundled'|trans }}{% endif %}
+                            {% if e.local_only %} · {{ 'aacp.store.local_only'|trans }}{% endif %}
+                        </p>
+
+                        {% if e.state == 'active' %}
+                            <p class="mt-1 text-fs-xs !text-success-300">{{ 'aacp.store.state.active'|trans }}</p>
+                        {% elseif e.state == 'inactive' %}
+                            <p class="mt-1 text-fs-xs !text-slate-400">{{ 'aacp.store.state.inactive'|trans }}</p>
+                        {% elseif e.state == 'quarantined' %}
+                            <p class="mt-1 text-fs-xs !text-danger-300">{{ 'aacp.store.state.quarantined'|trans }}</p>
+                        {% endif %}
+
+                        {% for adv in e.advisories %}
+                            <p class="mt-1 text-fs-xs font-semibold !text-danger-300" role="alert">{{ 'aacp.store.advisory'|trans({id: adv.id, severity: adv.severity, fixed: adv.fixed ?: '—'}) }}{% if adv.summary %} {{ adv.summary }}{% endif %}{% if adv.url %} <a href="{{ adv.url }}" rel="noopener noreferrer" target="_blank" class="underline">{{ adv.url|replace({'https://': ''}) }}</a>{% endif %}</p>
+                        {% endfor %}
+
+                        {% if not e.compatible and e.status != 'installed' %}
+                            <ul class="mt-1 list-disc pl-4 text-fs-xs !text-warning-300">
+                                {% for problem in e.problems %}
+                                    {% set parts = problem|split(':', 2) %}
+                                    <li>{{ ('aacp.store.problem.' ~ parts[0])|trans({value: parts[1]}) }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+
+                        <div class="mt-sp-sm flex flex-wrap items-center gap-2">
+                            {# Install or update from the catalogue #}
+                            {% if e.status in ['not_installed', 'update'] and not e.local_only %}
+                                {% if not e.free %}
+                                    <span class="text-fs-sm !text-slate-400">{{ 'aacp.store.paid'|trans }}</span>
+                                {% elseif e.compatible %}
+                                    <form method="post" action="{{ path('aacp_store_install') }}" data-confirm="{{ (e.status == 'update' ? 'aacp.store.confirm_update' : 'aacp.store.confirm_install')|trans({name: e.title})|e('html_attr') }}">
+                                        <input type="hidden" name="_token" value="{{ token }}">
+                                        <input type="hidden" name="type" value="{{ e.type }}">
+                                        <input type="hidden" name="name" value="{{ e.name }}">
+                                        <button type="submit" class="btn btn-primary btn-sm">{{ (e.status == 'update' ? 'aacp.store.update' : 'aacp.store.install')|trans }}</button>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
+
+                            {# Manage what is installed #}
+                            {% if e.state != 'not_installed' %}
+                                {% if e.type == 'modules' %}
+                                    {% if e.state == 'inactive' %}
+                                        <form method="post" action="{{ path('aacp_store_action') }}">
+                                            <input type="hidden" name="_token" value="{{ token }}">
+                                            <input type="hidden" name="type" value="modules"><input type="hidden" name="name" value="{{ e.name }}"><input type="hidden" name="action" value="activate">
+                                            <button type="submit" class="btn btn-secondary btn-sm">{{ 'aacp.store.activate'|trans }}</button>
+                                        </form>
+                                    {% elseif e.state == 'active' %}
+                                        <form method="post" action="{{ path('aacp_store_action') }}" data-confirm="{{ 'aacp.store.confirm_deactivate'|trans({name: e.title})|e('html_attr') }}">
+                                            <input type="hidden" name="_token" value="{{ token }}">
+                                            <input type="hidden" name="type" value="modules"><input type="hidden" name="name" value="{{ e.name }}"><input type="hidden" name="action" value="deactivate">
+                                            <button type="submit" class="btn btn-secondary btn-sm">{{ 'aacp.store.deactivate'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                    {% if true %}
+                                        <details class="relative">
+                                            <summary class="btn btn-secondary btn-sm cursor-pointer !text-danger-300">{{ 'aacp.store.delete'|trans }}</summary>
+                                            <form method="post" action="{{ path('aacp_store_action') }}" class="absolute z-10 mt-1 w-64 space-y-2 rounded-lg border border-white/10 bg-dark-2 p-sp-xs shadow-xl">
+                                                <input type="hidden" name="_token" value="{{ token }}">
+                                                <input type="hidden" name="type" value="modules"><input type="hidden" name="name" value="{{ e.name }}"><input type="hidden" name="action" value="delete">
+                                                <p class="text-fs-xs !text-slate-300">{{ 'aacp.store.delete_hint'|trans }}</p>
+                                                <label class="flex items-center gap-2 text-fs-xs !text-slate-300"><input type="checkbox" name="purge" value="1"> {{ 'aacp.store.delete_data'|trans }}</label>
+                                                <button type="submit" class="btn btn-danger btn-sm w-full">{{ 'aacp.store.delete_confirm'|trans }}</button>
+                                            </form>
+                                        </details>
+                                    {% endif %}
+                                {% else %}
+                                    {% if e.state == 'active' %}
+                                        <span class="text-fs-sm !text-success-300">{{ 'aacp.store.theme_active'|trans }}</span>
+                                    {% else %}
+                                        <form method="post" action="{{ path('aacp_store_action') }}">
+                                            <input type="hidden" name="_token" value="{{ token }}">
+                                            <input type="hidden" name="type" value="themes"><input type="hidden" name="name" value="{{ e.name }}"><input type="hidden" name="action" value="activate">
+                                            <button type="submit" class="btn btn-secondary btn-sm">{{ 'aacp.store.activate_theme'|trans }}</button>
+                                        </form>
+                                        <form method="post" action="{{ path('aacp_store_action') }}" data-confirm="{{ 'aacp.store.confirm_delete_theme'|trans({name: e.title})|e('html_attr') }}">
+                                            <input type="hidden" name="_token" value="{{ token }}">
+                                            <input type="hidden" name="type" value="themes"><input type="hidden" name="name" value="{{ e.name }}"><input type="hidden" name="action" value="delete">
+                                            <button type="submit" class="btn btn-secondary btn-sm !text-danger-300">{{ 'aacp.store.delete'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}

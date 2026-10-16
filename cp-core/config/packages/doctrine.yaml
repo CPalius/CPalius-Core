@@ -1,0 +1,145 @@
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+
+        # IMPORTANT: You MUST configure your server version,
+        # either here or in the DATABASE_URL env var (see .env file)
+        #server_version: '16'
+
+        profiling_collect_backtrace: '%kernel.debug%'
+        types:
+            uuid: Symfony\Bridge\Doctrine\Types\UuidType
+    orm:
+        validate_xml_mapping: true
+        naming_strategy: doctrine.orm.naming_strategy.underscore
+        identity_generation_preferences:
+            Doctrine\DBAL\Platforms\PostgreSQLPlatform: identity
+        auto_mapping: true
+        mappings:
+            App:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Entity'
+                prefix: 'App\Entity'
+                alias: App
+            # #[CpResource] Audit Log entity lives outside src/Entity (its own
+            # Core\Audit slice) so it needs its own explicit mapping entry.
+            CpAudit:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Audit/Entity'
+                prefix: 'App\Core\Audit\Entity'
+                alias: CpAudit
+            CpTelemetry:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Security/Entity'
+                prefix: 'App\Core\Security\Entity'
+                alias: CpTelemetry
+            # Platform contracts (Law 2.x): each core slice keeps its Entity/ dir
+            # outside src/Entity, so every one needs an explicit mapping entry.
+            CpQueue:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Queue/Entity'
+                prefix: 'App\Core\Queue\Entity'
+                alias: CpQueue
+            CpApiIdempotency:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Api/Entity'
+                prefix: 'App\Core\Api\Entity'
+                alias: CpApiIdempotency
+            CpWebhook:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Webhook/Entity'
+                prefix: 'App\Core\Webhook\Entity'
+                alias: CpWebhook
+            CpField:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Field/Entity'
+                prefix: 'App\Core\Field\Entity'
+                alias: CpField
+            CpRevision:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Revision/Entity'
+                prefix: 'App\Core\Revision\Entity'
+                alias: CpRevision
+            CpTaxonomy:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Taxonomy/Entity'
+                prefix: 'App\Core\Taxonomy\Entity'
+                alias: CpTaxonomy
+            CpDisplay:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Display/Entity'
+                prefix: 'App\Core\Display\Entity'
+                alias: CpDisplay
+            CpPathAlias:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/PathAlias/Entity'
+                prefix: 'App\Core\PathAlias\Entity'
+                alias: CpPathAlias
+            CpTextFormat:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/TextFormat/Entity'
+                prefix: 'App\Core\TextFormat\Entity'
+                alias: CpTextFormat
+            # T3.1 / T3.5 slices. These three were shipped with migrations and
+            # working code but no mapping entry, so Doctrine could not find an
+            # entity manager for them at runtime: notifications failed while
+            # rendering the theme header, and /aacp/logs and the mail log were
+            # unreachable for the same reason. Nothing in the test suite touched
+            # them, and doctrine:schema:validate cannot see an entity it was
+            # never told about — cp:doctor now checks for exactly this gap.
+            CpNotification:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Notification/Entity'
+                prefix: 'App\Core\Notification\Entity'
+                alias: CpNotification
+            CpLogging:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Logging/Entity'
+                prefix: 'App\Core\Logging\Entity'
+                alias: CpLogging
+            CpMail:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Mail/Entity'
+                prefix: 'App\Core\Mail\Entity'
+                alias: CpMail
+            CpMigrate:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Migrate/Entity'
+                prefix: 'App\Core\Migrate\Entity'
+                alias: CpMigrate
+            # Module entity mappings are added by Kernel::registerActiveModuleDoctrineMappings()
+            # only for healthy modules listed in active_modules.php.
+        # Manifesto Law 5.1: auto-injects tenant_id on #[CpResource(multiTenant: true)] queries.
+        # Enabled and parameterized in TenantFilterActivationListener.
+        filters:
+            tenant: App\Core\Database\TenantFilter
+        # Query/result cache pools use Redis in every env (see cache.yaml).
+        # Same pools in dev to avoid misleading health-check behavior.
+        query_cache_driver:
+            type: pool
+            pool: doctrine.system_cache_pool
+        result_cache_driver:
+            type: pool
+            pool: doctrine.result_cache_pool
+
+when@test:
+    doctrine:
+        dbal:
+            # "TEST_TOKEN" is typically set by ParaTest
+            dbname_suffix: '_test%env(default::TEST_TOKEN)%'

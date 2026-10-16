@@ -1,0 +1,77 @@
+{% extends '@Theme/account/layout.html.twig' %}
+
+{% block title %}{{ 'account.two_factor.setup_title'|trans }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-nav fade-in" aria-label="{{ 'account.nav_aria'|trans }}">
+        <div class="container">
+            <div class="forum-nav__inner">
+                <ol class="forum-nav__crumbs">
+                    <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+                    <li class="is-active">{{ 'account.two_factor.setup_breadcrumb'|trans }}</li>
+                </ol>
+            </div>
+        </div>
+    </nav>
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-header fade-in" style="text-align:center; max-width: 520px; margin: 0 auto var(--sp-lg);">
+    <span class="section-label">{{ 'account.two_factor.label'|trans }}</span>
+    <h1 class="section-title">{{ 'account.two_factor.setup_email_heading'|trans }}</h1>
+    <p class="forum-header__desc" style="margin: 0 auto;">
+        {{ 'account.two_factor.setup_email_desc'|trans({'email': maskedEmail, 'minutes': minutes}) }}
+    </p>
+</div>
+
+{% if mandatory %}
+    <div class="forum-flash forum-flash--warning" style="max-width: 520px; margin: 0 auto var(--sp-md);">
+        {{ 'account.two_factor.mandatory_notice'|trans }}
+    </div>
+{% endif %}
+
+{% if notice is defined and notice is not null %}
+    <div class="forum-flash forum-flash--success" style="max-width: 520px; margin: 0 auto var(--sp-md);">{{ notice }}</div>
+{% endif %}
+
+{% if error is not null %}
+    <div class="forum-flash forum-flash--error" style="max-width: 520px; margin: 0 auto var(--sp-md);">{{ error }}</div>
+{% endif %}
+
+<div class="forum-form fade-in" style="max-width: 520px; margin: 0 auto;">
+    <form method="post" action="{{ path('account_two_factor_setup') }}">
+        <div class="forum-field">
+            <label for="two-factor-setup-code">{{ 'account.two_factor.code_label'|trans }}</label>
+            <input type="text" id="two-factor-setup-code" name="code" required autofocus autocomplete="one-time-code"
+                   inputmode="numeric" pattern="[0-9]*" maxlength="6" spellcheck="false">
+        </div>
+
+        <input type="hidden" name="_token" value="{{ csrf_token('account_two_factor_setup') }}">
+        <input type="hidden" name="action" value="confirm">
+
+        <div class="forum-form__actions">
+            <button type="submit" class="btn btn-primary btn-sm">{{ 'account.two_factor.confirm'|trans }}</button>
+        </div>
+    </form>
+
+    <form method="post" action="{{ path('account_two_factor_setup') }}" style="margin-top: var(--sp-sm);">
+        <input type="hidden" name="_token" value="{{ csrf_token('account_two_factor_setup') }}">
+        <input type="hidden" name="action" value="resend">
+        <button type="submit" class="btn btn-sm btn-ghost" {{ resendWait > 0 ? 'disabled' : '' }}>
+            {% if resendWait > 0 %}
+                {{ 'account.two_factor.resend_wait'|trans({'seconds': resendWait}) }}
+            {% else %}
+                {{ 'account.two_factor.resend'|trans }}
+            {% endif %}
+        </button>
+    </form>
+
+    {% if canSwitch %}
+        <form method="post" action="{{ path('account_two_factor_setup') }}" style="margin-top: var(--sp-sm);">
+            <input type="hidden" name="_token" value="{{ csrf_token('account_two_factor_setup') }}">
+            <input type="hidden" name="action" value="restart">
+            <button type="submit" class="btn btn-sm btn-ghost">{{ 'account.two_factor.switch_method'|trans }}</button>
+        </form>
+    {% endif %}
+</div>
+{% endblock %}

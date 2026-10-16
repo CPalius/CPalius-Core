@@ -1,0 +1,62 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ prefix ? 'studio.forum.prefixes.form.edit_header'|trans : 'studio.forum.prefixes.form.create_header'|trans }}{% endblock %}
+
+{% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+    <twig:studio:card>
+        <form method="post">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_prefix') }}">
+
+            <div class="grid gap-4 md:grid-cols-3">
+                <div>
+                    <label class="form-label">{{ 'studio.forum.prefixes.form.label'|trans }}</label>
+                    <input type="text" name="label" value="{{ formValues.label }}" required maxlength="32" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.prefixes.form.color'|trans }}</label>
+                    <input type="color" name="color" value="{{ formValues.color }}" class="form-control" style="height: 42px; padding: 4px;">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.prefixes.form.sort_order'|trans }}</label>
+                    <input type="number" name="sort_order" value="{{ formValues.sortOrder }}" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'studio.forum.prefixes.form.css_class'|trans }}</label>
+                    <select name="css_class" class="form-select">
+                        <option value="">{{ 'studio.forum.prefixes.form.css_class_none'|trans }}</option>
+                        {% for className, classLabel in {
+                            'forum-prefix--announcement': 'forum.prefix.css.announcement',
+                            'forum-prefix--solved': 'forum.prefix.css.solved',
+                            'forum-prefix--guide': 'forum.prefix.css.guide',
+                            'forum-prefix--question': 'forum.prefix.css.question',
+                            'forum-prefix--warning': 'forum.prefix.css.warning'
+                        } %}
+                            <option value="{{ className }}" {{ formValues.cssClass|default('') == className ? 'selected' : '' }}>{{ classLabel|trans }} ({{ className }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <h3 class="text-fs-md font-semibold mb-2">{{ 'studio.forum.prefixes.form.matrix_header'|trans({}, 'forums') }}</h3>
+                <p class="text-fs-xs text-neutral-500 mb-3">{{ 'studio.forum.prefixes.form.matrix_hint'|trans({}, 'forums') }}</p>
+                <div class="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                    {% for board in boards %}
+                        <label class="inline-flex items-center gap-2 text-fs-sm">
+                            <input type="checkbox" name="section_ids[]" value="{{ board.id }}" {{ board.id in selectedSectionIds ? 'checked' : '' }}>
+                            {{ board.title }}
+                        </label>
+                    {% else %}
+                        <p class="text-fs-sm text-neutral-500">{{ 'studio.forum.prefixes.form.matrix_empty'|trans({}, 'forums') }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="mt-6 flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ 'studio.forum.prefixes.form.save'|trans }}</button>
+                <a href="{{ path('admin_forum_prefixes_index') }}" class="btn btn-neutral">{{ 'studio.forum.prefixes.form.cancel'|trans }}</a>
+            </div>
+        </form>
+    </twig:studio:card>
+{% endblock %}

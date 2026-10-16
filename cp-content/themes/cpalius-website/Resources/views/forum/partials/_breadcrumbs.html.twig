@@ -1,0 +1,13 @@
+<nav class="forum-crumb fade-in" aria-label="{{ 'forum.nav_aria'|trans }}">
+    <ol class="forum-crumb__list">
+        <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+        <li><a href="{{ path('forum_index') }}">{{ forumHome.title|default('forum.breadcrumb.home_title'|trans) }}</a></li>
+        {% for crumb in breadcrumbs|default([]) %}
+            {% if loop.last %}
+                <li class="is-active">{{ crumb.title }}</li>
+            {% else %}
+                <li><a href="{{ path('forum_section', {sectionSlug: crumb.slug}) }}">{{ crumb.title }}</a></li>
+            {% endif %}
+        {% endfor %}
+    </ol>
+</nav>

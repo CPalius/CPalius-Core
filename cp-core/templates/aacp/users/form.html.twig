@@ -1,0 +1,245 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ user ? 'aacp.users.form.header_edit'|trans : 'aacp.users.form.header_create'|trans }}{% endblock %}
+
+{% block javascripts %}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'aacp-user-roles', 'cp-editor-init']) }}
+{% endblock %}
+
+{% block body %}
+    {{ form_start(form, {
+        action: user ? path('aacp_users_edit', {id: user.id}) : path('aacp_users_create'),
+    }) }}
+    <div class="flex flex-col gap-sp-md lg:flex-row lg:items-start"
+         data-aacp-user-roles
+         data-role-catalog="{{ roleCatalog|json_encode|e('html_attr') }}"
+         data-module-labels="{{ {
+             core: 'aacp.users.module.core'|trans,
+             blog: 'aacp.users.module.blog'|trans,
+             forum: 'aacp.users.module.forum'|trans,
+             roadmap: 'aacp.users.module.roadmap'|trans,
+             seo: 'aacp.users.module.seo'|trans,
+             messages: 'aacp.users.module.messages'|trans,
+             showcase: 'aacp.users.module.showcase'|trans,
+             pages: 'aacp.users.module.pages'|trans,
+             media: 'aacp.users.module.media'|trans,
+             menu: 'aacp.users.module.menu'|trans,
+             importer: 'aacp.users.module.importer'|trans,
+             ai: 'aacp.users.module.ai'|trans,
+             dnstools: 'aacp.users.module.dnstools'|trans,
+             hosting: 'aacp.users.module.hosting'|trans,
+             hcms: 'aacp.users.module.hcms'|trans,
+         }|json_encode|e('html_attr') }}"
+         data-full-access-label="{{ 'aacp.users.roles.full_access'|trans|e('html_attr') }}"
+         data-empty-label="{{ 'aacp.users.roles.preview_empty'|trans|e('html_attr') }}"
+         data-capability-labels="{{ capabilityLabels|default({})|json_encode|e('html_attr') }}">
+        <div class="min-w-0 space-y-sp-md lg:w-[70%]">
+            <twig:cp:card title="{{ 'aacp.users.form.section_account'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.email) }}
+                    {{ form_row(form.username) }}
+                    {{ form_row(form.plainPassword) }}
+                </div>
+            </twig:cp:card>
+
+            <twig:cp:card title="{{ 'aacp.users.form.section_profile'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.firstName) }}
+                    {{ form_row(form.lastName) }}
+                    {{ form_row(form.location) }}
+                    {{ form_row(form.locale) }}
+                    {{ form_row(form.customTitle) }}
+                    {{ form_row(form.customTitleColor) }}
+                    {{ form_row(form.customTitleStyle) }}
+                    {{ form_row(form.customTitleIcon) }}
+                </div>
+            </twig:cp:card>
+
+            <twig:cp:card title="{{ 'aacp.users.profile.section_bio'|trans }}">
+                {{ form_row(form.bio) }}
+            </twig:cp:card>
+
+            {% if form.fields is defined and form.fields|length > 0 %}
+                <twig:cp:card title="{{ 'aacp.users.form.section_custom_fields'|trans }}">
+                    <p class="mb-3 text-fs-xs !text-slate-500">{{ 'aacp.users.form.custom_fields_hint'|trans }}</p>
+                    <div class="space-y-sp-sm">
+                        {{ form_widget(form.fields) }}
+                        {{ form_errors(form.fields) }}
+                    </div>
+                </twig:cp:card>
+            {% endif %}
+
+            <twig:cp:card title="{{ 'aacp.users.form.section_effective_access'|trans }}">
+                <p class="mb-3 text-fs-xs !text-slate-500">{{ 'aacp.users.form.effective_access_hint'|trans }}</p>
+                <div data-aacp-role-preview>
+                    {% if effectiveSummary.fullAccess %}
+                        <p class="rounded-md border border-primary-500/30 bg-primary-500/10 px-3 py-2 text-fs-xs !text-primary-200">
+                            {{ 'aacp.users.roles.full_access'|trans }}
+                        </p>
+                    {% elseif effectiveSummary.modules is empty %}
+                        <p class="text-fs-xs !text-slate-500">{{ 'aacp.users.roles.preview_empty'|trans }}</p>
+                    {% else %}
+                        <div class="space-y-3">
+                            {% for moduleKey, capabilities in effectiveSummary.modules %}
+                                <div>
+                                    <p class="mb-1 text-fs-xs font-semibold uppercase tracking-wide !text-slate-400">
+                                        {{ ('aacp.users.module.' ~ moduleKey)|trans({}, 'messages')|default(moduleKey) }}
+                                    </p>
+                                    <ul class="space-y-0.5">
+                                        {% for capability in capabilities %}
+                                            <li class="text-fs-xs !text-slate-400">{{ capability|cp_capability }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </twig:cp:card>
+        </div>
+
+        <div class="min-w-0 space-y-sp-md lg:w-[30%]">
+            {% if user %}
+                <twig:cp:card title="{{ 'aacp.users.profile.section_avatar'|trans }}">
+                    <div class="mb-sp-xs">
+                        {% if avatarUrl %}
+                            <img src="{{ avatarUrl }}" class="max-h-40 rounded-lg" alt="">
+                        {% else %}
+                            {% include '@Theme/forum/partials/_avatar.html.twig' with {name: user.fullName, user: user, size: 'lg', square: true} %}
+                        {% endif %}
+                    </div>
+                    <form method="post" action="{{ path('aacp_users_avatar', {id: user.id}) }}" enctype="multipart/form-data">
+                        <input type="hidden" name="_token" value="{{ csrf_token('aacp_user_avatar_' ~ user.id) }}">
+                        <label class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5 w-full">
+                            {{ 'aacp.users.profile.select_avatar'|trans }}
+                            <input type="file" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" hidden onchange="this.form.submit()">
+                        </label>
+                    </form>
+                    {% if avatarUrl %}
+                        <form method="post" action="{{ path('aacp_users_avatar_remove', {id: user.id}) }}" class="mt-2">
+                            <input type="hidden" name="_token" value="{{ csrf_token('aacp_user_avatar_remove_' ~ user.id) }}">
+                            <button type="submit" class="btn btn-sm btn-ghost w-full">{{ 'account.profile.avatar_remove'|trans }}</button>
+                        </form>
+                    {% endif %}
+                </twig:cp:card>
+            {% endif %}
+
+            <twig:cp:card title="{{ 'aacp.users.form.section_status'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.status) }}
+                </div>
+            </twig:cp:card>
+
+            <twig:cp:card title="{{ 'aacp.users.form.section_roles'|trans }}">
+                <p class="mb-3 text-fs-xs !text-slate-500">{{ 'aacp.users.form.roles_hint'|trans }}</p>
+                {{ form_widget(form.roles) }}
+                {{ form_errors(form.roles) }}
+
+                <div class="mt-4 space-y-2 border-t border-white/10 pt-3">
+                    {% for roleId, entry in roleCatalog %}
+                        <div class="text-fs-xs">
+                            <p class="font-medium !text-slate-300">{{ entry.label }}</p>
+                            {% if entry.fullAccess %}
+                                <p class="!text-slate-500">{{ 'aacp.users.roles.full_access'|trans }}</p>
+                            {% else %}
+                                <p class="!text-slate-500">
+                                    {{ entry.modules|keys|map(m => ('aacp.users.module.' ~ m)|trans({}, 'messages')|default(m))|join(', ') }}
+                                </p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </twig:cp:card>
+
+            <twig:cp:card padded="{{ false }}">
+                <div class="space-y-2 card-body">
+                    <button type="submit" class="btn btn-primary w-full">
+                        {{ user ? 'aacp.users.form.submit_edit'|trans : 'aacp.users.form.submit_create'|trans }}
+                    </button>
+                    <a href="{{ path('aacp_users') }}" class="block text-center text-fs-sm font-medium !text-slate-500 hover:!text-slate-300">
+                        {{ 'aacp.users.form.cancel'|trans }}
+                    </a>
+                </div>
+            </twig:cp:card>
+        </div>
+    </div>
+    {{ form_end(form) }}
+
+    {% if isEdit and user and overrideView %}
+        <div class="mt-sp-md">
+            <twig:cp:card title="{{ 'aacp.users.overrides.title'|trans }}">
+                <p class="mb-3 text-fs-xs !text-slate-500">{{ 'aacp.users.overrides.hint'|trans }}</p>
+                {% if overrideView.overrideCount > 0 %}
+                    <p class="mb-3 rounded-md border border-primary-500/30 bg-primary-500/10 px-3 py-2 text-fs-xs !text-primary-200">
+                        {{ 'aacp.users.overrides.diff_count'|trans({count: overrideView.overrideCount}) }}
+                    </p>
+                {% endif %}
+
+                <form method="post" action="{{ path('aacp_users_overrides', {id: user.id}) }}" class="space-y-2">
+                    <input type="hidden" name="_token" value="{{ csrf_token('aacp_user_overrides_' ~ user.id) }}">
+                    {% for group in overrideView.groups %}
+                        <details class="rounded-md border border-white/10"{% if group.overrideCount > 0 %} open{% endif %}>
+                            <summary class="cursor-pointer px-3 py-2 text-fs-xs font-semibold uppercase tracking-wide !text-slate-400">
+                                {{ ('aacp.users.module.' ~ group.module)|trans({}, 'messages')|default(group.module) }}
+                                {% if group.overrideCount > 0 %}
+                                    <span class="ml-2 font-mono normal-case !text-primary-300">{{ group.overrideCount }}</span>
+                                {% endif %}
+                            </summary>
+                            <div class="space-y-1 border-t border-white/10 px-3 py-2">
+                                {% for row in group.rows %}
+                                    <div class="flex flex-col gap-1 rounded-md px-2 py-1.5 sm:flex-row sm:items-center sm:justify-between{{ row.overridden ? ' bg-primary-500/10' : '' }}">
+                                        <div class="min-w-0">
+                                            <p class="text-fs-xs {{ row.overridden ? '!text-slate-200' : '!text-slate-300' }}">{{ row.label }}</p>
+                                            <p class="font-mono text-fs-xs !text-slate-600">{{ row.capability }}</p>
+                                            <p class="text-fs-xs !text-slate-600">
+                                                {% if row.roleHas %}
+                                                    {{ 'aacp.users.overrides.role_has'|trans }}
+                                                {% else %}
+                                                    {{ 'aacp.users.overrides.role_lacks'|trans }}
+                                                {% endif %}
+                                            </p>
+                                        </div>
+                                        <fieldset class="flex flex-wrap gap-3 text-fs-xs !text-slate-400">
+                                            <legend class="sr-only">{{ row.capability }}</legend>
+                                            <label class="inline-flex items-center gap-1">
+                                                <input type="radio" name="overrides[{{ row.capability }}]" value="inherit"{% if row.effect == 'inherit' %} checked{% endif %}>
+                                                {{ 'aacp.users.overrides.inherit'|trans }}
+                                            </label>
+                                            {% if row.grantable %}
+                                                <label class="inline-flex items-center gap-1">
+                                                    <input type="radio" name="overrides[{{ row.capability }}]" value="grant"{% if row.effect == 'grant' %} checked{% endif %}>
+                                                    {{ 'aacp.users.overrides.grant'|trans }}
+                                                </label>
+                                            {% else %}
+                                                <span class="!text-slate-600" title="{{ 'aacp.users.overrides.grant_locked'|trans }}">{{ 'aacp.users.overrides.grant_locked'|trans }}</span>
+                                            {% endif %}
+                                            {% if row.deniable %}
+                                                <label class="inline-flex items-center gap-1">
+                                                    <input type="radio" name="overrides[{{ row.capability }}]" value="deny"{% if row.effect == 'deny' %} checked{% endif %}>
+                                                    {{ 'aacp.users.overrides.deny'|trans }}
+                                                </label>
+                                            {% else %}
+                                                <span class="!text-slate-600" title="{{ 'aacp.users.overrides.deny_locked'|trans }}">{{ 'aacp.users.overrides.deny_locked'|trans }}</span>
+                                            {% endif %}
+                                        </fieldset>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </details>
+                    {% endfor %}
+                    <div class="pt-2">
+                        <button type="submit" class="btn btn-primary">{{ 'aacp.users.overrides.submit'|trans }}</button>
+                    </div>
+                </form>
+
+                <form method="post" action="{{ path('aacp_users_overrides_reset', {id: user.id}) }}" class="mt-3 border-t border-white/10 pt-3">
+                    <input type="hidden" name="_token" value="{{ csrf_token('aacp_user_overrides_reset_' ~ user.id) }}">
+                    <button type="submit" class="text-fs-sm font-medium !text-slate-500 hover:!text-slate-300">
+                        {{ 'aacp.users.overrides.reset_action'|trans }}
+                    </button>
+                    <p class="mt-1 text-fs-xs !text-slate-600">{{ 'aacp.users.overrides.reset_hint'|trans }}</p>
+                </form>
+            </twig:cp:card>
+        </div>
+    {% endif %}
+{% endblock %}

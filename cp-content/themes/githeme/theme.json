@@ -1,0 +1,13 @@
+{
+    "name": "Githeme",
+    "version": "1.0.2",
+    "description": "Primer tasarım dilinden ilham alan kontrastlı açık/koyu tema: sistem fontları, 6px köşe, 1px kenarlık, kompakt yoğunluk.",
+    "author": "CPalius",
+    "screenshot": "screenshot.png",
+    "entry": {
+        "css": ["dist/githeme.css", "dist/githeme-recolor.css", "dist/githeme-ui.css"],
+        "js": ["dist/githeme.js"]
+    },
+    "supports": ["menu"],
+    "requires_modules": ["Menu"]
+}

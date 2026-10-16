@@ -1,0 +1,208 @@
+/* Githeme: tokens.
+   One dimmed-gray palette (dark is the default, light is its twin) that every other Githeme sheet
+   reads through --gh-*. Loaded straight after Default's style.css, before Studio's font and
+   appearance overrides, so an operator's accent and typeface choice still win.
+
+   Contract: 1px lines instead of shadows, 6px corners, no gradients, no pill buttons. Colour carries
+   meaning only: blue is a link, green is the primary action, orange marks the active tab, red is danger. */
+
+:root {
+  color-scheme: dark;
+
+  /* surfaces */
+  --gh-canvas: #1c2128;
+  --gh-surface: #22272e;
+  --gh-subtle: #262c34;
+  --gh-surface-2: #2d333b;
+  --gh-surface-3: #373e47;
+  --gh-hover: #2d333b;
+  --gh-inset: #1c2128;
+  --gh-bar: #161b22;
+  --gh-bar-2: #1c2128;
+  --gh-row-unread: #25303f;
+
+  /* lines */
+  --gh-border: #373e47;
+  --gh-border-strong: #444c56;
+
+  /* text */
+  --gh-fg: #adbac7;
+  --gh-fg-strong: #cdd9e5;
+  --gh-muted: #8b98a5;
+  --gh-faint: #768390;
+  --gh-on-bar: #909dab;
+  --gh-on-bar-strong: #f0f6fc;
+
+  /* meaning */
+  --gh-link: #539bf5;
+  --gh-link-hover: #6cb6ff;
+  --gh-primary: #1f8a3b;
+  --gh-primary-hover: #25a244;
+  --gh-accent: #f78166;
+  --gh-focus: #388bfd;
+  --gh-ok: #57ab5a;
+  --gh-ok-bg: #1d3326;
+  --gh-danger: #f47067;
+  --gh-danger-solid: #c93c37;
+  --gh-danger-bg: #3a1f22;
+  --gh-warn: #daaa3f;
+  --gh-warn-solid: #966600;
+  --gh-warn-bg: #3a2f12;
+  --gh-info-bg: #1f2f43;
+
+  --gh-syn-str: #96d0ff;
+  --gh-syn-kw: #f47067;
+  --gh-syn-attr: #dcbdfb;
+  --gh-syn-fn: #6cb6ff;
+
+  /* shape */
+  --gh-radius: 6px;
+  --gh-shadow: 0 1px 0 rgba(1, 4, 9, 0.35);
+  --gh-shadow-float: 0 8px 24px rgba(1, 4, 9, 0.85);
+  --gh-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --gh-mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+
+  /* Default's own tokens, bent to this system: type, density and column. The font manager in AACP
+     redefines the --cp-font-* four after this file, so an operator's choice still wins. */
+  --cp-font-body: var(--gh-font);
+  --cp-font-heading: var(--gh-font);
+  --cp-font-mono: var(--gh-mono);
+  --fs-xs: 11.5px;
+  --fs-sm: 12.5px;
+  --fs-base: 14px;
+  --fs-md: 15px;
+  --fs-lg: 16px;
+  --fs-xl: 18px;
+  --fs-2xl: 22px;
+  --fs-3xl: clamp(22px, 2.4vw, 28px);
+  --fs-4xl: clamp(26px, 3vw, 34px);
+  --fs-hero: clamp(30px, 4vw, 44px);
+  --sp-xs: 8px;
+  --sp-sm: 12px;
+  --sp-md: 16px;
+  --sp-lg: 24px;
+  --sp-xl: 32px;
+  --sp-2xl: 48px;
+  --sp-3xl: 72px;
+  --container-max: 1280px;
+  --navbar-h: 56px;
+
+  /* Default's forum/blog token set (--slw-*), pointed at this palette. */
+  --slw-accent: var(--gh-bar);
+  --slw-accent-soft: var(--gh-bar-2);
+  --slw-accent-muted: var(--gh-surface-2);
+  --slw-terminal: var(--gh-ok);
+  --slw-terminal-dim: var(--gh-primary);
+  --slw-border: var(--gh-border);
+  --slw-border-strong: var(--gh-border-strong);
+  --slw-surface: var(--gh-subtle);
+  --slw-surface-elevated: var(--gh-surface);
+  --slw-text-main: var(--gh-fg-strong);
+  --slw-text-muted: var(--gh-muted);
+  --slw-text-faint: var(--gh-faint);
+  --slw-shadow-sm: var(--gh-shadow);
+  --slw-shadow-md: var(--gh-shadow);
+  --slw-shadow-lg: var(--gh-shadow-float);
+
+  /* Stats card and footer read these; Default falls back to its own navy. */
+  --stats-surface: var(--gh-surface);
+  --stats-inset: var(--gh-surface-2);
+  --stats-line: var(--gh-border);
+  --stats-strong: var(--gh-fg-strong);
+}
+
+/* Two-row header (brand and tools above, tabs below) only where the desktop bar is shown. */
+@media (min-width: 1201px) {
+  :root {
+    --navbar-h: 100px;
+  }
+}
+
+/* Light twin: GitHub-light greys; the bars (header, hero, footer) stay dark on purpose. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --gh-canvas: #f6f8fa;
+  --gh-surface: #ffffff;
+  --gh-subtle: #f6f8fa;
+  --gh-surface-2: #eef1f4;
+  --gh-surface-3: #e6eaee;
+  --gh-hover: #f3f5f7;
+  --gh-inset: #ffffff;
+  --gh-bar: #24292f;
+  --gh-bar-2: #2d333b;
+  --gh-row-unread: #ddf4ff;
+  --gh-border: #d0d7de;
+  --gh-border-strong: #afb8c1;
+  --gh-fg: #3d444d;
+  --gh-fg-strong: #1f2328;
+  --gh-muted: #59636e;
+  --gh-faint: #818b98;
+  --gh-on-bar: #9ea7b3;
+  --gh-on-bar-strong: #f6f8fa;
+  --gh-link: #0969da;
+  --gh-link-hover: #0550ae;
+  --gh-primary: #1f883d;
+  --gh-primary-hover: #1a7f37;
+  --gh-accent: #fd8c73;
+  --gh-focus: #0969da;
+  --gh-ok: #1a7f37;
+  --gh-ok-bg: #dafbe1;
+  --gh-danger: #cf222e;
+  --gh-danger-solid: #cf222e;
+  --gh-danger-bg: #ffebe9;
+  --gh-warn: #9a6700;
+  --gh-warn-solid: #bf8700;
+  --gh-warn-bg: #fff8c5;
+  --gh-info-bg: #ddf4ff;
+  --gh-syn-str: #0a3069;
+  --gh-syn-kw: #cf222e;
+  --gh-syn-attr: #8250df;
+  --gh-syn-fn: #0550ae;
+  --gh-shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+  --gh-shadow-float: 0 8px 24px rgba(140, 149, 159, 0.4);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --gh-canvas: #f6f8fa;
+    --gh-surface: #ffffff;
+    --gh-subtle: #f6f8fa;
+    --gh-surface-2: #eef1f4;
+    --gh-surface-3: #e6eaee;
+    --gh-hover: #f3f5f7;
+    --gh-inset: #ffffff;
+    --gh-bar: #24292f;
+    --gh-bar-2: #2d333b;
+    --gh-row-unread: #ddf4ff;
+    --gh-border: #d0d7de;
+    --gh-border-strong: #afb8c1;
+    --gh-fg: #3d444d;
+    --gh-fg-strong: #1f2328;
+    --gh-muted: #59636e;
+    --gh-faint: #818b98;
+    --gh-on-bar: #9ea7b3;
+    --gh-on-bar-strong: #f6f8fa;
+    --gh-link: #0969da;
+    --gh-link-hover: #0550ae;
+    --gh-primary: #1f883d;
+    --gh-primary-hover: #1a7f37;
+    --gh-accent: #fd8c73;
+    --gh-focus: #0969da;
+    --gh-ok: #1a7f37;
+    --gh-ok-bg: #dafbe1;
+    --gh-danger: #cf222e;
+    --gh-danger-solid: #cf222e;
+    --gh-danger-bg: #ffebe9;
+    --gh-warn: #9a6700;
+    --gh-warn-solid: #bf8700;
+    --gh-warn-bg: #fff8c5;
+    --gh-info-bg: #ddf4ff;
+    --gh-syn-str: #0a3069;
+  --gh-syn-kw: #cf222e;
+  --gh-syn-attr: #8250df;
+  --gh-syn-fn: #0550ae;
+  --gh-shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+    --gh-shadow-float: 0 8px 24px rgba(140, 149, 159, 0.4);
+  }
+}

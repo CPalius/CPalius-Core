@@ -1,0 +1,6 @@
+<title>{{ title|default('CPalius CMF') }}</title>
+{% if description %}
+<meta name="description" content="{{ description|e('html_attr') }}">
+{% endif %}
+<meta name="robots" content="{{ robots|default('index, follow')|e('html_attr') }}">
+{{ cp_hreflang_links() }}

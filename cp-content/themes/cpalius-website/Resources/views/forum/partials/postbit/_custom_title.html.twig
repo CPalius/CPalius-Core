@@ -1,0 +1,4 @@
+{# Postbit block: user-set title under the name. Expects post. #}
+{% if post.author and post.author.customTitle %}
+    {% include '@Theme/forum/partials/_custom_title.html.twig' with {user: post.author} %}
+{% endif %}

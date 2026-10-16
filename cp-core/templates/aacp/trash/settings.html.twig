@@ -1,0 +1,64 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.trash.settings.header'|trans }}{% endblock %}
+
+{% block body %}
+    <form method="post" class="space-y-sp-md">
+        <input type="hidden" name="_token" value="{{ csrf_token('aacp_trash') }}">
+
+        <twig:cp:card>
+            <h2 class="text-fs-md">{{ 'aacp.trash.settings.global'|trans }}</h2>
+            <p class="mt-1 text-fs-sm !text-slate-500">{{ 'aacp.trash.settings.global_intro'|trans }}</p>
+            <div class="mt-sp-sm grid gap-3 md:grid-cols-2">
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" name="global_enabled" value="1" {{ global.enabled ? 'checked' : '' }}>
+                    <span>{{ 'aacp.trash.settings.enabled'|trans }}</span>
+                </label>
+                <div>
+                    <label class="form-label" for="global_days">{{ 'aacp.trash.settings.retention'|trans }}</label>
+                    <input id="global_days" type="number" name="global_days" min="0" max="3650" value="{{ global.retentionDays }}"
+                           class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                    <p class="mt-1 text-fs-xs !text-slate-500">{{ 'aacp.trash.settings.retention_hint'|trans }}</p>
+                </div>
+            </div>
+        </twig:cp:card>
+
+        <twig:cp:card>
+            <h2 class="text-fs-md">{{ 'aacp.trash.settings.per_type'|trans }}</h2>
+            <p class="mt-1 text-fs-sm !text-slate-500">{{ 'aacp.trash.settings.per_type_intro'|trans }}</p>
+
+            <div class="mt-sp-sm overflow-x-auto">
+                <table class="w-full text-fs-sm">
+                    <thead>
+                        <tr class="text-start !text-slate-500">
+                            <th class="py-1 text-start">{{ 'aacp.trash.column.type'|trans }}</th>
+                            <th class="py-1 text-start">{{ 'aacp.trash.settings.enabled'|trans }}</th>
+                            <th class="py-1 text-start">{{ 'aacp.trash.settings.retention'|trans }}</th>
+                            <th class="py-1 text-start">{{ 'aacp.trash.settings.in_bin'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for name in types %}
+                            {% set rule = rules[name] ?? null %}
+                            <tr class="border-t border-white/10">
+                                <td class="py-1">{{ typeLabels[name] ?? name }} <span class="font-mono text-fs-xs !text-slate-500">{{ name }}</span></td>
+                                <td class="py-1"><input type="checkbox" name="rules[{{ loop.index0 }}][enabled]" value="1" {{ rule is null or rule.enabled ? 'checked' : '' }}></td>
+                                <td class="py-1">
+                                    <input type="number" name="rules[{{ loop.index0 }}][days]" min="0" max="3650"
+                                           value="{{ rule ? rule.retentionDays : '' }}" placeholder="{{ global.retentionDays }}"
+                                           class="form-control !w-28 !border-white/10 !bg-dark-1 !text-slate-100">
+                                </td>
+                                <td class="py-1 !text-slate-500">{{ counts[name] ?? 0 }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </twig:cp:card>
+
+        <div class="flex gap-2">
+            <button type="submit" class="btn btn-primary">{{ 'aacp.trash.settings.save'|trans }}</button>
+            <a href="{{ path('aacp_trash_index') }}" class="btn">{{ 'aacp.trash.settings.back'|trans }}</a>
+        </div>
+    </form>
+{% endblock %}

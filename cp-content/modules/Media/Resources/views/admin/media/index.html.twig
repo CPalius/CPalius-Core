@@ -1,0 +1,28 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'media.index.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <label class="btn btn-sm btn-primary cursor-pointer">
+        {{ 'media.index.upload_action'|trans }}
+        <input type="file" data-media-upload-input class="hidden" accept="image/*,application/pdf,video/*">
+    </label>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap('media-picker') }}
+{% endblock %}
+
+{% block body %}
+    <form method="get" class="mb-sp-sm">
+        <input type="text" name="q" value="{{ query }}" placeholder="{{ 'media.index.search_placeholder'|trans }}"
+               class="form-control max-w-sm">
+    </form>
+
+    <twig:studio:card padded="{{ true }}">
+        <div data-media-grid>
+            {% include '@MediaModule/admin/media/_grid.html.twig' with {assets: assets, picker: false} %}
+        </div>
+    </twig:studio:card>
+{% endblock %}

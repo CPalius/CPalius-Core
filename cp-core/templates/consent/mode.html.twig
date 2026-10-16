@@ -1,0 +1,30 @@
+{# Google Consent Mode v2: denied by default, restored from the cp_consent cookie. Must run before any Google tag. #}
+<script{{ csp_nonce_attr() }}>
+window.dataLayer = window.dataLayer || [];
+window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+gtag('consent', 'default', {
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    analytics_storage: 'denied',
+    functionality_storage: 'granted',
+    security_storage: 'granted',
+    wait_for_update: 500
+});
+(function () {
+    var m = document.cookie.match(/(?:^|; )cp_consent=([^;]*)/);
+    var v = m ? m[1] : '';
+    var all = v === 'accepted';
+    var picked = v.indexOf('custom_') === 0 ? v.slice(7).split('_') : [];
+    var analytics = all || picked.indexOf('analytics') > -1;
+    var marketing = all || picked.indexOf('marketing') > -1;
+    if (analytics || marketing) {
+        gtag('consent', 'update', {
+            analytics_storage: analytics ? 'granted' : 'denied',
+            ad_storage: marketing ? 'granted' : 'denied',
+            ad_user_data: marketing ? 'granted' : 'denied',
+            ad_personalization: marketing ? 'granted' : 'denied'
+        });
+    }
+})();
+</script>

@@ -1,0 +1,51 @@
+# Core named text formats. Modules may add more in Resources/config/text_formats.yaml
+# (see TextFormatRegistrationPass). Live AACP edits persist to cp_text_formats and
+# win over this file for the same id; this file is the seed / fallback.
+#
+# A+ vs Drupal Filter API:
+# - Drupal filters on OUTPUT only, so the DB is an XSS warehouse and disabling a
+#   filter can unsafely "revive" stored markup. CPalius sanitizes on SAVE with the
+#   format's allowlist AND transforms on output; a hardcoded deny-list (script,
+#   style, form, iframe-on-save, on* attrs) cannot be overridden by any format.
+# - Drupal's CKEditor toolbar and the filter allowlist are two lists that drift
+#   (a well-known XSS class). CPalius has ONE allowlist — the format. The widget
+#   enables the WYSIWYG only for HTML formats; markdown/restricted stay plain.
+# - Token + markdown are contrib in Drupal; they are core filters here.
+text_formats:
+    restricted:
+        label: 'text_format.label.restricted'
+        description: 'text_format.description.restricted'
+        wysiwyg: false
+        filters:
+            - { id: html_restrict, enabled: true, weight: 0, settings: { allow_elements: { p: [], br: [], strong: [], em: [], a: [href, title], ul: [], ol: [], li: [], code: [] } } }
+            - { id: token, enabled: true, weight: 10 }
+            - { id: auto_link, enabled: true, weight: 20 }
+            - { id: nl2br, enabled: true, weight: 40 }
+    basic_html:
+        label: 'text_format.label.basic_html'
+        description: 'text_format.description.basic_html'
+        wysiwyg: true
+        filters:
+            - { id: html_restrict, enabled: true, weight: 0, settings: { allow_elements: { p: [], br: [], strong: [], em: [], a: [href, title, rel, target], ul: [], ol: [], li: [], h2: [], h3: [], h4: [], blockquote: [], code: [], pre: [], img: [src, alt, width, height], hr: [] } } }
+            - { id: token, enabled: true, weight: 10 }
+            - { id: auto_link, enabled: true, weight: 20 }
+            - { id: media_embed, enabled: true, weight: 30 }
+    full_html:
+        label: 'text_format.label.full_html'
+        description: 'text_format.description.full_html'
+        wysiwyg: true
+        filters:
+            - { id: html_restrict, enabled: true, weight: 0, settings: { allow_elements: { p: [], br: [], strong: [], em: [], a: [href, title, rel, target], ul: [], ol: [], li: [], h1: [], h2: [], h3: [], h4: [], h5: [], h6: [], blockquote: [], code: [], pre: [], img: [src, alt, width, height, class], hr: [], table: [], thead: [], tbody: [], tr: [], th: [colspan, rowspan], td: [colspan, rowspan], div: [class], span: [class], figure: [], figcaption: [] } } }
+            - { id: token, enabled: true, weight: 10 }
+            - { id: auto_link, enabled: true, weight: 20 }
+            - { id: media_embed, enabled: true, weight: 30 }
+    markdown:
+        label: 'text_format.label.markdown'
+        description: 'text_format.description.markdown'
+        wysiwyg: false
+        filters:
+            - { id: markdown, enabled: true, weight: -10 }
+            - { id: html_restrict, enabled: true, weight: 0, settings: { allow_elements: { p: [], br: [], strong: [], em: [], a: [href, title], ul: [], ol: [], li: [], h2: [], h3: [], h4: [], blockquote: [], code: [], pre: [], hr: [] } } }
+            - { id: token, enabled: true, weight: 10 }
+            - { id: auto_link, enabled: true, weight: 20 }
+            - { id: media_embed, enabled: true, weight: 30 }

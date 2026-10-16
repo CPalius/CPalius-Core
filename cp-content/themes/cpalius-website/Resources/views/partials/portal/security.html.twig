@@ -1,0 +1,55 @@
+{% set t = 'portal' %}
+<section class="section section-light" id="security">
+    <div class="container">
+        <div class="section-header fade-in">
+            <span class="section-label">{{ 'security.label'|trans({}, t) }}</span>
+            <h2 class="section-title">{{ 'security.title'|trans({}, t) }}</h2>
+            <p class="section-desc">{{ 'security.desc'|trans({}, t) }}</p>
+        </div>
+
+        <div class="security-grid">
+            <div class="security-card fade-in" data-delay="0">
+                <div class="security-icon"><i class="bi bi-shield-lock"></i></div>
+                <h4>{{ 'security.cbac_title'|trans({}, t) }}</h4>
+                <p>{{ 'security.cbac_p1'|trans({}, t) }}</p>
+                <p><code class="code-inline">denyAccessUnlessGranted('system.module.manage')</code></p>
+                <p>{{ 'security.cbac_roles_html'|trans({}, t)|raw }}</p>
+            </div>
+
+            <div class="security-card fade-in" data-delay="100">
+                <div class="security-icon"><i class="bi bi-building-lock"></i></div>
+                <h4>{{ 'security.tenant_title'|trans({}, t) }}</h4>
+                <p>{{ 'security.tenant_p1_html'|trans({}, t)|raw }}</p>
+                <p>{{ 'security.tenant_p2_html'|trans({}, t)|raw }}</p>
+            </div>
+
+            <div class="security-card fade-in" data-delay="200">
+                <div class="security-icon"><i class="bi bi-speedometer2"></i></div>
+                <h4>{{ 'security.n1_title'|trans({}, t) }}</h4>
+                <p>{{ 'security.n1_p1'|trans({}, t) }}</p>
+                <p>{{ 'security.n1_p2_html'|trans({}, t)|raw }}</p>
+            </div>
+
+            <div class="security-card fade-in" data-delay="0">
+                <div class="security-icon"><i class="bi bi-funnel"></i></div>
+                <h4>{{ 'security.voter_title'|trans({}, t) }}</h4>
+                <p>{{ 'security.voter_p1_html'|trans({}, t)|raw }}</p>
+                <p>{{ 'security.voter_p2_html'|trans({}, t)|raw }}</p>
+            </div>
+
+            <div class="security-card fade-in" data-delay="100">
+                <div class="security-icon"><i class="bi bi-shield-check"></i></div>
+                <h4>{{ 'security.zerotrust_title'|trans({}, t) }}</h4>
+                <p>{{ 'security.zerotrust_p1'|trans({}, t) }}</p>
+                <p>{{ 'security.zerotrust_p2'|trans({}, t) }}</p>
+            </div>
+
+            <div class="security-card fade-in" data-delay="200">
+                <div class="security-icon"><i class="bi bi-cpu"></i></div>
+                <h4>{{ 'security.lockfree_title'|trans({}, t) }}</h4>
+                <p>{{ 'security.lockfree_p1'|trans({}, t) }}</p>
+                <p>{{ 'security.lockfree_p2'|trans({}, t) }}</p>
+            </div>
+        </div>
+    </div>
+</section>

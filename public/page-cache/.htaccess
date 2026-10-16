@@ -1,0 +1,8 @@
+# CPalius origin cache — static HTML/CSS/JS/WebP only, never execute PHP.
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+<FilesMatch "\.php$">
+    Require all denied
+</FilesMatch>
+Options -Indexes

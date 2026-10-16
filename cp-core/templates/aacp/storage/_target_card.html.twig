@@ -1,0 +1,91 @@
+{#
+    One remote target: credentials, a save-and-test button, and a live log.
+
+    fields: list of {key, label, type?, hint?, wide?}
+    provider: {fields, verified, checkedAt, message, supported}
+#}
+<twig:cp:card title="{{ title }}" variant="{{ provider.verified ? 'default' : 'danger' }}">
+    <div data-storage-root="1"
+         data-storage-test-url="{{ path('aacp_storage_test', {type: type}) }}"
+         data-storage-csrf="{{ csrf_token }}"
+         data-i18n-test-started="{{ 'aacp.storage.js.test_started'|trans }}"
+         data-i18n-latency="{{ 'aacp.storage.js.latency'|trans({ms: '{ms}'}) }}"
+         data-i18n-request-failed="{{ 'aacp.storage.js.request_failed'|trans({error: '{error}'}) }}"
+         data-i18n-verified="{{ 'aacp.storage.state.verified'|trans }}"
+         data-i18n-unverified="{{ 'aacp.storage.state.unverified'|trans }}"
+         class="space-y-sp-sm">
+
+        <div class="flex flex-wrap items-center gap-2">
+            <span data-storage-badge class="badge {{ provider.verified ? 'badge-success' : 'badge-danger' }}">
+                {{ provider.verified ? 'aacp.storage.state.verified'|trans : 'aacp.storage.state.unverified'|trans }}
+            </span>
+            <span class="text-fs-xs text-slate-500">
+                {% if provider.checkedAt %}
+                    {{ 'aacp.storage.last_test'|trans({ date: provider.checkedAt|date('d.m.Y H:i') }) }}
+                    {% if provider.message %}— {{ provider.message|trans }}{% endif %}
+                {% else %}
+                    {{ 'aacp.storage.never_tested'|trans }}
+                {% endif %}
+            </span>
+        </div>
+
+        {% if intro is defined and intro %}
+            <p class="text-fs-sm text-slate-400">{{ intro }}</p>
+        {% endif %}
+
+        {% if not provider.supported %}
+            {# Stated up front rather than discovered on the first probe: on a
+               host without ext-ftp there is nothing the operator can type here
+               that will work. #}
+            <div class="toast toast-warning">{{ 'aacp.storage.error.ftp_extension_missing'|trans }}</div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 gap-sp-sm sm:grid-cols-2">
+            {% for field in fields %}
+                <div class="{{ field.wide|default(false) ? 'sm:col-span-2' : '' }}">
+                    {% if field.type|default('text') != 'checkbox' %}
+                        <label class="form-label !text-slate-400">{{ field.label }}</label>
+                    {% endif %}
+
+                    {% if field.type|default('text') == 'checkbox' %}
+                        <label class="mt-1 flex items-center gap-2 text-fs-sm text-slate-200">
+                            <input type="checkbox"
+                                   data-storage-field="{{ field.key }}"
+                                   value="1"
+                                   {{ provider.fields[field.key] ? 'checked' : '' }}
+                                   class="rounded border-white/20 bg-dark-1">
+                            {{ field.label }}
+                        </label>
+                    {% elseif field.type|default('text') == 'password' %}
+                        {# Never rendered back. An empty field means "keep the
+                           stored secret", the same contract the System Settings
+                           screen uses. #}
+                        <input type="password"
+                               data-storage-field="{{ field.key }}"
+                               value=""
+                               autocomplete="new-password"
+                               placeholder="{{ provider.fields.has_secret ? 'aacp.storage.secret_stored'|trans : 'aacp.storage.secret_empty'|trans }}"
+                               class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                    {% else %}
+                        <input type="text"
+                               data-storage-field="{{ field.key }}"
+                               value="{{ provider.fields[field.key] }}"
+                               class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                    {% endif %}
+
+                    {% if field.hint is defined and field.hint %}
+                        <p class="mt-1 text-fs-xs text-slate-500">{{ field.hint }}</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button type="button" class="btn btn-sm btn-primary" data-storage-action="test">
+                {{ 'aacp.storage.action.save_and_test'|trans }}
+            </button>
+        </div>
+
+        <pre class="text-fs-xs text-slate-500 whitespace-pre-wrap" data-storage-log></pre>
+    </div>
+</twig:cp:card>

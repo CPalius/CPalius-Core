@@ -1,0 +1,42 @@
+{#
+    The admin bell (AACP + Studio headers). Pass dark=true for the AACP chrome.
+
+    Two kinds of rows:
+      - "pending" is live: requests that still wait for a decision (username / e-mail changes). It stays
+        until somebody approves or rejects, even after the matching notification was read, so a request
+        cannot be forgotten by clicking past it.
+      - the rest are the user's ordinary unread notifications.
+#}
+{% set bell = cp_admin_bell() %}
+{% set menuId = dark|default(false) ? 'aacp-notification-menu' : 'studio-notification-menu' %}
+<div class="dropdown shrink-0">
+    <button type="button" data-dropdown-trigger="{{ menuId }}"
+            class="relative {{ dark|default(false) ? 'header-icon-btn !bg-dark-1 !text-slate-300 hover:!bg-white/5' : 'flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-500 transition hover:border-primary-600 hover:text-primary-600' }}"
+            title="{{ 'aacp.layout.header.notifications'|trans }}">
+        <twig:ux:icon name="tabler:bell" class="h-5 w-5" />
+        {% if bell.badge > 0 %}
+            <span class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger-600 px-1 text-[10px] font-semibold leading-none text-white">{{ bell.badge > 99 ? '99+' : bell.badge }}</span>
+        {% endif %}
+    </button>
+    <div id="{{ menuId }}" class="dropdown-menu {{ dark|default(false) ? '!bg-dark-2 !border !border-white/10' : '' }} end-0 !w-80">
+        {% if bell.pending > 0 %}
+            <a href="{{ path('aacp_users_identity_requests') }}" class="{{ dark|default(false) ? '!text-slate-200 hover:!bg-white/5' : '' }} font-medium">
+                <twig:ux:icon name="tabler:id-badge-2" class="h-4 w-4 shrink-0" />
+                <span>{{ 'notification.bell.pending_identity'|trans({count: bell.pending}) }}</span>
+            </a>
+        {% endif %}
+
+        {% for item in bell.items %}
+            <a href="{{ item.url }}" class="{{ dark|default(false) ? '!text-slate-300 hover:!bg-white/5' : '' }}">
+                <span class="min-w-0">
+                    <span class="block text-fs-sm">{{ item.text }}</span>
+                    <span class="block text-fs-xs {{ dark|default(false) ? '!text-slate-500' : 'text-neutral-500' }}">{{ item.created_label }}</span>
+                </span>
+            </a>
+        {% endfor %}
+
+        {% if bell.pending == 0 and bell.items is empty %}
+            <p class="px-3 py-2 text-fs-xs {{ dark|default(false) ? '!text-slate-500' : 'text-neutral-500' }}">{{ 'aacp.layout.header.notifications_empty'|trans }}</p>
+        {% endif %}
+    </div>
+</div>

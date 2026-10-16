@@ -1,0 +1,104 @@
+{#
+    Maintenance page. Deliberately self-contained: no theme layout, no asset
+    pipeline, no database beyond the three strings passed in. The one page that
+    has to render when the installation is half-broken cannot depend on the
+    parts that might be broken.
+#}
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('tr') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{ title ?: 'maintenance.default_title'|trans }}{% if siteName %} — {{ siteName }}{% endif %}</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --mt-bg: #f6f7f9;
+            --mt-card: #ffffff;
+            --mt-text: #16191d;
+            --mt-muted: #5b6472;
+            --mt-border: #e3e6eb;
+            --mt-accent: #2563eb;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --mt-bg: #0f1216;
+                --mt-card: #171b21;
+                --mt-text: #e8ebef;
+                --mt-muted: #9aa4b2;
+                --mt-border: #262c35;
+                --mt-accent: #60a5fa;
+            }
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: var(--mt-bg);
+            color: var(--mt-text);
+            font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        .mt-card {
+            width: 100%;
+            max-width: 520px;
+            padding: 40px 32px;
+            border: 1px solid var(--mt-border);
+            border-radius: 16px;
+            background: var(--mt-card);
+            text-align: center;
+        }
+        .mt-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: color-mix(in srgb, var(--mt-accent) 14%, transparent);
+            color: var(--mt-accent);
+        }
+        .mt-site {
+            margin: 0 0 8px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--mt-muted);
+        }
+        h1 {
+            margin: 0 0 12px;
+            font-size: 26px;
+            line-height: 1.3;
+        }
+        .mt-message {
+            margin: 0;
+            color: var(--mt-muted);
+            white-space: pre-line;
+        }
+    </style>
+</head>
+<body>
+    <main class="mt-card">
+        <div class="mt-icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.4 2.6a5 5 0 0 0 6 6L21 12.2a2.5 2.5 0 0 1-3.5 3.5l-3.6-3.6a5 5 0 0 0-6-6z"></path>
+                <path d="m7.5 12.5-5 5a2.1 2.1 0 0 0 3 3l5-5"></path>
+            </svg>
+        </div>
+
+        {% if siteName %}
+            <p class="mt-site">{{ siteName }}</p>
+        {% endif %}
+
+        <h1>{{ title ?: 'maintenance.default_title'|trans }}</h1>
+
+        <p class="mt-message">{{ message ?: 'maintenance.default_message'|trans }}</p>
+    </main>
+</body>
+</html>

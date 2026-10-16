@@ -1,0 +1,59 @@
+    <section class="aacp-cmd-panel{{ hiddenWidgets["platform.work"] is defined ? ' is-collapsed' }}" data-aacp-widget="platform.work" data-card-id="platform.work">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 class="aacp-cmd-panel-title !mb-0">{{ 'aacp.pulse.work.title'|trans }}</h3>
+            <a href="{{ path('aacp_queue') }}" class="aacp-pulse-link">{{ 'aacp.pulse.open_queue'|trans }} →</a>
+        </div>
+        {% if not pulse.work.available|default(false) %}
+            <p class="aacp-pulse-unavailable">{{ 'aacp.pulse.unavailable'|trans }}</p>
+        {% else %}
+            {% set queue = pulse.work.queue %}
+            {% set cron = pulse.work.cron %}
+            {% set mail = pulse.work.mail %}
+            <dl class="aacp-pulse-metrics">
+                <div>
+                    <dt>{{ 'aacp.pulse.work.messenger'|trans }}</dt>
+                    <dd>
+                        {{ queue.messengerPending }}
+                        {% if queue.messengerFailed > 0 %}
+                            <span class="aacp-pulse-bad">· {{ 'aacp.pulse.failed'|trans }} {{ queue.messengerFailed }}</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.work.platform_jobs'|trans }}</dt>
+                    <dd>
+                        {{ queue.platformPending }}
+                        {% if queue.platformFailed > 0 %}
+                            <span class="aacp-pulse-bad">· {{ 'aacp.pulse.failed'|trans }} {{ queue.platformFailed }}</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.work.cron_jobs'|trans }}</dt>
+                    <dd>
+                        {{ cron.total }}
+                        {% if cron.inactive > 0 %}
+                            <span class="aacp-pulse-muted">· {{ 'aacp.pulse.work.inactive'|trans }} {{ cron.inactive }}</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.work.cron_last_run'|trans }}</dt>
+                    <dd>{{ cron.lastRunAt ? cron.lastRunAt|date('d.m.Y H:i') : 'aacp.dashboard.cron_never'|trans }}</dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.work.mail_queued'|trans }}</dt>
+                    <dd>{{ mail.queued }}</dd>
+                </div>
+                <div>
+                    <dt>{{ 'aacp.pulse.work.mail_failed'|trans }}</dt>
+                    <dd class="{{ mail.failed > 0 ? 'aacp-pulse-bad' : '' }}">{{ mail.failed }}</dd>
+                </div>
+            </dl>
+            {% if cron.failing is not empty %}
+                <p class="aacp-pulse-note aacp-pulse-bad">
+                    {{ 'aacp.pulse.work.cron_failing'|trans }}: {{ cron.failing|join(', ') }}
+                </p>
+            {% endif %}
+        {% endif %}
+    </section>

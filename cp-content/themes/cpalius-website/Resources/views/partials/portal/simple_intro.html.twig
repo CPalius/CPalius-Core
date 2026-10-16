@@ -1,0 +1,29 @@
+{#
+    The built-in "simple" homepage: a title, a line under it, a paragraph, up to
+    two buttons and an optional picture. Every string is edited per language in
+    AACP → Appearance → Homepage; nothing on this page is hard-coded.
+#}
+<section class="hero" id="hero">
+    <div class="container{{ data.image ? ' hero-grid' : '' }}">
+        <div class="hero-content">
+            <h1 class="hero-title">{{ data.title }}</h1>
+            {% if data.subtitle %}<p class="hero-subtitle">{{ data.subtitle }}</p>{% endif %}
+            {% if data.body %}<p class="hero-desc">{{ data.body|nl2br }}</p>{% endif %}
+            {% if (data.cta_label and data.cta_url) or (data.cta2_label and data.cta2_url) %}
+                <div class="hero-actions">
+                    {% if data.cta_label and data.cta_url %}
+                        <a href="{{ data.cta_url }}" class="btn btn-primary">{{ data.cta_label }}</a>
+                    {% endif %}
+                    {% if data.cta2_label and data.cta2_url %}
+                        <a href="{{ data.cta2_url }}" class="btn btn-secondary">{{ data.cta2_label }}</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+        {% if data.image %}
+            <figure class="hero-visual">
+                <img src="{{ data.image }}" alt="{{ data.title }}" loading="eager" style="max-width:100%;height:auto;border-radius:12px">
+            </figure>
+        {% endif %}
+    </div>
+</section>

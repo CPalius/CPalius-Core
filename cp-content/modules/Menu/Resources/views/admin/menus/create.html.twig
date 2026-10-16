@@ -1,0 +1,35 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'menu.create.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="max-w-xl">
+        <twig:studio:card title="{{ 'menu.create.section_info'|trans }}">
+            <form method="post" action="{{ path('admin_menus_create') }}" class="space-y-sp-sm">
+                <input type="hidden" name="_token" value="{{ csrf_token('admin_menu_form') }}">
+
+                <div>
+                    <label for="name" class="form-label">{{ 'menu.create.name'|trans }}</label>
+                    <input type="text" id="name" name="name" value="{{ formValues.name }}" required
+                           placeholder="{{ 'menu.create.name_placeholder'|trans }}"
+                           class="form-control">
+                </div>
+
+                <div>
+                    <label for="identifier" class="form-label">{{ 'menu.create.identifier'|trans }}</label>
+                    <input type="text" id="identifier" name="identifier" value="{{ formValues.identifier }}" required
+                           placeholder="header"
+                           class="form-control">
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'menu.create.identifier_hint'|trans }} <code>{{ '{{ cp_menu(\'header\') }}' }}</code></p>
+                </div>
+
+                <div class="flex items-center gap-3 border-t border-neutral-200 pt-sp-sm">
+                    <button type="submit" class="btn btn-primary">
+                        {{ 'menu.create.submit'|trans }}
+                    </button>
+                    <a href="{{ path('admin_menus_index') }}" class="text-fs-sm font-medium text-neutral-500 hover:text-neutral-900">{{ 'aacp.users.form.cancel'|trans }}</a>
+                </div>
+            </form>
+        </twig:studio:card>
+    </div>
+{% endblock %}

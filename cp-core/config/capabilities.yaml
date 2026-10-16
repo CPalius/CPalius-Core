@@ -1,0 +1,57 @@
+# Core capabilities. Modules add theirs in Resources/config/capabilities.yaml
+# (see CapabilityRegistrationPass), not here.
+#
+# node.post.* lives in Blog's capabilities.yaml, not here.
+#
+# Naming: <domain>.<entity>.<action>[.<scope>]
+#   - system.module.manage    -> enable/disable modules from AACP
+capabilities:
+    - system.developer
+    - system.module.manage
+    - system.update.manage
+    - system.aacp.access
+    - system.settings.manage
+    - system.security.manage
+    - system.queue.manage
+    - system.logs.manage
+    # Deliberately separate from system.logs.manage: reading an audit
+    # trail and erasing one are not the same privilege, and collapsing
+    # them would let every log reader destroy the record of their own
+    # actions.
+    - system.logs.purge
+    - system.performance.manage
+    - system.cron.manage
+    - system.backup.manage
+    - system.hooks.manage
+    - system.api.manage
+    - system.webhooks.manage
+    - system.fields.manage
+    - taxonomy.manage
+    - content.revision.manage
+    - content.moderate
+    - content.publish
+    - system.users.view
+    - system.users.manage
+    - system.localization.manage
+    - account.profile.edit
+    - account.avatar.upload
+    - core.url_alias.manage
+    - core.path_pattern.manage
+    - core.text_format.manage
+    - text_format.restricted.use
+    - text_format.basic_html.use
+    - text_format.full_html.use
+    - text_format.markdown.use
+    - admin.access
+    # The Studio landing screen. Separate from admin.access, which also gates the
+    # homepage settings surface: /admin had no capability at all, so any account
+    # that could log in — a forum member included — reached it, and reusing
+    # admin.access to close that would have handed editors homepage settings as a
+    # side effect. Content rows on the dashboard were never exposed
+    # (QueryScopeApplier denies with 1 = 0), but the aggregate media total, the
+    # module KPIs and the whole Studio navigation map were.
+    - admin.dashboard.view
+    # Batched COUNT(*) recounts (forum counters, ACL cleanup, blog category
+    # counts). Separate from admin.dashboard.view so an editor who can see the
+    # desk cannot rewrite the live counters.
+    - admin.rebuild.run

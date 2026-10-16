@@ -1,0 +1,72 @@
+# see https://symfony.com/doc/current/reference/configuration/framework.html
+framework:
+    secret: '%env(APP_SECRET)%'
+
+    # Behind Varnish/nginx/Cloudflare the client IP arrives in X-Forwarded-For.
+    # Without this the ban list and every flood counter key off the proxy address,
+    # which both hides attackers and risks banning all traffic at once.
+    # Leave TRUSTED_PROXIES unset when PHP is directly exposed: an over-broad list
+    # lets a client forge its own IP. Accepts 'private_ranges' or a CIDR list.
+    trusted_proxies: '%env(default::TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-port', 'x-forwarded-proto', 'x-forwarded-prefix']
+
+    # A 404 is not an error, and Symfony's own file handler already excludes it
+    # (see monolog.yaml). The DB handler behind AACP → Logs did not, so every
+    # scanner probing /autodiscover/autodiscover.xml, /wp-login.php or /.env
+    # wrote an ERROR row into cp_log_entries — and an operator reading a log
+    # that is mostly bot traffic stops reading the log.
+    #
+    # NOTICE rather than silence: the rows still exist for anyone who lowers
+    # logging.min_level to notice or below, so "which links are broken" is still
+    # an answerable question. What changes is that a 404 no longer arrives
+    # dressed as a failure of the application.
+    exceptions:
+        Symfony\Component\HttpKernel\Exception\NotFoundHttpException:
+            log_level: notice
+        Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException:
+            log_level: notice
+
+    # Host header allowlist lives in security.trusted_hosts (AACP → Security Center)
+    # rather than here: framework.trusted_hosts is applied during boot, so a typo or
+    # an unresolved env var takes the whole site down with no way back in.
+
+    # Note that the session will be started ONLY if you read or write from it.
+    # Empty handler_id uses PHP's default file session handler;
+    # we point handler_id at session.handler.redis for Redis-backed sessions.
+    session:
+        handler_id: 'session.handler.redis'
+        cookie_secure: auto
+        cookie_samesite: lax
+
+    csrf_protection: true
+
+    form: true
+
+    # ESI enabled for Varnish reverse proxy — reads Surrogate-Capable and
+    # delegates fragments to Varnish.
+    esi: true
+    fragments: { path: /_fragment }
+
+    # http_cache.enabled deliberately false: Varnish runs in front, not Symfony AppCache.
+    # terminate_on_cache_hit lets PHP exit early on cache hits so Varnish can close TCP.
+    http_cache:
+        enabled: false
+        terminate_on_cache_hit: true
+
+# When Redis is down locally, Failover handler waits on every session read/write.
+# Dev uses native file sessions directly.
+when@dev:
+    framework:
+        session:
+            handler_id: null
+
+when@test:
+    framework:
+        test: true
+        session:
+            storage_factory_id: session.storage.factory.mock_file
+            # handler_id: null is required (Phase 2): mock_file alone still resolves
+            # session.handler.redis and triggers Redis on schema operations.
+            #
+            # Without this, CI fails with "Cannot find the redis extension" — same fix as when@dev.
+            handler_id: null

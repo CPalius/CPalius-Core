@@ -1,0 +1,40 @@
+<section class="portal-zone" id="forum_stats">
+    <div class="container">
+        <div class="portal-module fade-in">
+            <div class="portal-module__head">
+                <h2 class="portal-module__title">
+                    <i class="bi bi-bar-chart-line"></i>
+                    <span>{{ portalBlock.title|default('website.landing.portal.stats_title'|trans) }}</span>
+                </h2>
+                <a href="{{ path('forum_index') }}" class="portal-module__more">
+                    {{ 'website.landing.portal.forum_more'|trans }} »
+                </a>
+            </div>
+            <div class="portal-module__body portal-module__body--stats">
+                <div class="portal-stat-boxes">
+                    <div class="portal-stat-box">
+                        <span class="portal-stat-box__icon"><i class="bi bi-chat-square-text"></i></span>
+                        <div>
+                            <div class="portal-stat-box__value">{{ data.topics|default(0) }}</div>
+                            <div class="portal-stat-box__label">{{ 'website.landing.portal.topics'|trans }}</div>
+                        </div>
+                    </div>
+                    <div class="portal-stat-box">
+                        <span class="portal-stat-box__icon"><i class="bi bi-chat-left-text"></i></span>
+                        <div>
+                            <div class="portal-stat-box__value">{{ data.posts|default(0) }}</div>
+                            <div class="portal-stat-box__label">{{ 'website.landing.portal.posts'|trans }}</div>
+                        </div>
+                    </div>
+                    <div class="portal-stat-box">
+                        <span class="portal-stat-box__icon"><i class="bi bi-collection"></i></span>
+                        <div>
+                            <div class="portal-stat-box__value">{{ data.sections|default(0) }}</div>
+                            <div class="portal-stat-box__label">{{ 'website.landing.portal.boards'|trans }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

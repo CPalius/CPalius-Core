@@ -1,0 +1,21 @@
+{% extends '@Theme/layout.html.twig' %}
+
+{% block seo %}
+    <title>{{ 'error.404.title'|trans }} — {{ cp_app_name|default('CPalius') }}</title>
+    <meta name="robots" content="noindex, nofollow">
+{% endblock %}
+
+{% block content %}
+<section class="section" id="error-404">
+    <div class="container container-narrow">
+        <span class="section-label">404</span>
+        <h1 class="post-hero-title">{{ 'error.404.heading'|trans }}</h1>
+        <p class="section-desc">{{ 'error.404.body'|trans }}</p>
+        <p>
+            <a class="btn btn-primary" href="{{ path('theme_cpalius_website_home', {_locale: app.request.locale}) }}">
+                {{ 'error.404.home'|trans }}
+            </a>
+        </p>
+    </div>
+</section>
+{% endblock %}

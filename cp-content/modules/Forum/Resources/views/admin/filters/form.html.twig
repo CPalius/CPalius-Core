@@ -1,0 +1,39 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ filter ? 'studio.forum.filters.form.edit_header'|trans : 'studio.forum.filters.form.create_header'|trans }}{% endblock %}
+
+{% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+    <twig:studio:card>
+        <form method="post">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_filter') }}">
+
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="form-label" for="type">{{ 'studio.forum.filters.form.type'|trans }}</label>
+                    <select name="type" id="type" class="form-select" required>
+                        {% for type in types %}
+                            <option value="{{ type.value }}" {{ formValues.type == type.value ? 'selected' : '' }}>
+                                {{ ('studio.forum.filters.type.' ~ type.value)|trans }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label" for="rule">{{ 'studio.forum.filters.form.rule'|trans }}</label>
+                    <input type="text" name="rule" id="rule" value="{{ formValues.rule }}" required maxlength="255" class="form-control" placeholder="{{ 'studio.forum.filters.form.rule_placeholder'|trans }}">
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.forum.filters.form.rule_hint'|trans }}</p>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label" for="reason">{{ 'studio.forum.filters.form.reason'|trans }}</label>
+                    <input type="text" name="reason" id="reason" value="{{ formValues.reason }}" maxlength="255" class="form-control">
+                </div>
+            </div>
+
+            <div class="mt-6 flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ 'studio.forum.filters.form.save'|trans }}</button>
+                <a href="{{ path('admin_forum_filters_index') }}" class="btn btn-neutral">{{ 'studio.forum.filters.form.cancel'|trans }}</a>
+            </div>
+        </form>
+    </twig:studio:card>
+{% endblock %}

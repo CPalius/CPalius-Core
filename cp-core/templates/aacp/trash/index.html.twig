@@ -1,0 +1,135 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.trash.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <p class="text-fs-sm !text-slate-500">{{ 'aacp.trash.intro'|trans }}</p>
+            {% if is_granted('system.trash.purge') %}
+                <a href="{{ path('aacp_trash_settings') }}" class="btn btn-sm">{{ 'aacp.trash.settings_link'|trans }}</a>
+            {% endif %}
+        </div>
+
+        {% if not enabled %}
+            <div class="rounded border border-warning-500/40 bg-warning-500/10 px-3 py-2 text-fs-sm">{{ 'aacp.trash.disabled_notice'|trans }}</div>
+        {% endif %}
+
+        <twig:cp:card>
+            <form method="get" class="mb-sp-sm grid gap-3 md:grid-cols-4">
+                <div>
+                    <label class="form-label" for="type">{{ 'aacp.trash.filter.type'|trans }}</label>
+                    <select id="type" name="type" class="form-select !border-white/10 !bg-dark-1 !text-slate-100">
+                        <option value="">{{ 'aacp.trash.filter.any'|trans }}</option>
+                        {% for name, count in types %}
+                            <option value="{{ name }}" {{ filters.type == name ? 'selected' : '' }}>{{ typeLabels[name] ?? name }} ({{ count }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="md:col-span-3">
+                    <label class="form-label" for="q">{{ 'aacp.trash.filter.q'|trans }}</label>
+                    <div class="flex gap-2">
+                        <input id="q" type="search" name="q" value="{{ filters.q }}" class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                        <button type="submit" class="btn btn-primary">{{ 'aacp.trash.filter.submit'|trans }}</button>
+                    </div>
+                </div>
+            </form>
+
+            {% if is_granted('system.trash.purge') and items.totalItems > 0 %}
+                <form method="post" action="{{ path('aacp_trash_empty') }}" class="mb-sp-sm" data-confirm="{{ 'aacp.trash.confirm_empty'|trans }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('aacp_trash') }}">
+                    <input type="hidden" name="type" value="{{ filters.type }}">
+                    <button type="submit" class="btn btn-sm btn-danger">{{ 'aacp.trash.empty'|trans }}</button>
+                </form>
+            {% endif %}
+
+            {% if items is not empty or softItems is empty %}
+            <twig:cp:table headers="{{ [
+                'aacp.trash.column.deleted'|trans,
+                'aacp.trash.column.type'|trans,
+                'aacp.trash.column.item'|trans,
+                'aacp.trash.column.expires'|trans,
+                '',
+            ] }}" empty="{{ items is empty and softItems is empty }}">
+                <twig:block name="rows">
+                    {% for item in items %}
+                        <tr>
+                            <td class="text-fs-xs !text-slate-500 whitespace-nowrap">{{ item.deletedAt|date('d.m.Y H:i') }}</td>
+                            <td class="text-fs-sm">{{ typeLabels[item.resourceName] ?? item.resourceName }}</td>
+                            <td class="!text-slate-200 max-w-xl truncate" title="#{{ item.resourceId }}">{{ item.label }}</td>
+                            <td class="text-fs-xs !text-slate-500 whitespace-nowrap">{{ item.expiresAt ? item.expiresAt|date('d.m.Y') : '—' }}</td>
+                            <td class="whitespace-nowrap">
+                                <form method="post" action="{{ path('aacp_trash_restore', {id: item.id}) }}" class="inline">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('aacp_trash') }}">
+                                    <button type="submit" class="text-fs-sm !text-primary-400 hover:!text-primary-300">{{ 'aacp.trash.restore'|trans }}</button>
+                                </form>
+                                <form method="post" action="{{ path('aacp_trash_restore', {id: item.id}) }}" class="inline ms-2">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('aacp_trash') }}">
+                                    <input type="hidden" name="with_batch" value="1">
+                                    <button type="submit" class="text-fs-sm !text-slate-400 hover:!text-slate-200" title="{{ 'aacp.trash.restore_batch_hint'|trans }}">{{ 'aacp.trash.restore_batch'|trans }}</button>
+                                </form>
+                                {% if is_granted('system.trash.purge') %}
+                                    <form method="post" action="{{ path('aacp_trash_delete', {id: item.id}) }}" class="inline ms-2" data-confirm="{{ 'aacp.trash.confirm_delete'|trans }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('aacp_trash') }}">
+                                        <button type="submit" class="text-fs-sm !text-slate-400 hover:!text-danger-300">{{ 'aacp.trash.delete_forever'|trans }}</button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+            {% endif %}
+
+            {% if softItems is not empty %}
+                {# Posts, pages, forum topics...: marked deleted rather than removed, so they live in their own table. #}
+                <h3 class="mt-sp-md mb-1 text-fs-md">{{ 'aacp.trash.soft.title'|trans }}</h3>
+                <p class="mb-sp-xs text-fs-sm !text-slate-500">{{ 'aacp.trash.soft.intro'|trans }}</p>
+                <twig:cp:table headers="{{ [
+                    'aacp.trash.column.deleted'|trans,
+                    'aacp.trash.column.type'|trans,
+                    'aacp.trash.column.item'|trans,
+                    '',
+                ] }}" empty="{{ false }}">
+                    <twig:block name="rows">
+                        {% for row in softItems %}
+                            <tr>
+                                <td class="text-fs-xs !text-slate-500 whitespace-nowrap">{{ row.deletedAt|date('d.m.Y H:i') }}</td>
+                                <td class="text-fs-sm">{{ typeLabels[row.type] ?? row.type }}{% if row.detail %} <span class="text-fs-xs !text-slate-500">· {{ row.detail }}</span>{% endif %}</td>
+                                <td class="!text-slate-200 max-w-xl truncate">{{ row.label }}</td>
+                                <td class="whitespace-nowrap">
+                                    <form method="post" action="{{ path('aacp_trash_soft_restore') }}" class="inline">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('aacp_trash') }}">
+                                        <input type="hidden" name="key" value="{{ row.key }}">
+                                        <button type="submit" class="text-fs-sm !text-primary-400 hover:!text-primary-300">{{ 'aacp.trash.restore'|trans }}</button>
+                                    </form>
+                                    {% if is_granted('system.trash.purge') %}
+                                        <form method="post" action="{{ path('aacp_trash_soft_delete') }}" class="inline ms-2" data-confirm="{{ 'aacp.trash.confirm_delete'|trans }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('aacp_trash') }}">
+                                            <input type="hidden" name="key" value="{{ row.key }}">
+                                            <button type="submit" class="text-fs-sm !text-slate-400 hover:!text-danger-300">{{ 'aacp.trash.delete_forever'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+            {% endif %}
+
+            {% if items.totalPages > 1 %}
+                <nav class="mt-sp-md flex items-center justify-between border-t border-white/10 pt-sp-sm" aria-label="{{ 'aacp.pagination.aria_label'|trans }}">
+                    <span class="text-fs-sm !text-slate-500">{{ items.currentPage }} / {{ items.totalPages }}</span>
+                    <div class="flex gap-2">
+                        {% if items.hasPreviousPage %}
+                            <a class="btn btn-sm" href="{{ path('aacp_trash_index', filters|merge({page: items.currentPage - 1})) }}">‹ {{ 'aacp.pagination.previous'|trans }}</a>
+                        {% endif %}
+                        {% if items.hasNextPage %}
+                            <a class="btn btn-sm" href="{{ path('aacp_trash_index', filters|merge({page: items.currentPage + 1})) }}">{{ 'aacp.pagination.next'|trans }} ›</a>
+                        {% endif %}
+                    </div>
+                </nav>
+            {% endif %}
+        </twig:cp:card>
+    </div>
+{% endblock %}

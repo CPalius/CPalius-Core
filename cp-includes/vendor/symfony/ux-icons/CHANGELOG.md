@@ -1,0 +1,69 @@
+# CHANGELOG
+
+## 3.4.0
+
+- Add `iconify.auto_lock` option to persist "on demand" icons to the local icon directory as they are rendered
+
+## 3.2.0
+
+- Sanitize rendered SVG icons (Iconify bodies and local files) to prevent XSS. See section 2.36.1 below for details
+
+## 3.0.0
+
+- Minimum required Symfony version is now 7.4
+- Minimum required PHP version is now 8.4
+
+## 2.36.1
+
+- Sanitize rendered SVG icons (Iconify bodies and local files) to prevent XSS.
+  Removed from icon output:
+    - Elements: `<script>`, `<foreignObject>`, `<iframe>`, `<object>`, `<embed>`, `<handler>`
+    - SMIL animation elements (`<animate>`, `<set>`, `<animateTransform>`, `<animateMotion>`) when they target an `on*`, `href` or `xlink:href` attribute
+    - CDATA sections and processing instructions (otherwise re-serialized as raw HTML)
+    - Event-handler attributes (`on*`, e.g. `onload`, `onclick`) on every element
+    - `href` / `xlink:href` values with a non-allowlisted scheme such as `javascript:`, `vbscript:`, `data:text/html` or `data:image/svg+xml` (allowed: `http(s)`, `mailto`, `tel`, `data:image/*` raster, fragments and relative URLs)
+
+    `<style>` elements are kept (so light/dark-mode theming keeps working), with their event-handler attributes stripped and `</style>` breakouts dropped.
+
+    Clear your icon cache after upgrading so already-cached icons are re-sanitized.
+
+## 2.35
+
+- Allow Symfony UX 3.x packages
+
+## 2.33
+
+- Add support for suffixes
+
+## 2.30
+
+- Ensure compatibility with PHP 8.5
+
+## 2.29.0
+
+- Add Symfony 8 support
+
+## 2.25.0
+
+- Improve DX when `symfony/http-client` is not installed.
+
+## 2.24.0
+
+- Add `xmlns` attribute to icons downloaded with Iconify, to correctly render icons browser as an external file, in SVG editors, and in files explorers or text editors previews.
+  It **may breaks your pipeline** if you assert on `ux_icon()` or `<twig:ux:icon>` output in your tests, and forgot [to lock your icons](https://symfony.com/bundles/ux-icons/current/index.html#locking-on-demand-icons).
+  We recommend you to **lock** your icons **before** upgrading to UX Icons 2.24. We also suggest you to to **force-lock** your icons **after** upgrading to UX Icons 2.24, to add the attribute `xmlns` to your icons already downloaded from Iconify.
+
+## 2.20.0
+
+- Add `aliases` configuration option to define icon alternative names.
+- Add support for `int` and `float` attribute values in `<twig:ux:icon />`.
+- Add support for Icon sets, configurable with `icon_sets` option.
+
+## 2.19.0
+
+- Add `ignore_not_found` option to silence error during rendering if the
+  icon is not found.
+
+## 2.17.0
+
+- Add component

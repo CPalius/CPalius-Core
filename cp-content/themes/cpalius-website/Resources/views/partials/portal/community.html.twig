@@ -1,0 +1,30 @@
+{% set t = 'portal' %}
+<section class="section" id="community">
+    <div class="container">
+        <div class="container-narrow" style="text-align:center;">
+            <div class="fade-in">
+                <span class="section-label" style="margin: 0 auto var(--sp-xs);">{{ 'community.label'|trans({}, t) }}</span>
+                <h2 class="section-title section-title--center">{{ 'community.title'|trans({}, t) }}</h2>
+                <p class="section-desc" style="margin: var(--sp-md) auto var(--sp-lg); text-align:center; max-width:680px;">
+                    {{ 'community.desc'|trans({}, t) }}
+                </p>
+                <div class="hero-actions" style="justify-content:center;">
+                    {% set whitepaperUrl = cp_path_if_exists('whitepaper_show', {_locale: app.request.locale}) %}
+                    {% if whitepaperUrl %}
+                    <a href="{{ whitepaperUrl }}" class="btn btn-primary">
+                        <i class="bi bi-book"></i> {{ 'whitepaper.cta'|trans({}, t) }}
+                    </a>
+                    {% endif %}
+                    <a href="https://github.com/slaweally" target="_blank" rel="noopener" class="btn btn-outline">
+                        <i class="bi bi-github"></i> {{ 'community.cta_github'|trans({}, t) }}
+                    </a>
+                    {% if forumAvailable %}
+                    <a href="{{ path('forum_index') }}" class="btn btn-outline">
+                        <i class="bi bi-chat-dots"></i> {{ 'community.cta_discuss'|trans({}, t) }}
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

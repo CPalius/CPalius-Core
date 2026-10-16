@@ -1,0 +1,28 @@
+# Default registered-user role. No node.post.* — registration must not grant content management.
+
+role:
+    id: member
+    label: 'role.label.member'
+    capabilities:
+        - forum.view
+        - forum.topic.create
+        - forum.thread.create
+        # Unscoped forum.post.edit is not granted: CPaliusVoter treats it as global.
+        - forum.post.edit.own
+        - forum.post.delete.own
+        - forum.post.report
+        - forum.post.like
+        - forum.reputation.give
+        - account.profile.edit
+        - account.avatar.upload
+        - text_format.restricted.use
+        # Added by the Showcase module installer.
+        - showcase.item.create
+        - showcase.item.view.own
+        - showcase.item.edit.own
+        - showcase.item.delete.own
+        - showcase.review.create
+        # Added by the Messages module installer.
+        - messages.send
+        - messages.report
+        - messages.block

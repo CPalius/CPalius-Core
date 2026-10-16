@@ -1,0 +1,134 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.queue.header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <twig:cp:card padded="{{ true }}">
+            <p class="text-fs-sm font-semibold !text-slate-200">{{ 'aacp.queue.header'|trans }}</p>
+            <p class="mt-1 text-fs-sm !text-slate-400">{{ 'aacp.queue.intro'|trans }}</p>
+            <p class="mt-sp-sm rounded-lg border border-white/10 !bg-dark-1/50 px-sp-sm py-2 font-mono text-fs-xs !text-slate-500">
+                {{ workerHint }}
+            </p>
+        </twig:cp:card>
+
+        <div class="grid grid-cols-2 gap-sp-xs sm:grid-cols-3 lg:grid-cols-5">
+            <div class="rounded-lg border border-white/10 !bg-dark-1/50 px-sp-sm py-3">
+                <p class="text-fs-xs font-medium uppercase tracking-wider !text-slate-500">{{ 'aacp.queue.kpi.total_pending'|trans }}</p>
+                <p class="mt-1 text-fs-lg font-semibold !text-slate-100">{{ summary.pending }}</p>
+            </div>
+            <div class="rounded-lg border border-white/10 !bg-dark-1/50 px-sp-sm py-3">
+                <p class="text-fs-xs font-medium uppercase tracking-wider !text-slate-500">{{ 'aacp.queue.kpi.messenger_pending'|trans }}</p>
+                <p class="mt-1 text-fs-lg font-semibold !text-slate-100">{{ summary.messengerPending }}</p>
+            </div>
+            <div class="rounded-lg border border-warning-500/20 !bg-warning-500/5 px-sp-sm py-3">
+                <p class="text-fs-xs font-medium uppercase tracking-wider !text-warning-300/80">{{ 'aacp.queue.kpi.messenger_failed'|trans }}</p>
+                <p class="mt-1 text-fs-lg font-semibold !text-warning-200">{{ summary.messengerFailed }}</p>
+            </div>
+            <div class="rounded-lg border border-white/10 !bg-dark-1/50 px-sp-sm py-3">
+                <p class="text-fs-xs font-medium uppercase tracking-wider !text-slate-500">{{ 'aacp.queue.kpi.platform_pending'|trans }}</p>
+                <p class="mt-1 text-fs-lg font-semibold !text-slate-100">{{ summary.platformPending }}</p>
+            </div>
+            <div class="rounded-lg border border-warning-500/20 !bg-warning-500/5 px-sp-sm py-3">
+                <p class="text-fs-xs font-medium uppercase tracking-wider !text-warning-300/80">{{ 'aacp.queue.kpi.platform_failed'|trans }}</p>
+                <p class="mt-1 text-fs-lg font-semibold !text-warning-200">{{ summary.platformFailed }}</p>
+            </div>
+        </div>
+
+        <twig:cp:card title="{{ 'aacp.queue.messenger_pending_title'|trans }}" padded="{{ false }}">
+            <p class="border-b border-white/5 px-sp-sm py-2 text-fs-sm !text-slate-500">{{ 'aacp.queue.messenger_pending_desc'|trans }}</p>
+            <twig:cp:table headers="{{ [
+                'aacp.queue.column.id'|trans,
+                'aacp.queue.column.class'|trans,
+                'aacp.queue.column.available'|trans,
+                'aacp.queue.column.actions'|trans,
+            ] }}" empty="{{ messengerPending is empty }}" emptyText="{{ 'aacp.queue.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for row in messengerPending %}
+                        <tr>
+                            <td class="font-mono text-fs-xs !text-slate-400">{{ row.id }}</td>
+                            <td class="font-mono text-fs-xs !text-primary-400">{{ row.messageClass }}</td>
+                            <td class="!text-slate-400">{{ row.available_at }}</td>
+                            <td>
+                                <form method="post" action="{{ path('aacp_queue_messenger_delete', {id: row.id}) }}" class="inline">
+                                    <input type="hidden" name="_token" value="{{ csrfToken }}">
+                                    <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
+                                        {{ 'aacp.queue.delete'|trans }}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+
+        <div id="failed">
+            <twig:cp:card title="{{ 'aacp.queue.messenger_failed_title'|trans }}" padded="{{ false }}">
+                <p class="border-b border-white/5 px-sp-sm py-2 text-fs-sm !text-slate-500">{{ 'aacp.queue.messenger_failed_desc'|trans }}</p>
+                <twig:cp:table headers="{{ [
+                    'aacp.queue.column.id'|trans,
+                    'aacp.queue.column.class'|trans,
+                    'aacp.queue.column.available'|trans,
+                    'aacp.queue.column.actions'|trans,
+                ] }}" empty="{{ messengerFailed is empty }}" emptyText="{{ 'aacp.queue.empty'|trans }}">
+                    <twig:block name="rows">
+                        {% for row in messengerFailed %}
+                            <tr>
+                                <td class="font-mono text-fs-xs !text-slate-400">{{ row.id }}</td>
+                                <td class="font-mono text-fs-xs !text-primary-400">{{ row.messageClass }}</td>
+                                <td class="!text-slate-400">{{ row.available_at }}</td>
+                                <td>
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <form method="post" action="{{ path('aacp_queue_messenger_retry', {id: row.id}) }}" class="inline">
+                                            <input type="hidden" name="_token" value="{{ csrfToken }}">
+                                            <button type="submit" class="text-fs-xs font-medium !text-primary-400 hover:!text-primary-300">
+                                                {{ 'aacp.queue.retry'|trans }}
+                                            </button>
+                                        </form>
+                                        <form method="post" action="{{ path('aacp_queue_messenger_delete', {id: row.id}) }}" class="inline">
+                                            <input type="hidden" name="_token" value="{{ csrfToken }}">
+                                            <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
+                                                {{ 'aacp.queue.delete'|trans }}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </twig:block>
+                </twig:cp:table>
+            </twig:cp:card>
+        </div>
+
+        <twig:cp:card title="{{ 'aacp.queue.platform_title'|trans }}" padded="{{ false }}">
+            <p class="border-b border-white/5 px-sp-sm py-2 text-fs-sm !text-slate-500">{{ 'aacp.queue.platform_desc'|trans }}</p>
+            <twig:cp:table headers="{{ [
+                'aacp.queue.column.id'|trans,
+                'aacp.queue.column.type'|trans,
+                'aacp.queue.column.attempts'|trans,
+                'aacp.queue.column.available'|trans,
+                'aacp.queue.column.error'|trans,
+            ] }}" empty="{{ platformJobs is empty }}" emptyText="{{ 'aacp.queue.empty'|trans }}">
+                <twig:block name="rows">
+                    {% for job in platformJobs %}
+                        <tr>
+                            <td class="font-mono text-fs-xs !text-slate-400">{{ job.id }}</td>
+                            <td class="font-mono text-fs-xs !text-slate-300">
+                                {{ job.type }}
+                                {% if job.failed %}
+                                    <span class="ms-1 badge rounded-md border px-2 py-0.5 text-fs-xs !border-danger-500/30 !bg-danger-500/10 !text-danger-300">
+                                        {{ 'aacp.queue.failed'|trans }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="!text-slate-400">{{ job.attempts }}</td>
+                            <td class="!text-slate-400">{{ job.availableAt }}</td>
+                            <td class="max-w-[320px] truncate !text-slate-500" title="{{ job.lastError|default('') }}">{{ job.lastError|default('—') }}</td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+{% endblock %}

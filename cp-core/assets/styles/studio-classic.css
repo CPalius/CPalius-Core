@@ -1,0 +1,68 @@
+/*
+ * Studio — Classic theme.
+ *
+ * The original Studio look is app.css alone; this sheet only applies what an
+ * administrator can still choose on top of it: an accent colour and a typeface.
+ * Light only (the original never had a dark mode).
+ */
+body.studio-app {
+    --color-primary-50: color-mix(in oklab, var(--studio-accent, #487FFF) 9%, white);
+    --color-primary-100: color-mix(in oklab, var(--studio-accent, #487FFF) 18%, white);
+    --color-primary-200: color-mix(in oklab, var(--studio-accent, #487FFF) 34%, white);
+    --color-primary-300: color-mix(in oklab, var(--studio-accent, #487FFF) 52%, white);
+    --color-primary-400: color-mix(in oklab, var(--studio-accent, #487FFF) 72%, white);
+    --color-primary-500: color-mix(in oklab, var(--studio-accent, #487FFF) 90%, white);
+    --color-primary-600: var(--studio-accent, #487FFF);
+    --color-primary-700: color-mix(in oklab, var(--studio-accent, #487FFF) 86%, black);
+    --color-primary-800: color-mix(in oklab, var(--studio-accent, #487FFF) 72%, black);
+    --color-primary-900: color-mix(in oklab, var(--studio-accent, #487FFF) 58%, black);
+    font-family: var(--studio-font, var(--font-sans, 'Inter')), system-ui, sans-serif;
+}
+body.studio-app .sidebar-menu li a.active-page,
+body.studio-app .sidebar-menu li.dropdown.open > a { color: var(--on-studio-accent, #fff); }
+body.studio-app .btn-primary { color: var(--on-studio-accent, #fff); }
+body.studio-app .studio-reg { display: none; }
+
+/* ───────── Phones and tablets: content entry happens here too ───────── */
+
+body.studio-app { overflow-x: clip; }
+body.studio-app .dashboard-main { overflow-x: clip; }
+@media (max-width: 1199px) {
+    /* The rail is a drawer below 1200px. */
+    body.studio-app .sidebar { width: min(19rem, 88vw); padding-bottom: env(safe-area-inset-bottom); }
+    body.studio-app .sidebar-menu-area { padding-bottom: calc(2rem + env(safe-area-inset-bottom)); overscroll-behavior: contain; }
+    body.studio-app .navbar-header { padding-inline: max(1.25rem, env(safe-area-inset-left)) max(1.25rem, env(safe-area-inset-right)); }
+    body.studio-app .table-responsive .table td:not(:first-child), body.studio-app .table-responsive .table th { white-space: nowrap; }
+    body.studio-app .table-responsive > .table { min-width: 38rem; }
+    body.studio-app .sidebar-mobile-toggle { min-width: 2.75rem; min-height: 2.75rem; justify-content: center; align-items: center; }
+}
+@media (max-width: 767px) {
+    body.studio-app .navbar-header { flex-wrap: wrap; row-gap: 0.5rem; padding-block: 0.5rem; height: auto; }
+    body.studio-app .navbar-header > div:last-child { margin-inline-start: auto; }
+    body.studio-app .dashboard-main > .p-sp-md { padding-bottom: calc(3rem + env(safe-area-inset-bottom)); }
+    /* 16px stops iOS zooming into a field on focus. */
+    body.studio-app input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']),
+    body.studio-app select,
+    body.studio-app textarea { font-size: 1rem; }
+    body.studio-app .card-header { flex-wrap: wrap; row-gap: 0.5rem; }
+    body.studio-app .modal-overlay { align-items: flex-end; padding: 0; }
+    body.studio-app .modal-panel { max-width: none; max-height: 92dvh; border-radius: 16px 16px 0 0; }
+    body.studio-app .modal-body { max-height: 70dvh; }
+    body.studio-app [data-toast-stack] { left: 1rem; right: 1rem; top: 4.5rem; }
+    body.studio-app .table-responsive { margin-inline: -0.25rem; padding-inline: 0.25rem; -webkit-overflow-scrolling: touch; }
+    body.studio-app .table-responsive > .table { min-width: 36rem; }
+    body.studio-app .dropdown-menu { max-width: calc(100vw - 2rem); }
+    body.studio-app .table-responsive .table td:not(:first-child), body.studio-app .table-responsive .table th { white-space: nowrap; }
+    body.studio-app .studio-cmd-actionbar { flex-direction: column; align-items: stretch; }
+    body.studio-app .studio-cmd-actionbar .studio-cmd-dropdown, body.studio-app .studio-cmd-actionbar > .btn { width: 100%; }
+    body.studio-app .studio-cmd-actionbar .studio-cmd-dropdown > .btn { width: 100%; min-height: 2.75rem; }
+    body.studio-app .studio-cmd-dropdown-menu { left: 0; right: 0; }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+    body.studio-app .dashboard-main > .p-sp-md { padding-inline: max(1.5rem, env(safe-area-inset-left)); }
+}
+@media (pointer: coarse) {
+    body.studio-app .btn, body.studio-app .form-control, body.studio-app .form-select { min-height: 2.75rem; }
+    body.studio-app .sidebar-menu li > a { min-height: 2.75rem; }
+    body.studio-app .dropdown-menu a, body.studio-app .dropdown-menu button { min-height: 2.75rem; }
+}

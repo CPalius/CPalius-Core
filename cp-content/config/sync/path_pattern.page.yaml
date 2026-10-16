@@ -1,0 +1,2 @@
+pattern: '/[node:title]'
+enabled: true

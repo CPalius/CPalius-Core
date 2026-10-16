@@ -1,0 +1,19 @@
+{% if announcements|default([]) is not empty %}
+    <div class="forum-announcements fade-in">
+        {% for row in announcements %}
+            <aside class="forum-announce" role="status">
+                <i class="bi bi-megaphone" aria-hidden="true"></i>
+                <div class="forum-announce__body">
+                    <p class="forum-announce__label">
+                        {% if row.section %}
+                            {{ 'forum.announce.section'|trans({title: row.section.title}) }}
+                        {% else %}
+                            {{ 'forum.announce.global'|trans }}
+                        {% endif %}
+                    </p>
+                    <div class="forum-announce__text">{{ row.body }}</div>
+                </div>
+            </aside>
+        {% endfor %}
+    </div>
+{% endif %}

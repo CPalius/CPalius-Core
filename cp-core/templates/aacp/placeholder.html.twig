@@ -1,0 +1,17 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ title }}{% endblock %}
+
+{% block body %}
+    <twig:cp:card>
+        <div class="flex items-start gap-3">
+            <twig:ux:icon name="heroicons:clock" class="mt-0.5 h-5 w-5 shrink-0 text-slate-500" />
+            <div>
+                <p class="text-fs-sm font-medium text-slate-300">{{ 'aacp.placeholder.not_ready'|trans }}</p>
+                <p class="mt-1 text-fs-sm text-slate-500">
+                    {{ description|default('aacp.placeholder.default_description'|trans({title: title})) }}
+                </p>
+            </div>
+        </div>
+    </twig:cp:card>
+{% endblock %}

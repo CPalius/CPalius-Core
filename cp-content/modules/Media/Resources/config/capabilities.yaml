@@ -1,0 +1,4 @@
+capabilities:
+    - media.view
+    - media.upload
+    - media.delete

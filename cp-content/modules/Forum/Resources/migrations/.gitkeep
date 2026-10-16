@@ -1,0 +1,2 @@
+# New SQL files run on install/upgrade (idempotent CREATE TABLE IF NOT EXISTS).
+# Historical Forum tables still live in cp-core/migrations/.

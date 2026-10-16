@@ -1,0 +1,60 @@
+{# Native PHP POST. Topic list and thread page expose different actions. #}
+{% set imodScope = imodScope|default('topics') %}
+{% if canInlineMod|default(false) %}
+<div class="forum-imod" data-imod-scope="{{ imodScope }}">
+    <form id="forum-imod-form" class="forum-imod__bar" method="post" action="{{ path('forum_inline_mod') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('forum_inline_mod') }}">
+        <input type="hidden" name="return_url" value="{{ app.request.uri }}">
+        <input type="hidden" name="imod_scope" value="{{ imodScope }}">
+        <span class="forum-imod__label">{{ 'forum.imod.bar_title'|trans }}</span>
+        <select name="imod_action" class="forum-imod__action" required>
+            <option value="">{{ 'forum.imod.choose_action'|trans }}</option>
+            {% if imodScope == 'topics' %}
+                {% if canLock|default(false) %}
+                    <option value="lock">{{ 'forum.imod.action.lock'|trans }}</option>
+                    <option value="unlock">{{ 'forum.imod.action.unlock'|trans }}</option>
+                {% endif %}
+                {% if canSticky|default(false) %}
+                    <option value="sticky">{{ 'forum.imod.action.sticky'|trans }}</option>
+                    <option value="unsticky">{{ 'forum.imod.action.unsticky'|trans }}</option>
+                {% endif %}
+                {% if canMove|default(false) %}
+                    <option value="move">{{ 'forum.imod.action.move'|trans }}</option>
+                {% endif %}
+                {% if canModerate|default(false) %}
+                    <option value="merge">{{ 'forum.imod.action.merge_topics'|trans }}</option>
+                    <option value="hide">{{ 'forum.imod.action.hide'|trans }}</option>
+                    <option value="delete">{{ 'forum.imod.action.delete'|trans }}</option>
+                    <option value="restore">{{ 'forum.imod.action.restore'|trans }}</option>
+                {% endif %}
+            {% else %}
+                {% if canSplit|default(false) %}
+                    <option value="split">{{ 'forum.imod.action.split'|trans }}</option>
+                {% endif %}
+                {% if canModerate|default(false) %}
+                    <option value="merge_posts">{{ 'forum.imod.action.merge_posts'|trans }}</option>
+                {% endif %}
+                {% if canDeletePosts|default(false) %}
+                    <option value="delete_posts">{{ 'forum.imod.action.delete_posts'|trans }}</option>
+                {% endif %}
+            {% endif %}
+        </select>
+        {% if imodScope == 'topics' and canMove|default(false) and moveTargets is defined %}
+            <select name="target_section_id" class="forum-imod__target">
+                <option value="">{{ 'forum.imod.choose_board'|trans }}</option>
+                {% for target in moveTargets %}
+                    <option value="{{ target.id }}">{{ target.title }}</option>
+                {% endfor %}
+            </select>
+            <label class="forum-imod__redirect">
+                <input type="checkbox" name="keep_redirect" value="1"> {{ 'forum.imod.keep_redirect'|trans }}
+            </label>
+        {% endif %}
+        {% if imodScope == 'posts' and canSplit|default(false) %}
+            <input type="text" name="split_title" class="forum-imod__split" maxlength="255" placeholder="{{ 'forum.split.title'|trans }}">
+        {% endif %}
+        <button type="submit" class="btn btn-sm btn-primary">{{ 'forum.imod.apply'|trans }}</button>
+        <span class="forum-imod__hint">{{ (imodScope == 'posts' ? 'forum.imod.bar_hint_posts' : 'forum.imod.bar_hint_topics')|trans }}</span>
+    </form>
+</div>
+{% endif %}

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>{% block title %}Welcome!{% endblock %}</title>
+        <meta name="robots" content="noindex, nofollow">
+        <link rel="icon" type="image/png" href="{{ asset('CPalius.png') }}">
+        {# Linked, not imported from JS: a CSS import resolves to a data: URL
+           script that our CSP refuses, and a refused static import rejects the
+           whole module graph (see app.js). #}
+        {% block stylesheets %}
+            <link rel="stylesheet" href="{{ cp_asset('styles/app.css') }}">
+        {% endblock %}
+
+        {% block javascripts %}
+            {% block importmap %}{{ importmap('app') }}{% endblock %}
+        {% endblock %}
+
+        {% set frankenphpHotReload = app.request.server.get('FRANKENPHP_HOT_RELOAD') %}
+        {% if frankenphpHotReload %}
+        <meta name="frankenphp-hot-reload:url" content="{{ frankenphpHotReload }}">
+        <script{{ csp_nonce_attr() }} src="https://cdn.jsdelivr.net/npm/idiomorph"></script>
+        <script{{ csp_nonce_attr() }} src="https://cdn.jsdelivr.net/npm/frankenphp-hot-reload/+esm" type="module"></script>
+        {% endif %}
+    </head>
+    <body>
+        {% block body %}{% endblock %}
+    </body>
+</html>

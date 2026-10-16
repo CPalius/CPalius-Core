@@ -1,0 +1,160 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ type.label|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_widgets_index', {area: widget.area}) }}" class="btn btn-sm btn-neutral">{{ 'widget.studio.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    <form method="post" action="{{ path('admin_widgets_edit', {id: widget.id}) }}" class="space-y-sp-sm">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_widgets') }}">
+
+        <p class="text-fs-sm text-neutral-500">{{ type.description|trans }}</p>
+
+        <twig:studio:card title="{{ 'widget.studio.general'|trans }}">
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="md:col-span-2">
+                    <label class="form-label">{{ 'widget.studio.field.title'|trans }}</label>
+                    <div class="space-y-2">
+                        {% for code, name in locales %}
+                            <div class="flex items-center gap-2">
+                                <span class="w-24 shrink-0 text-fs-xs font-medium text-neutral-500">{{ name }}</span>
+                                <input type="text" name="title[{{ code }}]" maxlength="255" value="{{ titles[code]|default('') }}" class="form-control" lang="{{ code }}">
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'widget.studio.field.title_help'|trans }}</p>
+                </div>
+                <label class="flex items-center gap-2 md:col-span-2">
+                    <input type="checkbox" name="active" value="1" {{ widget.active ? 'checked' : '' }}>
+                    <span class="text-fs-sm text-neutral-700">{{ 'widget.studio.field.active'|trans }}</span>
+                </label>
+            </div>
+        </twig:studio:card>
+
+        {% if fields is not empty %}
+            <twig:studio:card title="{{ 'widget.studio.settings'|trans }}">
+                <div class="grid gap-4 md:grid-cols-2">
+                    {% for field in fields %}
+                        {% set value = values[field.name] %}
+                        <div class="{{ field.type in ['textarea', 'html'] ? 'md:col-span-2' : '' }}">
+                            {% if field.type == 'checkbox' %}
+                                <label class="mt-1 flex items-center gap-2">
+                                    <input type="checkbox" name="settings[{{ field.name }}]" value="1" {{ value ? 'checked' : '' }}>
+                                    <span class="text-fs-sm text-neutral-700">{{ field.label|trans }}</span>
+                                </label>
+                            {% else %}
+                                <label class="form-label">{{ field.label|trans }}</label>
+                                {% if field.translatable %}
+                                    <div class="space-y-2">
+                                        {% for code, name in locales %}
+                                            <div class="flex items-start gap-2">
+                                                <span class="w-24 shrink-0 pt-2 text-fs-xs font-medium text-neutral-500">{{ name }}</span>
+                                                <div class="min-w-0 flex-1">{{ include('@WidgetModule/admin/_control.html.twig', {field: field, name: 'settings[' ~ field.name ~ '][' ~ code ~ ']', value: value[code]|default(''), lang: code}, with_context: false) }}</div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'widget.studio.translatable_help'|trans }}</p>
+                                {% else %}
+                                    {{ include('@WidgetModule/admin/_control.html.twig', {field: field, name: 'settings[' ~ field.name ~ ']', value: value, lang: ''}, with_context: false) }}
+                                {% endif %}
+                            {% endif %}
+                            {% if field.help %}<p class="mt-1 text-fs-xs text-neutral-500">{{ field.help|trans }}</p>{% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </twig:studio:card>
+        {% endif %}
+
+        <twig:studio:card title="{{ 'widget.studio.visibility'|trans }}">
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="form-label">{{ 'widget.studio.field.locale'|trans }}</label>
+                    <select name="locale" class="form-select">
+                        <option value="">{{ 'widget.studio.all_languages'|trans }}</option>
+                        {% for code, name in locales %}
+                            <option value="{{ code }}" {{ widget.locale == code ? 'selected' : '' }}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">{{ 'widget.studio.field.audience'|trans }}</label>
+                    <select name="audience" class="form-select">
+                        {% for audience in ['all', 'guests', 'members'] %}
+                            <option value="{{ audience }}" {{ widget.audience == audience ? 'selected' : '' }}>{{ ('widget.audience.' ~ audience)|trans }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <span class="form-label">{{ 'widget.studio.field.pages'|trans }}</span>
+                    <div class="mt-1 flex flex-wrap gap-x-5 gap-y-2">
+                        {% for page in pages %}
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="pages[]" value="{{ page }}" {{ page in widget.pages ? 'checked' : '' }}>
+                                <span class="text-fs-sm text-neutral-700">{{ ('widget.page.' ~ page)|trans }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'widget.studio.field.pages_help'|trans }}</p>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label">{{ 'widget.studio.field.css'|trans }}</label>
+                    <input type="text" name="css" maxlength="100" value="{{ widget.cssClass }}" class="form-control" placeholder="my-box highlight">
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'widget.studio.field.css_help'|trans }}</p>
+                </div>
+            </div>
+        </twig:studio:card>
+
+        <twig:studio:card title="{{ 'widget.studio.placement'|trans }}">
+            <p class="mb-sp-sm text-fs-xs text-neutral-500">{{ 'widget.studio.placement_help'|trans({area: area.label|trans}) }}</p>
+            <div class="grid gap-4">
+                <div>
+                    <span class="form-label">{{ 'widget.studio.also_in'|trans }}</span>
+                    <div class="mt-1 space-y-2">
+                        {% for module, group in areaGroups %}
+                            <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
+                                <span class="w-24 shrink-0 text-fs-xs font-semibold uppercase tracking-wide text-neutral-500">{{ module ?: ('widget.studio.general_areas'|trans) }}</span>
+                                {% for id, other in group %}{% if id != widget.area %}
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" name="areas[]" value="{{ id }}" {{ id in widget.extraAreas ? 'checked' : '' }}>
+                                        <span class="text-fs-sm text-neutral-700">{{ other.label|trans }}</span>
+                                    </label>
+                                {% endif %}{% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'widget.studio.also_in_help'|trans }}</p>
+                </div>
+                <div>
+                    <span class="form-label">{{ 'widget.studio.themes'|trans }}</span>
+                    <div class="mt-1 flex flex-wrap gap-x-5 gap-y-2">
+                        {% for dir, name in themeNames %}
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="themes[]" value="{{ dir }}" {{ dir in widget.themes ? 'checked' : '' }}>
+                                <span class="text-fs-sm text-neutral-700">{{ name }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'widget.studio.themes_help'|trans }}</p>
+                </div>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label class="form-label">{{ 'widget.studio.show_from'|trans }}</label>
+                        <input type="datetime-local" name="show_from" value="{{ widget.showFrom }}" class="form-control">
+                    </div>
+                    <div>
+                        <label class="form-label">{{ 'widget.studio.show_until'|trans }}</label>
+                        <input type="datetime-local" name="show_until" value="{{ widget.showUntil }}" class="form-control">
+                    </div>
+                    <p class="text-fs-xs text-neutral-500 md:col-span-2">{{ 'widget.studio.schedule_help'|trans }}</p>
+                </div>
+            </div>
+        </twig:studio:card>
+
+        <div class="flex items-center gap-3">
+            <button type="submit" class="btn btn-primary">{{ 'widget.studio.save'|trans }}</button>
+            <a href="{{ path('admin_widgets_index', {area: widget.area}) }}" class="text-fs-sm text-neutral-500 hover:text-neutral-900">{{ 'aacp.users.form.cancel'|trans }}</a>
+        </div>
+    </form>
+{% endblock %}

@@ -1,0 +1,38 @@
+# Core token catalog. Modules add theirs in Resources/config/tokens.yaml
+# (see TokenTypeRegistrationPass), not here — same convention as view_modes.yaml
+# and capabilities.yaml.
+#
+# This lists the hot-column properties per type for the AACP token browser and
+# for type-level validation (TokenReplacer::validate()). It is a REFERENCE, not
+# an allowlist — node/term/user tokens also resolve arbitrary Field API / JSON
+# data values by their raw key (e.g. [node:excerpt]), which cannot be known here
+# at compile time.
+tokens:
+    node:
+        title: 'token.node.title'
+        slug: 'token.node.slug'
+        type: 'token.node.type'
+        locale: 'token.node.locale'
+        status: 'token.node.status'
+        created: 'token.node.created'
+        updated: 'token.node.updated'
+        published: 'token.node.published'
+        author: 'token.node.author'
+        category: 'token.node.category'
+    term:
+        name: 'token.term.name'
+        slug: 'token.term.slug'
+        locale: 'token.term.locale'
+        created: 'token.term.created'
+        updated: 'token.term.updated'
+    user:
+        mail: 'token.user.mail'
+        username: 'token.user.username'
+        display_name: 'token.user.display_name'
+        full_name: 'token.user.full_name'
+        profile_slug: 'token.user.profile_slug'
+        created: 'token.user.created'
+    site:
+        name: 'token.site.name'
+        slogan: 'token.site.slogan'
+        url: 'token.site.url'

@@ -1,0 +1,71 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.path_pattern.index.header'|trans }}{% endblock %}
+
+{% block body %}
+    <p class="text-fs-sm !text-slate-400 mb-4">{{ 'aacp.path_pattern.index.intro'|trans }}</p>
+
+    <twig:cp:card padded="{{ false }}">
+        <twig:cp:table headers="{{ [
+            'aacp.path_pattern.index.column.bundle'|trans,
+            'aacp.path_pattern.index.column.pattern'|trans,
+            'aacp.path_pattern.index.column.enabled'|trans,
+            '',
+        ] }}" empty="{{ rows is empty }}" emptyText="{{ 'aacp.path_pattern.index.empty'|trans }}">
+            <twig:block name="rows">
+                {% for row in rows %}
+                    <tr>
+                        <td class="text-fs-xs !text-slate-300 whitespace-nowrap align-top pt-4">{{ row.label }}</td>
+                        <td class="align-top">
+                            <form method="post" action="{{ path('aacp_path_pattern_save', {bundle: row.bundle}) }}" class="flex items-center gap-2">
+                                <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
+                                <input type="text" name="pattern" value="{{ row.pattern }}"
+                                       placeholder="/blog/[node:created:Y]/[node:title]"
+                                       class="font-mono text-fs-xs w-full min-w-[22rem] rounded border border-slate-700 bg-slate-900 px-2 py-1 !text-slate-200">
+                                <label class="flex items-center gap-1 text-fs-xs !text-slate-400 whitespace-nowrap">
+                                    <input type="checkbox" name="enabled" value="1" {{ row.enabled ? 'checked' : '' }}>
+                                    {{ 'aacp.path_pattern.index.column.enabled'|trans }}
+                                </label>
+                                <button type="submit" class="btn btn-sm btn-primary whitespace-nowrap">
+                                    {{ 'aacp.path_pattern.action.save'|trans }}
+                                </button>
+                            </form>
+                        </td>
+                        <td class="align-top pt-4">
+                            <span class="badge {{ row.pattern and row.enabled ? 'badge-success' : 'badge-neutral' }}">
+                                {{ (row.pattern and row.enabled) ? 'aacp.path_pattern.status.active'|trans : 'aacp.path_pattern.status.inactive'|trans }}
+                            </span>
+                        </td>
+                        <td class="align-top pt-3 text-right">
+                            {% if row.pattern %}
+                                <form method="post" action="{{ path('aacp_path_pattern_regenerate', {bundle: row.bundle}) }}"
+                                      onsubmit="return confirm('{{ 'aacp.path_pattern.action.regenerate_confirm'|trans }}');">
+                                    <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
+                                    <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-400">
+                                        {{ 'aacp.path_pattern.action.regenerate'|trans }}
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:cp:table>
+    </twig:cp:card>
+
+    <twig:cp:card class="mt-6">
+        <h3 class="text-fs-sm font-semibold !text-slate-200 mb-3">{{ 'aacp.path_pattern.tokens.heading'|trans }}</h3>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {% for type, properties in tokenCatalog %}
+                <div>
+                    <div class="text-fs-xs font-semibold uppercase !text-slate-500 mb-1">{{ type }}</div>
+                    <ul class="space-y-0.5">
+                        {% for property, label in properties %}
+                            <li class="font-mono text-fs-xs !text-slate-300">[{{ type }}:{{ property }}]</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endfor %}
+        </div>
+    </twig:cp:card>
+{% endblock %}

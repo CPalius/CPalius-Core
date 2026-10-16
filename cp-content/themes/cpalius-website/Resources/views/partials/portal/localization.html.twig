@@ -1,0 +1,47 @@
+{% set t = 'portal' %}
+<section class="section section-light" id="localization">
+    <div class="container">
+        <div class="section-header fade-in">
+            <span class="section-label">{{ 'localization.label'|trans({}, t) }}</span>
+            <h2 class="section-title">{{ 'localization.title'|trans({}, t) }}</h2>
+            <p class="section-desc">{{ 'localization.desc'|trans({}, t) }}</p>
+        </div>
+
+        <div class="features-grid fade-in">
+            <div class="feature-card" data-delay="0">
+                <div class="feature-icon"><i class="bi bi-link-45deg"></i></div>
+                <h4>{{ 'localization.group_title'|trans({}, t) }}</h4>
+                <p>{{ 'localization.group_text_html'|trans({}, t)|raw }}</p>
+            </div>
+            <div class="feature-card" data-delay="100">
+                <div class="feature-icon"><i class="bi bi-signpost-2"></i></div>
+                <h4>{{ 'localization.switch_title'|trans({}, t) }}</h4>
+                <p>{{ 'localization.switch_text_html'|trans({}, t)|raw }}</p>
+            </div>
+            <div class="feature-card" data-delay="200">
+                <div class="feature-icon"><i class="bi bi-file-earmark-lock"></i></div>
+                <h4>{{ 'localization.atomic_title'|trans({}, t) }}</h4>
+                <p>{{ 'localization.atomic_text_html'|trans({}, t)|raw }}</p>
+            </div>
+        </div>
+
+        <div class="grid-golden fade-in" style="margin-top: var(--sp-xl);">
+            <div class="grid-golden-major">
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <i class="bi bi-file-code"></i> {{ 'localization.switch_code_header'|trans({}, t) }}
+                    </div>
+                    <pre>{{ 'localization.switch_code'|trans({}, t) }}</pre>
+                </div>
+            </div>
+            <div class="grid-golden-minor">
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <i class="bi bi-file-earmark-check"></i> {{ 'localization.atomic_code_header'|trans({}, t) }}
+                    </div>
+                    <pre>{{ 'localization.atomic_code'|trans({}, t) }}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

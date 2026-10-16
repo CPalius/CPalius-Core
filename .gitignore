@@ -1,0 +1,190 @@
+###> symfony/framework-bundle ###
+/cp-core/config/secrets/prod/prod.decrypt.private.php
+/cp-core/var/
+/public/bundles/
+###< symfony/framework-bundle ###
+
+###> symfony/asset-mapper ###
+/public/assets/
+/cp-core/assets/vendor/
+###< symfony/asset-mapper ###
+
+###> phpunit ###
+.phpunit.result.cache
+/phpunit.xml
+###< phpunit ###
+
+###> CPalius: SEC-05 — Secret carriers (NEVER commit) ###
+# Denetim bulgusu SEC-05: eski kural yalnızca "/.env", "/.env.dev",
+# "/.env.local" ve "/.env.*.local" desenlerini kapsıyordu. Proje kökündeki
+# "canli.env" bu desenlerin HİÇBİRİNE uymuyordu ve tek bir "git add ."
+# ile APP_SECRET, DATABASE_URL, AACP_RECOVERY_TOKEN ve CRON_TOKEN
+# herkese açık depoya girebilirdi.
+#
+# Yeni kural, ismi ".env" OLAN, ".env." ile BAŞLAYAN veya ".env" ile
+# BİTEN her dosyayı — hangi dizinde olursa olsun — bir sır taşıyıcısı
+# sayar. Tek istisna, aşağıda açıkça geri alınan ".env.example"dır.
+#
+# Fail-safe yönü önemli: yeni bir ortam dosyası eklemek (staging.env,
+# .env.prod, backup.env) hiçbir ek kural gerektirmez — varsayılan
+# davranış "takip etme"dir, "takip et" değil.
+.env
+.env.*
+*.env
+*.env.*
+!.env.example
+
+# Veritabanı dökümleri ve arşivler: aynı gerekçe. Bir "canli.sql" veya
+# "yedek.zip" dosyası, .env kadar hassas veri taşır ve tarihçeden
+# silinmesi aynı derecede zordur.
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+*.tgz
+*.sql
+*.sql.gz
+*.dump
+*.bak
+
+# ...ama modüllerin Resources/migrations altındaki .sql dosyaları döküm değil,
+# şemanın kendisidir. Blanket *.sql kuralı bunları da dışarıda bırakıyordu ve
+# üçü hiç depoya girmemişti: Whitepaper'ın iki tablosunu başka hiçbir yer
+# oluşturmadığı için temiz bir klondan kurulan site o modülü çalıştıramıyordu.
+!cp-content/modules/*/Resources/migrations/*.sql
+
+# Composer vendor is shipped so a clone or ZIP install boots without a Composer
+# binary on the host. Result caches stay out.
+!/cp-includes/vendor/
+!/cp-includes/vendor/**
+/cp-includes/vendor/bin/.phpunit.result.cache
+/cp-includes/vendor/**/.phpunit.result.cache
+
+# Yerel ajan/IDE kuralları — projenin bir parçası değil.
+.rules
+###< CPalius: SEC-05 — Secret carriers ###
+
+###> CPalius: private / local / generated ###
+# Reference systems & legacy (never publish)
+/Diğer-sistemler/
+/Diger-sistemler/
+
+# Uploaded user media
+#
+# DİKKAT: "/public/uploads/*" kuralı, bu dizindeki güvenlik
+# yapılandırmasını da kapsardı. .htaccess dosyası bir kullanıcı
+# yüklemesi DEĞİL, çekirdeğin bir parçasıdır (bkz. SEC-01) ve
+# depoda yaşamak, dolayısıyla her dağıtıma gitmek ZORUNDADIR —
+# aksi halde canlıda hiç var olmayan bir korumaya güvenmiş oluruz.
+/public/uploads/*
+!/public/uploads/.gitkeep
+!/public/uploads/.htaccess
+
+# Generated origin HTML cache (keep hardening + placeholder)
+/public/page-cache/*
+!/public/page-cache/.gitkeep
+!/public/page-cache/.htaccess
+
+# Local IDE / AI tooling
+/.cursor/
+/.claude/
+/.idea/
+/.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Cursor / agent skill drafts (not part of the framework)
+/SKILL.md
+
+# Local holding area for files removed from the tree (never deploy)
+/_archive/
+
+# m-dns.org production site's legacy PHP toolkit, sitting in this working copy
+# for local editing/deploy convenience. Not part of the CPalius-CMF product —
+# committing it would ship a separate, unrelated site's code (and runtime data
+# under DNS-Araclari/data/) into this repo's history.
+/DNS-Araclari/
+
+# Release build staging + published ZIPs (built by _release/build-*.sh, never
+# hand-edited; ZIPs are already covered by *.zip below, this also covers the
+# expanded staging tree under _release/cpalius/).
+/_release/
+
+# Local-only tooling, not part of the shipped product.
+/claude/
+/design-system/
+
+# Third-party importers kept locally as FORMAT REFERENCE only (WordPress
+# Importer is GPLv2+, the MyBB Merge System and the XenForo importer are under
+# their own licences). CPalius is proprietary, so none of that code may be
+# copied in; the Importer module reads these to learn file formats and table
+# layouts — which are facts, not expression — and is written from scratch.
+# Committing them would put foreign-licensed code inside this repository.
+/İmporter-araclari/
+
+# One-off public user importer (delete after use — do not deploy)
+/public/import-users.php
+
+# One-off migration metadata sync runner (delete after use — do not deploy)
+/public/cp-sync-meta.php
+
+# One-off prod cache diagnosis/clear runner (delete after use — do not deploy)
+/public/cp-cache-fix.php
+
+# One-off migration bookkeeping table repair (delete after use — do not deploy)
+/public/cp-fix-migration-table.php
+
+# One-off recovery for a stale compiled container after a patch (delete after use)
+/public/cp-unstick.php
+
+# One-off read-only diagnostic for the recurring stale-container-after-update
+# crash: live VERSION, purge-failure marker, container file count, proc_open
+# capability (delete after use — do not deploy)
+/public/cp-diag-cache.php
+
+# Logs & temp
+*.log
+*.tmp
+*.cache
+# Karşılaştırma için yerel olarak tutulan üçüncü parti forum yazılımı.
+# MegaforBB kendi lisansı altındadır; CPalius tescillidir. Kod KOPYALANMAZ,
+# yalnızca özellik/mimari karşılaştırması için okunur.
+/MegaforBB/
+# FTP dagitim kimlik bilgileri (docs/deploy-ftp.sh okur). Canli sunucu
+# parolasi tasir; .env ile ayni siniftadir ve asla commit edilmez.
+.ftp-deploy
+
+###< CPalius: private / local / generated ###
+
+###> friendsofphp/php-cs-fixer ###
+/.php-cs-fixer.php
+/.php-cs-fixer.cache
+###< friendsofphp/php-cs-fixer ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###
+
+# Bakim tarafi: depoda yeri yok, diskte kalir.
+/.github/
+/.githooks/
+/docs/
+/tools/
+/psalm.xml
+/psalm-baseline.xml
+/phpstan.neon.dist
+/phpstan-baseline.neon
+/phpunit.xml.dist
+/compose.yaml
+/compose.override.yaml
+/CPALIUS_YOL_HARITASI.md
+
+# Tek kullanimlik 2.0.0 sema kurtarma betigi (kullandiktan sonra sil)
+/public/cp-2.0.0-recover.php
+
+# Tek kullanimlik Redis temizleme betigi (kullandiktan sonra sil)
+/public/cp-redis-flush.php

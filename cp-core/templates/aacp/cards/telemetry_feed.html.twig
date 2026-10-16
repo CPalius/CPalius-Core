@@ -1,0 +1,85 @@
+            <section class="aacp-cmd-panel{{ hiddenWidgets["telemetry.feed"] is defined ? ' is-collapsed' }}" data-aacp-widget="telemetry.feed" data-card-id="telemetry.feed">
+                <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="aacp-cmd-panel-title !mb-0">{{ telemetrySecurityEnabled ? 'aacp.telemetry.feed.title'|trans : 'aacp.telemetry.visitors.title'|trans }}</h3>
+                    <a href="{{ path('aacp_telemetry_settings') }}" class="font-mono text-[0.65rem] uppercase tracking-wide text-emerald-400 hover:text-emerald-300">{{ 'aacp.telemetry.settings_link'|trans }} →</a>
+                </div>
+                <div class="aacp-visitor-kpis mb-2">
+                    {% if visitorStatsAvailable %}
+                        <div>
+                            <span>{{ 'aacp.telemetry.visitors.page_views'|trans }}</span>
+                            <strong data-visitor-page-views>{{ visitorStats.pageViews }}</strong>
+                        </div>
+                        <div>
+                            <span>{{ 'aacp.telemetry.visitors.unique_ips'|trans }}</span>
+                            <strong data-visitor-unique-ips>{{ visitorStats.uniqueIps }}</strong>
+                        </div>
+                    {% else %}
+                        <div class="col-span-2 !flex flex-wrap items-center justify-between gap-2">
+                            <span class="!text-fs-xs normal-case tracking-normal !text-slate-400">{{ 'aacp.telemetry.visitors.module_missing'|trans }}</span>
+                            <a href="{{ path('aacp_modules') }}" class="font-mono text-[0.65rem] uppercase tracking-wide !text-emerald-400 hover:!text-emerald-300">{{ 'aacp.telemetry.visitors.module_missing_link'|trans }}</a>
+                        </div>
+                    {% endif %}
+                    <div>
+                        <span>{{ 'aacp.dashboard.security_summary.threats'|trans }}</span>
+                        <strong class="{{ securitySummary.threats > 0 ? 'text-danger-300' : '' }}">{{ securitySummary.threats }}</strong>
+                    </div>
+                    <div>
+                        <span>{{ 'aacp.dashboard.security_summary.bans'|trans }}</span>
+                        <strong>{{ banStats.total }}</strong>
+                    </div>
+                </div>
+                <p class="mb-2 font-mono text-[0.65rem] !text-slate-500">
+                    {{ 'aacp.dashboard.security_summary.line'|trans({
+                        events: securitySummary.events,
+                        warnings: securitySummary.warnings,
+                        critical: securitySummary.critical,
+                    }) }}
+                    ·
+                    <a href="{{ path('aacp_security_center') }}" class="text-emerald-400 hover:text-emerald-300">{{ 'aacp.dashboard.security_summary.open'|trans }}</a>
+                </p>
+                <div class="overflow-x-auto">
+                    <table class="aacp-cmd-feed" data-telemetry-table>
+                        <thead>
+                            <tr>
+                                <th>{{ 'aacp.telemetry.col.time'|trans }}</th>
+                                {% if telemetrySecurityEnabled %}
+                                    <th>{{ 'aacp.telemetry.col.severity'|trans }}</th>
+                                {% endif %}
+                                <th>{{ 'aacp.telemetry.col.ip'|trans }}</th>
+                                <th>{{ 'aacp.telemetry.col.user'|trans }}</th>
+                                <th>{{ telemetrySecurityEnabled ? 'aacp.telemetry.col.event'|trans : 'aacp.telemetry.col.path'|trans }}</th>
+                                {% if telemetrySecurityEnabled %}
+                                    <th>{{ 'aacp.telemetry.col.score'|trans }}</th>
+                                {% endif %}
+                                <th>{{ 'aacp.telemetry.col.details'|trans }}</th>
+                            </tr>
+                        </thead>
+                        <tbody data-telemetry-body>
+                            {% if telemetryFeed is empty %}
+                                <tr data-telemetry-empty>
+                                    <td colspan="{{ telemetrySecurityEnabled ? 7 : 5 }}" class="!text-slate-500">{{ telemetrySecurityEnabled ? 'aacp.telemetry.feed.empty'|trans : 'aacp.telemetry.visitors.empty'|trans }}</td>
+                                </tr>
+                            {% else %}
+                                {% for row in telemetryFeed %}
+                                    <tr data-telemetry-id="{{ row.id }}">
+                                        <td>{{ row.time }}</td>
+                                        {% if telemetrySecurityEnabled %}
+                                            <td><span class="aacp-sev aacp-sev-{{ row.severity }}">{{ row.severity }}</span></td>
+                                        {% endif %}
+                                        <td>{{ row.ip }}</td>
+                                        <td>{{ row.user }}</td>
+                                        <td>{{ row.method }} {{ row.uri|length > 48 ? row.uri|slice(0, 48) ~ '…' : row.uri }}</td>
+                                        {% if telemetrySecurityEnabled %}
+                                            <td>{{ row.threatScore }}</td>
+                                        {% endif %}
+                                        <td>
+                                            <button type="button" class="aacp-cyber-btn !py-0.5" data-telemetry-open>{{ 'aacp.telemetry.details'|trans }}</button>
+                                            <textarea hidden data-telemetry-json>{{ row|json_encode }}</textarea>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>

@@ -1,0 +1,146 @@
+{% extends '@Theme/forum/layout.html.twig' %}
+
+{% block title %}{{ 'forum.new_topic.title_prefix'|trans }} — {{ section.title }} — {{ 'forum.breadcrumb.home_title'|trans }}{% endblock %}
+
+{% block forum_breadcrumbs %}
+    <nav class="forum-crumb fade-in" aria-label="{{ 'forum.nav_aria'|trans }}">
+        <ol class="forum-crumb__list">
+            <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+            <li><a href="{{ path('forum_index') }}">{{ 'forum.breadcrumb.home_title'|trans }}</a></li>
+            <li><a href="{{ path('forum_section', {sectionSlug: section.slug}) }}">{{ section.title }}</a></li>
+            <li class="is-active"><i class="bi bi-plus-circle"></i> {{ 'forum.new_topic.breadcrumb'|trans }}</li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap(['forum-editor-init']) }}
+{% endblock %}
+
+{% block forum_content %}
+<div class="forum-form fade-in">
+    <div class="forum-form__title"><i class="bi bi-plus-circle"></i> {{ 'forum.new_topic.form_title'|trans }}</div>
+    <form action="{{ path('forum_new_topic', {sectionSlug: section.slug}) }}" method="post" enctype="multipart/form-data" data-forum-draft data-draft-section="{{ section.id }}" data-draft-token="{{ csrf_token('forum_draft') }}" data-draft-url="{{ path('forum_draft_save') }}">
+        {% if prefixes is defined and prefixes is not empty %}
+            <div class="forum-field forum-field--headline">
+                <div class="forum-field--prefix">
+                    <label for="ft-prefix">{{ 'forum.field.prefix'|trans }}</label>
+                    <select id="ft-prefix" name="prefix_id" data-title-prefix-select>
+                        <option value="">{{ 'forum.field.prefix_none'|trans }}</option>
+                        {% for prefix in prefixes %}
+                            <option value="{{ prefix.id }}"
+                                    data-label="{{ prefix.label }}"
+                                    data-color="{{ prefix.color }}"
+                                    data-class="{{ prefix.cssClass|default('') }}"
+                                    {{ formValues.prefixId == prefix.id ? 'selected' : '' }}>{{ prefix.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="forum-field--title">
+                    <label for="ft-title">{{ 'forum.field.title'|trans }}</label>
+                    <div class="forum-title-combo">
+                        <span class="forum-prefix forum-prefix--default" data-title-prefix-chip hidden></span>
+                        <input type="text" id="ft-title" name="title" value="{{ formValues.title }}" maxlength="255" required autofocus>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="forum-field">
+                <label for="ft-title">{{ 'forum.field.title'|trans }}</label>
+                <input type="text" id="ft-title" name="title" value="{{ formValues.title }}" maxlength="255" required autofocus>
+            </div>
+        {% endif %}
+
+        <div class="forum-field">
+            <label for="ft-desc">{{ 'forum.field.description'|trans }} <span style="text-transform:none; font-weight:400;">{{ 'forum.field.optional'|trans }}</span></label>
+            <input type="text" id="ft-desc" name="description" value="{{ formValues.description }}" maxlength="255">
+        </div>
+
+        <div class="forum-field forum-composer">
+            <label>{{ 'forum.field.message'|trans }}</label>
+            {% include '@Theme/forum/partials/editor_textarea.html.twig' with {
+                name: 'body',
+                id: 'ft-body',
+                minHeight: 450,
+                required: true,
+                placeholder: 'forum.field.message_placeholder'|trans,
+                value: formValues.body,
+                section: section,
+                attachmentsEnabled: attachmentsEnabled|default(false),
+            } only %}
+            <p class="forum-field-hint">{{ 'forum.new_topic.edit_hint'|trans }}</p>
+        </div>
+
+        {% if attachmentsEnabled|default(false) %}
+            <div class="forum-field">
+                <label>{{ 'forum.attach.label'|trans }}</label>
+                <input type="file" name="attachments[]" multiple>
+            </div>
+        {% endif %}
+
+        {% if pollsEnabled|default(false) %}
+            <details class="forum-poll-composer">
+                <summary>{{ 'forum.poll.add'|trans }}</summary>
+                <div class="forum-field">
+                    <label>{{ 'forum.poll.question'|trans }}</label>
+                    <input type="text" name="poll_question" maxlength="255">
+                </div>
+                <div class="forum-field">
+                    <label>{{ 'forum.poll.options'|trans }}</label>
+                    <textarea name="poll_options" rows="4" placeholder="{{ 'forum.poll.options_hint'|trans }}"></textarea>
+                </div>
+                <div class="forum-field">
+                    <label>{{ 'forum.poll.max_choices'|trans }}</label>
+                    <input type="number" name="poll_max_choices" value="1" min="1" max="10">
+                </div>
+                <div class="forum-field">
+                    <label class="forum-checkbox"><input type="checkbox" name="poll_hide_until_close" value="1"> {{ 'forum.poll.hide'|trans }}</label>
+                </div>
+                <div class="forum-field">
+                    <label>{{ 'forum.poll.closes_at'|trans }}</label>
+                    <input type="datetime-local" name="poll_closes_at">
+                </div>
+            </details>
+        {% endif %}
+
+        <div class="forum-field">
+            <label class="forum-checkbox">
+                <input type="checkbox" name="private" value="1" {{ formValues.isPrivate ? 'checked' : '' }}>
+                {{ 'forum.new_topic.private_label'|trans }} <span class="hint">— {{ 'forum.new_topic.private_hint'|trans }}</span>
+            </label>
+        </div>
+
+        {% if ai_auto_translate is defined and ai_auto_translate.on_create|default(true) %}
+            <div class="forum-field">
+                <label class="forum-checkbox">
+                    <input type="checkbox" name="auto_translate" value="1" {{ formValues.autoTranslate|default(false) ? 'checked' : '' }}>
+                    {{ 'ai.form.auto_translate'|trans }}
+                </label>
+                <p class="forum-field-hint">{{ 'ai.form.auto_translate_help'|trans }}</p>
+            </div>
+        {% endif %}
+
+        {% if contentLocales is defined and contentLocales|length > 1 %}
+            <div class="forum-field">
+                <label for="ft-content-locale">{{ 'forum.field.content_locale'|trans }}</label>
+                <select id="ft-content-locale" name="content_locale">
+                    {% for loc in contentLocales %}
+                        <option value="{{ loc.code }}" {{ (formValues.contentLocale|default(app.request.locale)) == loc.code ? 'selected' : '' }}>{{ loc.nativeName }} ({{ loc.code }})</option>
+                    {% endfor %}
+                </select>
+                <p class="forum-field-hint">{{ 'forum.field.content_locale_hint'|trans }}</p>
+            </div>
+        {% else %}
+            <input type="hidden" name="content_locale" value="{{ formValues.contentLocale|default(app.request.locale) }}">
+        {% endif %}
+
+        <div class="forum-form__actions">
+            <input type="hidden" name="_token" value="{{ csrf_token('forum_new_topic') }}">
+            {% if draftsEnabled|default(false) %}<span class="forum-draft-status" data-draft-status hidden>{{ 'forum.draft.saved'|trans }}</span>{% endif %}
+            <button type="submit" class="btn btn-primary btn-sm">{{ 'forum.action.publish_topic'|trans }}</button>
+            <a href="{{ path('forum_section', {sectionSlug: section.slug}) }}" class="forum-form__cancel">{{ 'forum.action.cancel'|trans }}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

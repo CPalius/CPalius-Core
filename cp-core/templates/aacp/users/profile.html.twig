@@ -1,0 +1,76 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.users.profile.header'|trans }}{% endblock %}
+
+{% block javascripts %}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'cp-editor-init']) }}
+{% endblock %}
+
+{% block body %}
+    {{ form_start(form, {
+        action: path('aacp_users_profile'),
+    }) }}
+    <div class="flex flex-col gap-sp-md lg:flex-row lg:items-start">
+        <div class="min-w-0 space-y-sp-md lg:w-[70%]">
+            <twig:cp:card title="{{ 'aacp.users.form.section_account'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.email) }}
+                    {{ form_row(form.username) }}
+                </div>
+            </twig:cp:card>
+
+            <twig:cp:card title="{{ 'aacp.users.form.section_profile'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.firstName) }}
+                    {{ form_row(form.lastName) }}
+                </div>
+            </twig:cp:card>
+
+            <twig:cp:card title="{{ 'aacp.users.profile.section_bio'|trans }}">
+                {{ form_widget(form.bio) }}
+                {{ form_errors(form.bio) }}
+            </twig:cp:card>
+
+            <twig:cp:card title="{{ 'aacp.users.profile.section_password'|trans }}">
+                <div class="space-y-sp-sm">
+                    {{ form_row(form.currentPassword) }}
+                    {{ form_row(form.newPassword) }}
+                </div>
+            </twig:cp:card>
+        </div>
+
+        <div class="min-w-0 space-y-sp-md lg:w-[30%]">
+            <twig:cp:card title="{{ 'aacp.users.profile.section_avatar'|trans }}">
+                <div data-avatar-preview class="mb-sp-xs">
+                    {% if avatarUrl %}
+                        <img src="{{ avatarUrl }}" class="max-h-40 rounded-lg" alt="">
+                    {% else %}
+                        {% include '@Theme/forum/partials/_avatar.html.twig' with {name: app.user.fullName, user: app.user, size: 'lg', square: true} %}
+                    {% endif %}
+                </div>
+                <form method="post" action="{{ path('account_avatar_upload') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="_token" value="{{ csrf_token('account_avatar_upload') }}">
+                    <label class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5 w-full">
+                        {{ 'aacp.users.profile.select_avatar'|trans }}
+                        <input type="file" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" hidden onchange="this.form.submit()">
+                    </label>
+                </form>
+                {% if avatarUrl %}
+                    <form method="post" action="{{ path('account_avatar_remove') }}" class="mt-2">
+                        <input type="hidden" name="_token" value="{{ csrf_token('account_avatar_remove') }}">
+                        <button type="submit" class="btn btn-sm btn-ghost w-full">{{ 'account.profile.avatar_remove'|trans }}</button>
+                    </form>
+                {% endif %}
+            </twig:cp:card>
+
+            <twig:cp:card padded="{{ false }}">
+                <div class="space-y-2 card-body">
+                    <button type="submit" class="btn btn-primary w-full">
+                        {{ 'aacp.users.form.submit_edit'|trans }}
+                    </button>
+                </div>
+            </twig:cp:card>
+        </div>
+    </div>
+    {{ form_end(form) }}
+{% endblock %}

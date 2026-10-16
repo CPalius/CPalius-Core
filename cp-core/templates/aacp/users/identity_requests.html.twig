@@ -1,0 +1,70 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% block header %}{{ 'aacp.users.identity_header'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md">
+        <p class="text-fs-sm !text-slate-500">{{ 'aacp.users.identity_intro'|trans }}</p>
+
+        {% if not approvalRequired %}
+            <twig:cp:card variant="danger">
+                <p class="text-fs-sm !text-danger-300">{{ 'aacp.users.identity_disabled'|trans }}</p>
+            </twig:cp:card>
+        {% endif %}
+
+        <twig:cp:card padded="{{ false }}">
+            <twig:cp:table headers="{{ [
+                'aacp.users.column.account'|trans,
+                'aacp.users.identity.column.requested'|trans,
+                'aacp.users.identity.column.when'|trans,
+                '',
+            ] }}" empty="{{ pending is empty }}" emptyText="{{ 'aacp.users.identity_empty'|trans }}">
+                <twig:block name="rows">
+                    {% for row in pending %}
+                        <tr>
+                            <td>
+                                <p class="font-medium !text-slate-200">{{ row.user.email }}</p>
+                                {% if row.user.username %}
+                                    <p class="text-fs-xs !text-slate-500">@{{ row.user.username }}</p>
+                                {% endif %}
+                                <p class="text-fs-xs !text-slate-600">{{ row.user.fullName }}</p>
+                            </td>
+                            <td class="text-fs-sm">
+                                {% if row.request.email %}
+                                    <p>
+                                        <span class="!text-slate-500">{{ 'aacp.users.identity.new_email'|trans }}</span>
+                                        <span class="!text-slate-200">{{ row.request.email }}</span>
+                                    </p>
+                                {% endif %}
+                                {% if row.request.username is not null %}
+                                    <p>
+                                        <span class="!text-slate-500">{{ 'aacp.users.identity.new_username'|trans }}</span>
+                                        <span class="!text-slate-200">{{ row.request.username ?: '—' }}</span>
+                                    </p>
+                                {% endif %}
+                            </td>
+                            <td class="text-fs-xs !text-slate-400">
+                                {{ row.request.requestedAt ? row.request.requestedAt|date('d.m.Y H:i') : '—' }}
+                            </td>
+                            <td class="text-right">
+                                <form method="post" class="flex flex-wrap items-center justify-end gap-2">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('aacp_user_identity') }}">
+                                    <input type="hidden" name="user_id" value="{{ row.user.id }}">
+                                    <input type="text" name="reason" maxlength="200"
+                                           placeholder="{{ 'aacp.users.identity.reason_placeholder'|trans }}"
+                                           class="form-control !w-48 !border-white/10 !bg-dark-1 text-fs-xs !text-slate-100">
+                                    <button type="submit" name="action" value="approve" class="btn btn-sm btn-primary">
+                                        {{ 'aacp.users.identity.approve_action'|trans }}
+                                    </button>
+                                    <button type="submit" name="action" value="reject" class="btn btn-sm btn-outline">
+                                        {{ 'aacp.users.identity.reject_action'|trans }}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </twig:block>
+            </twig:cp:table>
+        </twig:cp:card>
+    </div>
+{% endblock %}

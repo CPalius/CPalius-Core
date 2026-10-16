@@ -1,0 +1,190 @@
+{#
+    Writer's quick-edit note on a post: a sticky note pinned to the right edge, closed by default to a small
+    tab so it never covers the site header or menu. Rendered only when PostFrontController decided the current
+    user may edit this post (its author, or an admin) — visitors get nothing. Logged-in pages are never stored
+    by the page cache, so this cannot leak into the anonymous copy.
+    Expects: authorTools, isPreview, post, featuredImageUrl.
+#}
+{% if authorTools|default(null) %}
+    {% set aq = authorTools %}
+    <style{{ csp_nonce_attr() }}>
+        .cp-aq{position:fixed;right:0;top:38%;z-index:1040;display:flex;align-items:flex-start;font-size:.8125rem;line-height:1.35;color:#1f2937}
+        .cp-aq__tab{writing-mode:vertical-rl;padding:.7rem .45rem;border:0;border-radius:.5rem 0 0 .5rem;background:#fde68a;color:#78350f;font:inherit;font-weight:700;letter-spacing:.04em;cursor:pointer;box-shadow:-2px 2px 8px rgba(0,0,0,.25)}
+        .cp-aq__tab:hover{background:#fcd34d}
+        .cp-aq__panel{width:18.5rem;max-height:80vh;overflow:auto;padding:.85rem;background:#fef3c7;border:1px solid #fcd34d;border-right:0;border-radius:.5rem 0 0 .5rem;box-shadow:-4px 4px 16px rgba(0,0,0,.3)}
+        .cp-aq__panel[hidden]{display:none}
+        .cp-aq__head{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;font-weight:700}
+        .cp-aq__state{padding:.1rem .5rem;border-radius:999px;background:#f59e0b;color:#111827;font-size:.75rem}
+        .cp-aq__close{border:0;background:transparent;color:inherit;font-size:1.1rem;cursor:pointer;line-height:1}
+        .cp-aq__sec{margin-top:.7rem;padding-top:.6rem;border-top:1px dashed rgba(120,53,15,.35)}
+        .cp-aq__sec h4{margin:0 0 .35rem;font-size:.6875rem;letter-spacing:.06em;text-transform:uppercase;color:#92400e}
+        .cp-aq select,.cp-aq input[type=datetime-local]{width:100%;margin-bottom:.4rem;padding:.35rem .5rem;border:1px solid #d6b656;border-radius:.375rem;background:#fffbeb;color:inherit;font:inherit}
+        .cp-aq button.cp-aq__btn,.cp-aq a.cp-aq__btn{display:inline-flex;align-items:center;justify-content:center;gap:.3rem;padding:.35rem .7rem;border:1px solid #b45309;border-radius:.375rem;background:#fffbeb;color:#78350f;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
+        .cp-aq .cp-aq__btn:hover{background:#fde68a}
+        .cp-aq .cp-aq__btn--primary{background:#2563eb;border-color:#2563eb;color:#fff}
+        .cp-aq .cp-aq__btn--primary:hover{background:#1d4ed8}
+        .cp-aq .cp-aq__btn--danger{border-color:#b91c1c;color:#991b1b}
+        .cp-aq__row{display:flex;flex-wrap:wrap;gap:.4rem}
+        .cp-aq__check{display:flex;align-items:center;gap:.5rem;margin:.3rem 0}
+        .cp-aq__cover{display:block;width:100%;max-height:7rem;object-fit:cover;margin-bottom:.4rem;border-radius:.375rem;border:1px solid #d6b656}
+        .cp-aq__msg{min-height:1.1rem;margin-top:.5rem;font-size:.75rem;font-weight:600}
+        .cp-aq__msg.is-error{color:#b91c1c}
+        .cp-aq__msg.is-ok{color:#166534}
+        @media (max-width:640px){.cp-aq{top:auto;bottom:4.5rem}.cp-aq__panel{width:min(18.5rem,calc(100vw - 2.5rem));max-height:65vh}}
+    </style>
+
+    <aside class="cp-aq" role="complementary" aria-label="{{ 'blog.author_tools.label'|trans }}" data-aq
+           data-url="{{ aq.quickUrl }}" data-token="{{ csrf_token('admin_post_form') }}"
+           data-upload-url="{{ aq.uploadUrl|default('') }}" data-msg-saved="{{ 'blog.author_tools.quick.saved'|trans|e('html_attr') }}"
+           data-msg-error="{{ 'blog.author_tools.quick.error'|trans|e('html_attr') }}" data-msg-uploading="{{ 'blog.author_tools.quick.cover_uploading'|trans|e('html_attr') }}">
+        <button type="button" class="cp-aq__tab" data-aq-toggle aria-expanded="false">✎ {{ 'blog.author_tools.quick.tab'|trans }}</button>
+
+        <div class="cp-aq__panel" data-aq-panel hidden>
+            <div class="cp-aq__head">
+                <span>{{ (aq.isOwner ? 'blog.author_tools.label_own' : 'blog.author_tools.label')|trans }}</span>
+                {% if aq.status != 'published' %}<span class="cp-aq__state">{{ ('blog.author_tools.quick.status_' ~ aq.status)|trans }}</span>{% endif %}
+                <button type="button" class="cp-aq__close" data-aq-toggle aria-label="{{ 'blog.author_tools.quick.close'|trans }}">×</button>
+            </div>
+
+            <div class="cp-aq__row">
+                <a href="{{ aq.editUrl }}" class="cp-aq__btn cp-aq__btn--primary">{{ 'blog.author_tools.edit'|trans }}</a>
+                <a href="{{ aq.listUrl }}" class="cp-aq__btn">{{ 'blog.author_tools.list'|trans }}</a>
+            </div>
+
+            {% if aq.canSchedule %}
+                <div class="cp-aq__sec">
+                    <h4>{{ 'blog.author_tools.quick.publishing'|trans }}</h4>
+                    <select data-aq-status aria-label="{{ 'blog.author_tools.quick.status'|trans }}">
+                        {% for st in ['draft', 'scheduled', 'published'] %}
+                            <option value="{{ st }}" {{ aq.status == st ? 'selected' : '' }}>{{ ('blog.author_tools.quick.status_' ~ st)|trans }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="datetime-local" data-aq-date value="{{ aq.dateValue }}" aria-label="{{ 'blog.author_tools.quick.date'|trans }}">
+                    <div class="cp-aq__row">
+                        <button type="button" class="cp-aq__btn cp-aq__btn--primary" data-aq-apply>{{ 'blog.author_tools.quick.apply'|trans }}</button>
+                        {% if aq.status != 'published' %}
+                            <button type="button" class="cp-aq__btn" data-aq-publish-now>{{ 'blog.author_tools.quick.publish_now'|trans }}</button>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="cp-aq__sec">
+                <h4>{{ 'blog.author_tools.quick.cover'|trans }}</h4>
+                {% if featuredImageUrl|default(null) %}
+                    <img class="cp-aq__cover" src="{{ featuredImageUrl|cp_thumb(400, 240, 'fit') }}" alt="">
+                {% endif %}
+                <div class="cp-aq__row">
+                    {% if aq.canUpload %}
+                        <button type="button" class="cp-aq__btn" data-aq-cover-pick>{{ 'blog.author_tools.quick.cover_change'|trans }}</button>
+                        <input type="file" accept="image/*" hidden data-aq-cover-file>
+                    {% endif %}
+                    {% if aq.hasCover %}
+                        <button type="button" class="cp-aq__btn cp-aq__btn--danger" data-aq-cover-remove>{{ 'blog.author_tools.quick.cover_remove'|trans }}</button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="cp-aq__sec">
+                <h4>{{ 'blog.author_tools.quick.options'|trans }}</h4>
+                <label class="cp-aq__check"><input type="checkbox" data-aq-toggle-field="comments" {{ aq.commentsEnabled ? 'checked' : '' }}> {{ 'blog.author_tools.quick.comments'|trans }}</label>
+                <label class="cp-aq__check"><input type="checkbox" data-aq-toggle-field="featured" {{ aq.featured ? 'checked' : '' }}> {{ 'blog.author_tools.quick.featured'|trans }}</label>
+            </div>
+
+            <div class="cp-aq__msg" data-aq-msg role="status" aria-live="polite"></div>
+        </div>
+    </aside>
+
+    <script{{ csp_nonce_attr() }}>
+        (function () {
+            var root = document.querySelector('[data-aq]');
+            if (!root) { return; }
+            var panel = root.querySelector('[data-aq-panel]');
+            var msg = root.querySelector('[data-aq-msg]');
+            var KEY = 'cp.aq.open';
+
+            function setOpen(open) {
+                panel.hidden = !open;
+                root.querySelector('.cp-aq__tab').setAttribute('aria-expanded', open ? 'true' : 'false');
+                root.querySelector('.cp-aq__tab').hidden = open;
+                try { localStorage.setItem(KEY, open ? '1' : '0'); } catch (e) {}
+            }
+            root.querySelectorAll('[data-aq-toggle]').forEach(function (b) {
+                b.addEventListener('click', function () { setOpen(panel.hidden); });
+            });
+            try { setOpen(localStorage.getItem(KEY) === '1'); } catch (e) { setOpen(false); }
+
+            function say(text, error) {
+                msg.textContent = text;
+                msg.className = 'cp-aq__msg ' + (error ? 'is-error' : 'is-ok');
+            }
+
+            function call(body) {
+                return fetch(root.dataset.url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-Token': root.dataset.token },
+                    body: JSON.stringify(body)
+                }).then(function (r) {
+                    return r.json().catch(function () { return {}; }).then(function (d) {
+                        if (!r.ok) { throw new Error(d.error || root.dataset.msgError); }
+                        return d;
+                    });
+                });
+            }
+
+            function saveThenReload(body) {
+                call(body).then(function () { say(root.dataset.msgSaved, false); window.location.reload(); })
+                    .catch(function (e) { say(e.message, true); });
+            }
+
+            var status = root.querySelector('[data-aq-status]');
+            var date = root.querySelector('[data-aq-date]');
+            var apply = root.querySelector('[data-aq-apply]');
+            if (apply) {
+                apply.addEventListener('click', function () {
+                    saveThenReload({ action: 'schedule', status: status.value, published_at: date.value });
+                });
+            }
+            var now = root.querySelector('[data-aq-publish-now]');
+            if (now) {
+                now.addEventListener('click', function () {
+                    saveThenReload({ action: 'schedule', status: 'published', published_at: '' });
+                });
+            }
+
+            root.querySelectorAll('[data-aq-toggle-field]').forEach(function (box) {
+                box.addEventListener('change', function () {
+                    call({ action: box.dataset.aqToggleField, value: box.checked })
+                        .then(function () { say(root.dataset.msgSaved, false); })
+                        .catch(function (e) { box.checked = !box.checked; say(e.message, true); });
+                });
+            });
+
+            var remove = root.querySelector('[data-aq-cover-remove]');
+            if (remove) {
+                remove.addEventListener('click', function () { saveThenReload({ action: 'cover', asset_id: null }); });
+            }
+            var pick = root.querySelector('[data-aq-cover-pick]');
+            var file = root.querySelector('[data-aq-cover-file]');
+            if (pick && file) {
+                pick.addEventListener('click', function () { file.click(); });
+                file.addEventListener('change', function () {
+                    if (!file.files.length) { return; }
+                    var form = new FormData();
+                    form.append('file', file.files[0]);
+                    say(root.dataset.msgUploading, false);
+                    fetch(root.dataset.uploadUrl, { method: 'POST', body: form, credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                        .then(function (r) {
+                            return r.json().catch(function () { return {}; }).then(function (d) {
+                                if (!r.ok || !d.id) { throw new Error(d.error || d.detail || root.dataset.msgError); }
+                                return d.id;
+                            });
+                        })
+                        .then(function (id) { saveThenReload({ action: 'cover', asset_id: id }); })
+                        .catch(function (e) { say(e.message, true); });
+                });
+            }
+        })();
+    </script>
+{% endif %}

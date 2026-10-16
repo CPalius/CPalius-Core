@@ -1,0 +1,80 @@
+                <section class="aacp-cmd-panel{{ hiddenWidgets["system.subsystems"] is defined ? ' is-collapsed' }}" data-aacp-widget="system.subsystems" data-card-id="system.subsystems">
+                    <h3 class="aacp-cmd-panel-title">{{ 'aacp.dashboard.subsys.title'|trans }}</h3>
+                    <div class="space-y-2">
+                        <div class="aacp-cmd-subsys-item">
+                            <div class="aacp-cmd-subsys-name">{{ 'aacp.dashboard.subsys.database'|trans }}</div>
+                            <div class="aacp-cmd-subsys-value">
+                                {{ system.database.connected ? 'aacp.dashboard.subsys.online'|trans : 'aacp.dashboard.subsys.offline'|trans }}
+                                · {{ 'aacp.dashboard.subsys.latency'|trans }}
+                                <span data-aacp-dashboard-target="database" data-field="latencyMs">{{ system.database.latencyMs is not null ? system.database.latencyMs ~ ' ms' : '—' }}</span>
+                            </div>
+                            <dl class="aacp-cmd-db">
+                                <div>
+                                    <dt>{{ 'aacp.dashboard.db.name'|trans }}</dt>
+                                    <dd data-aacp-dashboard-target="database" data-field="name">{{ system.database.name ?? '—' }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ 'aacp.dashboard.db.version'|trans }}</dt>
+                                    <dd data-aacp-dashboard-target="database" data-field="version">{{ system.database.version ?? '—' }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ 'aacp.dashboard.db.size'|trans }}</dt>
+                                    <dd data-aacp-dashboard-target="database" data-field="sizeLabel">{{ system.database.sizeLabel ?? '—' }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ 'aacp.dashboard.db.tables'|trans }}</dt>
+                                    <dd data-aacp-dashboard-target="database" data-field="tableCount">{{ system.database.tableCount ?? '—' }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ 'aacp.dashboard.db.connections'|trans }}</dt>
+                                    <dd data-aacp-dashboard-target="database" data-field="connections">
+                                        {%- if system.database.threadsConnected is not null -%}
+                                            {{ system.database.threadsConnected }}{% if system.database.maxConnections is not null %} / {{ system.database.maxConnections }}{% endif %}
+                                        {%- else -%}
+                                            —
+                                        {%- endif -%}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>{{ 'aacp.dashboard.db.charset'|trans }}</dt>
+                                    <dd data-aacp-dashboard-target="database" data-field="charset">{{ system.database.charset ?? '—' }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ 'aacp.dashboard.db.slow_queries'|trans }}</dt>
+                                    <dd data-aacp-dashboard-target="database" data-field="slowQueries">{{ system.database.slowQueries ?? '—' }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ 'aacp.dashboard.db.server_uptime'|trans }}</dt>
+                                    <dd data-aacp-dashboard-target="database" data-field="serverUptime">{{ system.database.serverUptime ?? '—' }}</dd>
+                                </div>
+                            </dl>
+                        </div>
+                        <div class="aacp-cmd-subsys-item">
+                            <div class="aacp-cmd-subsys-name">{{ 'aacp.dashboard.subsys.redis'|trans }}</div>
+                            <div class="aacp-cmd-subsys-value">
+                                {{ system.cache.redisOnline ? 'aacp.dashboard.subsys.online'|trans : 'aacp.dashboard.subsys.offline'|trans }}
+                                · {{ 'aacp.dashboard.subsys.cache_pool'|trans }}: {{ system.cache.pool }}
+                            </div>
+                        </div>
+                        <div class="aacp-cmd-subsys-item">
+                            <div class="aacp-cmd-subsys-name">{{ 'aacp.dashboard.subsys.mailer'|trans }}</div>
+                            <div class="aacp-cmd-subsys-value">
+                                {{ system.mailer.configured ? 'aacp.dashboard.subsys.configured'|trans : 'aacp.dashboard.subsys.not_configured'|trans }}
+                                · {{ 'aacp.dashboard.subsys.dsn'|trans }}: {{ system.mailer.dsn }}
+                            </div>
+                        </div>
+                        <div class="aacp-cmd-subsys-item">
+                            <div class="aacp-cmd-subsys-name">{{ 'aacp.dashboard.subsys.quarantine'|trans }}</div>
+                            <div class="aacp-cmd-log">
+                                {% if quarantineLog is empty %}
+                                    {{ 'aacp.dashboard.quarantine_empty'|trans }}
+                                {% else %}
+                                    {% for line in quarantineLog %}
+                                        <div>{{ line }}</div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            <a href="{{ path('aacp_quarantine') }}" class="mt-2 inline-block font-mono text-fs-xs text-emerald-400 underline hover:text-emerald-300">{{ 'aacp.dashboard.quarantine_link'|trans }} →</a>
+                        </div>
+                    </div>
+                </section>

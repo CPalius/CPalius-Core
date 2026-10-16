@@ -1,0 +1,105 @@
+{% set t = 'portal' %}
+<section class="section" id="entity">
+    <div class="container">
+        <div class="section-header fade-in">
+            <span class="section-label">{{ 'entity.label'|trans({}, t) }}</span>
+            <h2 class="section-title">{{ 'entity.title'|trans({}, t) }}</h2>
+            <p class="section-desc">{{ 'entity.desc'|trans({}, t) }}</p>
+        </div>
+
+        <div class="entity-table-wrapper fade-in">
+            <table class="entity-table">
+                <thead>
+                    <tr>
+                        <th>{{ 'entity.col_feature'|trans({}, t) }}</th>
+                        <th><i class="bi bi-file-text"></i> <span>{{ 'entity.col_content'|trans({}, t) }}</span></th>
+                        <th><i class="bi bi-briefcase"></i> <span>{{ 'entity.col_business'|trans({}, t) }}</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ 'entity.row_concept'|trans({}, t) }}</td>
+                        <td>{{ 'entity.row_concept_content'|trans({}, t) }}</td>
+                        <td>{{ 'entity.row_concept_business'|trans({}, t) }}</td>
+                    </tr>
+                    <tr>
+                        <td>{{ 'entity.row_slug'|trans({}, t) }}</td>
+                        <td>{{ 'entity.row_slug_content'|trans({}, t) }}</td>
+                        <td>{{ 'entity.row_slug_business'|trans({}, t) }}</td>
+                    </tr>
+                    <tr>
+                        <td>{{ 'entity.row_i18n'|trans({}, t) }}</td>
+                        <td>{{ 'entity.row_i18n_content'|trans({}, t) }}</td>
+                        <td>{{ 'entity.row_i18n_business'|trans({}, t) }}</td>
+                    </tr>
+                    <tr>
+                        <td>{{ 'entity.row_status'|trans({}, t) }}</td>
+                        <td>{{ 'entity.row_status_content'|trans({}, t) }}</td>
+                        <td>{{ 'entity.row_status_business'|trans({}, t) }}</td>
+                    </tr>
+                    <tr>
+                        <td>{{ 'entity.row_seo'|trans({}, t) }}</td>
+                        <td>{{ 'entity.row_seo_content'|trans({}, t) }}</td>
+                        <td>{{ 'entity.row_seo_business'|trans({}, t) }}</td>
+                    </tr>
+                    <tr>
+                        <td>{{ 'entity.row_common'|trans({}, t) }}</td>
+                        <td colspan="2" style="text-align:center;">{{ 'entity.row_common_value'|trans({}, t) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="grid-golden fade-in">
+            <div class="grid-golden-major">
+                <h3 style="margin-bottom: var(--sp-md);">{{ 'entity.attr_title_html'|trans({}, t)|raw }}</h3>
+                <p>{{ 'entity.attr_p1'|trans({}, t) }}</p>
+                <p style="margin-top: var(--sp-sm);"><strong>{{ 'entity.attr_thanks'|trans({}, t) }}</strong></p>
+                <ul style="margin-top: var(--sp-xs);">
+                    <li class="solution-item" style="border:none; padding: var(--sp-xs) 0;">
+                        <i class="bi bi-check2-circle" style="color: var(--cp-success);"></i>
+                        <span>{{ 'entity.attr_cap_html'|trans({}, t)|raw }}</span>
+                    </li>
+                    <li class="solution-item" style="border:none; padding: var(--sp-xs) 0;">
+                        <i class="bi bi-check2-circle" style="color: var(--cp-success);"></i>
+                        <span>{{ 'entity.attr_crud_html'|trans({}, t)|raw }}</span>
+                    </li>
+                    <li class="solution-item" style="border:none; padding: var(--sp-xs) 0;">
+                        <i class="bi bi-check2-circle" style="color: var(--cp-success);"></i>
+                        <span>{{ 'entity.attr_tenant_html'|trans({}, t)|raw }}</span>
+                    </li>
+                    <li class="solution-item" style="border:none; padding: var(--sp-xs) 0;">
+                        <i class="bi bi-check2-circle" style="color: var(--cp-success);"></i>
+                        <span>{{ 'entity.attr_audit_html'|trans({}, t)|raw }}</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="grid-golden-minor">
+                <div class="cp-resource-block">
+                    <div class="code-block-header">
+                        <i class="bi bi-file-code"></i> {{ 'entity.code_header'|trans({}, t) }}
+                    </div>
+                    <pre><span class="comment">#[CpResource(</span>
+<span class="comment">    name: 'vehicle',</span>
+<span class="comment">    module: 'oto-galeri',</span>
+<span class="comment">    capabilities: [</span>
+<span class="comment">        'create','edit',</span>
+<span class="comment">        'delete','view'</span>
+<span class="comment">    ],</span>
+<span class="comment">    auditable: true,</span>
+<span class="comment">    multiTenant: true,</span>
+<span class="comment">    workflow: 'vehicle_lifecycle'</span>
+<span class="comment">)]</span>
+<span class="keyword">#[ORM\Entity]</span>
+<span class="keyword">class</span> <span class="function">Vehicle</span>
+{
+    <span class="keyword">private</span> ?<span class="function">int</span> $id;
+    <span class="keyword">private</span> ?<span class="function">string</span> $plate;
+    <span class="keyword">private</span> ?<span class="function">string</span> $brand;
+    <span class="keyword">private</span> ?<span class="function">int</span> $price;
+}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

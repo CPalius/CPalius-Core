@@ -1,0 +1,71 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'pages.header'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_pages_create') }}" class="btn btn-sm btn-primary">
+        {{ 'pages.create_action'|trans }}
+    </a>
+{% endblock %}
+
+{% block body %}
+    <twig:studio:card padded="{{ false }}">
+        <twig:studio:table headers="{{ [
+            'pages.column.title'|trans,
+            'pages.column.template'|trans,
+            'pages.column.status'|trans,
+            'pages.column.updated_at'|trans,
+            '',
+        ] }}" empty="{{ pages is empty }}" emptyText="{{ 'pages.empty'|trans }}">
+            <twig:block name="rows">
+                {% for page in pages %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('admin_pages_edit', {id: page.id}) }}" class="font-medium text-neutral-900 hover:text-primary-600">
+                                {{ page.title }}
+                            </a>
+                            <p class="text-fs-xs text-neutral-500">/{{ page.locale }}/{{ page.slug }}</p>
+                        </td>
+                        <td>
+                            <span class="badge badge-neutral">
+                                {{ ('pages.template.'~(page.getDataValue('template', 'default')))|trans }}
+                            </span>
+                        </td>
+                        <td>
+                            <twig:studio:badge status="{{ page.status }}" />
+                        </td>
+                        <td class="text-fs-xs text-neutral-500">
+                            {{ page.updatedAt|date('d.m.Y H:i') }}
+                        </td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ path('admin_pages_edit', {id: page.id}) }}" class="btn btn-sm btn-neutral">
+                                    {{ 'aacp.users.edit_action'|trans }}
+                                </a>
+
+                                {% if page.status != 'published' %}
+                                    <form method="post" action="{{ path('admin_pages_publish', {id: page.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('admin_page_form') }}">
+                                        <button type="submit" class="btn btn-sm !bg-success-600 !text-white hover:!bg-success-700">
+                                            {{ 'pages.publish'|trans }}
+                                        </button>
+                                    </form>
+                                {% endif %}
+
+                                <form method="post" action="{{ path('admin_pages_delete', {id: page.id}) }}"
+                                      onsubmit="return confirm({{ 'pages.delete_confirm'|trans|json_encode|raw }});">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_page_form') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        {{ 'aacp.cron.delete'|trans }}
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </twig:block>
+        </twig:studio:table>
+    </twig:studio:card>
+
+    <twig:studio:pagination result="{{ pages }}" route="admin_pages_index" />
+{% endblock %}

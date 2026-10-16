@@ -1,0 +1,49 @@
+{#
+    <twig:cp:translation_tabs
+        tabs="{{ translationTabs }}"
+        editRoute="admin_forum_sections_edit"
+        createRoute="admin_forum_sections_create"
+        sourceId="{{ section.id }}" />
+
+    Phase 3 — translation group locale strip (AACP / dark palette).
+
+    Shows all locale variants in one row; links to edit or create translation forms.
+    Entity-agnostic; data from TranslationGroupResolver::tabsFor().
+
+    Props: tabs, editRoute, createRoute, sourceId, extraParams
+#}
+{% props tabs = [], editRoute = null, createRoute = null, sourceId = null, extraParams = {} %}
+
+{% if tabs|length > 1 %}
+    <div {{ attributes.defaults({class: 'flex flex-wrap items-center gap-1 border-b border-white/10 pb-2'}) }}>
+        <span class="me-2 text-fs-xs uppercase tracking-wider !text-slate-600">
+            {{ 'cp.translation_tabs.label'|trans }}
+        </span>
+
+        {% for tab in tabs %}
+            {% if tab.isCurrent %}
+                <span class="rounded-t-md border-b-2 border-primary-500 px-3 py-1.5 text-fs-sm font-medium text-primary-400">
+                    {{ tab.nativeName }}
+                    <span class="font-mono text-fs-xs uppercase !text-slate-600">{{ tab.code }}</span>
+                </span>
+            {% elseif tab.exists and editRoute %}
+                <a href="{{ path(editRoute, extraParams|merge({id: tab.id})) }}"
+                   title="{{ tab.label ?? tab.nativeName }}"
+                   class="rounded-t-md border-b-2 border-transparent px-3 py-1.5 text-fs-sm font-medium !text-slate-400 hover:!bg-white/5 hover:!text-slate-200">
+                    {{ tab.nativeName }}
+                    <span class="font-mono text-fs-xs uppercase !text-slate-600">{{ tab.code }}</span>
+                </a>
+            {% elseif createRoute and sourceId is not null %}
+                <a href="{{ path(createRoute, extraParams|merge({locale: tab.code, translation_of: sourceId})) }}"
+                   title="{{ 'cp.translation_tabs.add_hint'|trans({locale: tab.nativeName}) }}"
+                   class="rounded-t-md border-b-2 border-dashed border-white/20 px-3 py-1.5 text-fs-sm font-medium !text-slate-500 hover:!border-primary-500/60 hover:!text-primary-300">
+                    + {{ tab.nativeName }}
+                </a>
+            {% else %}
+                <span class="rounded-t-md border-b-2 border-transparent px-3 py-1.5 text-fs-sm !text-slate-700">
+                    {{ tab.nativeName }}
+                </span>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endif %}

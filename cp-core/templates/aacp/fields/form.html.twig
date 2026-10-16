@@ -1,0 +1,164 @@
+{% extends 'aacp/layout.html.twig' %}
+
+{% set editing = definition is not null %}
+
+{% block header %}{{ editing ? 'aacp.fields.form.header_edit'|trans : 'aacp.fields.form.header_create'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="space-y-sp-md lg:w-[61.8%]">
+        {% if error %}<div class="toast toast-error">{{ error }}</div>{% endif %}
+
+        <twig:cp:card title="{{ 'aacp.fields.form.section_info'|trans }}">
+            <form method="post" action="{{ path('aacp_fields_save') }}" class="space-y-sp-sm">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <input type="hidden" name="bundle" value="{{ bundle }}">
+
+                <div class="grid gap-sp-sm md:grid-cols-2">
+                    <div>
+                        <label class="form-label !text-slate-400">{{ 'aacp.fields.form.name'|trans }}</label>
+                        {% if editing %}
+                            <input type="text" name="name" value="{{ definition.name }}" readonly
+                                   class="form-control !border-white/10 !bg-dark-2 font-mono !text-slate-400">
+                        {% else %}
+                            <input type="text" name="name" required pattern="[a-z][a-z0-9_]{0,62}"
+                                   placeholder="subtitle" class="form-control !border-white/10 !bg-dark-1 font-mono !text-slate-100">
+                        {% endif %}
+                        <p class="mt-1 text-fs-xs !text-slate-600">{{ 'aacp.fields.form.name_help'|trans }}</p>
+                    </div>
+                    <div>
+                        <label class="form-label !text-slate-400">{{ 'aacp.fields.form.type'|trans }}</label>
+                        {% if editing %}
+                            <input type="text" name="type" value="{{ typeChoices[type]|default(type)|trans }}" readonly
+                                   class="form-control !border-white/10 !bg-dark-2 !text-slate-400">
+                            <input type="hidden" name="type" value="{{ type }}">
+                        {% else %}
+                            <select name="type" class="form-select !border-white/10 !bg-dark-1 !text-slate-100"
+                                    onchange="window.location = '{{ path('aacp_fields_new', {bundle: bundle}) }}?type=' + encodeURIComponent(this.value)">
+                                {% for id, labelKey in typeChoices %}
+                                    <option value="{{ id }}" {{ id == type ? 'selected' : '' }}>{{ labelKey|trans }}</option>
+                                {% endfor %}
+                            </select>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label !text-slate-400">{{ 'aacp.fields.form.label'|trans }}</label>
+                    <input type="text" name="label" value="{{ editing ? definition.label : '' }}" maxlength="191"
+                           class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                </div>
+
+                <div>
+                    <label class="form-label !text-slate-400">{{ 'aacp.fields.form.help'|trans }}</label>
+                    <input type="text" name="help" value="{{ editing ? definition.help : '' }}" maxlength="500"
+                           class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                </div>
+
+                <div class="grid gap-sp-sm md:grid-cols-3">
+                    <div>
+                        <label class="form-label !text-slate-400">{{ 'aacp.fields.form.cardinality'|trans }}</label>
+                        <input type="text" name="cardinality"
+                               value="{{ editing ? (definition.cardinality == -1 ? 'unlimited' : definition.cardinality) : '1' }}"
+                               class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                        <p class="mt-1 text-fs-xs !text-slate-600">{{ 'aacp.fields.form.cardinality_help'|trans }}</p>
+                    </div>
+                    <div>
+                        <label class="form-label !text-slate-400">{{ 'aacp.fields.form.field_group'|trans }}</label>
+                        <input type="text" name="field_group" value="{{ editing ? definition.fieldGroup : '' }}" maxlength="64"
+                               class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                    </div>
+                    <div>
+                        <label class="form-label !text-slate-400">{{ 'aacp.fields.form.weight'|trans }}</label>
+                        <input type="number" name="weight" value="{{ editing ? definition.weight : 0 }}"
+                               class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-x-6 gap-y-2">
+                    <label class="inline-flex items-center gap-2 text-fs-sm !text-slate-300">
+                        <input type="checkbox" name="required" value="1" {{ editing and definition.required ? 'checked' : '' }}
+                               class="form-check-input h-4 w-4 !border-white/10 !bg-dark-1 text-primary-500">
+                        {{ 'aacp.fields.form.required'|trans }}
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-fs-sm !text-slate-300">
+                        <input type="checkbox" name="translatable" value="1" {{ (not editing) or definition.translatable ? 'checked' : '' }}
+                               class="form-check-input h-4 w-4 !border-white/10 !bg-dark-1 text-primary-500">
+                        {{ 'aacp.fields.form.translatable'|trans }}
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-fs-sm !text-slate-300">
+                        <input type="checkbox" name="queryable" value="1" {{ editing and definition.queryable ? 'checked' : '' }}
+                               class="form-check-input h-4 w-4 !border-white/10 !bg-dark-1 text-primary-500">
+                        {{ 'aacp.fields.form.queryable'|trans }}
+                    </label>
+                </div>
+
+                {% if settingsSchema is not empty %}
+                    <div class="rounded-lg border border-white/5 p-sp-sm space-y-sp-xs">
+                        <p class="text-fs-xs font-semibold uppercase tracking-wide !text-slate-500">{{ 'aacp.fields.form.settings'|trans }}</p>
+                        {% for s in settingsSchema %}
+                            {% set current = editing ? definition.getSetting(s.name, s.default) : s.default %}
+                            <div>
+                                <label class="form-label !text-slate-400">{{ s.label|trans }}</label>
+                                {% if s.name == 'target' and referenceTargets is not empty %}
+                                    <select name="settings[{{ s.name }}]" class="form-select !border-white/10 !bg-dark-1 !text-slate-100">
+                                        {% for value, tlabel in referenceTargets %}
+                                            <option value="{{ value }}" {{ value == current ? 'selected' : '' }}>{{ tlabel }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% elseif s.type == 'select' %}
+                                    <select name="settings[{{ s.name }}]" class="form-select !border-white/10 !bg-dark-1 !text-slate-100">
+                                        {% for value, clabel in s.choices|default({}) %}
+                                            <option value="{{ value }}" {{ value == current ? 'selected' : '' }}>{{ clabel|trans }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <label class="inline-flex items-center gap-2 text-fs-sm !text-slate-300">
+                                        <input type="checkbox" name="settings[{{ s.name }}]" value="1" {{ current ? 'checked' : '' }}
+                                               class="form-check-input h-4 w-4 !border-white/10 !bg-dark-1 text-primary-500">
+                                    </label>
+                                {% elseif s.type == 'textarea' %}
+                                    <textarea name="settings[{{ s.name }}]" rows="4"
+                                              class="form-control !border-white/10 !bg-dark-1 font-mono text-fs-xs !text-slate-100">{{ current }}</textarea>
+                                {% else %}
+                                    <input type="text" name="settings[{{ s.name }}]" value="{{ current }}"
+                                           class="form-control !border-white/10 !bg-dark-1 !text-slate-100">
+                                {% endif %}
+                                {% if s.help is defined %}<p class="mt-1 text-fs-xs !text-slate-600">{{ s.help|trans }}</p>{% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <details class="rounded-lg border border-white/5 p-sp-sm">
+                    <summary class="cursor-pointer text-fs-xs font-semibold uppercase tracking-wide !text-slate-500">{{ 'aacp.fields.form.access'|trans }}</summary>
+                    <div class="mt-sp-xs grid gap-sp-sm md:grid-cols-2">
+                        <div>
+                            <label class="form-label !text-slate-400">{{ 'aacp.fields.form.view_capability'|trans }}</label>
+                            <input type="text" name="view_capability" value="{{ editing ? definition.viewCapability : '' }}"
+                                   class="form-control !border-white/10 !bg-dark-1 font-mono text-fs-xs !text-slate-100">
+                        </div>
+                        <div>
+                            <label class="form-label !text-slate-400">{{ 'aacp.fields.form.edit_capability'|trans }}</label>
+                            <input type="text" name="edit_capability" value="{{ editing ? definition.editCapability : '' }}"
+                                   class="form-control !border-white/10 !bg-dark-1 font-mono text-fs-xs !text-slate-100">
+                        </div>
+                    </div>
+                </details>
+
+                <div class="flex items-center gap-3 pt-sp-xs">
+                    <button type="submit" class="btn btn-primary">{{ 'aacp.settings.save'|trans }}</button>
+                    <a href="{{ path('aacp_fields_bundle', {bundle: bundle}) }}" class="text-fs-sm !text-slate-400 hover:!text-slate-200">{{ 'aacp.cron.form.cancel'|trans }}</a>
+                </div>
+            </form>
+        </twig:cp:card>
+
+        {% if editing %}
+            <twig:cp:card title="{{ 'aacp.fields.form.danger'|trans }}">
+                <form method="post" action="{{ path('aacp_fields_delete', {bundle: bundle, name: definition.name}) }}"
+                      onsubmit="return confirm({{ 'aacp.fields.delete_confirm'|trans({'field': definition.name})|json_encode|raw }});">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <button type="submit" class="text-fs-sm font-medium !text-danger-400 hover:!text-danger-300">{{ 'aacp.fields.form.delete'|trans }}</button>
+                </form>
+            </twig:cp:card>
+        {% endif %}
+    </div>
+{% endblock %}

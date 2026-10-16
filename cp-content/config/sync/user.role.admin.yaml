@@ -1,0 +1,9 @@
+# CPalius role config — NOT in the DB; lives here (cp-content/config/sync/) for VCS and portability.
+# File naming: user.role.<id>.yaml — <id> must match User::$roles (see RoleConfigManager).
+role:
+    id: admin
+    label: 'role.label.admin'
+    # '*' wildcard: all registry capabilities (system.developer, node.post.*, etc.; see capabilities.yaml).
+    # Still validated via CapabilityRegistry::has(); missing or removed capabilities drop automatically.
+    capabilities:
+        - '*'

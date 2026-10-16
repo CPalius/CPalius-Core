@@ -1,0 +1,22 @@
+                    <section class="aacp-cmd-panel{{ hiddenWidgets["telemetry.top_ips"] is defined ? ' is-collapsed' }}" data-aacp-widget="telemetry.top_ips" data-card-id="telemetry.top_ips">
+                        <h3 class="aacp-cmd-panel-title">{{ 'aacp.telemetry.top_ips.title'|trans }}</h3>
+                        <ul class="aacp-top-ips" data-telemetry-top-ips>
+                            {% if topThreatIps is empty %}
+                                <li class="!text-slate-500">{{ 'aacp.telemetry.top_ips.empty'|trans }}</li>
+                            {% else %}
+                                {% for ip in topThreatIps %}
+                                    <li data-ip="{{ ip.ip }}">
+                                        <div>
+                                            <span class="font-mono text-slate-100">{{ ip.ip }}</span>
+                                            <span class="ms-2 font-mono text-slate-500">{{ ip.score }} · {{ ip.hits }}</span>
+                                        </div>
+                                        {% if ip.banned %}
+                                            <span class="aacp-sev aacp-sev-threat">{{ 'aacp.telemetry.banned'|trans }}</span>
+                                        {% else %}
+                                            <button type="button" class="aacp-cyber-btn !py-0.5" data-ban-ip="{{ ip.ip }}">{{ 'aacp.telemetry.ban'|trans }}</button>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            {% endif %}
+                        </ul>
+                    </section>

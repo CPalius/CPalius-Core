@@ -1,0 +1,51 @@
+{#
+    "Confirm it is you" before a sensitive action. Standalone for the same reason as the gate: it must not
+    render the panel menu for a session we have just decided not to trust yet.
+#}
+<!DOCTYPE html>
+<html lang="{{ app.request.locale }}" class="h-full">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{{ 'aacp.reauth.title'|trans }}</title>
+        <meta name="robots" content="noindex, nofollow">
+        <link rel="stylesheet" href="{{ cp_asset('styles/app.css') }}">
+    </head>
+    <body class="h-full bg-dark-1 text-slate-100 antialiased text-fs-base font-sans">
+        <main class="flex min-h-full items-center justify-center px-sp-sm py-sp-lg">
+            <div class="w-full max-w-md space-y-sp-sm">
+                <div class="rounded-xl border border-white/10 !bg-dark-2 p-sp-md shadow-lg">
+                    <h1 class="text-fs-lg font-semibold !text-slate-100">{{ 'aacp.reauth.heading'|trans }}</h1>
+                    <p class="mt-1 text-fs-sm !text-slate-400">{{ 'aacp.reauth.desc'|trans }}</p>
+
+                    {% if error %}
+                        <p class="mt-sp-sm rounded-lg border border-danger-500/30 !bg-danger-500/10 px-3 py-2 text-fs-sm !text-danger-200" role="alert">{{ error }}</p>
+                    {% endif %}
+
+                    <form method="post" action="{{ path('aacp_reauth') }}" class="mt-sp-sm space-y-sp-sm">
+                        <div>
+                            <label class="form-label !text-slate-400" for="reauth-password">{{ 'aacp.reauth.password'|trans }}</label>
+                            <input type="password" id="reauth-password" name="password" required autofocus autocomplete="current-password"
+                                   class="form-control w-full !border-white/10 !bg-dark-1 !text-slate-100">
+                        </div>
+                        {% if second_factor %}
+                            <div>
+                                <label class="form-label !text-slate-400" for="reauth-code">{{ 'aacp.reauth.code'|trans }}</label>
+                                <input type="text" id="reauth-code" name="code" required inputmode="numeric" autocomplete="one-time-code" spellcheck="false"
+                                       class="form-control w-full !border-white/10 !bg-dark-1 !text-slate-100">
+                            </div>
+                        {% endif %}
+
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="next" value="{{ next }}">
+
+                        <div class="flex items-center justify-between gap-3">
+                            <a href="/aacp" class="text-fs-xs !text-slate-500 underline hover:!text-slate-300">{{ 'aacp.reauth.cancel'|trans }}</a>
+                            <button type="submit" class="btn btn-primary">{{ 'aacp.reauth.submit'|trans }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </body>
+</html>

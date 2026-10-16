@@ -1,0 +1,100 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.permissions.header'|trans({}, 'forums') }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_dashboard') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.permissions.action.dashboard'|trans({}, 'forums') }}</a>
+    <a href="{{ path('admin_forum_sections_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.dashboard.action.sections'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+    <twig:studio:locale_filter locales="{{ locales }}" current="{{ currentLocale }}" route="admin_forum_permissions_index" extraParams="{{ section ? {section: section.id} : {} }}" />
+
+    <div class="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <twig:studio:card padded="{{ false }}">
+            <div class="border-b border-neutral-200 px-4 py-3 text-fs-sm font-medium text-neutral-800">
+                {{ 'studio.forum.permissions.pick_section'|trans({}, 'forums') }}
+            </div>
+            <nav class="max-h-[70vh] overflow-y-auto py-2">
+                {% for row in tree %}
+                    {% set node = row.section %}
+                    <a href="{{ path('admin_forum_permissions_index', {locale: currentLocale, section: node.id}) }}"
+                       class="flex items-center gap-2 px-4 py-1.5 text-fs-sm {{ section and section.id == node.id ? 'bg-primary-50 text-primary-800 font-medium' : 'text-neutral-700 hover:bg-neutral-50' }}"
+                       style="padding-left: {{ 16 + row.depth * 14 }}px">
+                        {{ node.title }}
+                    </a>
+                {% else %}
+                    <p class="px-4 py-6 text-fs-sm text-neutral-500">{{ 'studio.forum.permissions.empty'|trans({}, 'forums') }}</p>
+                {% endfor %}
+            </nav>
+        </twig:studio:card>
+
+        {% if section %}
+            <form method="post" id="forum-permissions-form">
+                <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_permissions') }}">
+                <input type="hidden" name="locale" value="{{ currentLocale }}">
+                <input type="hidden" name="section" value="{{ section.id }}">
+
+                <twig:studio:card padded="{{ false }}">
+                    <div class="border-b border-neutral-200 px-4 py-3">
+                        <h2 class="text-fs-base font-semibold text-neutral-900">{{ section.title }}</h2>
+                        <p class="mt-1 text-fs-sm text-neutral-600">{{ 'studio.forum.permissions.hint'|trans({}, 'forums') }}</p>
+                    </div>
+
+                    {% for groupKey, permissions in {
+                        'content': contentPermissions,
+                        'moderate': moderatePermissions
+                    } %}
+                        <div class="overflow-x-auto {{ not loop.first ? 'border-t border-neutral-200' : '' }}">
+                            <p class="bg-neutral-50 px-4 py-2 text-fs-xs font-semibold uppercase tracking-wide text-neutral-500">
+                                {{ ('studio.forum.permissions.group.' ~ groupKey)|trans({}, 'forums') }}
+                            </p>
+                            <table class="w-full text-left text-fs-sm">
+                                <thead class="bg-neutral-50 text-fs-xs uppercase tracking-wide text-neutral-500">
+                                    <tr>
+                                        <th class="sticky left-0 z-10 bg-neutral-50 px-4 py-2 font-medium">{{ 'studio.forum.permissions.col.role'|trans({}, 'forums') }}</th>
+                                        {% for perm in permissions %}
+                                            <th class="px-2 py-2 text-center font-medium whitespace-nowrap">
+                                                {{ ('studio.forum.permissions.perm.' ~ perm)|trans({}, 'forums') }}
+                                            </th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for role in roles %}
+                                        <tr class="border-t border-neutral-100">
+                                            <td class="sticky left-0 z-10 bg-white px-4 py-2 font-medium text-neutral-900 whitespace-nowrap">
+                                                {{ ('studio.forum.permissions.role.' ~ role.id)|trans({}, 'forums') != 'studio.forum.permissions.role.' ~ role.id
+                                                    ? ('studio.forum.permissions.role.' ~ role.id)|trans({}, 'forums')
+                                                    : role.label }}
+                                            </td>
+                                            {% for perm in permissions %}
+                                                {% set current = cells[role.id][perm]|default('inherit') %}
+                                                <td class="px-1 py-1.5">
+                                                    <select name="matrix[{{ role.id }}][{{ perm }}]"
+                                                            class="form-select text-fs-xs {{ current == 'allow' ? 'border-success-300 bg-success-50' : (current == 'deny' ? 'border-danger-300 bg-danger-50' : '') }}">
+                                                        {% for effect in effects %}
+                                                            <option value="{{ effect }}" {{ current == effect ? 'selected' : '' }}>
+                                                                {{ ('studio.forum.permissions.effect.' ~ effect)|trans({}, 'forums') }}
+                                                            </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </td>
+                                            {% endfor %}
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endfor %}
+
+                    <div class="flex items-center justify-end gap-2 border-t border-neutral-200 px-4 py-3">
+                        <p class="mr-auto text-fs-xs text-neutral-500">{{ 'studio.forum.permissions.save_hint'|trans({}, 'forums') }}</p>
+                        <button type="submit" class="btn btn-sm btn-primary">{{ 'studio.forum.permissions.save'|trans({}, 'forums') }}</button>
+                    </div>
+                </twig:studio:card>
+            </form>
+        {% endif %}
+    </div>
+{% endblock %}

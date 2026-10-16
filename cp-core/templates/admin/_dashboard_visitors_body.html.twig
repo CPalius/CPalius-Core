@@ -1,0 +1,28 @@
+{# Inside of the visitor statistics card. Expects: visitors (array). #}
+<dl class="studio-ledger">
+    <div><dt>{{ 'studio.dashboard.visitors.views_today'|trans }}</dt><dd>{{ visitors.views|number_format(0, ',', '.') }}</dd></div>
+    <div><dt>{{ 'studio.dashboard.visitors.unique_today'|trans }}</dt><dd>{{ visitors.unique|number_format(0, ',', '.') }}</dd></div>
+    <div><dt>{{ 'studio.dashboard.visitors.last_24h'|trans }}</dt><dd>{{ visitors.last24h|number_format(0, ',', '.') }}</dd></div>
+    {% if visitors.peakHits > 0 %}
+        <div><dt>{{ 'studio.dashboard.visitors.peak'|trans }}</dt><dd>{{ visitors.peakLabel }} · {{ visitors.peakHits }}</dd></div>
+    {% endif %}
+</dl>
+
+{% if visitors.bars is not empty %}
+    {# One bar per hour, oldest to newest. Drawn from attributes, not a
+       chart library: it costs nothing to load and no inline style. #}
+    <svg class="mt-3 block h-12 w-full" viewBox="0 0 {{ visitors.bars|length * 10 }} 48" preserveAspectRatio="none" role="img"
+         aria-label="{{ 'studio.dashboard.visitors.chart_label'|trans }}" fill="currentColor">
+        {% for bar in visitors.bars %}
+            {% set h = max(1, (bar.pct * 0.44)|round(1)) %}
+            <rect x="{{ loop.index0 * 10 }}" y="{{ 46 - h }}" width="8" height="{{ h }}" rx="1" opacity="{{ bar.hits > 0 ? '0.75' : '0.18' }}">
+                <title>{{ bar.label }} — {{ bar.hits }}</title>
+            </rect>
+        {% endfor %}
+    </svg>
+    <p class="mt-1 text-fs-xs opacity-60">{{ 'studio.dashboard.visitors.chart_caption'|trans }}</p>
+{% endif %}
+
+{% if is_granted('system.aacp.access') %}
+    <a href="{{ path('aacp_visitor_stats_index') }}" class="mt-2 inline-block text-fs-xs font-medium underline-offset-2 hover:underline">{{ 'studio.dashboard.visitors.details'|trans }} →</a>
+{% endif %}

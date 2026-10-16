@@ -1,0 +1,66 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Modules\Blog\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    # Form/ must be scanned so PostType receives the form.type tag.
+    Modules\Blog\Form\:
+        resource: '../../Form/'
+
+    # Aacp/ system widget providers (autoconfigure tag).
+    Modules\Blog\Aacp\:
+        resource: '../../Aacp/'
+
+    # Plugin/ implementations for PluginRegistry.
+    Modules\Blog\Plugin\:
+        resource: '../../Plugin/'
+
+    # Twig/ extensions (autoconfigure twig.extension).
+    Modules\Blog\Twig\:
+        resource: '../../Twig/'
+
+    Modules\Blog\Service\:
+        resource: '../../Service/'
+
+    # Settings/ holds the #[CpSetting] carrier (not a service) and the runtime
+    # variant provider, which is one — the carrier is skipped as it has no
+    # constructor dependencies and nothing ever fetches it.
+    Modules\Blog\Settings\:
+        resource: '../../Settings/'
+
+    Modules\Blog\Repository\:
+        resource: '../../Repository/'
+
+    Modules\Blog\Command\:
+        resource: '../../Command/'
+
+    # Hooks/ #[CpHook] listeners — HookRegistrationPass only sees container services.
+    Modules\Blog\Hooks\:
+        resource: '../../Hooks/'
+
+    # Api/ #[CpApi] endpoints — ApiRegistrationPass only sees container services.
+    Modules\Blog\Api\:
+        resource: '../../Api/'
+
+    # Cron/ #[CpCronJob] tasks — CronRegistrationPass only sees container services.
+    Modules\Blog\Cron\:
+        resource: '../../Cron/'
+
+    # Studio overview stats providers.
+    Modules\Blog\Studio\:
+        resource: '../../Studio/'
+
+    Modules\Blog\Rebuild\:
+        resource: '../../Rebuild/'
+
+    Modules\Blog\Portal\:
+        resource: '../../Portal/'
+
+    # Migrate/ destinations for the core Migrate API. Blog owns BlogComment, so
+    # Blog owns what it means to write one; an importer supplies the source.
+    Modules\Blog\Migrate\:
+        resource: '../../Migrate/'

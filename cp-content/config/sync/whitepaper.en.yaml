@@ -1,0 +1,511 @@
+title: 'CPalius CMF: Evolving from a Content Management System into a "Bulletproof" Enterprise Application Framework'
+version: v1.3.0
+intro_html: |
+    <p><strong>Publication Type:</strong> Technical Review (Whitepaper) &amp; Architectural Roadmap (RFC)<br>
+    <strong>Version:</strong> v1.2.0<br>
+    <strong>Audience:</strong> Senior PHP Developers, System Architects, Open Source Contributors, and AI Agents<br>
+    <strong>Author / Founder:</strong> Ali Çömez (slaweally)<br>
+    <strong>Technology Stack:</strong> PHP 8.4+, Symfony 7.4 LTS, Doctrine ORM, AssetMapper, Tailwind CSS Standalone Binary</p>
+
+    <p><strong>Introduction: Theory, Practice, and the Pain of "Reinventing the Wheel"</strong></p>
+
+    <p>When starting a new project in the modern web ecosystem, developers always find themselves on a double-edged sword. On one side are classic CMS platforms (WordPress, Drupal) packed with ready-made plugin and theme systems, yet burdened with clumsy database schemas, mountains of technical debt, and security weaknesses. On the other side are pure modern frameworks (Symfony, Laravel) that force you to start from scratch&mdash;rewriting auth, ACL, file management, and admin panels on every project and burning time in the process.</p>
+
+    <p>Building your own MVC stack from zero may sound romantic, but it is not rational by today's standards. A framework is not just routing and controllers; it carries a massive "invisible iceberg" of security (CSRF, XSS, SQLi prevention), Dependency Injection (DI) Container management, and the HTTP layer.</p>
+
+    <p>CPalius was born to bridge these two worlds&mdash;to free developers from reinventing the wheel while giving them a world-class, optimized, secure, and extensible foundation. This document is a detailed account of CPalius's technical journey: from the cleanest skeleton install, through a "never-crashing" operating-system architecture, to the path from a CMS toward an Enterprise Application Framework.</p>
+sections:
+    -
+        slug: pristine-root
+        title: 'Section 1: "Pristine Root" and Folder Architecture'
+        weight: 10
+        body_html: |
+            <p>In a standard Symfony project, as third-party packages and recipes are installed, the project root turns into a dump of files and folders. The developer's own code mixes with the framework's system files. From day one, CPalius declared war on that chaos and adopted the "Pristine Root" policy.</p>
+
+            <p>We isolated the entire architecture so that the root retains only four fundamental folders that make clear what lives where, plus the <code>.env</code> file and <code>composer.json</code>.</p>
+
+            <p><strong>Folder Hierarchy</strong></p>
+
+            <pre><code>CPalius/ (Root)
+            |
+            |-- cp-core/       # === KERNEL &amp; SYSTEM SPACE ===
+            |   |-- bin/          # Console command tool (bin/console)
+            |   |-- config/       # Core configuration (bundles, packages, routes)
+            |   |-- migrations/   # Core database migration files (tracked in Git)
+            |   |-- src/          # Core PHP classes (App\ namespace)
+            |   `-- var/          # Cache, logs, and SQLite files (writable, gitignored)
+            |
+            |-- cp-includes/   # === DEPENDENCIES SPACE ===
+            |   `-- vendor/       # Composer packages (Symfony and libraries)
+            |
+            |-- cp-content/    # === USER &amp; DEVELOPER SPACE ===
+            |   |-- config/       # Config Sync area (infrastructure shipped as YAML)
+            |   |-- modules/      # Independent modules/plugins (Modules\ namespace)
+            |   |-- themes/       # User interface themes
+            |   `-- translations/ # Global UI translations (tr, en)
+            |
+            |-- public/        # === WEB ROOT === (the only publicly exposed folder)
+            |   |-- index.php     # Front Controller (single entry point)
+            |   `-- assets/       # Compiled / symlink'ed frontend assets
+            |
+            |-- .env           # Environment configuration
+            `-- composer.json  # CPalius custom path mappings
+            </code></pre>
+
+            <p><strong>Bending Symfony Flex's Internals</strong></p>
+
+            <p>To make this layout work, we pushed Symfony Flex and Composer's configuration capabilities to their limits. We configured <code>composer.json</code> so Flex would follow our folder structure: the <code>vendor-dir</code>, <code>bin-dir</code>, and the <code>extra</code> block parameters (<code>config-dir</code>, <code>src-dir</code>, <code>var-dir</code>, <code>public-dir</code>, and the runtime <code>project_dir</code> / <code>dotenv_path</code>).</p>
+
+            <p><strong>Technical Note:</strong> Changing only <code>config.vendor-dir</code> is not enough. Commands inside Symfony Flex (<code>cache:clear</code>, <code>assets:install</code>) resolve paths from parameters under the <code>extra</code> block&mdash;not from Composer's standard config. Without those parameters, the system crashed at compile time. This guarantees that all Flex recipes install directly under <code>cp-core</code>.</p>
+    -
+        slug: core-never-dies
+        title: 'Section 2: "Core Never Dies" Architecture'
+        weight: 20
+        body_html: |
+            <p>When building a CMF, the worst nightmare is poorly written or broken code from the user space (<code>cp-content/modules</code>) locking up the entire system. Because PHP has no true OS-level sandbox, CPalius developed a multi-tier Active Defense and Quarantine Line.</p>
+
+            <p><strong>Defense Line 1: Solving the Chicken-and-Egg Problem (bundles.php)</strong></p>
+
+            <p>When Symfony boots, it first reads <code>config/bundles.php</code>. At that stage the database connection, service container, and autoloader are not fully up yet. If we tried to read module active state directly from the database, the system would lock before it could even boot.</p>
+
+            <p><strong>Solution:</strong> When a module is activated or deactivated, CPalius generates a static, PHP opcache-friendly array file at <code>cp-core/config/active_modules.php</code>. <code>bundles.php</code> only reads that file; the core bundles are always present and each declared module class is added only when <code>class_exists()</code> succeeds.</p>
+
+            <p><strong>Defense Line 2: Runtime Isolation (Kernel::boot Override)</strong></p>
+
+            <p>A class physically existing (<code>class_exists</code>) does not mean that module's code runs without errors. A <code>TypeError</code> or <code>RuntimeException</code> thrown inside the module's own <code>boot()</code> method can crash the entire system. To prevent that, <code>Kernel::boot()</code> is overridden so every module-level boot process is wrapped in a <code>try/catch (\Throwable)</code> shield; a failing module is written to the quarantine log while the core keeps running.</p>
+
+            <p><strong>Defense Line 3: Compile-Time Lock Protection &amp; Dry-Run</strong></p>
+
+            <p>If a plugin's <code>services.yaml</code> has invalid YAML syntax or a wrong Dependency Injection (autowire) definition, the Symfony container cannot compile. The system then crashes, and you cannot even run <code>cp:module:deactivate</code> from the terminal.</p>
+
+            <p><strong>Solution:</strong> An isolated Dry-Run check is integrated into module activation. The module class is written temporarily, a fully isolated subprocess is started with <code>symfony/process</code>, and it runs <code>cache:clear --no-warmup</code> &rarr; <code>lint:yaml</code> &rarr; <code>lint:container</code>. On a non-zero exit code the main process restores the file in a <code>finally</code> block, cancels activation, and permanently quarantines the module. The file is never left in a broken state.</p>
+
+            <p><strong>Defense Line 4: Isolated Route Loader</strong></p>
+
+            <p>In standard Symfony, a syntax error in a module's <code>routes.yaml</code> crashes the whole system at route-loading time. <code>SafeModuleRouteLoader</code> loads each module's routes inside an isolated try/catch block, so a faulty module is skipped while the rest of the system stays fully available.</p>
+    -
+        slug: hybrid-data
+        title: 'Section 3: Hybrid Data Model and High-Performance Flat Index System'
+        weight: 30
+        body_html: |
+            <p>Both classic approaches to content management are problematic:</p>
+
+            <ul>
+            <li><strong>EAV (Entity-Attribute-Value) Model (Drupal):</strong> Every new field opens a new database table. Fetching a page with 15 custom fields requires 15 JOIN queries; the database locks up.</li>
+            <li><strong>Postmeta / Serialized Model (WordPress):</strong> All custom fields live row-by-row in a single meta table. Filtering and sorting become a performance disaster.</li>
+            </ul>
+
+            <p><strong>CPalius Hybrid Data Model:</strong> Frequently queried, filtered, and indexed core fields (ID, Title, Slug, Type, Status, Locale, Dates) are stored as real database columns. All dynamic, flexible, project-specific content fields (body text, featured image, gallery fields, SEO data) live in a single SQL <code>json</code> column (<code>data</code>).</p>
+
+            <p><strong>The Indexing Deadlock Across SQLite, MySQL, and Postgres</strong></p>
+
+            <p>If you want to query dynamic JSON data at the database level, SQLite, MySQL, and Postgres require completely different SQL syntax. Building indexes on generated columns is also extremely fragile with Doctrine ORM schema tools; Doctrine tries to drop those indexes on every schema update.</p>
+
+            <p><strong>Solution: NodeFieldIndex and the Dynamic Indexing Engine</strong></p>
+
+            <p>CPalius solves this with a Flat Field Index table and a Doctrine Event Listener. A standalone index table carries type-appropriate columns (<code>value_string</code>, <code>value_int</code>, <code>value_decimal</code>, <code>value_datetime</code>) for queryable dynamic fields, each backed by a compound index on <code>field_name</code>.</p>
+
+            <p>According to the developer-defined <code>QueryableFieldsRegistry</code> configuration, when a Node is saved or updated, the <code>NodeIndexListener</code> automatically parses the JSON <code>data</code> column, clears old indexes, and writes them idempotently to the helper table on <code>postPersist</code> / <code>postUpdate</code>.</p>
+
+            <p>Regardless of which database engine is used, JSON-backed data can then be queried at lightning speed through indexes with a single standard SQL/DQL query via <code>NodeRepository::findByIndexedField()</code> (type, locale, fieldName, value, valueColumn, operator).</p>
+    -
+        slug: i18n
+        title: 'Section 4: Multilingual Structure and Composite Uniqueness Constraints'
+        weight: 40
+        body_html: |
+            <p>When multilingual (i18n) support is bolted on later, it collapses the entire data model. CPalius baked multilanguage into the core from day one.</p>
+
+            <p><strong>Composite Unique Constraints (Uniqueness Guarantee)</strong></p>
+
+            <p>In a multilingual setup, classic <code>unique: true</code> constraints lock the system. For example, Turkish <code>/tr/hakkimizda</code> and English <code>/en/hakkimizda</code> must be allowed to exist at the same time. A single global unique slug constraint blocks that.</p>
+
+            <p><strong>CPalius Solution:</strong> We use composite uniqueness constraints in the database schema:</p>
+
+            <ul>
+            <li><strong>Routing uniqueness:</strong> The same slug must be unique only within the same locale: <code>UNIQUE(slug, locale)</code>.</li>
+            <li><strong>Translation group uniqueness:</strong> Within the same translation group, only one piece of content may exist per locale: <code>UNIQUE(translation_group_id, locale)</code>.</li>
+            </ul>
+
+            <p>The same guarantee is carried to four more entities (categories, tags, menu_items, forum_sections) via <code>UNIQUE(translation_group_id, locale)</code>, so the database itself enforces "one record per locale per translation group" even under concurrent requests.</p>
+
+            <p><strong>Operator UI catalogues</strong></p>
+
+            <p>AACP and Studio chrome is bound to ICU YAML under <code>cp-content/translations</code> and each module's <code>Resources/translations</code>. Sidebar labels and <code>#[CpAdminMenu]</code> attributes use translation keys. Hardcoded Turkish (or English) operator strings do not live in PHP, Twig chrome, or JavaScript.</p>
+    -
+        slug: entity-model
+        title: 'Section 5: From "CMS" to "Application Framework"'
+        weight: 50
+        body_html: |
+            <p>CPalius is not merely a content management system (CMS); it is a flexible application platform that can power Car Dealership, Travel Agency, Staff Management, or CRM/ERP systems. To enable that shift, we defined two classes of entities:</p>
+
+            <table>
+            <thead>
+            <tr><th>Aspect</th><th>Content Entities (Node)</th><th>Business Records (Resource)</th></tr>
+            </thead>
+            <tbody>
+            <tr><td><strong>Conceptual mapping</strong></td><td>Page, Post, Listing showcase, Blog</td><td>Vehicle, Invoice, Reservation, Staff</td></tr>
+            <tr><td><strong>Traits</strong></td><td>Has slug, multilanguage, publish status, SEO.</td><td>No slug, no locale, no publish; has a state machine (workflow).</td></tr>
+            <tr><td><strong>Common ground</strong></td><td colspan="2">Same Capability model, same Twig components, same CLI management, same Config Sync.</td></tr>
+            </tbody>
+            </table>
+
+            <p><strong>The #[CpResource] Revolution</strong></p>
+
+            <p>To bring coding business processes down to seconds, we designed a custom PHP Attribute. With a single annotation we wire a raw Doctrine class in the database to the full power of the platform:</p>
+
+            <pre><code>#[CpResource(
+                name: 'vehicle',
+                module: 'oto-galeri',
+                capabilities: ['create', 'edit', 'delete', 'view'],
+                auditable: true,
+                multiTenant: true,
+                workflow: 'vehicle_lifecycle'
+            )]
+            #[ORM\Entity]
+            class Vehicle
+            {
+                private ?int $id = null;
+                private ?string $plate = null;
+                private ?string $brand = null;
+                private ?int $price = 0; // Stored in cents (never Float!)
+            }
+            </code></pre>
+
+            <p>Thanks to this single attribute:</p>
+
+            <ul>
+            <li>Dynamic capabilities are registered automatically into the role/capability matrix (<code>vehicle.create</code>, <code>vehicle.edit</code>, etc.).</li>
+            <li>Automatic CRUD forms and list screens are derived dynamically from this definition.</li>
+            <li>For SaaS projects, multi-tenant isolation (<code>multiTenant: true</code>) is applied automatically in the background.</li>
+            <li>Every change on the entity is recorded instantly in the version history (audit log).</li>
+            </ul>
+    -
+        slug: content-platform
+        title: 'The content platform: fields, revisions, workflow and row-level access'
+        weight: 55
+        body_html: |
+            <p>A hybrid data model is only half the story. Around it CPalius grew the contracts that turn a table into an application: custom fields, revisions, an editorial state machine, display modes, text formats and per-row permissions. Each was designed against a specific weakness in the system that leads its category.</p>
+
+            <h3>Field API</h3>
+            <p>Field types, widgets, formatters and per-field settings, attached to any entity that implements <code>FieldableInterface</code> — <code>Node</code> and <code>User</code> today, anything carrying <code>#[CpEntityType]</code> tomorrow. Values live in the entity's JSON column, with a flat index table for the fields that are queried. Entity references resolve in batches rather than one row at a time.</p>
+            <p>The trap being avoided is WordPress's <code>postmeta</code> and the classic EAV table: both make "give me every post where price &gt; 100" a join storm. The flat index keeps the queryable subset in real columns while everything else stays in JSON and costs nothing until it is read.</p>
+
+            <h3>Display modes that the API also honours</h3>
+            <p>Drupal's Manage Display is the mature reference, and it has one structural weakness: it is theme-only. Define a "teaser" and the JSON:API output ignores it — you write the shape twice, and the two drift. In CPalius a single <code>EntityDisplayRegistry</code> feeds both the Twig renderer and the API serialiser, so a view mode is defined once and is consistent in both. A test holds that property.</p>
+
+            <h3>Revisions, moderation and workflow</h3>
+            <p>Moderation state is a separate column from publication status, because "in review" and "unpublished" are different facts that a single field would conflate. The workflow engine underneath is a plain state machine over any subject, defined in YAML: places, transitions, and an optional capability per transition. Content moderation is its first consumer, not its definition — an installation whose places are <em>quote &rarr; approved &rarr; invoiced</em> uses the same engine and the same screens.</p>
+
+            <h3>Text formats: filtering on the way in, not only on the way out</h3>
+            <p>Drupal's Filter API is the reference and filters only on output, which leaves the database a store of unsanitised markup. Turn a filter off and old markup comes back to life. CPalius applies an allowlist <em>on save</em> and transformation on output. A deny-list — <code>script</code>, <code>style</code>, <code>form</code>, <code>iframe</code>-on-save — is not overridable by any format, Full HTML included. Permission is re-checked at write time, so a POST from a user who has since lost <code>full_html</code> is rejected rather than trusted. Markdown escapes raw HTML before rendering.</p>
+
+            <h3>Row-level access without a rebuild</h3>
+            <p>Drupal's node access grants are the reference implementation and carry four known costs: a realm/gid model that is a second mental system next to ordinary permissions; an expensive rebuild whenever the logic changes, which silently returns wrong results if skipped; core support for nodes only; and no validation that a granted permission actually exists.</p>
+            <p>CPalius answers each one. Grants are expressed in the same capability namespace as everything else, so there is no second model. Every grant is independently correct the moment it is written — there is no rebuild to forget. The entity type is a string, so any <code>#[CpEntityType]</code> participates. An unknown capability is refused rather than stored, so a typo cannot silently grant nothing. On the query side it compiles to a single <code>EXISTS</code> subquery, not a per-row check.</p>
+            <p>The honest gap: there is no browser UI for sharing a single record with a single user. Drupal core does not have one either.</p>
+    -
+        slug: security
+        title: 'Section 6: Security and Performance Constitution'
+        weight: 60
+        body_html: |
+            <p>Security and performance are not polish added at the end of a project; they are the system's foundational building blocks.</p>
+
+            <p><strong>1. Capability-Based Access Control (CBAC)</strong></p>
+
+            <p>Standard Symfony <code>ROLE_ADMIN</code> or <code>ROLE_USER</code> approaches are clumsy and hard to extend later. In CPalius, role names are never checked in code; dynamically generated capabilities are always checked instead via <code>denyAccessUnlessGranted('system.module.manage')</code>.</p>
+
+            <ul>
+            <li><strong>Roles = Config (YAML):</strong> Role definitions and their capability matrices live as YAML under <code>cp-content/config/sync/</code> and travel with Git.</li>
+            <li><strong>Users = Content (DB):</strong> Real user records stay in the database and are never exported.</li>
+            </ul>
+
+            <p><strong>2. SaaS Data Leak Protection (Automatic Tenant SQLFilter)</strong></p>
+
+            <p>In multi-tenant (SaaS) systems, the biggest security hole is a developer forgetting to append <code>WHERE tenant_id = ?</code> to a query. In CPalius that risk is eliminated at the platform level: a Doctrine <code>SQLFilter</code> injects the tenant constraint into every query for entities marked multi-tenant.</p>
+
+            <p><strong>3. N+1 Query Guard (Dev-Mode N+1 Guard)</strong></p>
+
+            <p>To stop N+1 query mistakes&mdash;the most common cause of database bloat and slowness&mdash;a Doctrine DBAL middleware fires only in the dev environment. If the number of queries to the same table in a single HTTP request exceeds a set limit, it throws <code>MaxQueriesExceededException</code> immediately. Developers cannot ship code to production until they fix that error locally. The chain is real at the DBAL layer: <code>QueryCounterConnection</code>, <code>Driver</code>, <code>Statement</code>, and <code>TableParser</code>.</p>
+
+            <p><strong>4. Voter-to-SQL Conversion</strong></p>
+
+            <p>List screens must not run a PHP voter per row (that is an N+1 of authorization). <code>QueryScopeApplier</code> turns the caller's <code>.own</code> / <code>.any</code> capabilities into a Doctrine <code>WHERE</code> before the query hits the database.</p>
+
+            <p><strong>5. Zero-Trust Payloads and Core XSS Sanitization</strong></p>
+
+            <p>Inbound HTTP bodies are mapped to strict DTOs and validated before they reach controllers. Rich text destined for the database is sterilized by <code>RichTextSanitizer</code> (Manifesto Law 5.3). <code>SchemaOrgBuilder</code> emits JSON-LD (BlogPosting, WebPage) from the same hybrid JSON payload.</p>
+
+            <p><strong>6. Optimistic Concurrency</strong></p>
+
+            <p>High-write paths use optimistic locking instead of table locks, so concurrent mutations isolate without deadlock theater. Config (roles, capabilities) stays in Git-tracked YAML; users stay in the database&mdash;Drupal-style config sync via Symfony TreeBuilder.</p>
+    -
+        slug: platform-layer
+        title: 'Section 7: Platform Extensibility — API, Hooks, Cron, Plugins'
+        weight: 70
+        body_html: |
+            <p>Since the first whitepaper draft, four extension backbones landed in core. Each carries the same Core Never Dies armor: a failing extension is quarantined; the kernel stays up.</p>
+
+            <p><strong>Cryptographic REST API Gateway</strong></p>
+
+            <p>A single <code>/api/{path}</code> wildcard is bound at compile time by <code>ApiRegistrationPass</code> to service methods marked <code>#[CpApi]</code>. Authentication uses the <code>X-CP-API-KEY</code> header, SHA-256 hashes, and timing-safe <code>hash_equals()</code>. Fail-closed: an invalid key never reaches the target method. Each endpoint runs in its own try/catch; a crashing method cannot 500 the gateway.</p>
+
+            <p><strong>Dual-lane isolated Hook engine</strong></p>
+
+            <p>Cotonti-style <code>Hooks/{hook_point}.php</code> files run inside a bound Closure so they cannot leak <code>$this</code>. Symfony-style <code>#[CpHook]</code> services are collected by <code>HookRegistrationPass</code>. A throwing hook is written to the quarantine log; the page still renders.</p>
+
+            <p><strong>Unified hybrid Cron engine</strong></p>
+
+            <p><code>CronManager</code> merges three sources into one list: <code>cp_cron_jobs</code> rows, <code>#[CpCronJob]</code> methods, and <code>Hooks/cron.{job}.php</code> files. Jobs run in isolated subprocesses and may only execute <code>cp:*</code> commands via <code>CronCommandWhitelist</code>. Operators can inspect and &ldquo;Run now&rdquo; from <code>/aacp/cron</code>.</p>
+
+            <p><strong>Module-independent Plugin layer</strong></p>
+
+            <p>Services marked <code>PluginInterface</code> are collected by <code>PluginRegistry</code>; enablement lives in <code>PluginToggleRepository</code>. A module can toggle optional widgets without deactivating the whole module.</p>
+
+            <p><strong>Lazy settings</strong></p>
+
+            <p><code>#[CpSetting]</code> keys are loaded through <code>SettingsRegistry</code> on demand&mdash;one query when asked, not a boot-time dump of every key.</p>
+
+            <p><strong>WordPress-style module packages</strong></p>
+
+            <p>A first-party module may ship <code>Resources/config/importmap.php</code> and <code>contributions.yaml</code>. <code>ModulePackageContract</code> validates the on-disk layout; operators can upload a ZIP from AACP. Homepage modes, portal feed blocks, schema types, and the account post-login landing are declared in contributions&mdash;core does not hardcode <code>forum_index</code> or <code>blog_index</code>.</p>
+    -
+        slug: migrate
+        title: 'Migrate: moving an installation off another CMS'
+        weight: 75
+        body_html: |
+            <p>Nobody adopts a framework they cannot move their data into. CPalius ships a migration engine in core and the foreign-system readers in a module — core writes CPalius, the module reads somebody else's schema. Five source systems run on one engine: WordPress from an export file; XenForo, MyBB and Joomla straight from a database; and CSV.</p>
+
+            <h3>Designed against the reference implementation</h3>
+            <p>Drupal's Migrate API is the standard to beat, and it has four costs. There is no dry run — you learn what it will do by letting it do it. A migration is a soup of YAML plugin identifiers, untyped strings whose typos surface halfway through a run. Core cannot run a migration on its own; a contributed tool is required, and the core UI only handles Drupal-to-Drupal. And rollback is only as good as whatever the id map happened to record.</p>
+            <p>CPalius inverts each one. <strong>Dry run is the default</strong> and produces the same counters as the real thing, so <code>--apply</code> is a deliberate act. <strong>Transforms are plain PHP</strong>, which the IDE completes and the static analyser checks. <strong>The runner is in core.</strong> <strong>Rollback is exact</strong>, because the map is written by the runner itself after the destination write succeeds — not before, and not by the migration.</p>
+
+            <h3>Four guarantees</h3>
+            <ul>
+            <li><strong>Idempotent.</strong> A unique key on <code>(migration_id, source_id)</code> is the guarantee — the database, not bookkeeping, stops a row being imported twice when two runs overlap. An unchanged row is skipped, a changed row is updated in place.</li>
+            <li><strong>Per-row isolation.</strong> One malformed record fails alone; its neighbours import.</li>
+            <li><strong>Ordered by declaration.</strong> Dependencies are resolved topologically, and a cycle or an unknown dependency is refused rather than silently skipped.</li>
+            <li><strong>Streaming.</strong> The WordPress reader walks the export with <code>XMLReader</code>; WordPress's own importer loads the whole file into memory. Database sources page by keyset, so a table that grows during the run cannot cause a skipped page.</li>
+            </ul>
+
+            <h3>What the schemas actually teach you</h3>
+            <p>The interesting work is never the pipeline, it is the source. MyBB stores categories and forums in one table separated by a single character, and a link is a forum with a <code>linkto</code> value — trusting the type column would replace somebody's link with an empty section. Its <code>closed</code> column can hold <code>moved|tid</code>, so comparing it to <code>"1"</code> reads a moved thread as open. Joomla randomises its table prefix at install, its category id 1 is a nested-set anchor rather than a category, and its article body is split across two columns that must be rejoined or every long article is silently truncated.</p>
+            <p>These are recorded because they are the difference between an import that runs and an import that is correct.</p>
+
+            <h3>The limit of the evidence</h3>
+            <p>The drivers were written from documented schemas and are tested against fixtures built to match them. That proves the mapping. It does not prove compatibility with every real installation — version drift, plugin columns and the oddities a ten-year-old forum accumulates are real. The first run against a real database is still a real test, which is exactly why dry run is the default and why failures are reported with the source row id.</p>
+    -
+        slug: aacp-command
+        title: 'Section 8: AACP Command Desk, Studio, and Recovery'
+        weight: 80
+        body_html: |
+            <p>The Safe Mode / Recovery Console promised in the original roadmap is production code. AACP is the system management center, not a decorative admin skin.</p>
+
+            <p><strong>Recovery Console (<code>/aacp/recovery</code>)</strong></p>
+
+            <p>The route is intentionally <code>PUBLIC_ACCESS</code> in <code>security.yaml</code>. Authorization is a timing-safe <code>hash_equals()</code> against <code>AACP_RECOVERY_TOKEN</code> in <code>.env</code>. It issues no Doctrine queries, so it still works when the database is gone. An empty token seals the door (fail-safe).</p>
+
+            <p><strong>Live command desk (<code>/aacp</code>)</strong></p>
+
+            <p>The dashboard polls <code>/aacp/system/metrics</code> for PHP version, load, request time, memory, OPcache hit rate, database telemetry, queue, cron last-run, and module quarantine. Cache Rebuild and OPcache flush are one-click, CSRF-protected actions. Content KPIs live on Studio <code>/admin</code>, not on AACP&mdash;AACP is operations, Studio is the editorial command desk.</p>
+
+            <p><strong>Studio dashboard</strong></p>
+
+            <p>Each first-party module contributes a <code>StudioDashboardStatsProvider</code> (Blog, Forum, Media, Menu, Roadmap, SEO). Studio is a Drupal-style command desk: counts, shortcuts, and homepage portal layout (block order, bilingual copy in <code>portal.{locale}.yaml</code>).</p>
+
+            <p><strong>Quarantine, localization, performance backends</strong></p>
+
+            <p><code>/aacp/quarantine</code> is a read-only view of <code>module_quarantine.log</code>. <code>TranslationManager</code> edits core and module ICU YAML with atomic <code>.tmp</code> + <code>rename()</code> writes. The Performance screen tests Redis, Memcached, Varnish, Nginx PageSpeed, and CPalius Origin Cache; the enabled flag is set only after a successful probe&mdash;never a fake-green toggle. <code>/aacp/backup</code> is the Backup Management desk (capability <code>system.backup.manage</code>): database dump, files ZIP, or full archive, with download and delete.</p>
+    -
+        slug: operations
+        title: 'Operating an installation: updates, diagnosis, queues and logs'
+        weight: 85
+        body_html: |
+            <p>Most of a system's life is spent after it is built. These are the contracts that address that half.</p>
+
+            <h3><code>cp:update</code> — one ordered, resumable pipeline</h3>
+            <p>Pending migrations, then core update hooks, then each module's own upgrade step, then configuration import, then a cache rebuild. Drupal's <code>update.php</code> and WordPress's <code>wp core update-db</code> do the schema part but leave data fixes to a separate mechanism. Here an update hook is a typed interface with a ledger, versioned so that skipping several releases still applies them in release order.</p>
+            <p>Resumability is in the design rather than bolted on: the ledger entry is written <em>after</em> the hook returns, so an interrupted hook runs again instead of being assumed done. A corrupt ledger reads as empty, never as "all finished". One failing hook does not stop its neighbours; only a migration failure halts the pipeline. <code>--dry-run</code> reports the whole plan without touching anything, which is what you run on production first.</p>
+            <p>The gap it closed was mundane and expensive: a module whose manifest version advanced only ran its upgrade step when it was manually deactivated and reactivated — and the operator had no way to know which modules needed it.</p>
+
+            <h3><code>cp:doctor</code> and <code>cp:debug</code></h3>
+            <p>CPalius discovers most of itself through attributes — <code>#[CpHook]</code>, <code>#[CpCronJob]</code>, <code>#[CpResource]</code>, <code>#[CpEntityType]</code>, <code>#[CpFieldType]</code>. That buys a module a great deal of reach for very little ceremony, and it has one cost: a typo at a hook point is not an error, it is <em>silence</em>. <code>cp:debug</code> answers "did mine register?" without making you add a breakpoint; <code>cp:doctor</code> answers "is this installation in the state its own code expects?".</p>
+            <p>Both are read-only, both emit JSON for CI, and <code>cp:doctor</code> has a failure threshold — with an invalid threshold refused rather than silently disabling the gate.</p>
+
+            <h3>Two queues, reported separately</h3>
+            <p>Mail and notifications run on Symfony Messenger, which brings native retry and failure transports. Webhooks stay on the platform's own <code>AsyncJob</code> table, where the SSRF guard and signature path are already mature. The admin screen reports both as separate numbers and never adds them into one total that would describe neither.</p>
+
+            <h3>Logs that survive the thing they are logging</h3>
+            <p>Application logs, mail logs and security telemetry are three tables, not one. Audit entries record entity diffs; telemetry records security events; the watchdog records application faults. Compressing them into a single table would have made each one worse. The log handler is buffered, flushed on terminate, and never throws — a logger that can take down the request it is describing is a liability.</p>
+    -
+        slug: origin-cache
+        title: 'Section 9: Origin HTML Cache and Performance Inventory'
+        weight: 90
+        body_html: |
+            <p>CPalius Origin Cache is a first-party HTML cache that does not require Redis, Varnish, or a CDN. It sits beside those backends and can run on plain shared hosting.</p>
+
+            <p><strong>How a hit is served</strong></p>
+
+            <p>Enabled state is a disk sentinel under <code>public/page-cache/</code>. Apache rewrite in <code>public/.htaccess</code> serves <code>page-cache/{path}/index.html</code> for anonymous GET requests with no query string and no session cookies (<code>PHPSESSID</code>, <code>REMEMBERME</code>). PHP still writes and, for query-string variants, reads through <code>OriginCacheWriter</code> / <code>OriginCacheReader</code>.</p>
+
+            <p><strong>What is stored</strong></p>
+
+            <p>HTML is optionally minified. Linked CSS/JS can be copied and minified; images can be derived as WebP. An optional HTML shield rewrites markup. TTL, exclude paths (<code>/aacp</code>, <code>/admin</code>, <code>/login</code>, APIs, profiler), minify, asset/image compression, and shield are <code>performance.cpalius.*</code> settings. Cron <code>cpalius.origin_cache.purge</code> drops expired files every 15 minutes. Cache Rebuild also purges origin HTML.</p>
+
+            <p><strong>Invalidation</strong></p>
+
+            <p><code>OriginCachePurger</code> runs on Blog post/category/tag writes (including scheduled publish), Forum topic mutations, Roadmap entry saves, and Menu saves&mdash;so editorial changes do not leave stale HTML on disk.</p>
+
+            <p><strong>AACP Performance panel</strong></p>
+
+            <p>The dashboard Performance section inventories every backend the PHP process can see:</p>
+
+            <ul>
+            <li><strong>Origin Cache:</strong> HTML page count, disk bytes, recent paths with size and mtime.</li>
+            <li><strong>Redis:</strong> <code>DBSIZE</code> (key count) and <code>INFO memory</code> (<code>used_memory</code>).</li>
+            <li><strong>Memcached:</strong> <code>curr_items</code> and <code>bytes</code> (plus hit count when the daemon answers).</li>
+            <li><strong>OPcache:</strong> cached scripts, used memory, hit rate.</li>
+            <li><strong>Varnish / PageSpeed:</strong> enablement and TTL / last probe. Object counts need <code>varnishstat</code> or the PageSpeed admin on the host; PHP cannot invent those numbers.</li>
+            </ul>
+
+            <p>Probes are isolated and cached for a few seconds so a hanging Redis cannot 500 the dashboard.</p>
+    -
+        slug: backup
+        title: 'Section 10: Backup Management'
+        weight: 100
+        body_html: |
+            <p>Disaster recovery is a first-party AACP desk, not a third-party plugin. Capability <code>system.backup.manage</code> gates <code>/aacp/backup</code>. The admin role inherits it via <code>*</code>; editors do not see the menu.</p>
+
+            <p><strong>Three archive types</strong></p>
+
+            <ul>
+            <li><strong>Database:</strong> a gzipped SQL dump written in PHP through Doctrine DBAL. <code>mysqldump</code> is not required, so Laragon on Windows works the same as Linux hosting.</li>
+            <li><strong>Files:</strong> a ZIP of the whole CPalius tree, including <code>cp-includes/vendor</code> and the entire <code>public/</code> directory (uploads, compiled assets, themes, front controller). Out: every <code>.env*</code> file, <code>.git</code>, <code>node_modules</code>, Symfony cache, Tailwind compile cache, sessions, Origin Cache HTML, and nested archives under <code>cp-core/var/backups/</code>.</li>
+            <li><strong>Full:</strong> the files ZIP plus <code>database.sql.gz</code> packed inside the same archive.</li>
+            </ul>
+
+            <p>Archives are named <code>cpalius-{db|files|full}-YYYYMMDD-HHMMSS.{sql.gz|zip}</code> and live under <code>cp-core/var/backups/</code> (already gitignored). Download uses <code>/aacp/backup/archive/{stem}</code> (no <code>.sql.gz</code> / <code>.zip</code> in the URL) so nginx static-file locations cannot intercept the request; <code>Content-Disposition</code> still sends the real filename. Delete is CSRF-protected. Path traversal is rejected by an allowlist on the filename. CLI <code>cp:backup:create</code> is on the cron whitelist so operators can schedule dumps without a web timeout.</p>
+
+            <p>v1 does not overwrite a live tree from the browser. Restore is a staging-first operator step: unpack files beside a fresh install, apply SQL on a copy of the database, then swap. Putting restore behind a one-click AACP button would violate Core Never Dies.</p>
+    -
+        slug: telemetry
+        title: 'Section 11: Security Telemetry and IP Control'
+        weight: 110
+        body_html: |
+            <p>AACP records request telemetry without turning the public site into a dark-pattern tracker. The master switch is <code>telemetry.security_enabled</code> and defaults to <strong>off</strong>.</p>
+
+            <p><strong>Visitor mode (default)</strong></p>
+
+            <p>The dashboard shows page views, unique IPs, top paths, and a traffic chart. No threat feed, no Ban IP. Suitable for hosting the marketing site without a WAF console in the operator&rsquo;s face.</p>
+
+            <p><strong>Security mode</strong></p>
+
+            <p>When enabled, <code>TelemetrySubscriber</code> on <code>kernel.terminate</code> persists a row to <code>cp_system_telemetry_logs</code>: IP, user, method, URI, user-agent, severity, event type, threat score, and JSON details. <code>ThreatAnalyzer</code> scores SQLi, XSS, scanner, path traversal, and login noise. The live feed polls JSON; a details modal opens the row; Ban IP is offered only for <code>critical</code> / <code>threat</code> severities.</p>
+
+            <p><strong>IP ban</strong></p>
+
+            <p><code>IpBanService</code> writes <code>cp_banned_ips</code>. <code>BannedIpSubscriber</code> rejects banned clients before the rest of the stack spends budget. A cron task purges old telemetry rows so the table cannot grow without bound.</p>
+    -
+        slug: first-party
+        title: 'Section 12: First-Party Modules, Media Pipeline, and Deep Localization'
+        weight: 120
+        body_html: |
+            <p>Blog, Media, Menu, Forum, Roadmap, Pages, and SEO are reference modules: they exercise API, Hook, Cron, Plugin, Settings, contributions, and Studio stats the same way a third-party module must.</p>
+
+            <p><strong>Blog</strong> sits on <code>Node::type = post</code> with categories, tags, scheduled publish (<code>PublishScheduledPostsTask</code>), <code>GET /api/blog/posts</code>, sidebar hooks, and Schema.org BlogPosting. <strong>Pages</strong> sits on <code>Node::type = page</code>; field groups use <code>fg-</code> slugs and the public route is <code>page_show</code> at <code>/{_locale}/{slug}</code>. <strong>Menu</strong> is WordPress-style drag-and-drop; items reference nodes loosely (no hard FK) so soft-delete stays honest. <strong>Roadmap</strong> is a native feed that can also pull related blog and forum activity onto the portal. <strong>SEO</strong> contributes sitemap sources and JSON-LD.</p>
+
+            <p><strong>Forum engine</strong></p>
+
+            <p>Hierarchical boards reuse the Node tree; prefixes, a CSRF-protected report/moderation queue, ranks/badges, and a 20/80 postbit layout (Golden Ratio) run on the same capability model as the rest of the CMF.</p>
+
+            <p><strong>Media pipeline (Manifesto Law 3.3)</strong></p>
+
+            <p><code>Asset</code> is independent of Node. Flysystem storage plus sha256 dedup. <code>ImageProcessor</code> (GD) builds <code>crop</code> or <code>fit</code> derivatives into <code>public/uploads/cache/</code>; <code>cp_thumb</code> accepts an Asset, id, storage key, or <code>/uploads/...</code> URL. A failed derivative returns the original URL (fail-soft). <code>purge()</code> drops all sizes when the source changes.</p>
+
+            <p><strong>Deep localization</strong></p>
+
+            <p>Each row lives in its locale and joins siblings via <code>translation_group_id</code> UUID, enforced by <code>UNIQUE(translation_group_id, locale)</code> (also on categories, tags, menu items, forum sections). <code>LocaleSwitchService</code> builds the counterpart URL; missing siblings fall back to that locale&rsquo;s home&mdash;never a 404. AACP has no locale prefix; panel locale is the <code>cp_locale</code> cookie. Translation files are written atomically (<code>.tmp</code> + OS <code>rename()</code>).</p>
+
+            <p><strong>Zero Node.js in core UI</strong></p>
+
+            <p>Admin and developer chrome use AssetMapper + the Tailwind standalone binary. There is no Node.js build for those surfaces. Public theme CSS may still be a static theme asset.</p>
+    -
+        slug: quality
+        title: 'How the claims in this document are verified'
+        weight: 122
+        body_html: |
+            <p>Every architectural claim above is only worth the gate that keeps it true. CPalius runs the following on every change; the build fails rather than warns.</p>
+
+            <ul>
+            <li><strong>PHPStan level 6</strong> across core, modules and tests, with a tracked baseline. Errors are fixed, not suppressed; when a baseline entry stops matching it is deleted, which is how dead code gets noticed.</li>
+            <li><strong>Two test suites.</strong> Unit tests run without a database; integration tests boot a real kernel against a real MySQL schema, reset between tests by reading the database rather than the mapping — a distinction that used to make the suite non-deterministic.</li>
+            <li><strong>A third suite for modules</strong>, so a module's behaviour is proven in the same run as the core it depends on.</li>
+            <li><strong>Static lint gates:</strong> container (dev and prod), YAML, Twig, and a code-style pass.</li>
+            <li><strong><code>cp:doctor</code></strong> as a build step, not only a support tool: pending migrations, quarantined modules, capabilities held by roles but never registered, translation-key parity between catalogues, environment misconfiguration, security posture and unrun update hooks.</li>
+            </ul>
+
+            <h3>Two gates that exist because something escaped</h3>
+
+            <p><strong>The translation check compares key sets, not line counts.</strong> Two catalogues with identical line counts can carry different keys, and the missing one renders as a raw identifier in production.</p>
+
+            <p><strong><code>cp:doctor</code> was written after an incident, not designed in the abstract.</strong> Five migrations sat unapplied across several development sessions and nothing broke loudly, because the features that needed the new tables were written to degrade quietly. The only symptom was security telemetry writing nowhere. An unapplied migration is therefore rated HIGH: the danger is not that it fails, it is that it does not.</p>
+
+            <p><strong>A diagnostic tool must survive the installation it is diagnosing.</strong> If one check throws, the run continues and the exception becomes a finding. A doctor that dies on the first real problem is useless at exactly the moment it is needed.</p>
+    -
+        slug: benchmark
+        title: 'Benchmark: CPalius against Drupal, TYPO3, WordPress and ProcessWire'
+        weight: 125
+        body_html: |
+            <p>A framework is chosen on evidence, not on adjectives. This chapter is the scorecard the project maintains against the four systems it is most often compared to, and it is published unedited — including the rows where CPalius is behind, and the one row nobody has measured yet.</p>
+
+            <p><strong>Scale.</strong> <code>D</code> absent &middot; <code>C</code> primitive or partial &middot; <code>B</code> incomplete &middot; <code>A</code> mature &middot; <code>A+</code> best of its class &middot; <code>A++</code> ahead of the field.<br>
+            <strong>Columns.</strong> <code>CP</code> CPalius &middot; <code>DR</code> Drupal 10/11 &middot; <code>T3</code> TYPO3 v13 &middot; <code>WP</code> WordPress 6.x &middot; <code>PW</code> ProcessWire 3.x.</p>
+
+            <table><thead><tr><th>#</th><th>Capability area</th><th>CP</th><th>DR</th><th>T3</th><th>WP</th><th>PW</th></tr></thead><tbody><tr><td>1</td><td>Crash-proof core / module isolation</td><td><strong>A+</strong></td><td>B</td><td>B</td><td>C</td><td>B</td></tr><tr><td>2</td><td>Security by default (CBAC, tenant, N+1 guard, XSS)</td><td><strong>A++</strong></td><td>A</td><td>A</td><td>C</td><td>A</td></tr><tr><td>3</td><td>Hybrid data model + flat index</td><td>A</td><td>B</td><td>B</td><td>C</td><td>A</td></tr><tr><td>4</td><td>Entity API (one fieldable/revision/i18n/access contract)</td><td>B</td><td>A+</td><td>B</td><td>C</td><td>A</td></tr><tr><td>5</td><td>Field API (type + widget + formatter + settings)</td><td>B</td><td>A+</td><td>A</td><td>C</td><td>A</td></tr><tr><td>6</td><td>Query API (EntityQuery / selector)</td><td>B</td><td>A</td><td>B</td><td>B</td><td>A+</td></tr><tr><td>7</td><td>Row-level access (grants + query alter)</td><td><strong>A+</strong></td><td>A+</td><td>B</td><td>C</td><td>B</td></tr><tr><td>8</td><td>Taxonomy (fieldable vocabulary + term)</td><td><strong>A++</strong></td><td>A+</td><td>A</td><td>A</td><td>A</td></tr><tr><td>9</td><td>Revisions + moderation + workflow</td><td>B</td><td>A+</td><td>A</td><td>B</td><td>C</td></tr><tr><td>10</td><td>Typed entity lifecycle events</td><td><strong>A+</strong></td><td>A</td><td>B</td><td>C</td><td>A</td></tr><tr><td>12</td><td>Display modes</td><td>A</td><td>A+</td><td>A</td><td>A</td><td>C</td></tr><tr><td>13</td><td>Cache API (tags/contexts) + reverse-proxy purge</td><td><strong>A++</strong></td><td>A+</td><td>A</td><td>C</td><td>B</td></tr><tr><td>14</td><td>Origin / full-page HTML cache in core</td><td>A</td><td>A</td><td>A</td><td>D</td><td>B</td></tr><tr><td>15</td><td>Text formats + filter pipeline (per role)</td><td><strong>A+</strong></td><td>A+</td><td>B</td><td>B</td><td>B</td></tr><tr><td>16</td><td>Token + pattern-based path alias</td><td><strong>A+</strong></td><td>A+</td><td>A</td><td>B</td><td>B</td></tr><tr><td>17</td><td>Configuration management (config as code)</td><td>A</td><td>A+</td><td>B</td><td>D</td><td>B</td></tr><tr><td>18</td><td>Multilingual — content + interface</td><td>A</td><td>A+</td><td>A+</td><td>C</td><td>A</td></tr><tr><td>19</td><td>Media pipeline + responsive image + oEmbed</td><td>B</td><td>A</td><td>A</td><td>A</td><td>A</td></tr><tr><td>20</td><td>Async queue + notification primitive</td><td><strong>A++</strong></td><td>B</td><td>B</td><td>B</td><td>C</td></tr><tr><td>21</td><td>Multisite / domain / organisation</td><td>C</td><td>A</td><td>A+</td><td>A</td><td>B</td></tr><tr><td>22</td><td>REST / JSON:API / headless auth</td><td>B</td><td>A+</td><td>B</td><td>A</td><td>B</td></tr><tr><td>23</td><td>Hook / plugin ergonomics</td><td>B</td><td>A</td><td>B</td><td>A+</td><td>A</td></tr><tr><td>24</td><td>Cron / scheduled tasks</td><td>A</td><td>A</td><td>A</td><td>C</td><td>B</td></tr><tr><td>25</td><td>Module packaging + lifecycle + one-click install</td><td>A</td><td>A</td><td>A</td><td>A+</td><td>B</td></tr><tr><td>26</td><td>Migrate / CMS-to-CMS data transfer</td><td><strong>A+</strong></td><td>A+</td><td>B</td><td>B</td><td>C</td></tr><tr><td>27</td><td>Admin UI + recovery console</td><td><strong>A+</strong></td><td>A</td><td>A</td><td>A</td><td>A</td></tr><tr><td>28</td><td>Security telemetry + IP ban in core</td><td>A</td><td>C</td><td>C</td><td>C</td><td>C</td></tr><tr><td>29</td><td>Backup in core</td><td>A</td><td>C</td><td>C</td><td>C</td><td>C</td></tr><tr><td>30</td><td>DX: maker + doctor + test kit + developer docs</td><td>A</td><td>A</td><td>B</td><td>B</td><td>B</td></tr><tr><td>31</td><td>Release policy + BC guarantee + LTS</td><td>D</td><td>A+</td><td>A+</td><td>A++</td><td>A</td></tr><tr><td>32</td><td>Installation experience (the five-minute rule)</td><td>B</td><td>B</td><td>C</td><td>A++</td><td>A</td></tr><tr><td>33</td><td>Documentation</td><td>C</td><td>A+</td><td>A+</td><td>A+</td><td>A+</td></tr><tr><td>34</td><td>CI / automated quality gate</td><td>A</td><td>A+</td><td>A</td><td>B</td><td>B</td></tr><tr><td>35</td><td>Package ecosystem + distribution channel</td><td>D</td><td>A+</td><td>A</td><td>A++</td><td>B</td></tr><tr><td>36</td><td>Vulnerability disclosure + CVE process</td><td>B</td><td>A++</td><td>A+</td><td>A</td><td>B</td></tr><tr><td>37</td><td>Performance evidence (benchmarks)</td><td>D</td><td>B</td><td>B</td><td>C</td><td>A</td></tr><tr><td>38</td><td>Accessibility (WCAG) — admin UI</td><td>?</td><td>A+</td><td>A</td><td>A</td><td>C</td></tr><tr><td>39</td><td>Observability (logs / metrics / health)</td><td>A</td><td>A</td><td>A</td><td>C</td><td>B</td></tr><tr><td>40</td><td>Database portability</td><td>C</td><td>A+</td><td>A</td><td>C</td><td>C</td></tr></tbody></table>
+
+            <p><em>Row 11 is deliberately absent. It used to read "Views / no-code listing", and it was removed rather than renumbered: a site-builder UI serves websites, not the CRM, ERP and panel installations this core exists for. The gap in the numbering is the decision, left visible.</em></p>
+
+            <h3>Where CPalius is ahead</h3>
+
+            <ul>
+            <li><strong>Crash-proof core (row 1).</strong> Four lines of defence — a static <code>active_modules.php</code>, a <code>try/catch</code> shield around module boot, a dry-run lint before activation, and a route loader that survives a broken module. A faulty module is quarantined; in Drupal it is a white screen.</li>
+            <li><strong>Security by default (row 2).</strong> Capability-based access with unknown-means-deny, a tenant SQL filter, a development N+1 tripwire, voter-to-SQL scoping, nonce-based CSP, a blocking WAF, CIDR and timed IP bans, flood and brute-force defence, HIBP password policy, TOTP two-factor in core, encrypted setting secrets and a scored <code>cp:security:audit</code>. In Drupal each of those is a separate contributed module; in WordPress several are paid plugins. None of them offers one screen and one posture score.</li>
+            <li><strong>Taxonomy, cache tags, async queue (rows 8, 13, 20).</strong> Cache invalidation needs no rebuild step: saving an entity emits a typed lifecycle event and the tag index purges itself. Drupal's equivalent is mature but its access system famously requires a rebuild that silently returns wrong results when skipped.</li>
+            <li><strong>Backup, telemetry, recovery console (rows 27&ndash;29).</strong> All in core, and <code>/aacp/recovery</code> works without a database — the screen you need precisely when the database is the thing that is broken.</li>
+            </ul>
+
+            <h3>Where CPalius is behind, stated plainly</h3>
+
+            <ul>
+            <li><strong>Release policy and package ecosystem (rows 31, 35 — both D).</strong> There is no semantic-versioning promise, no backwards-compatibility document and no module registry. The update machinery exists (<code>cp:update</code>); the policy around it does not.</li>
+            <li><strong>Documentation (row 33 — C).</strong> README and SECURITY.md exist. A developer handbook does not. This is the single lowest score on the card and it is not an oversight, it is unfinished work.</li>
+            <li><strong>Performance evidence (row 37 — D).</strong> The architecture is built for speed and no benchmark has been published. Until one is, the claim is an argument, not a measurement.</li>
+            <li><strong>Database portability (row 40 — C).</strong> Every migration is raw MySQL DDL. The ORM layer is portable; the installation is not.</li>
+            <li><strong>Accessibility (row 38 — unmeasured).</strong> The admin UI has never been audited against WCAG. Reporting it as "unknown" is more useful than guessing a grade.</li>
+            </ul>
+    -
+        slug: roadmap
+        title: 'Section 13: Future Roadmap and Technical Consultation (RFC)'
+        weight: 130
+        body_html: |
+            <p>The core security, performance, and architectural backbone of CPalius is complete. Since this whitepaper's first draft the following have shipped: AACP Safe Mode / Recovery Console, the isolated Hook system, the unified Cron engine, the REST API Gateway, the fourth defense line (<code>SafeModuleRouteLoader</code>), the on-demand image pipeline (<code>cp_thumb</code>), the <code>#[CpResource]</code> audit log, Studio dashboard stats, CPalius Origin Cache, the AACP performance inventory, optional security telemetry with IP ban, WordPress-style module packages and the contribution catalog (homepage, portal, schema, account landing), the Pages module, operator UI catalogue binding, and AACP Backup Management (<code>cp:backup:create</code>).</p>
+
+            <p>In upcoming development sprints we will build the following systems:</p>
+
+            <ul>
+            <li><strong>Workflow &amp; State Machine:</strong> A mechanism that manages transition processes for business records such as invoices, vehicles, and reservations (<code>draft &rarr; preparation &rarr; sold</code>) via YAML definitions, and automatically ties every transition to the audit log and notification queue. <code>CpResource::$workflow</code> is already declared.</li>
+            <li><strong>Messenger Async Queue:</strong> Wiring a real transport (Doctrine/Redis) so email and notification work move onto an asynchronous queue. <code>symfony/messenger</code> is installed and visible on the AACP desk; no active transport is bound yet.</li>
+            </ul>
+    -
+        slug: community
+        title: 'Questions and Feedback (Community Consultation)'
+        weight: 140
+        body_html: |
+            <p>To refine this architecture further, we welcome feedback from you valued developers on these topics:</p>
+
+            <ul>
+            <li><strong>Flat Field Index Model:</strong> How do you think this model&mdash;designed for SQLite, MySQL, and Postgres compatibility&mdash;will perform at massive data volumes? Should the index table be partitioned?</li>
+            <li><strong>Config Sync Approach:</strong> What do you think of our idea to emulate Drupal's config sync system using Symfony's TreeBuilder?</li>
+            <li><strong>Zero Node.js Stance:</strong> Will our decision to use AssetMapper + Standalone Tailwind in the developer and admin panels constrain us when writing highly complex frontend components later?</li>
+            </ul>
+
+            <p>We eagerly await your ideas, critiques, and architectural suggestions. With the strength of the community, CPalius will become the most solid application framework.</p>

@@ -1,0 +1,46 @@
+{% extends 'base.html.twig' %}
+
+{#
+    Shared shell for the sign-in, forgot-password and reset-password screens:
+    the stock CPalius logo (public/CPalius.png) and the site's own name
+    (core.site_name, passed in as siteName) — never a hard-coded product name.
+#}
+{% block body %}
+    <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-neutral-900 px-4 py-12 antialiased">
+        <div class="pointer-events-none absolute inset-0 opacity-[0.07]"
+             style="background-image: linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px); background-size: 40px 40px;"></div>
+
+        <div class="relative w-full max-w-sm">
+            {% block notices %}{% endblock %}
+
+            {% for type, messages in app.flashes(['success', 'error']) %}
+                {% for message in messages %}
+                    <div role="{{ type == 'error' ? 'alert' : 'status' }}"
+                         class="mb-sp-sm flex items-start gap-3 rounded-lg border px-4 py-3 text-fs-sm {{ type == 'error' ? 'border-danger-500/40 bg-danger-950/60 text-danger-200' : 'border-success-500 bg-neutral-900 !text-success-200' }}">
+                        <p>{{ message }}</p>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+
+            <div class="mb-sp-lg flex flex-col items-center gap-3 text-center">
+                <img src="{{ asset('CPalius.png') }}" alt="{{ siteName }}" style="height: 56px; width: auto;">
+                <div>
+                    <p class="text-fs-md font-semibold tracking-tight text-white">{{ siteName }}</p>
+                    <p class="text-fs-xs text-neutral-400">{% block subtitle %}{% endblock %}</p>
+                </div>
+            </div>
+
+            <div class="card !bg-dark-2 !border-white/10">
+                <div class="border-b border-white/10 px-sp-sm pb-sp-xs pt-sp-sm">
+                    <h1 class="text-fs-sm font-medium text-neutral-200">{% block heading %}{% endblock %}</h1>
+                </div>
+
+                <div class="p-sp-sm">
+                    {% block card %}{% endblock %}
+                </div>
+            </div>
+
+            {% block after_card %}{% endblock %}
+        </div>
+    </div>
+{% endblock %}

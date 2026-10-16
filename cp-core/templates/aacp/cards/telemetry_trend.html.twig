@@ -1,0 +1,6 @@
+                <section class="aacp-cmd-panel{{ hiddenWidgets["telemetry.trend"] is defined ? ' is-collapsed' }}" data-aacp-widget="telemetry.trend" data-card-id="telemetry.trend">
+                    <h3 class="aacp-cmd-panel-title">{{ telemetrySecurityEnabled ? 'aacp.telemetry.trend.title'|trans : 'aacp.telemetry.visitors.traffic'|trans }}</h3>
+                    <div class="aacp-chart-box">
+                        <canvas data-telemetry-chart="trend"></canvas>
+                    </div>
+                </section>

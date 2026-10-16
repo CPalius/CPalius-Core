@@ -1,0 +1,25 @@
+{#
+    PaginatedResult pagination strip (Flat Design / Golden Ratio) — theme .btn/--cp-* tokens, not twig:studio:pagination.
+    Expects: result (PaginatedResult), route (string), routeParams (array, excluding page and _locale).
+#}
+{% set routeParams = routeParams|default({}) %}
+
+{% if result.totalPages > 1 %}
+    <nav class="blog-pagination" aria-label="{{ 'blog.pagination.aria_label'|trans }}">
+        {% if result.hasPreviousPage %}
+            <a href="{{ path(route, routeParams|merge({_locale: app.request.locale, page: result.currentPage - 1})) }}" class="btn btn-outline blog-pagination-prev">
+                ‹ {{ 'blog.pagination.previous'|trans }}
+            </a>
+        {% endif %}
+
+        <span class="blog-pagination-info" style="font-family: var(--slw-font-mono);">
+            {{ result.currentPage }} / {{ result.totalPages }}
+        </span>
+
+        {% if result.hasNextPage %}
+            <a href="{{ path(route, routeParams|merge({_locale: app.request.locale, page: result.currentPage + 1})) }}" class="btn btn-outline blog-pagination-next">
+                {{ 'blog.pagination.next'|trans }} ›
+            </a>
+        {% endif %}
+    </nav>
+{% endif %}

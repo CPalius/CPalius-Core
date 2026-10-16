@@ -1,0 +1,57 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block header %}{{ 'studio.forum.settings.card.cards'|trans }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('admin_forum_settings_index') }}" class="btn btn-sm btn-neutral">{{ 'studio.forum.settings.hub.back'|trans }}</a>
+{% endblock %}
+
+{% block body %}
+    {% include '@ForumModule/admin/_desk_nav.html.twig' %}
+
+    <form method="post" action="{{ path('admin_forum_settings_update') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_settings') }}">
+        <input type="hidden" name="return_route" value="admin_forum_settings_cards">
+        {% for key in keys %}<input type="hidden" name="setting_keys[]" value="{{ key }}">{% endfor %}
+
+        <twig:studio:card title="{{ 'studio.forum.settings.card.cards'|trans }}">
+            <p class="mb-4 text-fs-sm text-neutral-500">{{ 'studio.forum.settings.card.cards_desc'|trans }}</p>
+            <div class="grid gap-4 md:grid-cols-2">
+                <label class="flex items-center gap-2" style="grid-column:1/-1">
+                    <input type="checkbox" name="settings[forum.cards_enabled]" value="1" {{ values['forum.cards_enabled'] ? 'checked' }}>
+                    <span class="font-medium">{{ 'forum.settings.cards_enabled'|trans }}</span>
+                </label>
+
+                <div>
+                    <label class="form-label" for="cards-section">{{ 'forum.settings.cards_section'|trans }}</label>
+                    <select id="cards-section" name="settings[forum.cards_section]" class="form-select">
+                        <option value="">{{ 'studio.forum.settings.cards.all'|trans }}</option>
+                        {% for section in sections %}
+                            <option value="{{ section.code }}" {{ values['forum.cards_section'] == section.code ? 'selected' }}>{{ section.parent ? '— ' }}{{ section.title }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.forum.settings.cards.section_hint'|trans }}</p>
+                </div>
+
+                <div>
+                    <label class="form-label" for="cards-limit">{{ 'forum.settings.cards_limit'|trans }}</label>
+                    <input id="cards-limit" type="number" min="1" max="10" name="settings[forum.cards_limit]" value="{{ values['forum.cards_limit'] }}" class="form-control">
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.forum.settings.cards.limit_hint'|trans }}</p>
+                </div>
+
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" name="settings[forum.cards_show_latest]" value="1" {{ values['forum.cards_show_latest'] ? 'checked' }}>
+                    <span>{{ 'forum.settings.cards_show_latest'|trans }}</span>
+                </label>
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" name="settings[forum.cards_show_popular]" value="1" {{ values['forum.cards_show_popular'] ? 'checked' }}>
+                    <span>{{ 'forum.settings.cards_show_popular'|trans }}</span>
+                </label>
+            </div>
+        </twig:studio:card>
+
+        <div class="mt-6">
+            <button type="submit" class="btn btn-primary">{{ 'studio.forum.settings.index.save'|trans }}</button>
+        </div>
+    </form>
+{% endblock %}

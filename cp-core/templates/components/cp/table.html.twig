@@ -1,0 +1,33 @@
+{#
+    <twig:cp:table headers="['Name', 'Version', 'Status']">...</twig:cp:table>
+
+    Props: headers, empty, emptyText
+
+    Caller supplies <tr>/<td> in the "rows" block; this component standardizes table shell only.
+#}
+{% props headers = [], empty = false, emptyText = null %}
+
+<div {{ attributes.defaults({class: 'table-responsive'}) }}>
+    <table class="table !border-white/10">
+        {% if headers is not empty %}
+            <thead>
+                <tr class="!bg-white/5 text-fs-xs uppercase tracking-wider !text-slate-400">
+                    {% for header in headers %}
+                        <th class="!border-white/10 font-medium">{{ header }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+        {% endif %}
+        <tbody>
+            {% if empty %}
+                <tr>
+                    <td colspan="{{ headers|length > 0 ? headers|length : 1 }}" class="!border-white/10 py-6 text-center text-fs-sm !text-slate-500">
+                        {{ emptyText ?? 'cp.table.empty_default'|trans }}
+                    </td>
+                </tr>
+            {% else %}
+                {% block rows %}{% endblock %}
+            {% endif %}
+        </tbody>
+    </table>
+</div>
