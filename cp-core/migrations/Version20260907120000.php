@@ -17,6 +17,11 @@ final class Version20260907120000 extends AbstractMigration
         return 'Creates blog_comments for post discussion and Studio moderation.';
     }
 
+    public function preUp(Schema $schema): void
+    {
+        $this->skipIf(!\App\Core\Module\ActiveModules::has(\Modules\Blog\BlogModule::class), 'Blog module is not active.');
+    }
+
     public function up(Schema $schema): void
     {
         $schemaManager = $this->connection->createSchemaManager();

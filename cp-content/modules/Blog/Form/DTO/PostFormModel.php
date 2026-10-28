@@ -74,6 +74,16 @@ final class PostFormModel
     public bool $autoTranslate = false;
 
     /**
+     * Edit only: re-translate this change into the translations the AI wrote earlier.
+     */
+    public bool $syncTranslations = false;
+
+    /**
+     * Frequently asked questions, one "question\nanswer" block per pair (see PostFaq).
+     */
+    public ?string $faq = null;
+
+    /**
      * Selected category ids; first becomes the primary Node::$category.
      *
      * @var list<int>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Queue\Repository;
 
+use App\Core\Queue\AsyncJobLease;
 use App\Core\Queue\Entity\AsyncJob;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -19,11 +20,15 @@ class AsyncJobRepository extends ServiceEntityRepository
     }
 
     /**
+     * Due jobs this caller now owns. Each one is leased through AsyncJobLease, so a concurrent worker
+     * cannot receive the same job.
+     *
      * @return list<AsyncJob>
      */
     public function claimDue(int $limit, \DateTimeImmutable $now): array
     {
-        return $this->createQueryBuilder('j')
+        /** @var list<AsyncJob> $candidates */
+        $candidates = $this->createQueryBuilder('j')
             ->andWhere('j.processedAt IS NULL')
             ->andWhere('j.availableAt <= :now')
             ->setParameter('now', $now)
@@ -32,6 +37,24 @@ class AsyncJobRepository extends ServiceEntityRepository
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
+
+        $entityManager = $this->getEntityManager();
+        $connection = $entityManager->getConnection();
+        $claimed = [];
+
+        foreach ($candidates as $job) {
+            if (!AsyncJobLease::tryClaim($connection, (int) $job->getId(), $job->getAvailableAt(), $now)) {
+                // Another worker won this one.
+                $entityManager->detach($job);
+                continue;
+            }
+
+            // No refresh: the entity keeps the old available_at, so the flush leaves the lease in place unless the
+            // handler changes it (markRetry sets the next attempt), and no extra query runs per job.
+            $claimed[] = $job;
+        }
+
+        return $claimed;
     }
 
     public function countPending(): int

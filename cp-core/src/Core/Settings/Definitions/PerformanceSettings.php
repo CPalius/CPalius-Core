@@ -30,6 +30,10 @@ use App\Core\Annotation\CpSetting;
 #[CpSetting(key: 'performance.cpalius.compress_assets', label: 'aacp.performance.field.compress_assets', type: 'checkbox', default: true, module: 'performance', group: 'performance')]
 #[CpSetting(key: 'performance.cpalius.compress_images', label: 'aacp.performance.field.compress_images', type: 'checkbox', default: true, module: 'performance', group: 'performance')]
 #[CpSetting(key: 'performance.cpalius.shield', label: 'aacp.performance.field.shield', type: 'checkbox', default: false, module: 'performance', group: 'performance')]
+// Measurement (App\Core\Performance\Metrics): sample "1 in N" requests into per-route statistics (0 = off),
+// and optionally tell the browser what each request cost in a Server-Timing header.
+#[CpSetting(key: 'performance.metrics_sample', label: 'aacp.performance.field.metrics_sample', type: 'integer', default: 10, module: 'performance', group: 'performance')]
+#[CpSetting(key: 'performance.server_timing', label: 'aacp.performance.field.server_timing', type: 'checkbox', default: false, module: 'performance', group: 'performance')]
 final class PerformanceSettings
 {
 }

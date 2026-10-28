@@ -7,6 +7,7 @@ namespace App\Tests\Integration;
 use App\Core\Cache\CacheRebuildManager;
 use App\Core\Version\CoreUpdater;
 use App\Core\Version\ReleaseChecker;
+use App\Core\Version\Service\AtomicUpdateInstaller;
 use App\Tests\Support\IntegrationTestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Symfony\Component\Filesystem\Filesystem;
@@ -29,7 +30,7 @@ use Symfony\Component\Filesystem\Filesystem;
 #[CoversClass(CoreUpdater::class)]
 final class CoreUpdaterRecoveryTest extends IntegrationTestCase
 {
-    private const TOUCHED = 'cp-content/modules/Blog/Service/BlogCommentService.php';
+    private const TOUCHED = 'cp-core/src/Core/Example/Touched.php';
 
     private string $projectDir;
     private Filesystem $fs;
@@ -118,7 +119,7 @@ final class CoreUpdaterRecoveryTest extends IntegrationTestCase
      */
     public function testRollbackRemovesFilesTheReleaseAdded(): void
     {
-        $added = 'cp-content/modules/Blog/Service/BrandNew.php';
+        $added = 'cp-core/src/Core/Example/BrandNew.php';
 
         $this->simulateInterruptedUpdate([$added]);
         $this->fs->dumpFile($this->projectDir.'/'.$added, "<?php // added by 9.9.9\n");
@@ -203,6 +204,10 @@ final class CoreUpdaterRecoveryTest extends IntegrationTestCase
         /** @var CacheRebuildManager $cache */
         $cache = $container->get(CacheRebuildManager::class);
 
-        return new CoreUpdater($this->projectDir, $releases, $cache);
+        // Built on the scratch directory, never taken from the container: the container's installer points at the
+        // real project, and a rollback through it overwrote the real composer.json and a real module file.
+        $installer = new AtomicUpdateInstaller($this->projectDir);
+
+        return new CoreUpdater($this->projectDir, $releases, $cache, $installer);
     }
 }

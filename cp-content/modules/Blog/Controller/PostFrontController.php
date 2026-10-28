@@ -209,9 +209,16 @@ final class PostFrontController extends AbstractController
     {
         $locale = $request->getLocale();
         $node = $this->nodeRepository->findOnePublishedBySlugAndLocale($slug, $locale);
+        $preview = false;
 
         if (!$node instanceof Node || $node->getType() !== self::NODE_TYPE) {
-            return $this->resolveCrossLocalePost($request, $slug, $locale);
+            // A draft or scheduled post is visible to the people who may edit it (author, or an admin),
+            // so a writer can read their own work on the real page before publishing it.
+            $node = $this->findPreviewablePost($slug, $locale);
+            if (!$node instanceof Node) {
+                return $this->resolveCrossLocalePost($request, $slug, $locale);
+            }
+            $preview = true;
         }
 
         // LocaleSwitchService reads TranslatableInterface from request attributes.
@@ -221,8 +228,10 @@ final class PostFrontController extends AbstractController
 
         $this->tagCollector->addEntityTag('node', (int) $node->getId());
 
-        return $this->render('@Theme/blog/show.html.twig', [
+        $response = $this->render('@Theme/blog/show.html.twig', [
             'post' => $node,
+            'isPreview' => $preview,
+            'authorTools' => $this->authorTools($node),
             'related' => $this->appearanceService->resolveRelatedPosts($node),
             'featuredImageUrl' => $this->presentationService->resolveFeaturedImageUrl($node),
             'commentContext' => $this->commentService->buildShowContext(
@@ -231,6 +240,75 @@ final class PostFrontController extends AbstractController
                 $user instanceof User ? $user : null,
             ),
         ]);
+
+        if ($preview) {
+            // Never indexed, never stored by a shared cache.
+            $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+            $response->setPrivate();
+            $response->headers->addCacheControlDirective('no-store');
+        }
+
+        return $response;
+    }
+
+    /**
+     * Whether the current user may edit this post: any post with ".any", their own with ".own".
+     * Same rule as the Studio edit screen (PostAdminController::assertOwnOrAny).
+     */
+    private function canEditPost(Node $node): bool
+    {
+        return $this->isGranted('node.post.edit.any') || $this->isGranted('node.post.edit.own', $node);
+    }
+
+    /**
+     * An unpublished, not-deleted post of this slug and language, only for someone allowed to edit it.
+     */
+    private function findPreviewablePost(string $slug, string $locale): ?Node
+    {
+        if (!$this->getUser() instanceof User) {
+            return null;
+        }
+
+        $node = $this->nodeRepository->findOneBy(['slug' => $slug, 'locale' => $locale, 'type' => self::NODE_TYPE]);
+
+        return $node instanceof Node
+            && $node->getDeletedAt() === null
+            && $node->getStatus() !== Node::STATUS_PUBLISHED
+            && $this->canEditPost($node)
+                ? $node
+                : null;
+    }
+
+    /**
+     * The writer's toolbar above a post: edit, publish (while it is not live), back to the list.
+     * null for everyone else, so the theme prints nothing and a visitor never learns it exists.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function authorTools(Node $node): ?array
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User || !$this->canEditPost($node)) {
+            return null;
+        }
+
+        return [
+            'editUrl' => $this->generateUrl('admin_posts_edit', ['id' => $node->getId()]),
+            'listUrl' => $this->generateUrl('admin_posts_index', ['locale' => $node->getLocale()]),
+            'canPublish' => $node->getStatus() !== Node::STATUS_PUBLISHED && $this->isGranted('node.post.publish'),
+            'publishUrl' => $this->generateUrl('admin_posts_publish', ['id' => $node->getId()]),
+            'status' => $node->getStatus(),
+            'isOwner' => $node->getAuthor()?->getId() === $user->getId(),
+            // Quick-edit panel (see author_toolbar.html.twig): state to prefill, endpoints to call.
+            'quickUrl' => $this->generateUrl('admin_posts_quick', ['id' => $node->getId()]),
+            'canSchedule' => $this->isGranted('node.post.publish'),
+            'canUpload' => $this->isGranted('media.upload'),
+            'uploadUrl' => $this->isGranted('media.upload') ? $this->generateUrl('admin_media_upload') : null,
+            'commentsEnabled' => !\in_array($node->getDataValue('comments_enabled', 1), [0, '0', false, null, ''], true),
+            'featured' => (bool) $node->getDataValue('is_featured', false),
+            'hasCover' => is_numeric($node->getDataValue('featured_image_asset_id')),
+            'dateValue' => ($node->getPublishedAt() ?? (\is_string($node->getDataValue('scheduled_for')) ? new \DateTimeImmutable((string) $node->getDataValue('scheduled_for')) : null))?->format('Y-m-d\TH:i') ?? '',
+        ];
     }
 
     /**

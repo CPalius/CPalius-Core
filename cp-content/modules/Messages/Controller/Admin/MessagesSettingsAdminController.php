@@ -45,7 +45,7 @@ final class MessagesSettingsAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'messages.menu.settings', icon: 'heroicons:cog-6-tooth', panel: 'studio', priority: 37, capability: 'messages.settings.manage', parent: 'admin_messages_dashboard')]
+    #[CpAdminMenu(label: 'messages.menu.settings', icon: 'heroicons:cog-6-tooth', panel: 'studio', priority: 730, capability: 'messages.settings.manage', parent: 'admin_forum_dashboard')]
     public function index(): Response
     {
         $definitions = $this->definitions();

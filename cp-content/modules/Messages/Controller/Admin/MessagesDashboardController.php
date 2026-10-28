@@ -23,7 +23,7 @@ final class MessagesDashboardController extends AbstractController
     }
 
     #[Route('', name: 'dashboard', methods: ['GET'])]
-    #[CpAdminMenu(label: 'messages.menu.root', icon: 'heroicons:chat-bubble-left-right', panel: 'studio', priority: 33, capability: 'messages.moderate', group: 'studio.group.content')]
+    #[CpAdminMenu(label: 'messages.menu.root', icon: 'heroicons:chat-bubble-left-right', panel: 'studio', priority: 700, capability: 'messages.moderate', parent: 'admin_forum_dashboard')]
     public function index(): Response
     {
         return $this->render('@MessagesModule/admin/dashboard.html.twig', [

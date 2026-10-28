@@ -8,7 +8,7 @@
 
         <twig:cp:card title="{{ 'aacp.fields.add_bundle'|trans }}">
             <form method="get" action="" class="flex items-end gap-3"
-                  onsubmit="this.action = '/aacp/fields/' + encodeURIComponent(this.bundle.value.trim().toLowerCase()); return this.bundle.value.trim() !== '';">
+                  data-bundle-action="/aacp/fields/">
                 <div class="flex-1">
                     <label class="form-label !text-slate-400" for="bundle-input">{{ 'aacp.fields.bundle_name'|trans }}</label>
                     <input type="text" id="bundle-input" name="bundle" required pattern="[a-z][a-z0-9_-]{0,49}"

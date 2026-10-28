@@ -12,6 +12,7 @@ use App\Core\Taxonomy\Entity\Term;
 use App\Repository\CategoryRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -148,6 +149,100 @@ final class CategoryAdminController extends AbstractController
             'description' => $category->getDescription() ?? '',
             'parentId' => $category->getParent()?->getId(),
         ]);
+    }
+
+    /**
+     * Modal create from the post form. Same rules as create(); answers JSON instead of a redirect.
+     */
+    #[Route('/ajax', name: 'ajax_create', methods: ['POST'])]
+    public function ajaxCreate(Request $request): JsonResponse
+    {
+        if (!$this->isCsrfTokenValid('admin_category_form', (string) $request->request->get('_token'))) {
+            return $this->ajaxError($this->translator->trans('aacp.common.error.invalid_csrf'), Response::HTTP_FORBIDDEN);
+        }
+
+        $locale = $this->resolveLocale($request->request->get('locale'));
+        $name = trim((string) $request->request->get('name'));
+        if ($name === '') {
+            return $this->ajaxError($this->translator->trans('blog.categories.error.name_required'));
+        }
+
+        $slug = $this->buildSlug($name, $locale);
+        if ($slug === '' || $this->categoryRepository->findOneBySlug($slug, $locale) instanceof Term) {
+            return $this->ajaxError($this->translator->trans('blog.categories.error.already_exists', ['name' => $name]));
+        }
+
+        $description = trim((string) $request->request->get('description'));
+        $parentId = $this->intOrNull($request->request->get('parent_id'));
+
+        $category = new Term($this->categoryRepository->vocabulary(), $name, $slug, $locale);
+        $category->setDescription($description !== '' ? $description : null);
+        if ($parentId !== null) {
+            $category->setParent($this->findParentInLocale($parentId, $locale));
+        }
+
+        $this->entityManager->persist($category);
+        $this->entityManager->flush();
+        $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
+
+        return new JsonResponse(['ok' => true, 'category' => $this->ajaxPayload($category)]);
+    }
+
+    /**
+     * Modal edit from the post form (name, description, parent).
+     */
+    #[Route('/{id}/ajax', name: 'ajax_update', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function ajaxUpdate(int $id, Request $request): JsonResponse
+    {
+        if (!$this->isCsrfTokenValid('admin_category_form', (string) $request->request->get('_token'))) {
+            return $this->ajaxError($this->translator->trans('aacp.common.error.invalid_csrf'), Response::HTTP_FORBIDDEN);
+        }
+
+        $category = $this->findCategoryOrFail($id);
+        $name = trim((string) $request->request->get('name'));
+        if ($name === '') {
+            return $this->ajaxError($this->translator->trans('blog.categories.error.name_required'));
+        }
+
+        $parent = null;
+        $parentId = $this->intOrNull($request->request->get('parent_id'));
+        if ($parentId !== null) {
+            $parent = $this->findParentInLocale($parentId, $category->getLocale());
+            // A category can neither be its own parent nor sit under one of its descendants.
+            for ($ancestor = $parent; $ancestor instanceof Term; $ancestor = $ancestor->getParent()) {
+                if ($ancestor->getId() === $category->getId()) {
+                    return $this->ajaxError($this->translator->trans('blog.categories.error.parent_invalid'));
+                }
+            }
+        }
+
+        $description = trim((string) $request->request->get('description'));
+        $category->setName($name);
+        $category->setDescription($description !== '' ? $description : null);
+        $category->setParent($parent);
+
+        $this->entityManager->flush();
+        $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
+
+        return new JsonResponse(['ok' => true, 'category' => $this->ajaxPayload($category)]);
+    }
+
+    /**
+     * @return array{id: int, name: string, description: string, parentId: int|null}
+     */
+    private function ajaxPayload(Term $category): array
+    {
+        return [
+            'id' => (int) $category->getId(),
+            'name' => $category->getName(),
+            'description' => (string) $category->getDescription(),
+            'parentId' => $category->getParent()?->getId(),
+        ];
+    }
+
+    private function ajaxError(string $message, int $status = Response::HTTP_UNPROCESSABLE_ENTITY): JsonResponse
+    {
+        return new JsonResponse(['ok' => false, 'error' => $message], $status);
     }
 
     #[Route('/{id}/delete', name: 'delete', methods: ['POST'], requirements: ['id' => '\d+'])]

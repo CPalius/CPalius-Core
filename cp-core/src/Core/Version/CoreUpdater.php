@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Version;
 
 use App\Core\Cache\CacheRebuildManager;
+use App\Core\Version\Service\AtomicUpdateInstaller;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpClient\HttpClient;
 
@@ -60,6 +61,7 @@ final class CoreUpdater
         private readonly string $projectDir,
         private readonly ReleaseChecker $releases,
         private readonly CacheRebuildManager $cache,
+        private readonly AtomicUpdateInstaller $installer,
     ) {
         $this->fs = new Filesystem();
     }
@@ -84,6 +86,17 @@ final class CoreUpdater
             return ['aacp.version.blocker.interrupted'];
         }
 
+        // A manifest that failed its signature, expiry or rollback check must
+        // never lead to a download, whatever an older stored status says.
+        if ($this->releases->securityError() !== null) {
+            return ['aacp.version.blocker.signature'];
+        }
+
+        // A guarded update parked between requests (or running in another process) owns the tree.
+        if ($this->installer->state() !== null && !$this->installer->holdsLock()) {
+            return ['aacp.version.blocker.update_running'];
+        }
+
         $status = $this->releases->status();
         $blockers = [];
 
@@ -105,6 +118,10 @@ final class CoreUpdater
             $blockers[] = 'aacp.version.blocker.no_checksum';
         }
 
+        if ($this->incompatibleExtensions($status['version']) !== []) {
+            $blockers[] = 'aacp.version.blocker.extension_incompatible';
+        }
+
         if (!class_exists(\ZipArchive::class)) {
             $blockers[] = 'aacp.version.blocker.no_zip_extension';
         }
@@ -117,6 +134,31 @@ final class CoreUpdater
     }
 
     /**
+     * Installed modules whose declared core_version does not allow the given core version.
+     *
+     * @return list<string> "Module (^2.0)" lines
+     */
+    public function incompatibleExtensions(string $coreVersion): array
+    {
+        $out = [];
+
+        foreach (glob($this->projectDir.'/cp-content/modules/*/module.json') ?: [] as $file) {
+            $data = json_decode((string) file_get_contents($file), true);
+            $constraint = \is_array($data) ? (string) ($data['core_version'] ?? '') : '';
+
+            try {
+                if ($constraint !== '' && !\Composer\Semver\Semver::satisfies($coreVersion, $constraint)) {
+                    $out[] = basename(\dirname($file)).' ('.$constraint.')';
+                }
+            } catch (\Throwable) {
+                // An unreadable constraint is the module author's problem, not a reason to block the core.
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Performs the update. Returns a human-readable log of what happened.
      *
      * Throws on any failure, having first restored whatever it had overwritten.
@@ -126,6 +168,30 @@ final class CoreUpdater
      * @return list<string>
      */
     public function apply(): array
+    {
+        // Standalone callers get the lock and the 503 flag here; the guarded
+        // upgrade flow already holds both and keeps them past this method.
+        $ownsLock = !$this->installer->holdsLock();
+
+        if ($ownsLock) {
+            $this->installer->acquireLock();
+            $this->installer->enterMaintenance();
+        }
+
+        try {
+            return $this->applyLocked();
+        } finally {
+            if ($ownsLock) {
+                $this->installer->leaveMaintenance();
+                $this->installer->releaseLock();
+            }
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function applyLocked(): array
     {
         $blockers = $this->blockers();
 
@@ -140,7 +206,7 @@ final class CoreUpdater
         $workDir = $this->projectDir.'/cp-core/var/update';
         $archive = $workDir.'/download-'.$version.'.zip';
         $staging = $workDir.'/staging-'.$version;
-        $backup = $workDir.'/backup-'.$version;
+        $backup = $this->installer->backupDir($version);
 
         $log = [];
 
@@ -617,45 +683,11 @@ final class CoreUpdater
      */
     private function install(string $root, array $files): int
     {
-        $written = 0;
-
-        foreach ($files as $relative) {
-            $this->fs->copy($root.'/'.$relative, $this->projectDir.'/'.$relative, true);
-            ++$written;
-        }
-
-        return $written;
+        return $this->installer->installAtomically($root, $files);
     }
 
     private function restore(string $backup): void
     {
-        $manifestFile = $backup.'/.manifest.json';
-
-        if (!is_file($manifestFile)) {
-            return;
-        }
-
-        $files = json_decode((string) file_get_contents($manifestFile), true);
-
-        if (!\is_array($files)) {
-            return;
-        }
-
-        foreach ($files as $relative) {
-            if (!\is_string($relative)) {
-                continue;
-            }
-
-            $saved = $backup.'/'.$relative;
-            $live = $this->projectDir.'/'.$relative;
-
-            if (is_file($saved)) {
-                $this->fs->copy($saved, $live, true);
-            } elseif (is_file($live)) {
-                // Present in the manifest but absent from the backup means the
-                // release added it — undoing the update means removing it again.
-                $this->fs->remove($live);
-            }
-        }
+        $this->installer->restoreFromBackup($backup);
     }
 }

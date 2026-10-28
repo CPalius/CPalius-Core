@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Command;
 
+use App\Core\Version\CpVersion;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -86,7 +87,8 @@ final class ModuleCreateCommand extends Command
                 'description' => $name.' module.',
                 'author' => 'CPalius',
                 'bundle' => 'Modules\\'.$name.'\\'.$name.'Module',
-                'core_version' => '^1.0',
+                // The scaffold must activate on the core that generated it: a fixed range goes stale with every major.
+                'core_version' => '^'.explode('.', CpVersion::VERSION)[0].'.0',
                 'requires' => new \stdClass(),
                 'conflicts' => new \stdClass(),
                 'provides' => [$id],

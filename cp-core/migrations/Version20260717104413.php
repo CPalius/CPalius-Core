@@ -18,6 +18,11 @@ final class Version20260717104413 extends AbstractMigration
         return "Moves hardcoded theme navigation links into 'header'/'footer'/'footer_contact' Menu records.";
     }
 
+    public function preUp(Schema $schema): void
+    {
+        $this->skipIf(!\App\Core\Module\ActiveModules::has(\Modules\Menu\MenuModule::class), 'Menu module is not active.');
+    }
+
     public function up(Schema $schema): void
     {
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
@@ -63,6 +68,11 @@ final class Version20260717104413 extends AbstractMigration
      */
     private function insertItems(int $menuId, array $items, string $now): void
     {
+        // A link to a module that is not running would be a dead end on a fresh site.
+        if (!\App\Core\Module\ActiveModules::has(\Modules\Forum\ForumModule::class)) {
+            $items = array_values(array_filter($items, static fn (array $item): bool => $item[1] !== '/tr/forum'));
+        }
+
         foreach ($items as $sortOrder => [$label, $url]) {
             $this->connection->executeStatement(
                 'INSERT INTO menu_items (menu_id, parent_id, label, locale, url, node_id, sort_order, open_in_new_tab) VALUES (?, NULL, ?, ?, ?, NULL, ?, 0)',

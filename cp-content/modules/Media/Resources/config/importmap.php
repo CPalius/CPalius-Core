@@ -7,4 +7,8 @@ return [
         'path' => 'Resources/assets/media-picker.js',
         'entrypoint' => true,
     ],
+    'media-library' => [
+        'path' => 'Resources/assets/media-library.js',
+        'entrypoint' => true,
+    ],
 ];

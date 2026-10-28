@@ -11,6 +11,8 @@ use Doctrine\Migrations\Version\Direction;
 use Doctrine\Migrations\Version\ExecutionResult;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -34,7 +36,7 @@ final class AacpUpdateControllerTest extends IntegrationTestCase
         $before = $this->settingsRowCountExcludingChecks();
         $beforeLedger = $this->hookLedgerValue();
 
-        $response = $controller->index();
+        $response = $controller->index($this->requestWithSession());
 
         self::assertSame(200, $response->getStatusCode());
 
@@ -95,6 +97,7 @@ final class AacpUpdateControllerTest extends IntegrationTestCase
 
         $request = new Request(request: ['_token' => $csrf->getToken('aacp_updates_apply')->getValue()]);
         $request->setMethod('POST');
+        $request->setSession(new Session(new MockArraySessionStorage()));
 
         $response = $controller->apply($request);
 
@@ -134,6 +137,14 @@ final class AacpUpdateControllerTest extends IntegrationTestCase
         $security = $this->container()->get(\Symfony\Bundle\SecurityBundle\Security::class);
 
         self::assertFalse($security->isGranted('system.update.manage'), 'no subject, no update');
+    }
+
+    private function requestWithSession(): Request
+    {
+        $request = new Request();
+        $request->setSession(new Session(new MockArraySessionStorage()));
+
+        return $request;
     }
 
     private function boot(string $role): AACPUpdateController
@@ -190,8 +201,8 @@ final class AacpUpdateControllerTest extends IntegrationTestCase
     private function settingsRowCountExcludingChecks(): int
     {
         return (int) $this->em()->getConnection()->fetchOne(
-            'SELECT COUNT(*) FROM cp_settings WHERE setting_key NOT IN (?, ?)',
-            ['update.core.latest_release', 'update.core.patch_index'],
+            'SELECT COUNT(*) FROM cp_settings WHERE setting_key NOT IN (?, ?, ?)',
+            ['update.core.latest_release', 'update.core.patch_index', 'update.core.verify_error'],
         );
     }
 

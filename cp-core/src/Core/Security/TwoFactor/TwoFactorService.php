@@ -464,7 +464,7 @@ final class TwoFactorService
                 continue;
             }
 
-            if (!$matched && hash_equals($hash, $this->hashRecoveryCode($normalized))) {
+            if (!$matched && $this->recoveryHashMatches($hash, $normalized)) {
                 $matched = true;
 
                 continue;
@@ -537,6 +537,17 @@ final class TwoFactorService
     private function hashRecoveryCode(string $normalized): string
     {
         return hash_hmac('sha256', $normalized, $this->appSecret);
+    }
+
+    /** A code hashed before APP_SECRET was replaced still counts while the old secret is listed as previous. */
+    private function recoveryHashMatches(string $hash, string $normalized): bool
+    {
+        $ok = false;
+        foreach ([$this->appSecret, ...\array_slice($this->secretBox->secrets(), 1)] as $secret) {
+            $ok = hash_equals($hash, hash_hmac('sha256', $normalized, $secret)) || $ok;
+        }
+
+        return $ok;
     }
 
     private function normalizeRecoveryCode(string $code): string

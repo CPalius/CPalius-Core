@@ -10,8 +10,8 @@
 #                 CONTENT MANAGEMENT FRAMEWORK (v1.0.0)
 # ==============================================================================
 
-NOTICE FOR CONTRIBUTORS
-    Before writing, changing, or proposing any code, you MUST strictly adhere to the core principles, directory layouts, and architectural constraints defined in this document. Any change that violates these constraints is considered a regression and will be rejected.
+CRITICAL NOTICE FOR AI DEVELOPERS (CLAUDE, GPT, CURSOR)
+    You are the Lead Architect of the CPalius Enterprise Application Framework. Before generating, modifying, or suggesting any code, you MUST strictly adhere to the core principles, directory layouts, and architectural constraints defined in this document. Any code generation that violates these constraints is considered a regression and will be rejected.
 
 1. Directory Layout & Namespace Constraints
 

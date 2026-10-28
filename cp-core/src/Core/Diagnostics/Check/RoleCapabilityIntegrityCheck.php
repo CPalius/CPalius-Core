@@ -7,6 +7,7 @@ namespace App\Core\Diagnostics\Check;
 use App\Core\Diagnostics\DoctorCheckInterface;
 use App\Core\Diagnostics\DoctorFinding;
 use App\Core\Security\CapabilityRegistry;
+use App\Core\Security\RestrictedCapabilities;
 use App\Core\Security\RoleConfigManager;
 
 /**
@@ -70,6 +71,28 @@ final class RoleCapabilityIntegrityCheck implements DoctorCheckInterface
                     implode(', ', $roleIds),
                 ),
                 remedy: 'Correct the spelling in the role config, or remove the grant if the module was uninstalled.',
+            );
+        }
+
+        // Restricted capabilities belong to the full-access role. Any other role holding one is a deliberate
+        // delegation that should be visible, and on a role every registered visitor gets it is a hole.
+        foreach ($this->roles->getAllRoleIds() as $roleId) {
+            if ($roleId === 'admin') {
+                continue;
+            }
+            $held = array_values(array_filter(
+                $this->roles->getCapabilitiesForRole($roleId),
+                static fn (string $c): bool => RestrictedCapabilities::level($c) === 'critical',
+            ));
+            if ($held === []) {
+                continue;
+            }
+            $findings[] = new DoctorFinding(
+                id: 'capabilities.restricted_in_role.'.$roleId,
+                severity: \in_array($roleId, ['member', 'anonymous'], true) ? DoctorFinding::SEVERITY_CRITICAL : DoctorFinding::SEVERITY_MEDIUM,
+                title: 'Non-admin role holds restricted capabilities',
+                detail: sprintf('Role "%s" holds: %s. These can take over or read the whole site.', $roleId, implode(', ', $held)),
+                remedy: 'Remove them from the role, or confirm the delegation is intended.',
             );
         }
 

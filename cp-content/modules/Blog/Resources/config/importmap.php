@@ -7,4 +7,8 @@ return [
         'path' => 'Resources/assets/admin-post-form.js',
         'entrypoint' => true,
     ],
+    'admin-post-taxonomy' => [
+        'path' => 'Resources/assets/admin-post-taxonomy.js',
+        'entrypoint' => true,
+    ],
 ];

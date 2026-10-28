@@ -8,8 +8,8 @@ taken seriously and answered.
 
 | Version | Supported |
 |---------|-----------|
-| 2.2.x   | ✅ Security fixes |
-| < 2.2   | ❌ Not supported |
+| 1.0.x   | ✅ Security fixes |
+| < 1.0   | ❌ Pre-release, not supported |
 
 ## Reporting a vulnerability
 

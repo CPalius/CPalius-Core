@@ -49,6 +49,14 @@ final class ThemePackageContract
             $problems[] = 'Missing Resources/views/layout.html.twig (front-end layout).';
         }
 
+        // entry.css / entry.js are theme-relative to Resources/; a missing file means a
+        // package shipped without its build output (the theme would render unstyled).
+        foreach ([...$definition->css, ...$definition->js] as $entry) {
+            if (!is_file($themeDir.'/Resources/'.ltrim($entry, '/'))) {
+                $problems[] = sprintf('theme.json entry file "%s" does not exist under Resources/.', $entry);
+            }
+        }
+
         return array_merge($problems, self::isolationProblems($themeDir));
     }
 
@@ -66,6 +74,11 @@ final class ThemePackageContract
 
         if (str_contains($lower, 'cp-core/') || str_contains($lower, 'cp-includes/')) {
             return [sprintf('Package must not include core paths: %s', $entryName)];
+        }
+
+        // A theme is Twig, CSS, JS and images: server-side code or server config has no place in it.
+        if (preg_match('/\.(php[0-9]?|phtml|phar|phps|pht)$/', $lower) === 1 || preg_match('#(^|/)(\.htaccess|\.user\.ini|web\.config)$#', $lower) === 1) {
+            return [sprintf('Package must not include server-side code or server config: %s', $entryName)];
         }
 
         return [];

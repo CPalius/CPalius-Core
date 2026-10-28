@@ -44,6 +44,7 @@ final class StudioDashboardService
      *         extraKpis: list<array{key: string, labelKey: string, value: int|string}>
      *     },
      *     mix: list<array{key: string, labelKey: string, count: int}>,
+     *     modules: list<array{key: string, labelKey: string, icon: string, rows: list<array{labelKey: string, value: int|string}>}>,
      *     workbench: array<string, mixed>,
      *     recentActivity: list<array{
      *         title: string,
@@ -73,10 +74,14 @@ final class StudioDashboardService
         $mediaBytes = $this->assetRepository->sumFileSize();
         $extraKpis = [];
         $mix = [];
+        $modules = [];
 
         foreach ($this->sortedProviders() as $provider) {
             try {
                 $contribution = $provider->buildContribution();
+                $key = $provider->getKey();
+                $label = $provider->getLabel();
+                $icon = $provider->getIcon();
             } catch (\Throwable) {
                 continue;
             }
@@ -85,9 +90,11 @@ final class StudioDashboardService
                 $mediaBytes = $contribution->mediaBytes;
             }
 
+            $rows = [];
             foreach ($contribution->extraKpis as $kpi) {
                 if (\is_array($kpi) && isset($kpi['key'], $kpi['labelKey'], $kpi['value'])) {
                     $extraKpis[] = $kpi;
+                    $rows[] = ['labelKey' => $kpi['labelKey'], 'value' => $kpi['value']];
                 }
             }
 
@@ -97,10 +104,17 @@ final class StudioDashboardService
                     'labelKey' => 'studio.dashboard.kpi.forum_24h',
                     'value' => $contribution->forumPostsLast24h,
                 ];
+                $rows[] = ['labelKey' => 'studio.dashboard.kpi.forum_24h', 'value' => $contribution->forumPostsLast24h];
             }
 
             foreach ($contribution->mixItems as $item) {
                 $mix[] = $item;
+                $rows[] = ['labelKey' => $item['labelKey'], 'value' => $item['count']];
+            }
+
+            // One card per module, built from what the module itself reports.
+            if ($rows !== []) {
+                $modules[] = ['key' => $key, 'labelKey' => $label, 'icon' => $icon, 'rows' => $rows];
             }
         }
 
@@ -113,6 +127,7 @@ final class StudioDashboardService
                 'extraKpis' => $extraKpis,
             ],
             'mix' => $mix,
+            'modules' => $modules,
             // What is waiting on a human, ahead of what has already shipped.
             'workbench' => $this->buildWorkbench(),
             'recentActivity' => $this->buildRecentActivity(),

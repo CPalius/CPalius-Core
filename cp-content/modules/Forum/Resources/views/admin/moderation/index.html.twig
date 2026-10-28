@@ -46,7 +46,7 @@
                                     <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_moderation') }}">
                                     <button type="submit" class="btn btn-sm btn-primary">{{ 'studio.forum.moderation.action.resolve'|trans }}</button>
                                 </form>
-                                <form method="post" action="{{ path('admin_forum_moderation_delete_post', {id: report.id}) }}" onsubmit="return confirm({{ 'studio.forum.moderation.delete_post_confirm'|trans|json_encode|raw }});">
+                                <form method="post" action="{{ path('admin_forum_moderation_delete_post', {id: report.id}) }}" data-confirm="{{ 'studio.forum.moderation.delete_post_confirm'|trans|e('html_attr') }}">
                                     <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_moderation') }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'studio.forum.moderation.action.delete_post'|trans }}</button>
                                 </form>
@@ -180,7 +180,7 @@
                                     <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_moderation') }}">
                                     <button class="btn btn-sm btn-primary">{{ 'studio.forum.moderation.action.approve'|trans }}</button>
                                 </form>
-                                <form method="post" action="{{ path('admin_forum_moderation_reject_post', {id: post.id}) }}" class="inline" onsubmit="return confirm({{ 'studio.forum.moderation.reject_confirm'|trans|json_encode|raw }});">
+                                <form method="post" action="{{ path('admin_forum_moderation_reject_post', {id: post.id}) }}" class="inline" data-confirm="{{ 'studio.forum.moderation.reject_confirm'|trans|e('html_attr') }}">
                                     <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_moderation') }}">
                                     <button class="btn btn-sm btn-outline-danger">{{ 'studio.forum.moderation.action.reject'|trans }}</button>
                                 </form>

@@ -106,7 +106,7 @@
                                         {{ 'aacp.backup.download'|trans }}
                                     </a>
                                     <form method="post" action="{{ path('aacp_backup_delete') }}"
-                                          onsubmit="return confirm({{ 'aacp.backup.delete_confirm'|trans|json_encode|raw }});">
+                                          data-confirm="{{ 'aacp.backup.delete_confirm'|trans|e('html_attr') }}">
                                         <input type="hidden" name="_token" value="{{ csrf_token }}">
                                         <input type="hidden" name="filename" value="{{ archive.filename }}">
                                         <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
@@ -118,7 +118,7 @@
                                            button. "Delete" on a backup should
                                            never mean "delete both copies". #}
                                         <form method="post" action="{{ path('aacp_backup_delete_remote') }}"
-                                              onsubmit="return confirm({{ 'aacp.backup.remote.delete_confirm'|trans|json_encode|raw }});">
+                                              data-confirm="{{ 'aacp.backup.remote.delete_confirm'|trans|e('html_attr') }}">
                                             <input type="hidden" name="_token" value="{{ csrf_token }}">
                                             <input type="hidden" name="filename" value="{{ archive.filename }}">
                                             <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
@@ -152,7 +152,7 @@
                                 <td class="text-fs-xs !text-slate-500">{{ entry.at is defined ? entry.at|date('d.m.Y H:i:s') : '—' }}</td>
                                 <td class="text-right">
                                     <form method="post" action="{{ path('aacp_backup_delete_remote') }}"
-                                          onsubmit="return confirm({{ 'aacp.backup.remote.delete_confirm'|trans|json_encode|raw }});">
+                                          data-confirm="{{ 'aacp.backup.remote.delete_confirm'|trans|e('html_attr') }}">
                                         <input type="hidden" name="_token" value="{{ csrf_token }}">
                                         <input type="hidden" name="filename" value="{{ filename }}">
                                         <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">

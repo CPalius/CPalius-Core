@@ -38,7 +38,7 @@
     </div>
     <div class="forum-board__last">
         {% if board.lastTopicTitle %}
-            {% include '@Theme/forum/partials/_avatar.html.twig' with {name: board.lastPosterName|default('?')} %}
+            {% include '@Theme/forum/partials/_avatar.html.twig' with {name: board.lastPosterName|default('?'), user: board.lastPoster} %}
             <div class="forum-board__last-text">
                 <a href="{{ path('forum_topic', {topicId: board.lastTopicId, slug: ''}) }}" title="{{ board.lastTopicTitle }}">{{ board.lastTopicTitle|length > 42 ? board.lastTopicTitle|slice(0, 42) ~ '…' : board.lastTopicTitle }}</a>
                 <span>{{ board.lastPosterName }} · <time>{{ board.lastPostAt|forum_relative_time }}</time></span>

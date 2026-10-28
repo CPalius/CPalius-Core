@@ -7,7 +7,7 @@
         <div class="container">
             <div class="forum-nav__inner">
                 <ol class="forum-nav__crumbs">
-                    <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+                    <li><a href="{{ path('site_home') }}"><i class="bi bi-house-door"></i></a></li>
                     <li class="is-active">{{ 'account.register.breadcrumb'|trans }}</li>
                 </ol>
             </div>
@@ -24,6 +24,14 @@
 
 <div class="forum-form fade-in" style="max-width: 460px; margin: 0 auto;">
     <form method="post">
+        {% if registrationConfig.inviteRequired %}
+            <div class="forum-field">
+                <label for="reg-invite">{{ 'account.register.invite_label'|trans }} *</label>
+                <input type="text" id="reg-invite" name="invite_code" value="{{ registrationConfig.inviteCode }}" maxlength="32" required autocomplete="off" style="text-transform:uppercase;">
+                <p class="forum-field-hint">{{ 'account.register.invite_hint'|trans }}</p>
+            </div>
+        {% endif %}
+
         {% if registrationConfig.firstNameMode != '0' or registrationConfig.lastNameMode != '0' %}
             <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 var(--sp-sm);">
                 {% if registrationConfig.firstNameMode != '0' %}
@@ -38,6 +46,19 @@
                         <input type="text" id="reg-last-name" name="last_name" value="{{ formValues.lastName }}" maxlength="100" {% if registrationConfig.lastNameMode == '2' %}required{% endif %}>
                     </div>
                 {% endif %}
+            </div>
+        {% endif %}
+
+        <div class="forum-field">
+            <label><input type="checkbox" name="profile_show_name" value="1"{{ formValues.profile_show_name|default('') ? ' checked' }}> {{ 'account.register.show_name'|trans }}</label>
+            <small>{{ 'account.register.show_name_hint'|trans }}</small>
+        </div>
+
+        {% if registrationConfig.phoneRequired %}
+            <div class="forum-field">
+                <label for="reg-phone">{{ 'account.register.phone_label'|trans }} *</label>
+                <input type="tel" id="reg-phone" name="phone" value="{{ formValues.phone|default('') }}" maxlength="25" required autocomplete="tel" inputmode="tel">
+                <small>{{ 'account.register.phone_hint'|trans }}</small>
             </div>
         {% endif %}
 

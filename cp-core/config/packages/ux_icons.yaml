@@ -11,10 +11,10 @@ ux_icons:
         height: '1em'
         width: '1em'
 
-    # Throw an exception if an icon is not
-    ignore_not_found: false
+    # Icons are vendored in assets/icons (ux:icons:import / ux:icons:lock). Never fetch from api.iconify.design:
+    # a runtime call there blocked the page on every cold cache and made the panel depend on a third party.
+    iconify:
+        enabled: false
 
-when@prod:
-    ux_icons:
-        # Suppress exceptions for missing icons in production
-        ignore_not_found: true
+    # A missing icon renders empty instead of breaking the page.
+    ignore_not_found: true

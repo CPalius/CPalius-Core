@@ -18,7 +18,7 @@
             {{ importmap(['app', 'studio-quick-cache-clear']) }}
         {% endblock %}
     </head>
-    <body class="aacp-shell h-full bg-dark-1 text-slate-100 antialiased text-fs-base font-sans">
+    <body data-confirm-delete="{{ 'aacp.confirm.delete'|trans }}" class="aacp-shell h-full bg-dark-1 text-slate-100 antialiased text-fs-base font-sans">
         <div class="flex h-full">
             <div data-sidebar-overlay class="sidebar-overlay"></div>
 
@@ -47,7 +47,7 @@
                                 {% endif %}
                             {% endfor %}
 
-                            {% set isHub = item.hub|default(false) %}
+                            {% set isHub = item.hub|default(false) or item.children is not empty %}
                             {% set itemLabel = item.label|trans %}
                             <li{% if item.children is not empty %} class="dropdown{{ (itemActive or childActive) ? ' open' : '' }}"{% endif %}>
                                 <a href="{{ isHub ? '#' : path(item.routeName) }}"
@@ -115,7 +115,7 @@
                         <div class="flex flex-wrap items-center justify-end gap-2">
                             {% block header_actions %}{% endblock %}
                         </div>
-                        <a href="{{ path('theme_cpalius_website_home') }}"
+                        <a href="{{ path('site_home') }}"
                            target="_blank"
                            rel="noopener"
                            title="{{ 'aacp.layout.header.go_website'|trans }}"

@@ -54,13 +54,44 @@ final class AACPSecurityCenterController
     }
 
     #[Route('/aacp/security', name: 'aacp_security_center', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.security.menu', icon: 'heroicons:shield-check', panel: 'aacp', priority: 30, capability: 'system.security.manage')]
+    #[CpAdminMenu(label: 'aacp.menu.security_overview', icon: 'heroicons:shield-check', panel: 'aacp', priority: 1, capability: 'system.security.manage', parent: 'aacp_hub_security')]
     #[IsGranted('system.security.manage')]
     public function index(Request $request): Response
     {
+        return $this->renderCenter($request, $request->query->get('panel') === 'findings' ? 'findings' : 'threats');
+    }
+
+    /** The live-threat panel of the security centre as its own menu entry. */
+    #[Route('/aacp/security/threats', name: 'aacp_security_threats', methods: ['GET'])]
+    #[CpAdminMenu(label: 'aacp.menu.security_threats', icon: 'heroicons:fire', panel: 'aacp', priority: 2, capability: 'system.security.manage', parent: 'aacp_hub_security')]
+    #[IsGranted('system.security.manage')]
+    public function threats(Request $request): Response
+    {
+        return $this->renderCenter($request, 'threats');
+    }
+
+    /** The audit-findings panel of the security centre as its own menu entry. */
+    #[Route('/aacp/security/findings', name: 'aacp_security_findings', methods: ['GET'])]
+    #[CpAdminMenu(label: 'aacp.menu.security_findings', icon: 'heroicons:exclamation-triangle', panel: 'aacp', priority: 3, capability: 'system.security.manage', parent: 'aacp_hub_security')]
+    #[IsGranted('system.security.manage')]
+    public function findings(Request $request): Response
+    {
+        return $this->renderCenter($request, 'findings');
+    }
+
+    /** Security settings live on the system settings screen; this entry opens its Security tab. */
+    #[Route('/aacp/security/settings', name: 'aacp_security_settings', methods: ['GET'])]
+    #[CpAdminMenu(label: 'aacp.menu.security_settings', icon: 'heroicons:cog-6-tooth', panel: 'aacp', priority: 4, capability: 'system.security.manage', parent: 'aacp_hub_security')]
+    #[IsGranted('system.security.manage')]
+    public function settingsEntry(): RedirectResponse
+    {
+        return new RedirectResponse('/aacp/advanced/management?tab=security');
+    }
+
+    private function renderCenter(Request $request, string $activePanel): Response
+    {
         $findings = $this->auditor->run();
         $threatScannerOn = (bool) $this->settings->get('telemetry.security_enabled', false);
-        $activePanel = $request->query->get('panel') === 'findings' ? 'findings' : 'threats';
 
         return new Response($this->twig->render('aacp/security/index.html.twig', [
             'activePanel' => $activePanel,

@@ -28,6 +28,9 @@ class FieldDefinitionRegistry
     /** @var array<string, list<FieldDefinition>> per-request memo */
     private array $memo = [];
 
+    /** @var array<string, list<array<string, mixed>>>|null every bundle, loaded by ONE query on the first cold read */
+    private ?array $bulk = null;
+
     public function __construct(
         private readonly FieldDefinitionRepository $repository,
         private readonly CacheInterface $cache,
@@ -48,10 +51,7 @@ class FieldDefinitionRegistry
             $rows = $this->cache->get(self::CACHE_PREFIX.$bundle, function (ItemInterface $item) use ($bundle): array {
                 $item->expiresAfter(self::CACHE_TTL);
 
-                return array_map(
-                    static fn (FieldDefinition $f): array => $f->toArray(),
-                    $this->repository->findByBundle($bundle),
-                );
+                return $this->bulkRows($bundle);
             });
         } catch (\Throwable) {
             return $this->memo[$bundle] = $this->repository->findByBundle($bundle);
@@ -87,9 +87,29 @@ class FieldDefinitionRegistry
         return $this->repository->distinctBundles();
     }
 
+    /**
+     * A cold cache with N bundles on one page used to cost N queries. The first miss now loads
+     * all definitions at once and the remaining misses are answered from that.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function bulkRows(string $bundle): array
+    {
+        if ($this->bulk === null) {
+            $this->bulk = [];
+
+            foreach ($this->repository->findAllOrdered() as $definition) {
+                $this->bulk[$definition->getBundle()][] = $definition->toArray();
+            }
+        }
+
+        return $this->bulk[$bundle] ?? [];
+    }
+
     public function invalidate(?string $bundle = null): void
     {
         $this->memo = [];
+        $this->bulk = null;
 
         if (!$this->cache instanceof CacheItemPoolInterface) {
             return;

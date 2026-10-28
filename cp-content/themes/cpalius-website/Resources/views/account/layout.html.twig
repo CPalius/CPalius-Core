@@ -1,2 +1,23 @@
-{# Default account chrome — the website theme maps this onto the public layout. #}
-{% extends '@Theme/forum/layout.html.twig' %}
+{# Account chrome: login, register, profile and the rest. Self-contained so it works on a site without the Forum module;
+   it keeps the forum_breadcrumbs / forum_content block names the core account templates already fill. #}
+{% extends '@Theme/layout.html.twig' %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ cp_theme_url('dist/forum.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section forum-page forum" id="forum">
+    <div class="container">
+        {% block forum_breadcrumbs %}{% endblock %}
+
+        {% for type, messages in cp_flashes() %}
+            {% for message in messages %}
+                <div class="forum-flash forum-flash--{{ type }}">{{ message }}</div>
+            {% endfor %}
+        {% endfor %}
+
+        {% block forum_content %}{% endblock %}
+    </div>
+</section>
+{% endblock %}

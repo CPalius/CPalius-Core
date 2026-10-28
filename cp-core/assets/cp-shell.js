@@ -89,15 +89,103 @@ function initDropdownMenus() {
 
 function initToastAutoDismiss() {
     document.querySelectorAll('[data-toast-stack] .toast').forEach((toast) => {
+        // Toasts carrying a link get longer so the link can actually be clicked.
         window.setTimeout(() => {
             toast.style.transition = 'opacity 300ms ease';
             toast.style.opacity = '0';
             window.setTimeout(() => toast.remove(), 320);
-        }, 5000);
+        }, toast.querySelector('a') ? 12000 : 5000);
+    });
+}
+
+// Delete forms that carry no confirmation of their own still ask first.
+// Explicit: data-confirm="message" on a <form> or its submit button.
+// Implicit: a POST whose URL ends in /delete, /remove, /destroy or /purge — the
+// shell-wide safety net for the many one-click delete buttons, so a new module
+// gets it without remembering to add an onsubmit. Opt out with data-no-confirm.
+const DELETE_URL = /\/(delete|remove|destroy|purge)(\/|\?|$)/i;
+
+function initDeleteConfirm() {
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+
+        if (!(form instanceof HTMLFormElement) || form.hasAttribute('data-no-confirm')) {
+            return;
+        }
+
+        const submitter = event.submitter;
+        const explicit = submitter?.getAttribute('data-confirm') ?? form.getAttribute('data-confirm');
+
+        if (explicit === null && (form.getAttribute('onsubmit') ?? '').includes('confirm(')) {
+            return;
+        }
+
+        const action = submitter?.getAttribute('formaction') ?? form.getAttribute('action') ?? '';
+        const method = (submitter?.getAttribute('formmethod') ?? form.getAttribute('method') ?? 'get').toLowerCase();
+
+        if (explicit === null && (method !== 'post' || !DELETE_URL.test(action))) {
+            return;
+        }
+
+        const message = explicit ?? document.body.dataset.confirmDelete ?? 'Are you sure?';
+
+        if (!window.confirm(message)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+    }, true);
+}
+
+// CSP-safe replacement for inline handlers (no 'unsafe-inline' needed):
+//   [data-autosubmit]        change -> submit the owning form
+//   [data-nav-url]           change -> navigate to data-nav-url + encoded value
+//   form[data-bundle-action] submit -> action = data-bundle-action + bundle field
+//   a[data-confirm]          click  -> confirm() first (forms use initDeleteConfirm)
+function initInlineHandlerReplacements() {
+    document.addEventListener('change', (event) => {
+        const el = event.target;
+
+        if (!(el instanceof Element)) {
+            return;
+        }
+
+        if (el.hasAttribute('data-autosubmit') && el.form) {
+            el.form.requestSubmit();
+        } else if (el.hasAttribute('data-nav-url')) {
+            window.location.assign(el.getAttribute('data-nav-url') + encodeURIComponent(el.value));
+        }
+    });
+
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+
+        if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-bundle-action')) {
+            return;
+        }
+
+        const bundle = form.elements.bundle?.value.trim().toLowerCase() ?? '';
+
+        if (bundle === '') {
+            event.preventDefault();
+
+            return;
+        }
+
+        form.action = form.getAttribute('data-bundle-action') + encodeURIComponent(bundle);
+    }, true);
+
+    document.addEventListener('click', (event) => {
+        const link = event.target instanceof Element ? event.target.closest('a[data-confirm]') : null;
+
+        if (link && !window.confirm(link.getAttribute('data-confirm'))) {
+            event.preventDefault();
+        }
     });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    initInlineHandlerReplacements();
+    initDeleteConfirm();
     initSidebarToggle();
     initSidebarDropdowns();
     initDropdownMenus();

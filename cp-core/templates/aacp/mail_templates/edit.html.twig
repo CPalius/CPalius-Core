@@ -101,7 +101,7 @@
             <div class="flex flex-wrap items-center gap-sp-sm">
                 {% if definition.custom %}
                     <form method="post" action="{{ path('aacp_mail_templates_delete', {key: definition.key}) }}"
-                          onsubmit="return confirm({{ 'aacp.mail_templates.custom.delete_confirm'|trans|json_encode|raw }});">
+                          data-confirm="{{ 'aacp.mail_templates.custom.delete_confirm'|trans|e('html_attr') }}">
                         <input type="hidden" name="_token" value="{{ csrf_token('aacp_mail_template_delete') }}">
                         <button type="submit" class="btn btn-sm btn-outline !text-danger-300">{{ 'aacp.mail_templates.custom.delete'|trans }}</button>
                     </form>

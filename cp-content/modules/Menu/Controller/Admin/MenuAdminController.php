@@ -11,9 +11,11 @@ use App\Repository\NodeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Modules\Menu\Entity\Menu;
 use Modules\Menu\Entity\MenuItem;
+use Modules\Menu\Location\MenuLocationRegistry;
 use Modules\Menu\Repository\MenuItemRepository;
 use Modules\Menu\Repository\MenuRepository;
 use Modules\Menu\Twig\FrontMenuRuntime;
+use Modules\Menu\Twig\MenuLocationRuntime;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -41,6 +43,7 @@ final class MenuAdminController extends AbstractController
         private readonly LocaleProvider $localeProvider,
         private readonly TranslatorInterface $translator,
         private readonly OriginCachePurger $originCachePurger,
+        private readonly MenuLocationRegistry $menuLocations,
     ) {
     }
 
@@ -61,12 +64,14 @@ final class MenuAdminController extends AbstractController
 
             $name = trim((string) $request->request->get('name'));
             $identifier = trim((string) $request->request->get('identifier'));
+            $location = $this->readLocation($request);
 
             if ($name === '' || $identifier === '') {
                 $this->addFlash('error', $this->translator->trans('menu.admin.error.name_identifier_required'));
 
                 return $this->render('@MenuModule/admin/menus/create.html.twig', [
-                    'formValues' => ['name' => $name, 'identifier' => $identifier],
+                    'formValues' => ['name' => $name, 'identifier' => $identifier, 'location' => $location],
+                    'locations' => $this->menuLocations->all(),
                 ]);
             }
 
@@ -74,13 +79,16 @@ final class MenuAdminController extends AbstractController
                 $this->addFlash('error', $this->translator->trans('menu.admin.error.identifier_taken', ['identifier' => $identifier]));
 
                 return $this->render('@MenuModule/admin/menus/create.html.twig', [
-                    'formValues' => ['name' => $name, 'identifier' => $identifier],
+                    'formValues' => ['name' => $name, 'identifier' => $identifier, 'location' => $location],
+                    'locations' => $this->menuLocations->all(),
                 ]);
             }
 
             $menu = new Menu($name, $identifier);
             $this->entityManager->persist($menu);
             $this->entityManager->flush();
+            $this->menuRepository->assignLocation($menu, $location);
+            $this->cacheApp->delete(MenuLocationRuntime::cacheKey((string) $location));
             $this->originCachePurger->purgeAll();
 
             $this->addFlash('success', $this->translator->trans('menu.admin.flash.created', ['name' => $name]));
@@ -89,8 +97,37 @@ final class MenuAdminController extends AbstractController
         }
 
         return $this->render('@MenuModule/admin/menus/create.html.twig', [
-            'formValues' => ['name' => '', 'identifier' => ''],
+            'formValues' => ['name' => '', 'identifier' => '', 'location' => null],
+            'locations' => $this->menuLocations->all(),
         ]);
+    }
+
+    /** Assigns the menu to a theme/module location (or clears it); one menu per location. */
+    #[Route('/{id}/location', name: 'set_location', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function setLocation(int $id, Request $request): Response
+    {
+        $menu = $this->findMenuOrFail($id);
+        $this->assertValidCsrf($request, 'admin_menu_form');
+
+        $previous = $menu->getLocation();
+        $location = $this->readLocation($request);
+        $this->menuRepository->assignLocation($menu, $location);
+
+        foreach (array_filter([$previous, $location]) as $touched) {
+            $this->cacheApp->delete(MenuLocationRuntime::cacheKey($touched));
+        }
+        $this->originCachePurger->purgeAll();
+        $this->addFlash('success', $this->translator->trans('menu.admin.flash.location_saved'));
+
+        return $this->redirectToRoute('admin_menus_edit', ['id' => $id]);
+    }
+
+    /** A known location id from the form, or null for "none". */
+    private function readLocation(Request $request): ?string
+    {
+        $location = trim((string) $request->request->get('location', ''));
+
+        return $location !== '' && $this->menuLocations->has($location) ? $location : null;
     }
 
     #[Route('/{id}/edit', name: 'edit', methods: ['GET'], requirements: ['id' => '\d+'])]
@@ -107,6 +144,7 @@ final class MenuAdminController extends AbstractController
             'parentChoices' => $this->parentChoiceRows($items, $defaultLocale),
             'locales' => $this->localeProvider->getLocales(),
             'defaultLocale' => $defaultLocale,
+            'locations' => $this->menuLocations->all(),
         ]);
     }
 
@@ -128,6 +166,9 @@ final class MenuAdminController extends AbstractController
         $nodeId = $this->parseNullableInt($request->request->get('node_id'));
         $parentId = $this->parseNullableInt($request->request->get('parent_id'));
         $openInNewTab = $request->request->getBoolean('open_in_new_tab');
+        $rel = (string) $request->request->get('rel', '');
+        $icon = (string) $request->request->get('icon', '');
+        $cssClass = (string) $request->request->get('css_class', '');
 
         $allItems = $this->menuItemRepository->findAllByMenu($menu);
         $parentCanonical = null;
@@ -156,6 +197,7 @@ final class MenuAdminController extends AbstractController
             $item->setUrl($urls[$code] ?? null);
             $item->setNodeId($nodeId);
             $item->setOpenInNewTab($openInNewTab);
+            $item->setLinkAttributes($rel, $icon, $cssClass);
             $item->setSortOrder($siblingCount);
 
             if ($anchor instanceof MenuItem) {
@@ -220,6 +262,7 @@ final class MenuAdminController extends AbstractController
         $translation->setUrl($item->getUrl());
         $translation->setNodeId($item->getNodeId());
         $translation->setOpenInNewTab($item->isOpenInNewTab());
+        $translation->setLinkAttributes($item->getRel(), $item->getIcon(), $item->getCssClass());
         $translation->setSortOrder(
             \count($this->menuItemRepository->findByMenuParentAndLocale($menu, $parent?->getId(), $target)),
         );
@@ -302,6 +345,9 @@ final class MenuAdminController extends AbstractController
         $groupId = $item->ensureTranslationGroup();
         $nodeId = $this->parseNullableInt($request->request->get('node_id'));
         $openInNewTab = $request->request->getBoolean('open_in_new_tab');
+        $rel = (string) $request->request->get('rel', '');
+        $icon = (string) $request->request->get('icon', '');
+        $cssClass = (string) $request->request->get('css_class', '');
         $canonicalParent = $item->getParent();
         $writtenLocales = [];
 
@@ -321,6 +367,7 @@ final class MenuAdminController extends AbstractController
                 }
                 $existing->setNodeId($nodeId);
                 $existing->setOpenInNewTab($openInNewTab);
+                $existing->setLinkAttributes($rel, $icon, $cssClass);
                 $writtenLocales[] = $code;
                 continue;
             }
@@ -331,6 +378,7 @@ final class MenuAdminController extends AbstractController
             $translation->setUrl($urls[$code] ?? $item->getUrl());
             $translation->setNodeId($nodeId);
             $translation->setOpenInNewTab($openInNewTab);
+            $translation->setLinkAttributes($rel, $icon, $cssClass);
             $translation->setSortOrder($item->getSortOrder());
             $translation->joinTranslationGroup($groupId);
             $this->entityManager->persist($translation);

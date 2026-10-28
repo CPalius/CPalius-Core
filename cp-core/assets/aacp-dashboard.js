@@ -1,4 +1,5 @@
 import Chart from 'chart.js/auto';
+import { initCardLayout } from 'dashboard-layout';
 
 /**
  * AACP command desk: health poll, live telemetry feed, and threat charts.
@@ -57,6 +58,8 @@ function initAacpDashboard(root) {
     };
 
     async function refresh() {
+        // A tab nobody is looking at has no use for fresh numbers; it resumes on the next tick after it is shown.
+        if (document.hidden) return;
         try {
             const response = await fetch(url, {
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -403,6 +406,7 @@ function initTelemetry(root) {
     initBanButtons(root);
 
     async function poll() {
+        if (document.hidden) return;
         try {
             const response = await fetch(`${feedUrl}?after_id=${lastId}`, {
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -712,4 +716,5 @@ function initWidgetToggles(root) {
 document.querySelectorAll('[data-aacp-dashboard]').forEach((root) => {
     initAacpDashboard(root);
     initWidgetToggles(root);
+    initCardLayout(root);
 });

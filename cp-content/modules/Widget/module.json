@@ -1,10 +1,10 @@
 {
     "name": "Widget",
-    "version": "1.0.0",
-    "description": "Sidebar and footer widget areas.",
+    "version": "2.1.0",
+    "description": "Widget areas and widgets: place, set up and order boxes (recent posts, categories, custom HTML…) in the sidebar, like WordPress.",
     "author": "CPalius",
     "bundle": "Modules\\Widget\\WidgetModule",
-    "core_version": "^2.0",
+    "core_version": ">=2.2.59 <3",
     "requires": {},
     "conflicts": {},
     "provides": [

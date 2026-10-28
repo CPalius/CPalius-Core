@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Settings\Definitions;
 
 use App\Core\Annotation\CpSetting;
+use App\Core\Theme\ThemeRegistry;
 
 /**
  * Core settings carrier: empty class whose #[CpSetting] attributes are read at compile time.
@@ -53,11 +54,12 @@ use App\Core\Annotation\CpSetting;
     key: 'core.active_theme',
     label: 'settings.core.active_theme',
     type: 'text',
-    default: 'cpalius-website',
+    default: ThemeRegistry::FALLBACK_THEME,
     module: 'theme_manager',
     group: 'appearance',
 )]
 #[CpSetting(key: 'core.appearance', label: 'aacp.appearance.store', type: 'textarea', default: '{}', module: 'theme_manager', group: 'appearance')]
+#[CpSetting(key: 'studio.appearance', label: 'aacp.menu.studio_appearance', type: 'textarea', default: '{}', module: 'theme_manager', group: 'appearance')]
 final class CoreSettings
 {
 }

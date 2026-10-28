@@ -132,7 +132,7 @@ final class ModuleRegistry
     /**
      * @param list<mixed> $declaredModules
      *
-     * @return array{dirName: string, name: string, version: string, description: string, author: string, class: ?string, status: 'active'|'inactive'|'quarantined', reason: ?string}
+     * @return array{dirName: string, name: string, version: string, description: string, author: string, extends: string, class: ?string, status: 'active'|'inactive'|'quarantined', reason: ?string}
      */
     private function describeModule(string $dirName, string $moduleDir, array $declaredModules): array
     {
@@ -149,6 +149,7 @@ final class ModuleRegistry
             'version' => $version,
             'description' => $description,
             'author' => $author,
+            'extends' => $manifest?->extends ?? '',
             'class' => $moduleClass,
         ];
 

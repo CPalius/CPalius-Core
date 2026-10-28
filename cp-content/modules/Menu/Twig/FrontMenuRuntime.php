@@ -89,7 +89,7 @@ final class FrontMenuRuntime implements RuntimeExtensionInterface
 
     public static function cacheKey(string $identifier, string $locale): string
     {
-        return sprintf('cp_menu.%s.%s', $identifier, $locale);
+        return sprintf('cp_menu.v2.%s.%s', $identifier, $locale);
     }
 
     private function resolveLocale(?string $locale): string
@@ -163,11 +163,41 @@ final class FrontMenuRuntime implements RuntimeExtensionInterface
                 'label' => $item->getLabel(),
                 'url' => $url,
                 'openInNewTab' => $item->isOpenInNewTab(),
+                'rel' => $item->getRel(),
+                'icon' => $item->getIcon(),
+                'cssClass' => $item->getCssClass(),
+                'attributes' => self::linkAttributes($item),
                 'children' => $this->buildTree($childrenByParentId, $nodesById, $allItems, $locale, $item->getId()),
             ];
         }
 
         return $tree;
+    }
+
+    /**
+     * Ready-to-print extras for the <a> tag (leading space included, "" when there are none):
+     * target and rel for new tabs and SEO hints, plus the item's CSS class. Every value is
+     * validated on save and escaped again here, so a theme can print it with |raw.
+     */
+    private static function linkAttributes(MenuItem $item): string
+    {
+        $rel = array_filter([
+            $item->isOpenInNewTab() ? 'noopener noreferrer' : null,
+            $item->getRel(),
+        ]);
+
+        $html = '';
+        if ($item->isOpenInNewTab()) {
+            $html .= ' target="_blank"';
+        }
+        if ($rel !== []) {
+            $html .= ' rel="'.htmlspecialchars(implode(' ', $rel), \ENT_QUOTES).'"';
+        }
+        if ($item->getCssClass() !== null) {
+            $html .= ' class="'.htmlspecialchars($item->getCssClass(), \ENT_QUOTES).'"';
+        }
+
+        return $html;
     }
 
     /**

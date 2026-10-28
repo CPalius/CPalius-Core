@@ -38,8 +38,9 @@ final class PagePresentationService
             'page' => $page,
             'featuredImageUrl' => $this->resolveFeaturedImageUrl($page),
             'customFields' => $this->presentFields($page),
-            'customCss' => (string) $page->getDataValue('custom_css', ''),
-            'customJs' => $this->isCustomJsAllowed() ? (string) $page->getDataValue('custom_js', '') : '',
+            // Defense in depth for rows saved before the sanitizers existed: a closing tag cannot end the block.
+            'customCss' => str_ireplace('</', '<\/', (string) $page->getDataValue('custom_css', '')),
+            'customJs' => $this->isCustomJsAllowed() ? preg_replace('#</(?=\s*script)#i', '<\/', (string) $page->getDataValue('custom_js', '')) : '',
             'template' => $this->resolveTemplate($page),
         ];
     }

@@ -15,9 +15,10 @@ services:
     Modules\Blog\Aacp\:
         resource: '../../Aacp/'
 
-    # Plugin/ implementations for PluginRegistry.
-    Modules\Blog\Plugin\:
-        resource: '../../Plugin/'
+    # Widget/ holds the blog's widget types and its sidebar area (WidgetTypeInterface / WidgetAreaProviderInterface
+    # autoconfigure tags). Plugin/ is gone: the old fixed sidebar plugins were replaced by widgets.
+    Modules\Blog\Widget\:
+        resource: '../../Widget/'
 
     # Twig/ extensions (autoconfigure twig.extension).
     Modules\Blog\Twig\:

@@ -296,6 +296,11 @@ final class Version20260916120000 extends AbstractMigration
      */
     private function mergePostVotes(): void
     {
+        // Forum is not active: its schema is created when the module is activated.
+        if (!\App\Core\Module\ActiveModules::has(\Modules\Forum\ForumModule::class)) {
+            return;
+        }
+
         if ($this->tableExists('cp_forum_post_votes')) {
             return;
         }
@@ -346,6 +351,11 @@ final class Version20260916120000 extends AbstractMigration
      */
     private function mergeTopicUserState(): void
     {
+        // Forum is not active: its schema is created when the module is activated.
+        if (!\App\Core\Module\ActiveModules::has(\Modules\Forum\ForumModule::class)) {
+            return;
+        }
+
         if ($this->tableExists('cp_forum_topic_user_state')) {
             return;
         }

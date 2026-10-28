@@ -331,7 +331,7 @@ final class AacpPlatformPulseTest extends IntegrationTestCase
     {
         $connection = $this->em()->getConnection();
         $connection->executeStatement(
-            'INSERT INTO cp_settings (setting_key, setting_value) VALUES (:key, :value)
+            'INSERT INTO cp_settings (setting_key, setting_value, module, updated_at) VALUES (:key, :value, "telemetry", NOW())
              ON DUPLICATE KEY UPDATE setting_value = :value',
             ['key' => 'telemetry.security_enabled', 'value' => '1'],
         );

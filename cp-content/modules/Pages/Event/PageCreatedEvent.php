@@ -17,6 +17,15 @@ final class PageCreatedEvent extends Event
 
     public const TRANSLATE = 'page.translate';
 
+    /**
+     * Fired after an edit when the editor asked to push the change into the AI-written translations
+     * of this page (siblings carrying ai_source_id = this node).
+     */
+    public const SYNC = 'page.translation.sync';
+
+    /** Node data key the Ai module stamps on every translation it writes: the source node id. */
+    public const AI_SOURCE_KEY = 'ai_source_id';
+
     public function __construct(
         private readonly Node $node,
         private readonly bool $autoTranslate,

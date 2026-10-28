@@ -20,7 +20,7 @@
                 </a>
                 <form method="post" class="inline"
                       action="{{ path('aacp_taxonomy_term_delete', {machineName: machineName, id: row.term.id}) }}"
-                      onsubmit="return confirm('{{ 'aacp.taxonomy.confirm_delete_term'|trans|e('js') }}');">
+                      data-confirm="{{ 'aacp.taxonomy.confirm_delete_term'|trans|e('html_attr') }}">
                     <input type="hidden" name="_token" value="{{ csrf_token('aacp_taxonomy_term') }}">
                     <button type="submit" class="text-fs-xs font-medium !text-danger-400 hover:!text-danger-300">
                         {{ 'aacp.taxonomy.delete'|trans }}

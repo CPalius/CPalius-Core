@@ -17,6 +17,11 @@ final class Version20260715205349 extends AbstractMigration
         return 'Frontend menu management: menus + menu_items tables (node_id intentionally not an FK; loose reference).';
     }
 
+    public function preUp(Schema $schema): void
+    {
+        $this->skipIf(!\App\Core\Module\ActiveModules::has(\Modules\Menu\MenuModule::class), 'Menu module is not active.');
+    }
+
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs

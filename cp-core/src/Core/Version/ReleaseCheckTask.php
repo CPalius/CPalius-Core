@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Version;
 
 use App\Core\Cron\Attribute\CpCronJob;
+use App\Core\Extension\ExtensionCatalogue;
 
 /**
  * Daily "is there a new CPalius?" check.
@@ -18,6 +19,8 @@ final class ReleaseCheckTask
     public function __construct(
         private readonly ReleaseChecker $releases,
         private readonly PatchChecker $patches,
+        private readonly ExtensionCatalogue $catalogue,
+        private readonly UpdateNotifier $notifier,
     ) {
     }
 
@@ -33,9 +36,17 @@ final class ReleaseCheckTask
      * Neither call throws; both return a line for the cron log and keep their
      * previous result on failure.
      */
-    #[CpCronJob(schedule: '17 4 * * *', name: 'core.release_check', description: 'Check for a newer CPalius release and for pending file patches')]
+    #[CpCronJob(schedule: '17 */6 * * *', name: 'core.release_check', description: 'Check for a newer CPalius release, module/theme versions and pending file patches, and tell the administrators')]
     public function execute(): string
     {
-        return $this->releases->refresh().' '.$this->patches->refresh();
+        $line = $this->releases->refresh().' '.$this->patches->refresh().' '.$this->catalogue->refresh();
+
+        try {
+            $line .= ' Announced '.$this->notifier->announce().' update(s).';
+        } catch (\Throwable $e) {
+            $line .= ' Update announcement failed: '.$e->getMessage();
+        }
+
+        return $line;
     }
 }

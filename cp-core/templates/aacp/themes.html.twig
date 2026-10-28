@@ -13,6 +13,7 @@
 {% endblock %}
 
 {% block body %}
+    {% include 'aacp/_appearance_nav.html.twig' %}
     <div class="space-y-sp-md">
         {% if activated %}
             <div class="toast toast-success">{{ 'aacp.themes.activated'|trans }}</div>
@@ -64,6 +65,11 @@
                     {% set isActive = dirName == activeDirName %}
                     <twig:cp:card variant="{{ isActive ? 'default' : 'default' }}">
                         <div class="space-y-3">
+                            {% if previews[dirName]|default(false) %}
+                                <img src="{{ path('aacp_theme_screenshot', {dirName: dirName}) }}" alt="{{ 'aacp.themes.preview_alt'|trans({'name': theme.name}) }}" loading="lazy" class="w-full rounded-md border border-white/10">
+                            {% else %}
+                                <div class="flex items-center justify-center rounded-md border border-dashed border-white/10 py-10 text-fs-xs !text-slate-500">{{ 'aacp.themes.no_preview'|trans }}</div>
+                            {% endif %}
                             <div class="flex items-start justify-between gap-2">
                                 <div>
                                     <p class="text-fs-sm font-semibold !text-slate-100">{{ theme.name }}</p>
@@ -80,6 +86,14 @@
 
                             {% if theme.author %}
                                 <p class="text-fs-xs !text-slate-600">{{ 'aacp.themes.author'|trans }}: {{ theme.author }}</p>
+                            {% endif %}
+
+                            {% for asset in (assets[dirName]|default([]))|filter(a => not a.exists) %}
+                                <p class="text-fs-xs !text-red-400">{{ 'aacp.themes.asset_missing'|trans }}: {{ asset.path }}</p>
+                            {% endfor %}
+
+                            {% if fallbacks[dirName]|default([]) is not empty %}
+                                <p class="text-fs-xs !text-amber-400">{{ 'aacp.themes.fallback'|trans({'areas': fallbacks[dirName]|keys|join(', ')}) }}</p>
                             {% endif %}
 
                             {% if theme.supports is not empty %}

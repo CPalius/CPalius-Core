@@ -6,6 +6,7 @@ namespace App\Core\Audit\EventListener;
 
 use App\Core\Audit\Entity\AuditLog;
 use App\Core\Resource\ResourceRegistry;
+use App\Core\Resource\SensitiveFields;
 use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
@@ -42,6 +43,9 @@ final class AuditLogListener
      * write would put a SELECT in front of every INSERT in the application.
      */
     private ?bool $enabled = null;
+
+    /** Stands in for a value of a #[CpField(sensitive: true)] column: the row says it changed, not to what. */
+    private const REDACTED = '[redacted]';
 
     public function __construct(
         private readonly ResourceRegistry $resourceRegistry,
@@ -229,6 +233,7 @@ final class AuditLogListener
     private function buildInsertChanges(UnitOfWork $unitOfWork, object $entity): array
     {
         $changes = [];
+        $sensitive = $this->sensitiveFields($entity);
 
         foreach ($unitOfWork->getEntityChangeSet($entity) as $field => $pair) {
             $new = $this->scalarize($pair[1] ?? null);
@@ -236,7 +241,7 @@ final class AuditLogListener
                 continue;
             }
 
-            $changes[$field] = [null, $new];
+            $changes[$field] = isset($sensitive[$field]) ? [null, self::REDACTED] : [null, $new];
         }
 
         return $changes;
@@ -248,16 +253,20 @@ final class AuditLogListener
     private function buildUpdateChanges(UnitOfWork $unitOfWork, object $entity): array
     {
         $changes = [];
+        $sensitive = $this->sensitiveFields($entity);
 
         foreach ($unitOfWork->getEntityChangeSet($entity) as $field => $pair) {
             $old = $this->scalarize($pair[0] ?? null);
             $new = $this->scalarize($pair[1] ?? null);
 
+            // Compared on the real values, redacted after: an unchanged salary stays out of the log.
             if ($old === $new) {
                 continue;
             }
 
-            $changes[$field] = [$old, $new];
+            $changes[$field] = isset($sensitive[$field])
+                ? [$old === null ? null : self::REDACTED, $new === null ? null : self::REDACTED]
+                : [$old, $new];
         }
 
         return $changes;
@@ -269,6 +278,7 @@ final class AuditLogListener
     private function buildDeleteSnapshot(UnitOfWork $unitOfWork, object $entity): array
     {
         $snapshot = [];
+        $sensitive = $this->sensitiveFields($entity);
 
         foreach ($unitOfWork->getOriginalEntityData($entity) as $field => $value) {
             $old = $this->scalarize($value);
@@ -276,10 +286,18 @@ final class AuditLogListener
                 continue;
             }
 
-            $snapshot[$field] = [$old, null];
+            $snapshot[$field] = [isset($sensitive[$field]) ? self::REDACTED : $old, null];
         }
 
         return $snapshot;
+    }
+
+    /**
+     * @return array<string, true> property names marked #[CpField(sensitive: true)]; remembered per class by SensitiveFields
+     */
+    private function sensitiveFields(object $entity): array
+    {
+        return SensitiveFields::of($entity::class);
     }
 
     /**

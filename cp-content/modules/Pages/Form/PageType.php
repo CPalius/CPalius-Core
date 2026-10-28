@@ -179,6 +179,17 @@ final class PageType extends AbstractType
             ])
         ;
 
+        if ($options['include_sync_translations']) {
+            $builder->add('syncTranslations', CheckboxType::class, [
+                'label' => 'ai.form.auto_translate_edit_sync',
+                'required' => false,
+                'help' => 'ai.form.auto_translate_edit_sync_help',
+                'attr' => [
+                    'class' => 'form-check-input h-4 w-4 text-primary-600 focus:ring-primary-600',
+                ],
+            ]);
+        }
+
         if ($options['include_auto_translate']) {
             $isEdit = (bool) $options['auto_translate_edit'];
             $builder->add('autoTranslate', CheckboxType::class, [
@@ -199,8 +210,10 @@ final class PageType extends AbstractType
             'csrf_token_id' => 'admin_page_form',
             'include_auto_translate' => false,
             'auto_translate_edit' => false,
+            'include_sync_translations' => false,
         ]);
 
+        $resolver->setAllowedTypes('include_sync_translations', 'bool');
         $resolver->setAllowedTypes('include_auto_translate', 'bool');
         $resolver->setAllowedTypes('auto_translate_edit', 'bool');
     }

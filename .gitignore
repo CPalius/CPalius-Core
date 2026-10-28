@@ -188,3 +188,13 @@ Thumbs.db
 
 # Tek kullanimlik Redis temizleme betigi (kullandiktan sonra sil)
 /public/cp-redis-flush.php
+
+###> CPalius: release tooling and local agent files (never part of the product or its packages) ###
+# Güncelleme sunucusu akışı, paketler, FTP bilgileri ve yayın betiği: ürünün parçası değil,
+# `git archive` ile pakete girmemeli. İçinde .ftp (sunucu şifresi) var.
+/CPalius-Gereklilikler/
+/.claude/
+/.agents/
+/.impeccable/
+/skills-lock.json
+###< CPalius: release tooling and local agent files ###

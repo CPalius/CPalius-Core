@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Core\Localization;
 
+use App\Core\Theme\ThemePackageContract;
+
 /**
  * Resolves YAML translation file paths: core + each module Resources/translations (locales and domains are dynamic).
  * Needed so AACP can write the right file, not only look up keys. One bad module dir does not abort the scan.
@@ -21,6 +23,7 @@ final class TranslationFileLocator
         private readonly LocaleProvider $localeProvider,
         private readonly string $coreTranslationsDir,
         private readonly string $modulesDir,
+        private readonly string $themesDir = '',
     ) {
     }
 
@@ -43,6 +46,13 @@ final class TranslationFileLocator
 
         foreach ($this->discoverModuleTranslationDirs() as $moduleName => $dir) {
             foreach ($this->locateDir($moduleName, $dir) as $group => $filesByLocale) {
+                $groups[$group] = $filesByLocale;
+            }
+        }
+
+        // Theme packages ship their own catalogues: scope "theme/<dir>".
+        foreach ($this->themesDir !== '' ? (glob(rtrim($this->themesDir, '/\\').'/*/Resources/translations', GLOB_ONLYDIR) ?: []) : [] as $dir) {
+            foreach ($this->locateDir('theme/'.basename(dirname($dir, 2)), $dir) as $group => $filesByLocale) {
                 $groups[$group] = $filesByLocale;
             }
         }
@@ -129,12 +139,21 @@ final class TranslationFileLocator
             return null;
         }
 
-        $dir = $scope === 'core'
-            ? $this->coreTranslationsDir
-            : rtrim($this->modulesDir, '/\\').'/'.$scope.'/Resources/translations';
+        if (str_starts_with($scope, 'theme/')) {
+            $themeName = substr($scope, 6);
+            // Name pattern guards the write path; the theme must already exist.
+            if ($this->themesDir === '' || preg_match(ThemePackageContract::DIR_NAME_PATTERN, $themeName) !== 1 || !is_dir(rtrim($this->themesDir, '/\\').'/'.$themeName)) {
+                return null;
+            }
+            $dir = rtrim($this->themesDir, '/\\').'/'.$themeName.'/Resources/translations';
+        } else {
+            $dir = $scope === 'core'
+                ? $this->coreTranslationsDir
+                : rtrim($this->modulesDir, '/\\').'/'.$scope.'/Resources/translations';
 
-        if ($scope !== 'core' && !is_dir(rtrim($this->modulesDir, '/\\').'/'.$scope)) {
-            return null;
+            if ($scope !== 'core' && !is_dir(rtrim($this->modulesDir, '/\\').'/'.$scope)) {
+                return null;
+            }
         }
 
         return rtrim($dir, '/\\').'/'.$domain.'.'.$locale.'.'.self::EXTENSION;

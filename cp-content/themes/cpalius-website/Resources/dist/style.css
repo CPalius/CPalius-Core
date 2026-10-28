@@ -2998,6 +2998,8 @@ p {
   display: block;
   width: 100%;
   height: auto;
+  max-height: min(28rem, 60vh);
+  object-fit: cover;
 }
 
 /* Blog Detay â€” Post Body tipografisi (Jodit rich text Ã§Ä±ktÄ±sÄ±) */
@@ -7340,3 +7342,6 @@ object {
     max-width: 100%;
   }
 }
+
+/* Tailwind preflight zeroes margins, which un-centers modal <dialog>s; restore the browser default. */
+dialog:modal{margin:auto}

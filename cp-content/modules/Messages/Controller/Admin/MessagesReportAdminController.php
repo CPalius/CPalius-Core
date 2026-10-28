@@ -35,7 +35,7 @@ final class MessagesReportAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    #[CpAdminMenu(label: 'messages.menu.reports', icon: 'heroicons:flag', panel: 'studio', priority: 35, capability: 'messages.report.moderate', parent: 'admin_messages_dashboard')]
+    #[CpAdminMenu(label: 'messages.menu.reports', icon: 'heroicons:flag', panel: 'studio', priority: 720, capability: 'messages.report.moderate', parent: 'admin_forum_dashboard')]
     public function index(Request $request): Response
     {
         $status = (string) $request->query->get('status', MessageReport::STATUS_OPEN);

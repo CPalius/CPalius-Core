@@ -95,6 +95,16 @@ class Asset
         return $this->originalName;
     }
 
+    /**
+     * Display name only; the stored filename is the content hash and never changes.
+     */
+    public function setOriginalName(string $originalName): static
+    {
+        $this->originalName = mb_substr(trim($originalName), 0, 255);
+
+        return $this;
+    }
+
     public function getPath(): string
     {
         return $this->path;

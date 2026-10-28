@@ -8,6 +8,7 @@ use App\Core\Api\ApiKeyService;
 use App\Core\Api\Attribute\CpApi;
 use App\Core\Resource\ResourceDefinition;
 use App\Core\Resource\ResourceRegistry;
+use App\Core\Resource\SensitiveFields;
 use App\Core\Webhook\WebhookEventEmitter;
 use App\Core\Workflow\Exception\WorkflowException;
 use App\Core\Workflow\WorkflowManager;
@@ -24,6 +25,7 @@ use Symfony\Component\HttpFoundation\Response;
 final class ResourceApiEndpoints
 {
     private const MAX_LIMIT = 50;
+
     private const DENY_FIELDS = [
         'password', 'passwordHash', 'secret', 'token', 'hash', 'salt',
         'apiKey', 'rememberMeToken', 'confirmationToken', 'plainPassword',
@@ -393,9 +395,12 @@ final class ResourceApiEndpoints
      */
     private function safeFieldNames(ClassMetadata $metadata): array
     {
+        // Columns marked #[CpField(sensitive: true)] (salary, national id, IBAN) are never returned by the API.
+        $sensitive = SensitiveFields::of($metadata->getName());
+
         $names = [];
         foreach ($metadata->getFieldNames() as $field) {
-            if ($this->isSafeField($field)) {
+            if ($this->isSafeField($field) && !isset($sensitive[$field])) {
                 $names[] = $field;
             }
         }

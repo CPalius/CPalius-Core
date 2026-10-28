@@ -15,6 +15,7 @@ use Modules\Menu\Repository\MenuRepository;
 #[ORM\Entity(repositoryClass: MenuRepository::class)]
 #[ORM\Table(name: 'cp_menu_menus')]
 #[ORM\UniqueConstraint(name: 'uniq_menu_identifier', columns: ['identifier'])]
+#[ORM\UniqueConstraint(name: 'uniq_menu_location', columns: ['location'])]
 class Menu
 {
     #[ORM\Id]
@@ -30,6 +31,10 @@ class Menu
      */
     #[ORM\Column(type: 'string', length: 100)]
     private string $identifier;
+
+    /** Theme or module location this menu fills, or null; one menu per location. */
+    #[ORM\Column(type: 'string', length: 60, nullable: true)]
+    private ?string $location = null;
 
     /** @var Collection<int, MenuItem> */
     #[ORM\OneToMany(targetEntity: MenuItem::class, mappedBy: 'menu', orphanRemoval: true)]
@@ -67,6 +72,19 @@ class Menu
     public function setIdentifier(string $identifier): static
     {
         $this->identifier = $identifier;
+
+        return $this;
+    }
+
+    public function getLocation(): ?string
+    {
+        return $this->location;
+    }
+
+    public function setLocation(?string $location): static
+    {
+        $location = $location === null ? '' : trim($location);
+        $this->location = preg_match('/^[a-z0-9_]{1,60}$/', $location) === 1 ? $location : null;
 
         return $this;
     }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Core\Theme\DependencyInjection\Compiler;
 
 use App\Core\Theme\ThemeDefinition;
+use App\Core\Theme\ThemeDiscovery;
+use App\Core\Theme\ThemeRegistry;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
@@ -23,7 +25,6 @@ final class ThemeTwigPathPass implements CompilerPassInterface
     public const ACTIVE_THEME_PARAM = 'cpalius.active_theme';
 
     private const SETTING_KEY = 'core.active_theme';
-    private const FALLBACK_THEME = 'cpalius-website';
     private const CONNECT_TIMEOUT = 2;
 
     public function process(ContainerBuilder $container): void
@@ -31,7 +32,7 @@ final class ThemeTwigPathPass implements CompilerPassInterface
         $projectDir = (string) $container->getParameter('kernel.project_dir');
         $themesDir = $projectDir.'/cp-content/themes';
 
-        $themes = $this->discoverThemes($themesDir);
+        $themes = ThemeDiscovery::scan($themesDir);
         $activeDirName = $this->resolveActiveTheme($container, $themes);
 
         $container->setParameter(self::ACTIVE_THEME_PARAM, $activeDirName);
@@ -42,6 +43,8 @@ final class ThemeTwigPathPass implements CompilerPassInterface
         if ($container->hasDefinition('twig')) {
             $container->getDefinition('twig')->addMethodCall('addGlobal', ['cp_active_theme', $activeDirName]);
         }
+
+        $this->registerThemeTranslations($container, $themesDir.'/'.$activeDirName.'/Resources/translations');
 
         if (!$container->hasDefinition('twig.loader.native_filesystem')) {
             return;
@@ -72,31 +75,35 @@ final class ThemeTwigPathPass implements CompilerPassInterface
     }
 
     /**
-     * @return array<string, ThemeDefinition>
+     * Adds the active theme's Resources/translations/<domain>.<locale>.yaml files to the translator.
+     * They go FIRST in each locale's list: Symfony lets later files win, so module and core
+     * (cp-content/translations) translations override a theme and a theme can never replace a core key.
      */
-    private function discoverThemes(string $themesDir): array
+    private function registerThemeTranslations(ContainerBuilder $container, string $dir): void
     {
-        if (!is_dir($themesDir)) {
-            return [];
+        if (!$container->hasDefinition('translator.default') || !$container->fileExists($dir)) {
+            return;
         }
 
-        $themes = [];
+        $translator = $container->getDefinition('translator.default');
+        $options = $translator->getArgument(4);
 
-        foreach (scandir($themesDir) ?: [] as $dirName) {
-            if ($dirName === '.' || $dirName === '..' || !is_dir($themesDir.'/'.$dirName)) {
-                continue;
-            }
+        if (!\is_array($options)) {
+            return;
+        }
 
-            $definition = ThemeDefinition::fromDirectory($themesDir.'/'.$dirName);
+        foreach (glob($dir.'/*.yaml') ?: [] as $file) {
+            $parts = explode('.', basename($file));
 
-            if ($definition !== null) {
-                $themes[$dirName] = $definition;
+            if (\count($parts) >= 3) {
+                $locale = $parts[\count($parts) - 2];
+                $options['resource_files'][$locale] = array_merge([$file], $options['resource_files'][$locale] ?? []);
             }
         }
 
-        ksort($themes);
-
-        return $themes;
+        $options['scanned_directories'][] = $dir;
+        $options['cache_vary']['scanned_directories'][] = $dir;
+        $translator->replaceArgument(4, $options);
     }
 
     /**
@@ -107,13 +114,21 @@ final class ThemeTwigPathPass implements CompilerPassInterface
      */
     private function resolveActiveTheme(ContainerBuilder $container, array $themes): string
     {
-        $fallback = isset($themes[self::FALLBACK_THEME])
-            ? self::FALLBACK_THEME
-            : (string) (array_key_first($themes) ?? self::FALLBACK_THEME);
+        $fallback = isset($themes[ThemeRegistry::FALLBACK_THEME])
+            ? ThemeRegistry::FALLBACK_THEME
+            : (string) (array_key_first($themes) ?? ThemeRegistry::FALLBACK_THEME);
 
         $stored = $this->readActiveThemeFromDatabase($container);
 
-        return $stored !== null && isset($themes[$stored]) ? $stored : $fallback;
+        if ($stored === null || !isset($themes[$stored])) {
+            return $fallback;
+        }
+
+        // A theme whose required module is off would call Twig functions that no longer exist.
+        $modulesDir = (string) $container->getParameter('kernel.project_dir').'/cp-content/modules';
+        $bundles = (array) $container->getParameter('kernel.bundles');
+
+        return $themes[$stored]->unmetModules($bundles, $modulesDir) === [] ? $stored : $fallback;
     }
 
     private function readActiveThemeFromDatabase(ContainerBuilder $container): ?string
@@ -136,8 +151,10 @@ final class ThemeTwigPathPass implements CompilerPassInterface
             $value = $statement->fetchColumn();
 
             return \is_string($value) && $value !== '' ? $value : null;
-        } catch (\Throwable) {
-            // No database during cache:clear or CI: fall back silently.
+        } catch (\Throwable $e) {
+            // No database during cache:clear or CI: fall back to the default theme.
+            error_log('[CPalius] ThemeTwigPathPass: active theme not read from database, using fallback ('.$e->getMessage().')');
+
             return null;
         }
     }

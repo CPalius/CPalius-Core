@@ -30,6 +30,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(columns: ['locale'], name: 'idx_node_locale')]
 #[ORM\Index(columns: ['moderation_state'], name: 'idx_node_moderation_state')]
 #[ORM\Index(columns: ['type', 'locale', 'status', 'published_at'], name: 'idx_node_type_locale_status_published')]
+#[ORM\Index(columns: ['type', 'locale', 'status', 'deleted_at', 'published_at'], name: 'idx_node_live_list')]
 #[ORM\UniqueConstraint(name: 'uniq_node_slug_locale', columns: ['slug', 'locale'])]
 #[ORM\UniqueConstraint(name: 'uniq_node_translation_group_locale', columns: ['translation_group_id', 'locale'])]
 #[Publishable(defaultStatus: Node::STATUS_DRAFT)]

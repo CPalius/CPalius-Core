@@ -10,6 +10,9 @@ use Modules\Forum\Entity\ForumPresence;
 use Modules\Forum\Entity\ForumTopic;
 use Modules\Forum\Install\ForumPresenceKindSchema;
 use Modules\Forum\Repository\ForumPresenceRepository;
+use Symfony\Component\Cache\Adapter\NullAdapter;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 /**
  * Tracks who is currently browsing the forum and builds the stats-bar online list.
@@ -23,6 +26,7 @@ final class ForumPresenceService
         private readonly ForumPresenceRepository $presenceRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly ForumPresenceKindSchema $kindSchema,
+        // Optional on purpose: a module updated on its own can run for a moment against a container compiled before\n        // this argument existed. Without a cache the value is simply computed.\n        private readonly ?CacheInterface $cache = null,
     ) {
     }
 
@@ -142,7 +146,14 @@ final class ForumPresenceService
     private function fetchCurrentOnline(): array
     {
         $since = (new \DateTimeImmutable())->modify('-'.self::ONLINE_WINDOW_SECONDS.' seconds');
-        $this->presenceRepository->purgeStale($since);
+        // Sweeping expired rows is housekeeping, not part of showing who is online: a DELETE on every forum
+        // page view, and a write under load, for rows that only need to go eventually. Twice a minute is plenty.
+        ($this->cache ?? new NullAdapter())->get('forum_presence_swept', function (ItemInterface $item) use ($since): bool {
+            $item->expiresAfter(30);
+            $this->presenceRepository->purgeStale($since);
+
+            return true;
+        });
 
         $seen = [];
         $members = [];
@@ -166,7 +177,12 @@ final class ForumPresenceService
 
         usort($members, static fn (array $a, array $b): int => strcasecmp($a['name'], $b['name']));
 
-        $byKind = $this->presenceRepository->countActiveByKind($since);
+        // The head-count by kind changes by a few visitors a minute; 15 s old is as true to a reader.
+        $byKind = ($this->cache ?? new NullAdapter())->get('forum_presence_by_kind', function (ItemInterface $item) use ($since): array {
+            $item->expiresAfter(15);
+
+            return $this->presenceRepository->countActiveByKind($since);
+        });
         $memberCount = \count($members);
         $guestCount = $byKind[ForumVisitorKind::GUEST] ?? 0;
         $spiderCount = $byKind[ForumVisitorKind::SPIDER] ?? 0;

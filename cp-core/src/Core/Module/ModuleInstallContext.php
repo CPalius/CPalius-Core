@@ -202,8 +202,14 @@ final class ModuleInstallContext
                 continue;
             }
 
-            foreach ($this->splitSqlStatements($sql) as $statement) {
-                $this->connection->executeStatement($statement);
+            foreach ($this->splitSqlStatements($sql) as $position => $statement) {
+                try {
+                    $this->connection->executeStatement($statement);
+                } catch (\Throwable $e) {
+                    // The file is only marked applied after its last statement, so a failure here leaves it pending and
+                    // it runs again from its first statement: files must be idempotent. Say which one stopped, and where.
+                    throw new \RuntimeException(sprintf('Migration "%s" stopped at statement %d: %s', $name, $position + 1, $e->getMessage()), 0, $e);
+                }
             }
 
             $applied[] = $name;

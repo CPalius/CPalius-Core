@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Theme;
 
+use App\Core\Malware\MalwareGuard;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -13,9 +14,14 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 final class ThemePackageService
 {
     private const MAX_BYTES = 32 * 1024 * 1024;
+    private const MAX_UNPACKED_BYTES = 128 * 1024 * 1024;
+    private const MAX_ENTRIES = 3000;
+    private const MAX_LINT_BYTES = 1048576;
 
     public function __construct(
         private readonly string $themesDir,
+        private readonly ?ThemeSourceLinter $linter = null,
+        private readonly ?MalwareGuard $malwareGuard = null,
     ) {
     }
 
@@ -50,6 +56,12 @@ final class ThemePackageService
             $targetDir = rtrim($this->themesDir, '/\\').'/'.$dirName;
 
             $problems = ThemePackageContract::problems($sourceDir);
+            if ($problems === []) {
+                $problems = $this->lintSources($sourceDir);
+            }
+            if ($problems === [] && $this->malwareGuard !== null) {
+                $problems = MalwareGuard::describe($this->malwareGuard->blockingFindingsForDirectory($sourceDir, 'theme_upload'));
+            }
             if ($problems !== []) {
                 return [
                     'success' => false,
@@ -85,9 +97,41 @@ final class ThemePackageService
     }
 
     /**
+     * Parse-checks .twig and .css files ("file: message"). Files over 1 MB are skipped.
+     * .js is not linted: the bracket-balance linter misreads regex literals in real bundles (false rejects).
+     *
+     * @return list<string>
+     */
+    private function lintSources(string $themeDir): array
+    {
+        if ($this->linter === null) {
+            return [];
+        }
+
+        $problems = [];
+        $root = rtrim($themeDir, '/\\');
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS));
+
+        foreach ($files as $file) {
+            $name = $file->getFilename();
+            $kind = str_ends_with($name, '.twig') ? 'twig' : (str_ends_with($name, '.css') ? 'css' : null);
+            if ($kind === null || !$file->isFile() || $file->isLink() || $file->getSize() > self::MAX_LINT_BYTES) {
+                continue;
+            }
+
+            $relative = ltrim(str_replace('\\', '/', substr($file->getPathname(), \strlen($root))), '/');
+            foreach ($this->linter->problems($kind, (string) file_get_contents($file->getPathname()), $relative) as $problem) {
+                $problems[] = $relative.': '.$problem;
+            }
+        }
+
+        return $problems;
+    }
+
+    /**
      * @return array{success: bool, message: string, themeDir?: string, dirName?: string, problems?: list<string>}
      */
-    private function extractZip(string $zipPath, string $extractDir): array
+    public function extractZip(string $zipPath, string $extractDir): array
     {
         if (!class_exists(\ZipArchive::class)) {
             return ['success' => false, 'message' => 'PHP zip extension is required to install themes from a ZIP file.'];
@@ -139,10 +183,32 @@ final class ThemePackageService
         $problems = [];
         $count = $zip->numFiles;
 
+        // Zip-bomb guard: the 32 MB limit is the compressed size, so bound entries and unpacked size too.
+        if ($count > self::MAX_ENTRIES) {
+            $problems[] = sprintf('The archive has %d entries; the limit is %d.', $count, self::MAX_ENTRIES);
+
+            return $problems;
+        }
+        $unpacked = 0;
+
         for ($i = 0; $i < $count; ++$i) {
             $name = $zip->getNameIndex($i);
             if (!\is_string($name) || $name === '') {
                 continue;
+            }
+
+            $unpacked += (int) ($zip->statIndex($i)['size'] ?? 0);
+            if ($unpacked > self::MAX_UNPACKED_BYTES) {
+                $problems[] = 'The archive unpacks to more than 128 MB.';
+
+                return $problems;
+            }
+
+            // Unix symlink entries (mode 0120000) could point outside the theme folder once extracted.
+            $opsys = 0;
+            $attr = 0;
+            if ($zip->getExternalAttributesIndex($i, $opsys, $attr) && $opsys === \ZipArchive::OPSYS_UNIX && (($attr >> 16) & 0170000) === 0120000) {
+                $problems[] = sprintf('Symbolic links are not allowed: %s', $name);
             }
 
             foreach (ThemePackageContract::zipEntryProblems($name) as $problem) {

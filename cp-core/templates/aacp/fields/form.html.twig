@@ -33,7 +33,7 @@
                             <input type="hidden" name="type" value="{{ type }}">
                         {% else %}
                             <select name="type" class="form-select !border-white/10 !bg-dark-1 !text-slate-100"
-                                    onchange="window.location = '{{ path('aacp_fields_new', {bundle: bundle}) }}?type=' + encodeURIComponent(this.value)">
+                                    data-nav-url="{{ path('aacp_fields_new', {bundle: bundle})|e('html_attr') }}?type=">
                                 {% for id, labelKey in typeChoices %}
                                     <option value="{{ id }}" {{ id == type ? 'selected' : '' }}>{{ labelKey|trans }}</option>
                                 {% endfor %}
@@ -154,7 +154,7 @@
         {% if editing %}
             <twig:cp:card title="{{ 'aacp.fields.form.danger'|trans }}">
                 <form method="post" action="{{ path('aacp_fields_delete', {bundle: bundle, name: definition.name}) }}"
-                      onsubmit="return confirm({{ 'aacp.fields.delete_confirm'|trans({'field': definition.name})|json_encode|raw }});">
+                      data-confirm="{{ 'aacp.fields.delete_confirm'|trans({'field': definition.name})|e('html_attr') }}">
                     <input type="hidden" name="_token" value="{{ csrf_token }}">
                     <button type="submit" class="text-fs-sm font-medium !text-danger-400 hover:!text-danger-300">{{ 'aacp.fields.form.delete'|trans }}</button>
                 </form>

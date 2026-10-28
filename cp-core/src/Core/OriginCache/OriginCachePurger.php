@@ -54,6 +54,11 @@ final class OriginCachePurger
 
         $deleted = 0;
         foreach (array_unique($tags) as $tag) {
+            // A setting every page reads (see CacheTagIndex): there is no short list to purge.
+            if ($this->tagIndex->isGlobal($tag)) {
+                return $deleted + $this->store->purgeAll();
+            }
+
             foreach ($this->tagIndex->consumePaths($tag) as $pathInfo) {
                 $deleted += $this->store->deleteExact($pathInfo);
             }

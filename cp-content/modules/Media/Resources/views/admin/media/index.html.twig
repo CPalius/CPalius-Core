@@ -2,27 +2,92 @@
 
 {% block header %}{{ 'media.index.header'|trans }}{% endblock %}
 
-{% block header_actions %}
-    <label class="btn btn-sm btn-primary cursor-pointer">
-        {{ 'media.index.upload_action'|trans }}
-        <input type="file" data-media-upload-input class="hidden" accept="image/*,application/pdf,video/*">
-    </label>
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ cp_asset('media-library.css') }}">
 {% endblock %}
 
+{# One importmap() call only: extra calls break the browser. #}
 {% block javascripts %}
-    {{ parent() }}
-    {{ importmap('media-picker') }}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'media-library']) }}
+{% endblock %}
+
+{% block header_actions %}
+    {% if canSettings %}
+        <a href="{{ path('admin_media_settings') }}" class="btn btn-sm">{{ 'media.lib.settings'|trans }}</a>
+    {% endif %}
+    {% if canUpload %}
+        <button type="button" class="btn btn-sm" data-new-folder>{{ 'media.lib.new_folder'|trans }}</button>
+        <button type="button" class="btn btn-sm btn-primary" data-upload-btn>{{ 'media.lib.upload'|trans }}</button>
+    {% endif %}
 {% endblock %}
 
 {% block body %}
-    <form method="get" class="mb-sp-sm">
-        <input type="text" name="q" value="{{ query }}" placeholder="{{ 'media.index.search_placeholder'|trans }}"
-               class="form-control max-w-sm">
-    </form>
+    {# Placeholders are passed back verbatim so media-library.js can fill them in. #}
+    {% set keep = {count: '{count}', done: '{done}', total: '{total}', name: '{name}', label: '{label}', field: '{field}', limit: '{limit}'} %}
+    {% set keys = [
+        'nav.all', 'nav.favorites', 'nav.recent', 'nav.trash', 'root', 'empty', 'empty_trash', 'load_more', 'selected', 'clear_selection',
+        'move', 'move_title', 'move_here', 'favorite', 'unfavorite', 'download', 'delete', 'restore', 'delete_forever',
+        'rename', 'rename_folder', 'delete_folder', 'alt_text', 'alt_help', 'copy_link', 'link_copied', 'make_copy', 'copy_made',
+        'saved', 'cancel', 'ok', 'new_folder', 'props.type', 'props.size', 'props.uploaded', 'props.dimensions', 'props.deleted',
+        'props.expires', 'usage.title', 'usage.none', 'usage.content', 'usage.avatar', 'usage.note',
+        'confirm.delete', 'confirm.delete_folder', 'confirm.delete_forever', 'confirm.empty_trash',
+        'uploading', 'upload_failed', 'restored', 'status.files', 'status.folders', 'dropzone', 'error.generic',
+        'up.title', 'up.waiting', 'up.sending', 'up.done', 'up.error', 'up.close', 'up.clear', 'up.summary',
+        'up.err_size', 'up.err_network', 'up.type_unknown',
+    ] %}
+    {% set labels = {} %}
+    {% for key in keys %}
+        {% set labels = labels|merge({(key): ('media.lib.' ~ key)|trans(keep)}) %}
+    {% endfor %}
 
-    <twig:studio:card padded="{{ true }}">
-        <div data-media-grid>
-            {% include '@MediaModule/admin/media/_grid.html.twig' with {assets: assets, picker: false} %}
-        </div>
-    </twig:studio:card>
+    <div class="cpm" data-media-lib data-config="{{ {
+        api: path('admin_media_api_browse')|replace({'/browse': ''}),
+        uploadUrl: path('admin_media_upload'),
+        downloadUrl: path('admin_media_api_asset_download'),
+        csrf: csrf_token('admin_media_api'),
+        canUpload: canUpload,
+        canDelete: canDelete,
+        perPage: perPage,
+        maxBytes: maxBytes,
+        extensions: extensions,
+        t: labels,
+    }|json_encode|e('html_attr') }}">
+        <aside class="cpm-side">
+            <div class="cpm-nav" data-nav></div>
+            <h3>{{ 'media.lib.nav.folders'|trans }}</h3>
+            <div class="cpm-tree" data-tree></div>
+        </aside>
+
+        <section class="cpm-main">
+            <div class="cpm-toolbar">
+                <input type="search" data-search placeholder="{{ 'media.lib.search'|trans }}" aria-label="{{ 'media.lib.search'|trans }}">
+                <select data-type aria-label="{{ 'media.lib.type.any'|trans }}">
+                    <option value="">{{ 'media.lib.type.any'|trans }}</option>
+                    <option value="image">{{ 'media.lib.type.image'|trans }}</option>
+                    <option value="video">{{ 'media.lib.type.video'|trans }}</option>
+                    <option value="document">{{ 'media.lib.type.document'|trans }}</option>
+                </select>
+                <select data-sort aria-label="{{ 'media.lib.sort.date_desc'|trans }}">
+                    {% for sort in ['date_desc', 'date_asc', 'name_asc', 'name_desc', 'size_desc', 'size_asc'] %}
+                        <option value="{{ sort }}">{{ ('media.lib.sort.' ~ sort)|trans }}</option>
+                    {% endfor %}
+                </select>
+                <span class="cpm-seg" data-view>
+                    <button type="button" data-mode="grid">{{ 'media.lib.view.grid'|trans }}</button>
+                    <button type="button" data-mode="list">{{ 'media.lib.view.list'|trans }}</button>
+                </span>
+                {% if canDelete %}
+                    <button type="button" class="cpm-btn is-danger" data-empty-trash hidden>{{ 'media.lib.empty_trash_action'|trans }}</button>
+                {% endif %}
+                <input type="file" multiple hidden data-upload-input accept="{{ mimeTypes|join(',') }}">
+            </div>
+            <div class="cpm-crumbs" data-crumbs></div>
+            <div class="cpm-bulk" data-bulk hidden></div>
+            <div class="cpm-body" data-body></div>
+            <div class="cpm-status" data-status></div>
+        </section>
+
+        <aside class="cpm-details" data-details hidden></aside>
+    </div>
 {% endblock %}

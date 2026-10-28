@@ -87,6 +87,110 @@ final class TranslationManager
     }
 
     /**
+     * Write many keys of one group/locale with a single file rewrite — the AI
+     * translate loop would otherwise parse and rewrite the same YAML per key.
+     *
+     * @param array<string, string> $values
+     *
+     * @return int keys written
+     *
+     * @throws TranslationManagerException
+     */
+    public function updateMany(string $group, string $locale, array $values): int
+    {
+        $this->assertValidLocale($locale);
+
+        if ($values === []) {
+            return 0;
+        }
+
+        $filePath = $this->resolveFilePathForGroup($group, $locale);
+        $data = $this->safeParseYaml($filePath);
+
+        foreach ($values as $key => $value) {
+            $this->assertValidKey((string) $key);
+            $data[(string) $key] = $value;
+        }
+
+        ksort($data);
+        $this->writeYamlAtomic($filePath, $data);
+
+        return \count($values);
+    }
+
+    /**
+     * How much of $sourceLocale's text each locale has translated.
+     * Keys the source itself leaves empty are not counted: there is nothing to translate.
+     *
+     * @param list<string> $targetLocales
+     *
+     * @return array<string, array{total: int, translated: int, percent: int}>
+     */
+    public function completeness(string $sourceLocale, array $targetLocales): array
+    {
+        $result = array_fill_keys($targetLocales, ['total' => 0, 'translated' => 0, 'percent' => 0]);
+
+        foreach ($this->locator->locateAll() as $group => $filesByLocale) {
+            $source = array_filter($this->safeParseYaml($filesByLocale[$sourceLocale] ?? null), static fn (string $v): bool => trim($v) !== '');
+            if ($source === []) {
+                continue;
+            }
+
+            foreach ($targetLocales as $locale) {
+                $target = $this->safeParseYaml($filesByLocale[$locale] ?? $this->locator->resolveFilePath($group, $locale));
+                $translated = 0;
+                foreach (array_keys($source) as $key) {
+                    if (isset($target[$key]) && trim($target[$key]) !== '') {
+                        ++$translated;
+                    }
+                }
+                $result[$locale]['total'] += \count($source);
+                $result[$locale]['translated'] += $translated;
+            }
+        }
+
+        foreach ($result as $locale => $row) {
+            $result[$locale]['percent'] = $row['total'] > 0 ? (int) floor($row['translated'] * 100 / $row['total']) : 100;
+        }
+
+        return $result;
+    }
+
+    /**
+     * The next strings $locale still lacks, with the source text to translate.
+     *
+     * @param int $offset how many missing strings to pass over — the ones the provider already failed on this run
+     *
+     * @return list<array{group: string, key: string, source: string}>
+     */
+    public function missing(string $locale, string $sourceLocale, int $limit, int $offset = 0): array
+    {
+        $out = [];
+        $seen = 0;
+
+        foreach ($this->locator->locateAll() as $group => $filesByLocale) {
+            $source = $this->safeParseYaml($filesByLocale[$sourceLocale] ?? null);
+            $target = $this->safeParseYaml($filesByLocale[$locale] ?? null);
+
+            foreach ($source as $key => $text) {
+                if (trim($text) === '' || trim($target[$key] ?? '') !== '') {
+                    continue;
+                }
+                if ($seen++ < $offset) {
+                    continue;
+                }
+
+                $out[] = ['group' => (string) $group, 'key' => $key, 'source' => $text];
+                if (\count($out) >= $limit) {
+                    return $out;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Export matrix keyed by group then locale (avoids colliding keys across domains).
      *
      * @return array<string, array<string, array<string, string>>>

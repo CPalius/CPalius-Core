@@ -20,6 +20,20 @@ final class ThreatAnalyzer
         '/admin/login',
     ];
 
+    /**
+     * Staff POSTs only: authored text fields skipped by the body scan. Output is sanitised by the
+     * text-format filters and SQL is parameterised, so these are not injection sinks.
+     *
+     * @var list<string>
+     */
+    private const AUTHORED_FIELDS = ['body', 'content', 'excerpt', 'faq', 'description', 'notecodesnippet'];
+
+    /** Forum new topic, reply, post edit and draft save; the route prefix is optionally locale-prefixed. */
+    private const FORUM_AUTHORING_PATH = '#/forums?/(?:(?:forum/)?[^/]+/yeni|thread/\d+/yanit|konu/\d+/yanit|mesaj/\d+/duzenle|drafts/save)$#';
+
+    /** @var list<string> */
+    private const STAFF_AREA_PREFIXES = ['/admin/', '/aacp/'];
+
     /** @var list<array{pattern: string, label: string}> */
     private const SQLI_SIGNATURES = [
         ['pattern' => '/union\s+select/i', 'label' => 'UNION SELECT'],
@@ -157,7 +171,13 @@ final class ThreatAnalyzer
             $request->headers->get('Cookie', ''),
         ];
 
-        foreach ([$request->query->all(), $request->request->all(), $request->cookies->all()] as $bag) {
+        $body = $request->request->all();
+
+        if ($this->isStaffPost($request)) {
+            $body = $this->withoutAuthoredFields($body);
+        }
+
+        foreach ([$request->query->all(), $body, $request->cookies->all()] as $bag) {
             $chunks[] = $this->flatten($bag);
         }
 
@@ -165,6 +185,42 @@ final class ThreatAnalyzer
             static fn (string $chunk): string => substr($chunk, 0, self::MAX_CHUNK),
             $chunks,
         );
+    }
+
+    private function isStaffPost(Request $request): bool
+    {
+        if (!$request->isMethod('POST') || $this->isLoginAttempt($request)) {
+            return false;
+        }
+
+        foreach (self::STAFF_AREA_PREFIXES as $prefix) {
+            if (str_starts_with($request->getPathInfo(), $prefix)) {
+                return true;
+            }
+        }
+
+        // Forum authoring forms: the body is escaped by the forum presenter on output.
+        return (bool) preg_match(self::FORUM_AUTHORING_PATH, $request->getPathInfo());
+    }
+
+    /**
+     * Drops authored-text fields at any depth; titles, slugs, ids and URLs stay scanned.
+     *
+     * @param array<mixed> $data
+     *
+     * @return array<mixed>
+     */
+    private function withoutAuthoredFields(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (\is_string($key) && \in_array(strtolower($key), self::AUTHORED_FIELDS, true)) {
+                unset($data[$key]);
+            } elseif (\is_array($value)) {
+                $data[$key] = $this->withoutAuthoredFields($value);
+            }
+        }
+
+        return $data;
     }
 
     /**

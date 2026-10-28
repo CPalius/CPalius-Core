@@ -23,6 +23,23 @@
         </div>
 
         <div class="min-w-0 space-y-sp-md lg:w-[38.2%]">
+            <twig:studio:card title="{{ 'menu.location.title'|trans }}">
+                <form method="post" action="{{ path('admin_menus_set_location', {id: menu.id}) }}" class="space-y-sp-sm">
+                    <input type="hidden" name="_token" value="{{ csrf_token('admin_menu_form') }}">
+                    <div>
+                        <label for="location" class="form-label">{{ 'menu.location.field'|trans }}</label>
+                        <select id="location" name="location" class="form-select">
+                            <option value="">{{ 'menu.location.none'|trans }}</option>
+                            {% for id, label in locations %}
+                                <option value="{{ id }}" {{ menu.location == id ? 'selected' : '' }}>{{ label|trans }}</option>
+                            {% endfor %}
+                        </select>
+                        <p class="mt-1 text-fs-xs text-neutral-500">{{ 'menu.location.hint'|trans }} <code>{{ '{{ cp_menu_location(\'main_header\') }}' }}</code></p>
+                    </div>
+                    <button type="submit" class="btn btn-primary">{{ 'menu.location.save'|trans }}</button>
+                </form>
+            </twig:studio:card>
+
             <twig:studio:card title="{{ 'menu.edit.add_item_title'|trans }}">
                 <form method="post" action="{{ path('admin_menus_add_item', {id: menu.id}) }}" class="space-y-sp-sm">
                     <input type="hidden" name="_token" value="{{ csrf_token('admin_menu_form') }}">
@@ -51,6 +68,24 @@
                                 <option value="{{ choice.id }}">{{ choice.label }}</option>
                             {% endfor %}
                         </select>
+                    </div>
+
+                    <div class="grid gap-2 sm:grid-cols-3">
+                        <div>
+                            <label class="form-label">{{ 'menu.edit.rel_field'|trans }}</label>
+                            <select name="rel" class="form-select">
+                                <option value="">—</option>
+                                {% for rel in ['nofollow', 'sponsored', 'ugc'] %}<option value="{{ rel }}">{{ rel }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">{{ 'menu.edit.icon_field'|trans }}</label>
+                            <input type="text" name="icon" maxlength="60" placeholder="house" class="form-control">
+                        </div>
+                        <div>
+                            <label class="form-label">{{ 'menu.edit.css_class_field'|trans }}</label>
+                            <input type="text" name="css_class" maxlength="100" class="form-control">
+                        </div>
                     </div>
 
                     <div class="flex items-center gap-2">

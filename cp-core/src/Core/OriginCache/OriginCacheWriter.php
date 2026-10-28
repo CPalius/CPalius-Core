@@ -21,6 +21,9 @@ use Symfony\Component\HttpKernel\KernelEvents;
  */
 final class OriginCacheWriter implements EventSubscriberInterface
 {
+    /** Set by OriginCacheReader on the one request that is rebuilding a page a purge set aside. */
+    public const REGENERATION_ATTRIBUTE = '_cp_origin_regeneration';
+
     public function __construct(
         private readonly OriginCacheStore $store,
         private readonly OriginCachePolicy $policy,
@@ -51,7 +54,7 @@ final class OriginCacheWriter implements EventSubscriberInterface
         }
 
         $response = $event->getResponse();
-        if ($response->headers->get('X-CPalius-Cache') === 'HIT') {
+        if (in_array($response->headers->get('X-CPalius-Cache'), ['HIT', 'STALE'], true)) {
             return;
         }
 
@@ -73,6 +76,7 @@ final class OriginCacheWriter implements EventSubscriberInterface
 
     public function onKernelTerminate(TerminateEvent $event): void
     {
+        $regeneration = $event->getRequest()->attributes->get(self::REGENERATION_ATTRIBUTE);
         try {
             if (!$event->isMainRequest() || !$this->isOriginEnabled()) {
                 return;
@@ -86,7 +90,7 @@ final class OriginCacheWriter implements EventSubscriberInterface
             if (!$this->policy->isCacheableWriteRequest($request) || !$this->policy->isCacheableResponse($response)) {
                 return;
             }
-            if ($response->headers->get('X-CPalius-Cache') === 'HIT') {
+            if (in_array($response->headers->get('X-CPalius-Cache'), ['HIT', 'STALE'], true)) {
                 return;
             }
 
@@ -119,6 +123,11 @@ final class OriginCacheWriter implements EventSubscriberInterface
                 $this->tagCollector->getMaxAge(),
                 $ctx,
             );
+            // The page is fresh again: drop the set-aside copy and let the next waiting request through.
+            if (\is_array($regeneration)) {
+                $this->store->finishRegeneration($regeneration['lock'], $request->getPathInfo(), (string) $request->getQueryString(), $regeneration['ctx']);
+                $regeneration = null;
+            }
 
             $this->tagCollector->addTags($this->settingsRegistry->drainTouchedConfigTags());
             $tags = $this->tagCollector->getTags();
@@ -127,14 +136,20 @@ final class OriginCacheWriter implements EventSubscriberInterface
             }
         } catch (\Throwable $e) {
             $this->logger->warning('Origin cache write failed.', ['exception' => $e->getMessage()]);
+        } finally {
+            // The regeneration produced nothing cacheable (a 404 for a deleted page, an error, a redirect):
+            // serving the old copy any longer would show content that no longer exists.
+            if (\is_array($regeneration)) {
+                $req = $event->getRequest();
+                $this->store->finishRegeneration($regeneration['lock'], $req->getPathInfo(), (string) $req->getQueryString(), $regeneration['ctx']);
+            }
         }
     }
 
     private function isOriginEnabled(): bool
     {
-        $status = $this->registry->getStatus('cpalius');
-
-        return $status !== null && $status->isEnabled() && $this->store->isEnabledOnDisk();
+        // See OriginCacheReader: the sentinel file mirrors the enabled flag, without the query.
+        return $this->store->isEnabledOnDisk();
     }
 
     private function bypassReason(Request $request, Response $response): ?string

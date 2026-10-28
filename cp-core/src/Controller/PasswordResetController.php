@@ -53,7 +53,7 @@ final class PasswordResetController extends AbstractController
     public function forgot(Request $request): Response
     {
         if ($this->getUser() !== null) {
-            return $this->redirectToRoute('theme_cpalius_website_home');
+            return $this->redirectToRoute('site_home');
         }
 
         $sent = false;

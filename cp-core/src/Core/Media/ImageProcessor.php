@@ -16,6 +16,9 @@ final class ImageProcessor
     private const MAX_DIMENSION = 5000;
     private const MODE_CROP = 'crop';
     private const MODE_FIT = 'fit';
+    /** Generation time one request may spend; remaining images are served as originals and derived on later hits. */
+    private const RENDER_BUDGET_MS = 300.0;
+    private const WINDOW_SECONDS = 2.0;
 
     /** @var array<string, int> detected MIME => GD image type constant */
     private const SUPPORTED = [
@@ -26,6 +29,8 @@ final class ImageProcessor
     ];
 
     private readonly string $uploadsDir;
+    private float $spentMs = 0.0;
+    private float $windowStart = 0.0;
 
     public function __construct(string $projectDir)
     {
@@ -61,11 +66,20 @@ final class ImageProcessor
             return '/uploads/'.$cacheKey;
         }
 
+        // Rendering runs inside the page request. A list of 20+ fresh images (30-440 ms each, ~4 bytes/px decoded)
+        // would stall the page for seconds or exhaust memory_limit, so cap both and let later hits finish the job.
+        if (!$this->mayRender($sourcePath)) {
+            return '/uploads/'.$key;
+        }
+
+        $started = hrtime(true);
         try {
             $this->render($sourcePath, $cachePath, $width, $height, $mode);
         } catch (\Throwable) {
             // A single failed image must never break page rendering.
             return '/uploads/'.$key;
+        } finally {
+            $this->spentMs += (hrtime(true) - $started) / 1e6;
         }
 
         return '/uploads/'.$cacheKey;
@@ -97,6 +111,43 @@ final class ImageProcessor
                 @unlink($candidate);
             }
         }
+    }
+
+    private function mayRender(string $sourcePath): bool
+    {
+        $now = microtime(true);
+        if ($now - $this->windowStart > self::WINDOW_SECONDS) {
+            $this->windowStart = $now;
+            $this->spentMs = 0.0;
+        }
+        if ($this->spentMs >= self::RENDER_BUDGET_MS) {
+            return false;
+        }
+
+        $info = @getimagesize($sourcePath);
+        if ($info === false) {
+            return true; // render() rejects it with the proper error
+        }
+        $limit = $this->memoryLimitBytes();
+
+        // source bitmap + canvas ~ 2 x (w*h*4); stay under a third of what is left.
+        return $limit === null || (int) $info[0] * (int) $info[1] * 8 < ($limit - memory_get_usage()) / 3;
+    }
+
+    private function memoryLimitBytes(): ?int
+    {
+        $raw = trim((string) \ini_get('memory_limit'));
+        if ($raw === '' || $raw === '-1') {
+            return null;
+        }
+        $n = (int) $raw;
+
+        return match (strtolower(substr($raw, -1))) {
+            'g' => $n * 1073741824,
+            'm' => $n * 1048576,
+            'k' => $n * 1024,
+            default => $n,
+        };
     }
 
     private function render(string $sourcePath, string $cachePath, int $width, int $height, string $mode): void
@@ -157,6 +208,12 @@ final class ImageProcessor
      */
     private function resizeToCrop(\GdImage $source, int $srcW, int $srcH, int $width, int $height, string $mime): \GdImage
     {
+        // Never upscale: a source smaller than the box keeps its pixels and the box shrinks to its aspect ratio
+        // (800x450 into 1200x800 used to cost 443 ms and produce a bigger, blurrier file than the original).
+        $shrink = min(1.0, $srcW / $width, $srcH / $height);
+        $width = max(1, (int) round($width * $shrink));
+        $height = max(1, (int) round($height * $shrink));
+
         $scale = max($width / $srcW, $height / $srcH);
         $cropW = min($srcW, (int) ceil($width / $scale));
         $cropH = min($srcH, (int) ceil($height / $scale));

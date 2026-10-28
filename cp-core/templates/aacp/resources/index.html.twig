@@ -15,6 +15,7 @@
             </form>
             <div class="flex items-center gap-3">
                 <a href="{{ path('aacp_resources') }}" class="text-fs-sm !text-slate-400 hover:!text-slate-200">{{ 'aacp.resources.all'|trans }}</a>
+                {% if canExport %}<a href="{{ path('aacp_resource_export', {name: definition.name, q: q ?: null, sort: sort, dir: sort ? dir|lower : null}) }}" class="btn btn-secondary text-fs-xs">{{ 'aacp.resources.export'|trans }}</a>{% endif %}
                 {% if canCreate %}<a href="{{ path('aacp_resource_new', {name: definition.name}) }}" class="btn btn-primary">{{ 'aacp.resources.new'|trans }}</a>{% endif %}
             </div>
         </div>
@@ -63,7 +64,7 @@
                                 <div class="flex items-center justify-end gap-3">
                                     {% if canEdit %}<a href="{{ path('aacp_resource_show', {name: definition.name, id: entity.id}) }}" class="text-fs-xs font-medium !text-slate-400 hover:!text-slate-200">{{ 'aacp.users.edit_action'|trans }}</a>{% endif %}
                                     {% if canDelete %}
-                                        <form method="post" action="{{ path('aacp_resource_delete', {name: definition.name, id: entity.id}) }}" onsubmit="return confirm({{ 'aacp.resources.delete_confirm'|trans|json_encode|raw }});">
+                                        <form method="post" action="{{ path('aacp_resource_delete', {name: definition.name, id: entity.id}) }}" data-confirm="{{ 'aacp.resources.delete_confirm'|trans|e('html_attr') }}">
                                             <input type="hidden" name="_token" value="{{ csrf_token('resource_' ~ definition.name) }}">
                                             <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">{{ 'aacp.fields.form.delete'|trans }}</button>
                                         </form>

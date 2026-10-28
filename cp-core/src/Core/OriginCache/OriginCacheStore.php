@@ -26,6 +26,15 @@ final class OriginCacheStore
         return $this->projectDir.\DIRECTORY_SEPARATOR.'public'.\DIRECTORY_SEPARATOR.'page-cache';
     }
 
+    /**
+     * Where the tag index lives. Outside public/: it is bookkeeping, not something to serve.
+     * Emptied together with the snapshots it describes (purgeAll), so the two never disagree.
+     */
+    public function tagsRoot(): string
+    {
+        return $this->projectDir.\DIRECTORY_SEPARATOR.'cp-core'.\DIRECTORY_SEPARATOR.'var'.\DIRECTORY_SEPARATOR.'origin-tags';
+    }
+
     public function isEnabledOnDisk(): bool
     {
         return is_file($this->root().\DIRECTORY_SEPARATOR.self::SENTINEL);
@@ -115,7 +124,92 @@ final class OriginCacheStore
             @unlink($file.'.ttl');
         }
 
-        return @file_put_contents($file, $html, LOCK_EX) !== false;
+        $written = @file_put_contents($file, $html, LOCK_EX) !== false;
+        if ($written) {
+            $this->writeGzip($file, $html, $queryString);
+        }
+
+        return $written;
+    }
+
+    /**
+     * A gzip copy beside the snapshot, for Apache to serve to clients that accept it (see public/.htaccess).
+     * Compressed once, at the best level, instead of on every hit at a middling one. Only for the plain
+     * URL: Apache never serves a snapshot with a query string, PHP does, and PHP compresses on its own.
+     * Written to a temporary name and renamed, so Apache never reads half of it.
+     */
+    private function writeGzip(string $file, string $html, string $queryString): void
+    {
+        $gz = $file.'.gz';
+        if ($queryString !== '' || !\function_exists('gzencode')) {
+            @unlink($gz);
+
+            return;
+        }
+        $packed = gzencode($html, 9);
+        if ($packed === false) {
+            @unlink($gz);
+
+            return;
+        }
+        $tmp = $gz.'.tmp'.getmypid();
+        if (@file_put_contents($tmp, $packed, LOCK_EX) === false || !@rename($tmp, $gz)) {
+            @unlink($tmp);
+            @unlink($gz);
+        }
+    }
+
+    /** The copy a purge set aside, while it is still inside the grace window. */
+    public function getStaleHtml(string $pathInfo, string $queryString, ?OriginCacheVaryContext $ctx = null): ?string
+    {
+        $stale = $this->htmlPath($pathInfo, $queryString, $ctx).'.stale';
+        $mtime = @filemtime($stale);
+        if ($mtime === false) {
+            return null;
+        }
+        if (time() - $mtime > self::STALE_GRACE_SECONDS) {
+            @unlink($stale);
+
+            return null;
+        }
+        $html = @file_get_contents($stale);
+
+        return $html === false ? null : $html;
+    }
+
+    /**
+     * Try to become the one request that regenerates this page. Returns the open lock
+     * (keep it until the new page is written, then pass it to finishRegeneration) or null
+     * when somebody else already is.
+     *
+     * @return resource|null
+     */
+    public function tryRegenerationLock(string $pathInfo, string $queryString, ?OriginCacheVaryContext $ctx = null)
+    {
+        $lockFile = $this->htmlPath($pathInfo, $queryString, $ctx).'.lock';
+        $fp = @fopen($lockFile, 'c');
+        if ($fp === false) {
+            return null;
+        }
+        if (!flock($fp, \LOCK_EX | \LOCK_NB)) {
+            fclose($fp);
+
+            return null;
+        }
+
+        return $fp;
+    }
+
+    /**
+     * @param resource $lock
+     */
+    public function finishRegeneration($lock, string $pathInfo, string $queryString, ?OriginCacheVaryContext $ctx = null): void
+    {
+        $base = $this->htmlPath($pathInfo, $queryString, $ctx);
+        @unlink($base.'.stale');
+        flock($lock, \LOCK_UN);
+        fclose($lock);
+        @unlink($base.'.lock');
     }
 
     public function getHtml(
@@ -137,6 +231,7 @@ final class OriginCacheStore
         $effectiveTtl = $this->effectiveTtl($file, $ttl);
         if ($effectiveTtl > 0 && (time() - (int) filemtime($file)) > $effectiveTtl) {
             @unlink($file);
+            @unlink($file.'.gz');
             @unlink($file.'.ttl');
 
             return null;
@@ -216,10 +311,26 @@ final class OriginCacheStore
         return $deleted;
     }
 
+    /**
+     * Stale-while-revalidate. A purge renames index.html to index.html.stale instead of
+     * deleting it. Apache no longer finds the page and sends the request to PHP, exactly as
+     * before, but OriginCacheReader can now hand the previous copy to every request that
+     * arrives while one request is regenerating the page. Without this, a purge of a busy
+     * page sends all of its concurrent visitors to PHP at once.
+     *
+     * The window is bounded by STALE_GRACE_SECONDS, and a regeneration that does not produce
+     * a cacheable page (the post was deleted: 404) removes the stale copy at once.
+     */
+    public const STALE_GRACE_SECONDS = 120;
+
     private function deleteExactAt(string $index): int
     {
         $deleted = 0;
-        if (is_file($index) && @unlink($index)) {
+        @unlink($index.'.gz');
+        if (is_file($index) && @rename($index, $index.'.stale')) {
+            @touch($index.'.stale');
+            ++$deleted;
+        } elseif (is_file($index) && @unlink($index)) {
             ++$deleted;
         }
         @unlink($index.'.ttl');
@@ -281,6 +392,9 @@ final class OriginCacheStore
 
     public function purgeAll(): int
     {
+        if (is_dir($this->tagsRoot())) {
+            $this->deleteTree($this->tagsRoot(), keepRoot: false);
+        }
         if (!is_dir($this->root())) {
             return 0;
         }

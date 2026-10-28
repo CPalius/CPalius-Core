@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\EventListener;
 
 use App\Core\Settings\SettingsRegistry;
+use App\Core\Version\Service\AtomicUpdateInstaller;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Response;
@@ -50,6 +51,7 @@ final class MaintenanceModeListener implements EventSubscriberInterface
         private readonly SettingsRegistry $settingsRegistry,
         private readonly Security $security,
         private readonly Environment $twig,
+        private readonly AtomicUpdateInstaller $installer,
     ) {
     }
 
@@ -77,8 +79,11 @@ final class MaintenanceModeListener implements EventSubscriberInterface
         // Settings live in the database, which is exactly what tends to be
         // unavailable mid-deploy. Failing open keeps a reachable site up
         // instead of hiding it behind a maintenance page nobody switched on.
+        // The update flag is a file so it works while the database is being restored.
+        $enabled = $this->installer->maintenanceActive();
+
         try {
-            $enabled = (bool) $this->settingsRegistry->get('core.maintenance_mode', false);
+            $enabled = $enabled || (bool) $this->settingsRegistry->get('core.maintenance_mode', false);
         } catch (\Throwable) {
             return;
         }

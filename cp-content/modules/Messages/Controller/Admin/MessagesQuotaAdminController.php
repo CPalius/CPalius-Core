@@ -35,7 +35,7 @@ final class MessagesQuotaAdminController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET', 'POST'])]
-    #[CpAdminMenu(label: 'messages.menu.quota', icon: 'heroicons:chart-bar', panel: 'studio', priority: 36, capability: 'messages.moderate', parent: 'admin_messages_dashboard')]
+    #[CpAdminMenu(label: 'messages.menu.quota', icon: 'heroicons:chart-bar', panel: 'studio', priority: 710, capability: 'messages.moderate', parent: 'admin_forum_dashboard')]
     public function index(Request $request): Response
     {
         $subject = $this->users->resolve((string) $request->query->get('user', $request->request->get('user', '')));

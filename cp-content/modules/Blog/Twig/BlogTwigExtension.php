@@ -9,6 +9,7 @@ use App\Entity\Node;
 use App\Entity\User;
 use Modules\Blog\PostSubType;
 use Modules\Blog\Service\BlogPostPresentationService;
+use Modules\Blog\Service\PostFaq;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -37,6 +38,7 @@ final class BlogTwigExtension extends AbstractExtension
             new TwigFunction('blog_user_avatar_url', $this->resolveUserAvatarUrl(...)),
             new TwigFunction('blog_author_profile_url', $this->resolveAuthorProfileUrl(...)),
             new TwigFunction('blog_public_display_name', $this->resolvePublicDisplayName(...)),
+            new TwigFunction('blog_post_faq', static fn (Node $post): array => PostFaq::normalize($post->getDataValue('faq', []))),
         ];
     }
 

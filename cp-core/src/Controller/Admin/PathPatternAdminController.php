@@ -61,11 +61,13 @@ final class PathPatternAdminController extends AbstractController
 
         $rows = [];
         foreach ($this->patternableBundles() as $bundle => $label) {
+            // ?-> does not silence a missing array key, so look the pattern up with ?? first.
+            $existing = $byBundle[$bundle] ?? null;
             $rows[] = [
                 'bundle' => $bundle,
                 'label' => $label,
-                'pattern' => $byBundle[$bundle]?->getPattern() ?? '',
-                'enabled' => $byBundle[$bundle]?->isEnabled() ?? true,
+                'pattern' => $existing?->getPattern() ?? '',
+                'enabled' => $existing?->isEnabled() ?? true,
             ];
         }
 

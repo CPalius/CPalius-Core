@@ -38,8 +38,10 @@ final class OriginCacheReader implements EventSubscriberInterface
         if (!$event->isMainRequest()) {
             return;
         }
-        $status = $this->registry->getStatus('cpalius');
-        if ($status === null || !$status->isEnabled() || !$this->store->isEnabledOnDisk()) {
+        // The sentinel file is created and removed together with the backend's enabled flag
+        // (PerformanceBackendRegistry::enable/disable), so one is_file() answers what used to be a
+        // database read on every request, cached or not.
+        if (!$this->store->isEnabledOnDisk()) {
             return;
         }
 
@@ -68,6 +70,27 @@ final class OriginCacheReader implements EventSubscriberInterface
             $ctx,
         );
         if ($html === null) {
+            $stale = $this->store->getStaleHtml($request->getPathInfo(), (string) $request->getQueryString(), $ctx);
+            if ($stale === null) {
+                return;
+            }
+
+            // A purge set this page aside. The first request to arrive regenerates it; every other one
+            // gets the previous copy instead of piling onto PHP.
+            $lock = $this->store->tryRegenerationLock($request->getPathInfo(), (string) $request->getQueryString(), $ctx);
+            if ($lock !== null) {
+                $request->attributes->set(OriginCacheWriter::REGENERATION_ATTRIBUTE, ['lock' => $lock, 'ctx' => $ctx]);
+
+                return;
+            }
+
+            $event->setResponse(new Response($stale, 200, [
+                'Content-Type' => 'text/html; charset=UTF-8',
+                'X-CPalius-Cache' => 'STALE',
+                'Cache-Control' => 'public, max-age=5',
+                'Vary' => 'Accept-Language, Cookie',
+            ]));
+
             return;
         }
 

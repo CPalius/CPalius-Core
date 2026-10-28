@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Module;
 
+use App\Core\Malware\MalwareGuard;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -18,6 +19,7 @@ final class ModulePackageService
     public function __construct(
         private readonly string $modulesDir,
         private readonly ModuleActivator $moduleActivator,
+        private readonly ?MalwareGuard $malwareGuard = null,
     ) {
     }
 
@@ -53,6 +55,9 @@ final class ModulePackageService
             $targetDir = rtrim($this->modulesDir, '/\\').'/'.$dirName;
 
             $problems = ModulePackageContract::problems($sourceDir);
+            if ($problems === [] && $this->malwareGuard !== null) {
+                $problems = MalwareGuard::describe($this->malwareGuard->blockingFindingsForDirectory($sourceDir, 'module_upload'));
+            }
             if ($problems !== []) {
                 return [
                     'success' => false,
@@ -92,8 +97,11 @@ final class ModulePackageService
     /**
      * @return array{success: bool, message: string}
      */
-    public function delete(string $dirName, bool $purgeData = false): array
+    public function delete(string $dirName, bool $purgeData = true): array
     {
+        // Deleting a module removes it like a WordPress plugin: nothing of it stays behind.
+        $purgeData = true;
+
         if (preg_match('/^[A-Z][A-Za-z0-9]+$/', $dirName) !== 1) {
             return ['success' => false, 'message' => 'Invalid module directory name.'];
         }
@@ -183,7 +191,7 @@ final class ModulePackageService
     /**
      * @return array{success: bool, message: string, moduleDir?: string, dirName?: string, problems?: list<string>}
      */
-    private function extractZip(string $zipPath, string $extractDir): array
+    public function extractZip(string $zipPath, string $extractDir): array
     {
         if (!class_exists(\ZipArchive::class)) {
             return ['success' => false, 'message' => 'PHP zip extension is required to install modules from a ZIP file.'];

@@ -5,8 +5,16 @@ declare(strict_types=1);
 namespace App\Core\Module;
 
 use App\Core\Cache\CacheRebuildManager;
+use App\Core\Malware\MalwareGuard;
+use App\Core\Portal\HomepageModeCatalog;
+use App\Core\Settings\SettingsRegistry;
+use App\Core\Theme\ThemeRegistry;
 use Symfony\Component\Process\PhpExecutableFinder;
+use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Finder\Finder;
 use Symfony\Component\Process\Process;
+use Symfony\Component\Yaml\Exception\ParseException;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Activates a module behind a dependency check and a dry-run lint (Manifesto Law 2.2).
@@ -22,11 +30,33 @@ final class ModuleActivator
         private readonly CacheRebuildManager $cacheRebuildManager,
         private readonly string $projectDir,
         private readonly string $modulesDir,
+        private readonly ?MalwareGuard $malwareGuard = null,
+        private readonly ?HomepageModeCatalog $homepageModes = null,
+        private readonly ?SettingsRegistry $settings = null,
+        private readonly ?ThemeRegistry $themes = null,
     ) {
     }
 
     /**
-     * @return array{success: bool, message: string, output: ?string, problems?: list<string>}
+     * The homepage mode the site currently serves from this module, or null.
+     */
+    private function homepageModeServedBy(string $dirName): ?string
+    {
+        if ($this->homepageModes === null || $this->settings === null) {
+            return null;
+        }
+
+        try {
+            $mode = (string) $this->settings->get(SettingsRegistry::HOMEPAGE_MODE_KEY);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $mode !== '' && isset($this->homepageModes->declarationsIn($dirName)[$mode]) ? $mode : null;
+    }
+
+    /**
+     * @return array{success: bool, message: string, output: ?string, problems?: list<string>, pending?: bool}
      */
     public function activate(string $moduleNameOrDir): array
     {
@@ -61,6 +91,18 @@ final class ModuleActivator
             ];
         }
 
+        // Malware gate (mode "auto" only): a flagged module is refused, not quarantined, so it can be reviewed.
+        $malware = $this->malwareGuard?->blockingFindingsForDirectory($moduleDir, 'module_activation') ?? [];
+
+        if ($malware !== []) {
+            return [
+                'success' => false,
+                'message' => sprintf('"%s" was not activated: the malware scanner flagged it.', $target['name']),
+                'output' => implode(\PHP_EOL, MalwareGuard::describe($malware)),
+                'problems' => MalwareGuard::describe($malware),
+            ];
+        }
+
         // The dependency matrix is checked BEFORE the dry-run: a missing requirement
         // is a contract error, not a compile error, and must not quarantine the module.
         $problems = $this->dependencyChecker->checkActivation($manifest);
@@ -74,9 +116,23 @@ final class ModuleActivator
             ];
         }
 
+        // Law 2.2 stays a hard gate: the very same activate() runs, but in a detached `cp:module:activate`
+        // process, so a browser on a server that cannot release the response early (mod_fcgid) does not
+        // sit through the ~5 s compile. The module reaches active_modules.php only if that run passes;
+        // a failure quarantines it exactly as before.
+        if (\PHP_SAPI !== 'cli' && !\function_exists('fastcgi_finish_request') && getenv('CPALIUS_MODULE_JOB') !== '1'
+            && $this->cacheRebuildManager->startConsoleJob('cp:module:activate '.$target['dirName'], ['CPALIUS_MODULE_JOB' => '1', 'CPALIUS_BLUEGREEN' => '1'])) {
+            return [
+                'success' => true,
+                'message' => sprintf('"%s" is being validated in the background and will be active in a few seconds.', $target['name']),
+                'output' => null,
+                'pending' => true,
+            ];
+        }
+
         /** @var class-string $moduleClass */
         $moduleClass = $target['class'];
-        $dryRunResult = $this->runDryRun($moduleClass);
+        $dryRunResult = $this->runDryRun($moduleClass, $moduleDir);
 
         if (!$dryRunResult['success']) {
             $this->moduleRegistry->quarantinePermanently($moduleClass, $this->summarize($dryRunResult['output']));
@@ -126,11 +182,40 @@ final class ModuleActivator
         }
 
         if ($target['status'] !== 'active') {
+            // An inactive module still owns its tables, settings and links until it is purged.
+            if ($purgeData) {
+                $this->lifecycleManager->resetHomepageMode(array_keys($this->homepageModes?->declarationsIn($target['dirName']) ?? []));
+                $uninstall = $this->lifecycleManager->onUninstalled($this->manifestFor($target['dirName']));
+
+                if ($uninstall['message'] !== null) {
+                    return ['success' => false, 'message' => sprintf('"%s" uninstall hook failed.', $target['name']), 'output' => $uninstall['message']];
+                }
+
+                return ['success' => true, 'message' => sprintf('"%s" data was removed.', $target['name']), 'output' => null];
+            }
+
             return ['success' => true, 'message' => sprintf('"%s" is not active.', $target['name']), 'output' => null];
         }
 
         $manifest = $this->manifestFor($target['dirName']);
+
+        // Core never dies: the module that serves the homepage cannot be switched off from under the site.
+        $homepage = $this->homepageModeServedBy($target['dirName']);
+
+        if ($homepage !== null) {
+            $problem = sprintf('"%s" is the site homepage (mode "%s"). Choose another homepage under Appearance > Homepage first.', $target['name'], $homepage);
+
+            return ['success' => false, 'message' => sprintf('"%s" cannot be deactivated.', $target['name']), 'output' => $problem, 'problems' => [$problem]];
+        }
+
         $dependents = $this->dependencyChecker->checkDeactivation($manifest);
+
+        // The same rule for the active theme: its templates call this module's Twig functions.
+        $theme = $this->themes?->active();
+
+        if ($theme !== null && \in_array(strtolower($target['dirName']), array_map('strtolower', $theme->requiresModules), true)) {
+            $dependents[] = sprintf('The active theme "%s" requires "%s". Switch theme first.', $theme->name, $target['name']);
+        }
 
         if ($dependents !== []) {
             return [
@@ -191,33 +276,29 @@ final class ModuleActivator
     /**
      * @return array{success: bool, output: string}
      */
-    private function runDryRun(string $moduleClass): array
+    private function runDryRun(string $moduleClass, string $moduleDir): array
     {
+        // YAML syntax of the candidate module is checked in-process (ms) instead of a
+        // whole-tree `lint:yaml` subprocess; the other modules were already validated when activated.
+        foreach ((new Finder())->files()->in($moduleDir)->name(['*.yaml', '*.yml'])->notPath('Tests') as $file) {
+            try {
+                Yaml::parse($file->getContents(), Yaml::PARSE_CUSTOM_TAGS);
+            } catch (ParseException $e) {
+                return ['success' => false, 'output' => $file->getRelativePathname().': '.$e->getMessage()];
+            }
+        }
+
         $originalModules = $this->fileWriter->read();
 
         $this->fileWriter->add($moduleClass);
 
         try {
+            // A fresh throwaway cache dir replaces the `cache:clear --no-warmup` process: the
+            // container is compiled from scratch by lint:container, the only subprocess left.
+            (new Filesystem())->remove($this->lintCacheDir());
             $phpBinary = (new PhpExecutableFinder())->find() ?: 'php';
-            $consolePath = $this->projectDir.'/cp-core/bin/console';
 
-            $clearResult = $this->runLint([$phpBinary, $consolePath, 'cache:clear', '--no-warmup']);
-
-            if (!$clearResult['success']) {
-                return $clearResult;
-            }
-
-            // --parse-tags is not optional here: core's own services.yaml uses
-            // !tagged_iterator, so without it this lint reports the core as
-            // broken and quarantines every module anyone tries to activate —
-            // the failure is in the checker, and it names the module.
-            $yamlResult = $this->runLint([$phpBinary, $consolePath, 'lint:yaml', '--parse-tags', 'cp-core/config', 'cp-content/modules']);
-
-            if (!$yamlResult['success']) {
-                return $yamlResult;
-            }
-
-            return $this->runLint([$phpBinary, $consolePath, 'lint:container']);
+            return $this->runLint([$phpBinary, $this->projectDir.'/cp-core/bin/console', 'lint:container']);
         } finally {
             $this->fileWriter->replaceAll($originalModules);
         }
@@ -283,6 +364,6 @@ final class ModuleActivator
      */
     private function clearCache(): void
     {
-        $this->cacheRebuildManager->clearSymfonyCache();
+        $this->cacheRebuildManager->clearForModuleToggle();
     }
 }

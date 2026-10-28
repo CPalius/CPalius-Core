@@ -28,7 +28,7 @@
                                 {{ count < 0 ? 'aacp.logs.purge.uncountable'|trans : count|number_format }}
                             </div>
                             <form method="post" action="{{ path('aacp_logs_purge') }}" class="mt-1"
-                                  onsubmit="return confirm('{{ 'aacp.logs.purge.confirm_store'|trans({ store: ('aacp.logs.purge.store.' ~ store)|trans })|e('js') }}');">
+                                  data-confirm="{{ 'aacp.logs.purge.confirm_store'|trans({ store: ('aacp.logs.purge.store.' ~ store)|trans })|e('html_attr') }}">
                                 <input type="hidden" name="_token" value="{{ purgeToken }}">
                                 <input type="hidden" name="store" value="{{ store }}">
                                 <button type="submit" class="btn btn-sm btn-outline"
@@ -43,7 +43,7 @@
                 <div class="mt-sp-sm flex flex-wrap items-center gap-2 border-t border-white/10 pt-sp-sm">
                     {# Önce bu: yer açar ama okunmaya devam eden yakın geçmişi atmaz. #}
                     <form method="post" action="{{ path('aacp_logs_purge_aged') }}"
-                          onsubmit="return confirm('{{ 'aacp.logs.purge.confirm_aged'|trans|e('js') }}');">
+                          data-confirm="{{ 'aacp.logs.purge.confirm_aged'|trans|e('html_attr') }}">
                         <input type="hidden" name="_token" value="{{ purgeToken }}">
                         <button type="submit" class="btn btn-sm btn-primary">
                             {{ 'aacp.logs.purge.button.aged'|trans }}
@@ -51,7 +51,7 @@
                     </form>
 
                     <form method="post" action="{{ path('aacp_logs_purge') }}"
-                          onsubmit="return confirm('{{ 'aacp.logs.purge.confirm_all'|trans|e('js') }}');">
+                          data-confirm="{{ 'aacp.logs.purge.confirm_all'|trans|e('html_attr') }}">
                         <input type="hidden" name="_token" value="{{ purgeToken }}">
                         <input type="hidden" name="store" value="all">
                         <button type="submit" class="btn btn-sm btn-danger">

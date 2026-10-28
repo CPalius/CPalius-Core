@@ -86,6 +86,28 @@ final class NotificationTypeRegistry
                 allowSelf: false,
                 exposeInAccount: true,
             ),
+            // Sent to administrators only (AdminAlertNotifier); in-app only, not a member preference.
+            new NotificationTypeDefinition(
+                eventKey: 'account.identity.requested',
+                labelKey: 'notification.type.identity_requested',
+                module: 'core',
+                defaultChannels: ['in_app'],
+                preferenceKey: null,
+                mailTemplate: '',
+                allowSelf: true,
+                exposeInAccount: false,
+            ),
+            // Sent to administrators by UpdateNotifier when core, a module or a theme has a newer version.
+            new NotificationTypeDefinition(
+                eventKey: 'system.update.available',
+                labelKey: 'notification.type.update_available',
+                module: 'core',
+                defaultChannels: ['in_app'],
+                preferenceKey: null,
+                mailTemplate: '',
+                allowSelf: true,
+                exposeInAccount: false,
+            ),
         ];
     }
 }

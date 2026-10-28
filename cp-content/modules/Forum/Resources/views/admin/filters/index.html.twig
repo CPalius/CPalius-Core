@@ -25,7 +25,7 @@
                         <td class="text-right">
                             <div class="flex items-center justify-end gap-2">
                                 <a href="{{ path('admin_forum_filters_edit', {id: filter.id}) }}" class="btn btn-sm btn-neutral">{{ 'aacp.users.edit_action'|trans }}</a>
-                                <form method="post" action="{{ path('admin_forum_filters_delete', {id: filter.id}) }}" onsubmit="return confirm({{ 'studio.forum.filters.index.delete_confirm'|trans|json_encode|raw }});">
+                                <form method="post" action="{{ path('admin_forum_filters_delete', {id: filter.id}) }}" data-confirm="{{ 'studio.forum.filters.index.delete_confirm'|trans|e('html_attr') }}">
                                     <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_filter') }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</button>
                                 </form>

@@ -61,7 +61,7 @@
                                     <input type="hidden" name="_token" value="{{ csrf_token('forum_moderate') }}">
                                     <button type="submit" name="action" value="{{ topic.isLocked ? 'unlock' : 'lock' }}" class="btn btn-sm btn-neutral">{{ topic.isLocked ? 'studio.forum.topics.index.action.unlock'|trans : 'studio.forum.topics.index.action.lock'|trans }}</button>
                                 </form>
-                                <form method="post" action="{{ path('admin_forum_topics_delete', {id: topic.id}) }}" onsubmit="return confirm({{ 'studio.forum.topics.index.delete_confirm'|trans|json_encode|raw }});">
+                                <form method="post" action="{{ path('admin_forum_topics_delete', {id: topic.id}) }}" data-confirm="{{ 'studio.forum.topics.index.delete_confirm'|trans|e('html_attr') }}">
                                     <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_topic') }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</button>
                                 </form>

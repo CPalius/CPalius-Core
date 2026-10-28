@@ -1,4 +1,5 @@
 import Chart from 'chart.js/auto';
+import { initCardLayout } from 'dashboard-layout';
 
 /**
  * Studio command desk: one thin doughnut plus the quick-create dropdown.
@@ -8,7 +9,10 @@ const PALETTE = ['#487FFF', '#64748B', '#22C55E'];
 document.addEventListener('DOMContentLoaded', () => {
     initDonut();
     initCreateDropdown();
-    document.querySelectorAll('[data-studio-dashboard]').forEach(initWidgetToggles);
+    document.querySelectorAll('[data-studio-dashboard]').forEach((root) => {
+        initWidgetToggles(root);
+        initCardLayout(root);
+    });
 });
 
 /**

@@ -28,6 +28,6 @@ final class InstallDefaults
     public static function writeActiveModules(string $projectDir): void
     {
         (new ActiveModulesFileWriter($projectDir.'/cp-core/config/active_modules.php'))
-            ->replaceAll(self::MODULES);
+            ->replaceAll(array_values(array_filter(self::MODULES, class_exists(...))));
     }
 }

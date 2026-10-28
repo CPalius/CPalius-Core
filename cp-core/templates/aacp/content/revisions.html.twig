@@ -44,7 +44,7 @@
                                     </details>
                                     {% if not loop.first %}
                                         <form method="post" action="{{ path('aacp_content_revisions_restore', {id: node.id, rev: revision.id}) }}"
-                                              onsubmit="return confirm({{ 'aacp.revisions.restore_confirm'|trans|json_encode|raw }});">
+                                              data-confirm="{{ 'aacp.revisions.restore_confirm'|trans|e('html_attr') }}">
                                             <input type="hidden" name="_token" value="{{ csrf_token }}">
                                             <button type="submit" class="text-fs-xs font-medium !text-primary-400 hover:!text-success-300">{{ 'aacp.revisions.restore'|trans }}</button>
                                         </form>

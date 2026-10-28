@@ -23,6 +23,17 @@
                     <p class="mt-1 text-fs-xs text-neutral-500">{{ 'menu.create.identifier_hint'|trans }} <code>{{ '{{ cp_menu(\'header\') }}' }}</code></p>
                 </div>
 
+                <div>
+                    <label for="location" class="form-label">{{ 'menu.location.field'|trans }}</label>
+                    <select id="location" name="location" class="form-select">
+                        <option value="">{{ 'menu.location.none'|trans }}</option>
+                        {% for id, label in locations %}
+                            <option value="{{ id }}" {{ formValues.location == id ? 'selected' : '' }}>{{ label|trans }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="mt-1 text-fs-xs text-neutral-500">{{ 'menu.location.hint'|trans }}</p>
+                </div>
+
                 <div class="flex items-center gap-3 border-t border-neutral-200 pt-sp-sm">
                     <button type="submit" class="btn btn-primary">
                         {{ 'menu.create.submit'|trans }}

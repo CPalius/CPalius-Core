@@ -2754,8 +2754,8 @@ blockquote.cp-quote-post-0,
 
 /* ---- Forum stats bar (footer üstü, r10 tarzı kart) ---- */
 .forum-stats {
-  margin-top: var(--sp-2xl, 40px);
-  padding-bottom: 8px;
+  margin-top: var(--sp-xl, 40px);
+  padding-bottom: var(--sp-md, 16px);
 }
 
 .forum-stats__inner {
@@ -2768,8 +2768,9 @@ blockquote.cp-quote-post-0,
   flex: 1 1 80%;
   min-width: 0;
   height: 70px;
-  background: #243447;
-  border-radius: 2px;
+  background: var(--stats-surface, var(--cp-dark));
+  border: 1px solid var(--stats-line, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
   display: flex;
   align-items: center;
 }
@@ -2825,19 +2826,19 @@ blockquote.cp-quote-post-0,
 .forum-stats__users > span:first-child,
 .forum-stats__right > span:first-child {
   flex-shrink: 0;
-  background: #132132;
+  background: var(--stats-inset, var(--cp-darkest));
   width: 44px;
   height: 44px;
   line-height: 44px;
   text-align: center;
   font-size: 21px;
   color: #fff;
-  border-radius: 2px;
+  border-radius: 6px;
   margin-right: 15px;
 }
 
 .forum-stats__count > span:first-child {
-  background: #32AB52;
+  background: var(--cp-success);
   color: #fff;
 }
 
@@ -2846,7 +2847,7 @@ blockquote.cp-quote-post-0,
 .forum-stats__posts > span:last-child,
 .forum-stats__users > span:last-child,
 .forum-stats__right > span:last-child {
-  color: #8B9DAF;
+  color: var(--cp-steel);
   line-height: 18px;
   font-size: 12px;
   min-width: 0;
@@ -2859,20 +2860,20 @@ blockquote.cp-quote-post-0,
 .forum-stats__right a,
 .forum-stats__right b {
   font-weight: 600;
-  color: #D7D8E6;
+  color: var(--stats-strong, var(--cp-light));
 }
 
 .forum-stats__count > span:last-child i {
   position: relative;
   top: 2px;
-  color: #D7D8E6;
+  color: var(--stats-strong, var(--cp-light));
   margin-left: 4px;
   font-size: 13px;
 }
 
 .forum-stats__link a {
-  border-radius: 2px;
-  background: #132132;
+  border-radius: 6px;
+  background: var(--stats-inset, var(--cp-darkest));
   padding: 7px 15px;
   color: #fff;
   display: flex;
@@ -2884,7 +2885,7 @@ blockquote.cp-quote-post-0,
 }
 
 .forum-stats__link a:hover {
-  background: color-mix(in srgb, var(--cp-accent) 35%, #132132);
+  background: color-mix(in srgb, var(--cp-accent) 35%, var(--stats-inset, var(--cp-darkest)));
 }
 
 .forum-stats__link a i {
@@ -2897,8 +2898,9 @@ blockquote.cp-quote-post-0,
   max-width: 280px;
   min-width: 200px;
   height: 70px;
-  background: #243447;
-  border-radius: 2px;
+  background: var(--stats-surface, var(--cp-dark));
+  border: 1px solid var(--stats-line, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
   display: flex;
   align-items: center;
   padding: 0 15px;
@@ -4050,4 +4052,58 @@ blockquote.cp-quote-post-0,
     flex: 1 1 100%;
     max-width: 100%;
   }
+}
+
+/* ---- Konu kartlari (son / populer) ---- */
+.forum-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: var(--sp-xl, 40px);
+}
+
+.forum-cards__card {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid var(--slw-border, rgba(0, 0, 0, 0.1));
+  border-radius: var(--forum-radius, 6px);
+  padding: 18px 20px 8px;
+}
+
+.forum-cards__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: var(--fs-md, 1rem);
+  font-weight: 600;
+}
+
+.forum-cards__title i { color: var(--cp-accent, #2563eb); }
+
+.forum-cards__list { list-style: none; margin: 0; padding: 0; }
+
+.forum-cards__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+  border-top: 1px solid var(--slw-border, rgba(0, 0, 0, 0.08));
+}
+
+.forum-cards__row:first-child { border-top: 0; }
+
+.forum-cards__link {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.forum-cards__meta { font-size: var(--fs-xs, 0.8rem); opacity: 0.7; }
+.forum-cards__meta a { color: inherit; text-decoration: underline; }
+.forum-cards__empty { padding: 10px 0 14px; opacity: 0.7; }
+
+@media (max-width: 760px) {
+  .forum-cards { grid-template-columns: 1fr; }
 }

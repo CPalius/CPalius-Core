@@ -53,7 +53,7 @@
                                 {% endif %}
 
                                 <form method="post" action="{{ path('admin_pages_delete', {id: page.id}) }}"
-                                      onsubmit="return confirm({{ 'pages.delete_confirm'|trans|json_encode|raw }});">
+                                      data-confirm="{{ 'pages.delete_confirm'|trans|e('html_attr') }}">
                                     <input type="hidden" name="_token" value="{{ csrf_token('admin_page_form') }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">
                                         {{ 'aacp.cron.delete'|trans }}

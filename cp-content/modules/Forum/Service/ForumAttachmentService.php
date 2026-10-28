@@ -105,6 +105,36 @@ final class ForumAttachmentService
         return $created;
     }
 
+    /** @return list<ForumPostAttachment> */
+    public function forPost(ForumPost $post): array
+    {
+        return $this->attachmentRepository->findByPost($post);
+    }
+
+    /**
+     * Detach files from a post. The Asset row stays: the same file may still be
+     * referenced from the post body or another module.
+     *
+     * @param list<int> $attachmentIds
+     */
+    public function remove(ForumPost $post, array $attachmentIds): int
+    {
+        $removed = 0;
+        foreach ($this->attachmentRepository->findByPost($post) as $attachment) {
+            if (\in_array($attachment->getId(), $attachmentIds, true)) {
+                $this->entityManager->remove($attachment);
+                ++$removed;
+            }
+        }
+
+        if ($removed > 0) {
+            $post->setAttachCount(max(0, $post->getAttachCount() - $removed));
+            $this->entityManager->flush();
+        }
+
+        return $removed;
+    }
+
     /**
      * @param list<int> $postIds
      *

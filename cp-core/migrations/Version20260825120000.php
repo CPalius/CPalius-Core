@@ -17,6 +17,11 @@ final class Version20260825120000 extends AbstractMigration
         return "Updates Blog menu links from /blog to /tr/blog.";
     }
 
+    public function preUp(Schema $schema): void
+    {
+        $this->skipIf(!\App\Core\Module\ActiveModules::has(\Modules\Menu\MenuModule::class), 'Menu module is not active.');
+    }
+
     public function up(Schema $schema): void
     {
         $this->addSql("UPDATE menu_items SET url = '/tr/blog' WHERE url = '/blog'");

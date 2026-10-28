@@ -9,6 +9,9 @@ use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -44,8 +47,13 @@ final class AccountIdentityChangeService
         private readonly EntityManagerInterface $entityManager,
         private readonly TranslatorInterface $translator,
         private readonly AccountMailer $accountMailer,
+        private readonly AdminAlertNotifier $adminAlerts,
+        private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly CacheInterface $cache,
     ) {
     }
+
+    private const PENDING_COUNT_CACHE = 'cp.account.identity_pending_count';
 
     public function isApprovalRequired(): bool
     {
@@ -88,6 +96,28 @@ final class AccountIdentityChangeService
     public function pendingCount(): int
     {
         return \count($this->pendingRequests());
+    }
+
+    /**
+     * The count the AACP/Studio bell shows on every page: pendingRequests() scans the users table, so the
+     * answer is kept for two minutes and dropped the moment a request is filed, approved, rejected or withdrawn.
+     */
+    public function pendingCountCached(): int
+    {
+        return (int) $this->cache->get(self::PENDING_COUNT_CACHE, function (ItemInterface $item): int {
+            $item->expiresAfter(120);
+
+            return $this->pendingCount();
+        });
+    }
+
+    private function forgetPendingCount(): void
+    {
+        try {
+            $this->cache->delete(self::PENDING_COUNT_CACHE);
+        } catch (\Throwable) {
+            // Stale for at most two minutes.
+        }
     }
 
     /**
@@ -149,7 +179,33 @@ final class AccountIdentityChangeService
             'new_username' => $changes[self::FIELD_USERNAME] ?? (string) $user->getUsername(),
         ]);
 
+        $this->forgetPendingCount();
+        $this->alertAdmins($user, $changes);
+
         return [];
+    }
+
+    /**
+     * Puts the request in every administrator's inbox. Deduped per member + second, so a double submit
+     * cannot stack two identical alerts.
+     *
+     * @param array<string, string> $changes
+     */
+    private function alertAdmins(User $user, array $changes): void
+    {
+        $parts = [];
+        if (isset($changes[self::FIELD_USERNAME])) {
+            $parts[] = $this->translator->trans('account.identity.notify.username', ['value' => $changes[self::FIELD_USERNAME] !== '' ? $changes[self::FIELD_USERNAME] : '—']);
+        }
+        if (isset($changes[self::FIELD_EMAIL])) {
+            $parts[] = $this->translator->trans('account.identity.notify.email', ['value' => $changes[self::FIELD_EMAIL]]);
+        }
+
+        $this->adminAlerts->notifyAdmins('account.identity.requested', [
+            'member' => (string) ($user->getUsername() ?: $user->getEmail()),
+            'changes' => implode(', ', $parts),
+            'url' => $this->urlGenerator->generate('aacp_users_identity_requests'),
+        ], $user, 'identity:'.$user->getId().':'.time());
     }
 
     /**
@@ -188,6 +244,7 @@ final class AccountIdentityChangeService
         $this->applyChanges($user, $changes);
         $user->removeDataValue(User::DATA_IDENTITY_CHANGE);
         $this->entityManager->flush();
+        $this->forgetPendingCount();
 
         // Sent to the address that now owns the account, which is the point:
         // if the change was not the member's doing, this is where they find out.
@@ -208,6 +265,7 @@ final class AccountIdentityChangeService
 
         $user->removeDataValue(User::DATA_IDENTITY_CHANGE);
         $this->entityManager->flush();
+        $this->forgetPendingCount();
 
         $this->accountMailer->send($user, CoreMailTemplates::IDENTITY_REJECTED, [
             'reason' => trim($reason) !== ''
@@ -230,6 +288,7 @@ final class AccountIdentityChangeService
 
         $user->removeDataValue(User::DATA_IDENTITY_CHANGE);
         $this->entityManager->flush();
+        $this->forgetPendingCount();
 
         return true;
     }

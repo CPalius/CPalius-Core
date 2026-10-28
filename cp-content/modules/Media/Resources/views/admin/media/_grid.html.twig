@@ -31,7 +31,7 @@
                     </div>
                 {% else %}
                     <form method="post" action="{{ path('admin_media_delete', {id: asset.id}) }}"
-                          onsubmit="return confirm({{ 'media.grid.delete_confirm'|trans|json_encode|raw }});"
+                          data-confirm="{{ 'media.grid.delete_confirm'|trans|e('html_attr') }}"
                           class="absolute right-1 top-1 opacity-0 transition group-hover:opacity-100">
                         <input type="hidden" name="_token" value="{{ csrf_token('admin_media_delete') }}">
                         <button type="submit" class="rounded-lg bg-danger-600/90 px-1.5 py-1 text-fs-xs font-semibold text-white hover:bg-danger-600">

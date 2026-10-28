@@ -25,6 +25,8 @@ use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 use Twig\Environment;
 
 /**
@@ -34,6 +36,7 @@ final class AACPTelemetryController
 {
     public function __construct(
         private readonly Environment $twig,
+        private readonly CacheInterface $cache,
         private readonly TelemetryLogRepository $telemetryLogRepository,
         // Null when the VisitorStats module is not installed/active.
         private readonly ?VisitorStatsProviderInterface $visitorStatsProvider,
@@ -61,16 +64,25 @@ final class AACPTelemetryController
         $securityOn = (bool) $this->settingsRegistry->get('telemetry.security_enabled', false);
 
         if ($securityOn) {
+            // The rows are what the page polls for and stay fresh per request; the three 24-hour aggregates
+            // beside them are the expensive part and move slowly, so every open dashboard shares one copy.
+            $aggregates = $this->cache->get('aacp_telemetry_aggregates', function (ItemInterface $item): array {
+                $item->expiresAfter(15);
+
+                return [
+                    'trend' => $this->telemetryLogRepository->hourlyTrend(24),
+                    'vectors' => $this->telemetryLogRepository->vectorBreakdown(24),
+                    'topIps' => $this->telemetryLogRepository->topThreatIps(5),
+                ];
+            }, 1.0);
+
             return new JsonResponse([
                 'mode' => 'security',
                 'rows' => $this->telemetryLogRepository->findLiveFeed(40, $after),
-                'trend' => $this->telemetryLogRepository->hourlyTrend(24),
-                'vectors' => $this->telemetryLogRepository->vectorBreakdown(24),
-                'topIps' => $this->telemetryLogRepository->topThreatIps(5),
-            ]);
+            ] + $aggregates);
         }
 
-        $stats = $this->visitorStatsProvider?->stats(24) ?? ['hourly' => ['labels' => [], 'hits' => []], 'uniqueIps' => 0, 'pageViews' => 0];
+        $stats = $this->cache->get('aacp_telemetry_visitor_stats', fn (ItemInterface $item): array => $this->visitorStats($item), 1.0);
 
         return new JsonResponse([
             'mode' => 'visitors',
@@ -81,6 +93,14 @@ final class AACPTelemetryController
             'uniqueIps' => $stats['uniqueIps'],
             'pageViews' => $stats['pageViews'],
         ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function visitorStats(ItemInterface $item): array
+    {
+        $item->expiresAfter(15);
+
+        return $this->visitorStatsProvider?->stats(24) ?? ['hourly' => ['labels' => [], 'hits' => []], 'uniqueIps' => 0, 'pageViews' => 0];
     }
 
     #[Route('/aacp/telemetry/ban-ip', name: 'aacp_telemetry_ban_ip', methods: ['POST'])]
@@ -107,7 +127,7 @@ final class AACPTelemetryController
     }
 
     #[Route('/aacp/settings/telemetry', name: 'aacp_telemetry_settings', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.telemetry', icon: 'heroicons:signal', panel: 'aacp', priority: 31, capability: 'system.aacp.access', parent: 'aacp_security_center')]
+    #[CpAdminMenu(label: 'aacp.menu.telemetry', icon: 'heroicons:signal', panel: 'aacp', priority: 5, capability: 'system.aacp.access', parent: 'aacp_hub_security')]
     #[IsGranted('system.aacp.access')]
     public function settings(): Response
     {

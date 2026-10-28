@@ -7,6 +7,14 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # Put every service factory inside the one compiled container file instead of
+    # lazily-required ContainerXxx/getYService.php files. After a cache clear or an
+    # update, PHP workers still holding the old container in opcache would require a
+    # file that no longer exists ("Failed to open stream ... getCpalius_Module...
+    # Service.php") and log a warning per request. With nothing left to require
+    # lazily, the stale container simply finishes its requests.
+    .container.dumper.inline_factories: true
+
     # Phase 3 fallback chain terminus. LocaleProvider uses this only when
     # CPALIUS_LOCALES is unset in .env and the database is unreachable.
     #
@@ -60,8 +68,17 @@ services:
             tags: ['cp.text_filter']
         App\Core\Notification\NotificationChannelInterface:
             tags: ['cpalius.notification.channel']
+        # Header live search of AACP and Studio; modules add result groups by implementing it.
+        App\Core\Search\Admin\AdminSearchProviderInterface:
+            tags: ['cpalius.admin_search.provider']
         App\Core\Inbox\InboxPulseChannelInterface:
             tags: ['cpalius.inbox_pulse_channel']
+        # Hosts a module's third-party script needs in the CSP → SecurityHeaderPolicy.
+        App\Core\Security\Http\CspSourceProviderInterface:
+            tags: ['cp.csp_source_provider']
+        # Recycle-bin cleanup of what a deleted row left outside the database (files).
+        App\Core\Trash\TrashPurgeHandlerInterface:
+            tags: ['cp.trash_purge_handler']
 
     # Shared Redis connection for cache.default_redis_provider and session.handler.redis.
     #
@@ -197,6 +214,9 @@ services:
     App\Core\Theme\ThemeRegistry:
         arguments:
             $themesDir: '%kernel.project_dir%/cp-content/themes'
+            $projectDir: '%kernel.project_dir%'
+            $bundles: '%kernel.bundles%'
+            $modulesDir: '%kernel.project_dir%/cp-content/modules'
 
     App\Core\Theme\ThemeFileEditor:
         arguments:
@@ -242,6 +262,7 @@ services:
         arguments:
             $coreTranslationsDir: '%kernel.project_dir%/cp-content/translations'
             $modulesDir: '%kernel.project_dir%/cp-content/modules'
+            $themesDir: '%kernel.project_dir%/cp-content/themes'
 
     App\Core\Module\ModuleContributionCatalog:
         arguments:
@@ -368,6 +389,9 @@ services:
     App\Core\Security\SecretBox:
         arguments:
             $appSecret: '%kernel.secret%'
+            # Comma-separated secrets this install used before; sealed values are still read with them until
+            # cp:secrets:rotate has re-sealed everything under the current one.
+            $previousSecrets: '%env(default::APP_SECRET_PREVIOUS)%'
 
     # Recovery codes are HMAC'd with the same application secret, so rotating
     # APP_SECRET invalidates them — the same trade-off SecretBox already makes.

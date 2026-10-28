@@ -132,7 +132,7 @@ final class AACPCronController
     {
         $base = $this->urlGenerator->generate('cp_cron_execute', [], UrlGeneratorInterface::ABSOLUTE_URL);
         $configured = $this->cronToken !== '';
-        $url = $configured ? $base.'?token='.rawurlencode($this->cronToken) : $base;
+        $url = $base;
 
         return [
             'configured' => $configured,
@@ -142,7 +142,7 @@ final class AACPCronController
             // coarse enough that a shared host will not complain. Quoted with a
             // literal single quote rather than escapeshellarg(), which would
             // follow *this* machine's shell — the line is pasted on the server.
-            'crontab' => sprintf("*/5 * * * * curl -fsS '%s' > /dev/null 2>&1", $url),
+            'crontab' => sprintf("*/5 * * * * curl -fsS -X POST -H 'Authorization: Bearer %s' '%s' > /dev/null 2>&1", $this->cronToken, $url),
             'cli' => 'php cp-core/bin/console cp:cron:run',
         ];
     }

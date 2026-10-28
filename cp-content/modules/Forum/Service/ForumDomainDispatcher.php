@@ -15,6 +15,7 @@ use Modules\Forum\Event\ForumPostDislikedEvent;
 use Modules\Forum\Event\ForumPostLikedEvent;
 use Modules\Forum\Event\ForumReputationGivenEvent;
 use Modules\Forum\Event\ForumTopicCreatedEvent;
+use Modules\Forum\Event\ForumTopicTranslationSyncEvent;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
@@ -65,6 +66,14 @@ final class ForumDomainDispatcher
         $this->eventDispatcher->dispatch(
             new ForumTopicCreatedEvent($topic, $openingPost, $author, $request, true),
             'forum.topic.translate',
+        );
+    }
+
+    public function dispatchTopicTranslationSync(ForumTopic $topic, ForumPost $openingPost, User $author, Request $request, string $oldTitle, string $oldDescription, string $oldBody): void
+    {
+        $this->eventDispatcher->dispatch(
+            new ForumTopicTranslationSyncEvent($topic, $openingPost, $author, $request, $oldTitle, $oldDescription, $oldBody),
+            ForumTopicTranslationSyncEvent::NAME,
         );
     }
 

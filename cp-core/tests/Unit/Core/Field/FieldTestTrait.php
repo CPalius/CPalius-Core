@@ -1,4 +1,4 @@
-<?php
+ <?php
 
 declare(strict_types=1);
 
@@ -155,7 +155,12 @@ trait FieldTestTrait
             $byBundle[$definition->getBundle()][] = $definition;
         }
 
+        // The registry reads every definition with one findAllOrdered() (weight, then name) and groups them itself.
+        $ordered = $definitions;
+        usort($ordered, static fn (FieldDefinition $a, FieldDefinition $b): int => [$a->getWeight(), $a->getName()] <=> [$b->getWeight(), $b->getName()]);
+
         $repository = $this->createMock(FieldDefinitionRepository::class);
+        $repository->method('findAllOrdered')->willReturn($ordered);
         $repository->method('findByBundle')->willReturnCallback(
             static fn (string $bundle): array => $byBundle[$bundle] ?? [],
         );

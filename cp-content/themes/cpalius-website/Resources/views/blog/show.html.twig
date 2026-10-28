@@ -7,9 +7,11 @@
 
 {% block title %}{{ post.title }} — {{ cp_app_name|default('CPalius CMF') }}{% endblock %}
 {% block meta_description %}{{ seo is not null and seo.meta_description is defined ? seo.meta_description : '' }}{% endblock %}
-{% block meta_robots %}{{ seo is not null and seo.noindex is defined and seo.noindex ? 'noindex, nofollow' : 'index, follow' }}{% endblock %}
+{% block meta_robots %}{{ isPreview|default(false) or (seo is not null and seo.noindex is defined and seo.noindex) ? 'noindex, nofollow' : 'index, follow' }}{% endblock %}
 
 {% block content %}
+{% include '@Theme/blog/partials/author_toolbar.html.twig' with {authorTools: authorTools|default(null), isPreview: isPreview|default(false), post: post, featuredImageUrl: featuredImageUrl|default(null)} only %}
+
 <section class="post-hero post-hero--{{ subType }}" id="post-hero">
     <div class="container{% if subType == 'not' %} container-narrow{% endif %}">
         <ul class="slw-breadcrumb fade-in">
@@ -61,10 +63,29 @@
     commentContext: commentContext|default({enabled: false, canSubmit: false, threads: [], approvedCount: 0}),
 } %}
 
+{% include '@Theme/blog/partials/faq.html.twig' with {faq: blog_post_faq(post)} only %}
+
 {# Outside the sub-type include on purpose: every sub-type ends with its
    comments, so one section here lands after them for all four, and a new
    sub-type gets related posts without having to remember to add them. #}
 {% include '@Theme/blog/partials/related_posts.html.twig' with {
     related: related|default({enabled: false, title: '', posts: []}),
 } only %}
+
+{# Read counter for the "Most read" widget. Sent from the page (not counted on the server) because public
+   pages come from the page cache; once per visitor per post per tab session; never for a draft preview. #}
+{% if not isPreview|default(false) %}
+    <script{{ csp_nonce_attr() }}>
+        (function () {
+            try {
+                var key = 'cp-read-{{ post.id }}';
+                if (window.sessionStorage.getItem(key)) { return; }
+                window.sessionStorage.setItem(key, '1');
+                var url = {{ path('blog_view_ping', {id: post.id})|json_encode|raw }};
+                if (navigator.sendBeacon) { navigator.sendBeacon(url); }
+                else { fetch(url, { method: 'POST', keepalive: true }); }
+            } catch (e) { /* storage blocked: the read is simply not counted */ }
+        })();
+    </script>
+{% endif %}
 {% endblock %}

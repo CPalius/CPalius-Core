@@ -35,6 +35,23 @@ class FieldDefinitionRepository extends ServiceEntityRepository
         return $rows;
     }
 
+    /**
+     * Every definition in one query, in the same order findByBundle() uses.
+     *
+     * @return list<FieldDefinition>
+     */
+    public function findAllOrdered(): array
+    {
+        /** @var list<FieldDefinition> $rows */
+        $rows = $this->createQueryBuilder('f')
+            ->orderBy('f.weight', 'ASC')
+            ->addOrderBy('f.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $rows;
+    }
+
     public function findOneByBundleAndName(string $bundle, string $name): ?FieldDefinition
     {
         return $this->findOneBy(['bundle' => $bundle, 'name' => $name]);

@@ -52,7 +52,7 @@
                     <input type="hidden" name="_token" value="{{ csrf_token('account_avatar_upload') }}">
                     <label class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5 w-full">
                         {{ 'aacp.users.profile.select_avatar'|trans }}
-                        <input type="file" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" hidden onchange="this.form.submit()">
+                        <input type="file" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" hidden data-autosubmit>
                     </label>
                 </form>
                 {% if avatarUrl %}

@@ -61,8 +61,8 @@ final class FieldWidgetResolver
             'datetime' => ['type' => DateTimeType::class, 'options' => $base + ['widget' => 'single_text', 'html5' => true, 'input' => 'string', 'attr' => ['class' => 'form-control']]],
             'select' => ['type' => ChoiceType::class, 'options' => $base + ['choices' => $this->selectChoices($definition, $locale), 'placeholder' => '—', 'attr' => ['class' => 'form-control']]],
             'reference' => ['type' => IntegerType::class, 'options' => $base + ['attr' => ['class' => 'form-control', 'data-field-reference' => (string) $definition->getSetting('target', 'node')]]],
-            'image' => ['type' => HiddenType::class, 'options' => $base + ['attr' => ['data-field-media' => 'image', 'data-target-input' => 'field_'.$name]]],
-            'file' => ['type' => HiddenType::class, 'options' => $base + ['attr' => ['data-field-media' => 'file', 'data-target-input' => 'field_'.$name]]],
+            'image' => ['type' => HiddenType::class, 'options' => $base + ['attr' => ['data-field-label' => $definition->getLabel(), 'data-field-media' => 'image', 'data-target-input' => 'field_'.$name]]],
+            'file' => ['type' => HiddenType::class, 'options' => $base + ['attr' => ['data-field-label' => $definition->getLabel(), 'data-field-media' => 'file', 'data-target-input' => 'field_'.$name]]],
             default => ['type' => TextType::class, 'options' => $base + ['attr' => ['class' => 'form-control', 'maxlength' => (int) $definition->getSetting('max_length', 255)]]],
         };
     }

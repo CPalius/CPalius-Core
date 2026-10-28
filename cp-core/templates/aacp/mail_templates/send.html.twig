@@ -24,7 +24,7 @@
 
                 <form method="post" action="{{ path('aacp_mail_templates_send', {key: definition.key}) }}"
                       class="mt-sp-sm space-y-sp-sm"
-                      onsubmit="return confirm({{ 'aacp.mail_templates.send.confirm'|trans|json_encode|raw }});">
+                      data-confirm="{{ 'aacp.mail_templates.send.confirm'|trans|e('html_attr') }}">
                     <input type="hidden" name="_token" value="{{ csrf_token('aacp_mail_template_send') }}">
 
                     <label class="flex items-start gap-2 text-fs-sm !text-slate-300">

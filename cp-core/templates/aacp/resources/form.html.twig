@@ -32,6 +32,7 @@
 
         {{ form_start(form, {action: path('aacp_resource_save', {name: definition.name})}) }}
             {% if id %}<input type="hidden" name="id" value="{{ id }}">{% endif %}
+            {% if version is not null %}<input type="hidden" name="_version" value="{{ version }}">{% endif %}
             {{ form_errors(form) }}
 
             {#- Wide column for prose, narrow column for the short metadata that

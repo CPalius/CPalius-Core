@@ -75,6 +75,13 @@ class ForumPoll
         return $this->question;
     }
 
+    public function setQuestion(string $question): static
+    {
+        $this->question = $question;
+
+        return $this;
+    }
+
     public function getMaxChoices(): int
     {
         return $this->maxChoices;

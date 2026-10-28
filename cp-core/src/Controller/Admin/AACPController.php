@@ -7,6 +7,7 @@ namespace App\Controller\Admin;
 use App\Core\Aacp\SystemWidgetData;
 use App\Core\Aacp\SystemWidgetProviderInterface;
 use App\Core\Admin\PlatformPulseService;
+use App\Core\Admin\StudioDashboardLayout;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Analytics\VisitorStatsProviderInterface;
 use App\Core\Api\ApiKeyService;
@@ -60,6 +61,7 @@ use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
 
@@ -126,6 +128,7 @@ final class AACPController
      * CRM or hosting-panel operator actually acts on.
      */
     private const TELEMETRY_FEED_ROWS = 10;
+    private const LAYOUT_KEY = 'aacp_dashboard_layout';
 
     /** Recovery-gate attempts per IP: enough for mistyped tokens, not for guessing. */
     private const RECOVERY_FLOOD_EVENT = 'aacp_recovery';
@@ -221,7 +224,15 @@ final class AACPController
         $securitySummary = $this->telemetryLogRepository->securitySummary(24);
         $banStats = $this->ipBanService->stats();
 
+        // Card order, columns, removed cards and row limits are the signed-in user's own.
+        $user = $this->security->getUser();
+        $stored = $user instanceof User ? $user->getDataValue(self::LAYOUT_KEY, []) : [];
+        $cards = StudioDashboardLayout::arrange($this->dashboardCards($securityOn), \is_array($stored) ? $stored : []);
+        $rows = array_column($cards, 'limitValue', 'id');
+
         $html = $this->twig->render('aacp/dashboard.html.twig', [
+            'cards' => $cards,
+            'layoutColumns' => StudioDashboardLayout::COLUMNS,
             'health' => $health,
             'system' => $system,
             'auditFeed' => $this->buildAuditFeed(),
@@ -229,18 +240,18 @@ final class AACPController
             // Ten rows, not thirty. The live feed is a pulse, not a log: the
             // log has its own screen (/aacp/logs). Thirty rows pushed every
             // platform signal below the fold on a 1080p panel.
-            'telemetryFeed' => $securityOn ? $this->telemetryLogRepository->findLiveFeed(self::TELEMETRY_FEED_ROWS) : [],
+            'telemetryFeed' => $securityOn ? $this->telemetryLogRepository->findLiveFeed($rows['telemetry.feed'] ?? self::TELEMETRY_FEED_ROWS) : [],
             'telemetryTrend' => $securityOn
                 ? $this->telemetryLogRepository->hourlyTrend(24)
                 : $visitorStats['hourly'],
             'telemetryVectors' => $securityOn ? $this->telemetryLogRepository->vectorBreakdown(24) : [],
-            'topThreatIps' => $securityOn ? $this->telemetryLogRepository->topThreatIps(5) : [],
+            'topThreatIps' => $securityOn ? $this->telemetryLogRepository->topThreatIps($rows['telemetry.top_ips'] ?? 5) : [],
             'visitorStats' => $visitorStats,
             'visitorStatsAvailable' => $visitorStatsAvailable,
             'securitySummary' => $securitySummary,
             'banStats' => $banStats,
-            'quarantineLog' => array_slice($this->readQuarantineLog(), 0, 8),
-            'telemetryFeedRows' => self::TELEMETRY_FEED_ROWS,
+            'quarantineLog' => array_slice($this->readQuarantineLog(), 0, $rows['system.subsystems'] ?? 8),
+            'telemetryFeedRows' => $rows['telemetry.feed'] ?? self::TELEMETRY_FEED_ROWS,
             'pulse' => $this->platformPulse->build(),
             // Collapsed state is rendered by the server, not restored by a
             // script after paint: a panel the operator chose to fold away must
@@ -289,11 +300,64 @@ final class AACPController
     }
 
     /**
+     * Saves card order, columns, removed cards and row limits for the signed-in user.
+     * `reset=1` drops the custom layout.
+     */
+    #[Route('/aacp/dashboard/layout', name: 'aacp_dashboard_layout', methods: ['POST'])]
+    #[IsGranted('system.aacp.access')]
+    public function saveDashboardLayout(Request $request): JsonResponse
+    {
+        if (!$this->csrfTokenManager->isTokenValid(new CsrfToken('aacp_dashboard_layout', (string) $request->request->get('_token')))) {
+            return new JsonResponse(['success' => false, 'message' => $this->translator->trans('aacp.system.invalid_csrf')], 400);
+        }
+
+        $user = $this->security->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse(['success' => false, 'message' => $this->translator->trans('aacp.system.session_not_found')], 401);
+        }
+
+        $layout = $request->request->getBoolean('reset')
+            ? ['order' => [], 'columns' => [], 'removed' => [], 'limits' => []]
+            : StudioDashboardLayout::normalize($request->request->all());
+
+        $user->setDataValue(self::LAYOUT_KEY, $layout);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['success' => true] + $layout);
+    }
+
+    /**
+     * Every card the system desk can show. Scanner-only cards (vectors, top IPs) are listed only
+     * while the scanner is on, so the editor never offers a card that would render empty.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function dashboardCards(bool $securityOn): array
+    {
+        $cards = [
+            ['id' => 'platform.work', 'partial' => 'platform_work', 'labelKey' => 'aacp.pulse.work.title', 'icon' => 'heroicons:cog-6-tooth', 'column' => 0, 'limit' => null],
+            ['id' => 'platform.faults', 'partial' => 'platform_faults', 'labelKey' => 'aacp.pulse.faults.title', 'icon' => 'heroicons:exclamation-triangle', 'column' => 0, 'limit' => [5, 1, 20]],
+            ['id' => 'telemetry.feed', 'partial' => 'telemetry_feed', 'labelKey' => $securityOn ? 'aacp.telemetry.feed.title' : 'aacp.telemetry.visitors.title', 'icon' => 'heroicons:signal', 'column' => 0, 'limit' => [self::TELEMETRY_FEED_ROWS, 3, 50]],
+            ['id' => 'system.performance', 'partial' => 'system_performance', 'labelKey' => 'aacp.dashboard.perf.title', 'icon' => 'heroicons:bolt', 'column' => 0, 'limit' => [10, 1, 30]],
+            ['id' => 'platform.integrity', 'partial' => 'platform_integrity', 'labelKey' => 'aacp.pulse.integrity.title', 'icon' => 'heroicons:shield-check', 'column' => 1, 'limit' => [5, 1, 20]],
+            ['id' => 'platform.volume', 'partial' => 'platform_volume', 'labelKey' => 'aacp.pulse.volume.title', 'icon' => 'heroicons:circle-stack', 'column' => 1, 'limit' => [8, 1, 30]],
+            ['id' => 'telemetry.trend', 'partial' => 'telemetry_trend', 'labelKey' => $securityOn ? 'aacp.telemetry.trend.title' : 'aacp.telemetry.visitors.traffic', 'icon' => 'heroicons:chart-bar', 'column' => 1, 'limit' => null],
+        ];
+        if ($securityOn) {
+            $cards[] = ['id' => 'telemetry.vectors', 'partial' => 'telemetry_vectors', 'labelKey' => 'aacp.telemetry.vectors.title', 'icon' => 'heroicons:chart-pie', 'column' => 1, 'limit' => null];
+            $cards[] = ['id' => 'telemetry.top_ips', 'partial' => 'telemetry_top_ips', 'labelKey' => 'aacp.telemetry.top_ips.title', 'icon' => 'heroicons:globe-alt', 'column' => 1, 'limit' => [5, 1, 20]];
+        }
+        $cards[] = ['id' => 'system.subsystems', 'partial' => 'system_subsystems', 'labelKey' => 'aacp.dashboard.subsys.title', 'icon' => 'heroicons:server-stack', 'column' => 1, 'limit' => [8, 1, 30]];
+
+        return $cards;
+    }
+
+    /**
      * Lists all plugins (including inactive) so admins can re-enable them.
      * Toggle states come from PluginToggleRepository::findAllStates().
      */
     #[Route('/aacp/plugins', name: 'aacp_plugins', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.plugins', icon: 'heroicons:squares-plus', panel: 'aacp', priority: 22, capability: 'system.module.manage', parent: 'aacp_hub_system')]
+    #[CpAdminMenu(label: 'aacp.menu.module_plugins', icon: 'heroicons:squares-plus', panel: 'aacp', priority: 3, capability: 'system.module.manage', parent: 'aacp_modules')]
     #[IsGranted('system.module.manage')]
     public function plugins(): Response
     {
@@ -484,22 +548,28 @@ final class AACPController
             return new RedirectResponse('/aacp');
         }
 
-        $health = $this->buildHealthReport();
-        $system = $this->buildSystemReport();
-        $healthy = $health['dbConnected'] && $health['quarantinedModuleCount'] === 0;
-        $statusKey = $health['dbConnected']
-            ? ($healthy ? 'aacp.dashboard.status.healthy' : 'aacp.dashboard.status.degraded')
-            : 'aacp.dashboard.status.down';
+        // The dashboard asks every few seconds, from every open tab and every administrator, and the
+        // answer (health checks, disk, PHP and database facts) cost ~580 ms to build — measured by
+        // cp:perf:routes. It changes on a timescale of minutes, so one shared copy a few seconds old
+        // serves them all, and only one of them pays to rebuild it.
+        $json = $this->appCache->get('aacp_system_metrics_'.$request->getLocale(), function (ItemInterface $item): string {
+            $item->expiresAfter(10);
 
-        $system['phpVersion'] = $health['phpVersion'];
-        $system['statusLabel'] = $this->translator->trans($statusKey);
-        $system['healthy'] = $healthy;
+            $health = $this->buildHealthReport();
+            $system = $this->buildSystemReport();
+            $healthy = $health['dbConnected'] && $health['quarantinedModuleCount'] === 0;
+            $statusKey = $health['dbConnected']
+                ? ($healthy ? 'aacp.dashboard.status.healthy' : 'aacp.dashboard.status.degraded')
+                : 'aacp.dashboard.status.down';
 
-        return new Response(
-            json_encode($system, JSON_THROW_ON_ERROR),
-            200,
-            ['Content-Type' => 'application/json'],
-        );
+            $system['phpVersion'] = $health['phpVersion'];
+            $system['statusLabel'] = $this->translator->trans($statusKey);
+            $system['healthy'] = $healthy;
+
+            return json_encode($system, JSON_THROW_ON_ERROR);
+        }, 1.0);
+
+        return new Response($json, 200, ['Content-Type' => 'application/json']);
     }
 
     /**

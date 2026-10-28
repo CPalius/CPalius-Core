@@ -59,6 +59,18 @@ class MenuItem implements TranslatableInterface
     #[ORM\Column(name: 'open_in_new_tab', type: 'boolean')]
     private bool $openInNewTab = false;
 
+    /** @var list<string> rel values an operator may pick (noopener is added on its own for new tabs) */
+    public const RELS = ['nofollow', 'sponsored', 'ugc'];
+
+    #[ORM\Column(type: 'string', length: 20, nullable: true)]
+    private ?string $rel = null;
+
+    #[ORM\Column(type: 'string', length: 60, nullable: true)]
+    private ?string $icon = null;
+
+    #[ORM\Column(name: 'css_class', type: 'string', length: 100, nullable: true)]
+    private ?string $cssClass = null;
+
     public function __construct(Menu $menu, string $label, string $locale)
     {
         $this->menu = $menu;
@@ -153,6 +165,36 @@ class MenuItem implements TranslatableInterface
     public function setSortOrder(int $sortOrder): static
     {
         $this->sortOrder = $sortOrder;
+
+        return $this;
+    }
+
+    public function getRel(): ?string
+    {
+        return $this->rel;
+    }
+
+    public function getIcon(): ?string
+    {
+        return $this->icon;
+    }
+
+    public function getCssClass(): ?string
+    {
+        return $this->cssClass;
+    }
+
+    /**
+     * Link extras, cleaned here so no caller can store anything the theme would have to distrust:
+     * rel from the fixed list, an icon name (letters, digits, dash), class names (plus underscore, spaces).
+     */
+    public function setLinkAttributes(?string $rel, ?string $icon, ?string $cssClass): static
+    {
+        $this->rel = \in_array($rel, self::RELS, true) ? $rel : null;
+        $icon = trim((string) $icon);
+        $this->icon = preg_match('/^[A-Za-z0-9-]{1,60}$/', $icon) === 1 ? $icon : null;
+        $cssClass = trim((string) preg_replace('/\s+/', ' ', (string) $cssClass));
+        $this->cssClass = preg_match('/^[A-Za-z0-9_ -]{1,100}$/', $cssClass) === 1 ? $cssClass : null;
 
         return $this;
     }

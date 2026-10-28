@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Core\Security\Reauth\RequiresRecentAuth;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Webhook\Entity\WebhookSubscription;
 use App\Core\Webhook\WebhookSigner;
@@ -67,6 +68,7 @@ final class AACPWebhookController
 
     #[Route('/aacp/webhooks/save', name: 'aacp_webhooks_save', methods: ['POST'])]
     #[IsGranted('system.webhooks.manage')]
+    #[RequiresRecentAuth]
     public function save(Request $request): Response
     {
         $this->assertValidCsrfToken($request);
@@ -93,6 +95,7 @@ final class AACPWebhookController
 
     #[Route('/aacp/webhooks/{id}/rotate-secret', name: 'aacp_webhooks_rotate', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('system.webhooks.manage')]
+    #[RequiresRecentAuth]
     public function rotateSecret(int $id, Request $request): Response
     {
         $this->assertValidCsrfToken($request);
@@ -107,6 +110,7 @@ final class AACPWebhookController
 
     #[Route('/aacp/webhooks/{id}/toggle', name: 'aacp_webhooks_toggle', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('system.webhooks.manage')]
+    #[RequiresRecentAuth]
     public function toggle(int $id, Request $request): RedirectResponse
     {
         $this->assertValidCsrfToken($request);
@@ -119,6 +123,7 @@ final class AACPWebhookController
 
     #[Route('/aacp/webhooks/{id}/delete', name: 'aacp_webhooks_delete', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('system.webhooks.manage')]
+    #[RequiresRecentAuth]
     public function delete(int $id, Request $request): RedirectResponse
     {
         $this->assertValidCsrfToken($request);

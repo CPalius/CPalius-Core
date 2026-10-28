@@ -1,26 +1,30 @@
-{% set t = 'portal' %}
 <section class="section" id="community">
     <div class="container">
         <div class="container-narrow" style="text-align:center;">
             <div class="fade-in">
-                <span class="section-label" style="margin: 0 auto var(--sp-xs);">{{ 'community.label'|trans({}, t) }}</span>
-                <h2 class="section-title section-title--center">{{ 'community.title'|trans({}, t) }}</h2>
+                <span class="section-label" style="margin: 0 auto var(--sp-xs);">{{ hp('community.label') }}</span>
+                <h2 class="section-title section-title--center">{{ hp('community.title') }}</h2>
                 <p class="section-desc" style="margin: var(--sp-md) auto var(--sp-lg); text-align:center; max-width:680px;">
-                    {{ 'community.desc'|trans({}, t) }}
+                    {{ hp('community.desc') }}
                 </p>
+                {# Each button is its own link and its own switch: changing the address or emptying it removes the button. #}
+                {% set whitepaperUrl = hp_url('community.cta_whitepaper@url', cp_path_if_exists('whitepaper_show', {_locale: app.request.locale})) %}
+                {% set githubUrl = hp_url('community.cta_github@url', 'https://github.com/slaweally') %}
+                {% set forumUrl = hp_url('community.cta_discuss@url', forumAvailable ? path('forum_index') : '') %}
                 <div class="hero-actions" style="justify-content:center;">
-                    {% set whitepaperUrl = cp_path_if_exists('whitepaper_show', {_locale: app.request.locale}) %}
-                    {% if whitepaperUrl %}
+                    {% if whitepaperUrl and hp_on('community.cta_whitepaper') %}
                     <a href="{{ whitepaperUrl }}" class="btn btn-primary">
-                        <i class="bi bi-book"></i> {{ 'whitepaper.cta'|trans({}, t) }}
+                        <i class="bi bi-book"></i> {{ hp('whitepaper.cta') }}
                     </a>
                     {% endif %}
-                    <a href="https://github.com/slaweally" target="_blank" rel="noopener" class="btn btn-outline">
-                        <i class="bi bi-github"></i> {{ 'community.cta_github'|trans({}, t) }}
+                    {% if githubUrl and hp_on('community.cta_github') %}
+                    <a href="{{ githubUrl }}" target="_blank" rel="noopener" class="btn btn-outline">
+                        <i class="bi bi-github"></i> {{ hp('community.cta_github') }}
                     </a>
-                    {% if forumAvailable %}
-                    <a href="{{ path('forum_index') }}" class="btn btn-outline">
-                        <i class="bi bi-chat-dots"></i> {{ 'community.cta_discuss'|trans({}, t) }}
+                    {% endif %}
+                    {% if forumUrl and hp_on('community.cta_discuss') %}
+                    <a href="{{ forumUrl }}" class="btn btn-outline">
+                        <i class="bi bi-chat-dots"></i> {{ hp('community.cta_discuss') }}
                     </a>
                     {% endif %}
                 </div>

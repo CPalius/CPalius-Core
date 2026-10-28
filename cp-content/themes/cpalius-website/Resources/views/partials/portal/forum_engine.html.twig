@@ -2,45 +2,45 @@
 <section class="section" id="forum-engine">
     <div class="container">
         <div class="section-header fade-in">
-            <span class="section-label">{{ 'forum.label'|trans({}, t) }}</span>
-            <h2 class="section-title">{{ 'forum.title'|trans({}, t) }}</h2>
-            <p class="section-desc">{{ 'forum.desc'|trans({}, t) }}</p>
+            <span class="section-label">{{ hp('forum.label') }}</span>
+            <h2 class="section-title">{{ hp('forum.title') }}</h2>
+            <p class="section-desc">{{ hp('forum.desc') }}</p>
         </div>
 
         <div class="features-grid fade-in">
             <div class="feature-card" data-delay="0">
                 <div class="feature-icon"><i class="bi bi-diagram-3"></i></div>
-                <h4>{{ 'forum.tree_title'|trans({}, t) }}</h4>
-                <p>{{ 'forum.tree_text'|trans({}, t) }}</p>
+                <h4>{{ hp('forum.tree_title') }}</h4>
+                <p>{{ hp('forum.tree_text') }}</p>
             </div>
             <div class="feature-card" data-delay="100">
                 <div class="feature-icon"><i class="bi bi-tag"></i></div>
-                <h4>{{ 'forum.prefix_title'|trans({}, t) }}</h4>
-                <p>{{ 'forum.prefix_text_html'|trans({}, t)|raw }}</p>
+                <h4>{{ hp('forum.prefix_title') }}</h4>
+                <p>{{ hp('forum.prefix_text_html')|raw }}</p>
             </div>
             <div class="feature-card" data-delay="200">
                 <div class="feature-icon"><i class="bi bi-flag"></i></div>
-                <h4>{{ 'forum.moderation_title'|trans({}, t) }}</h4>
-                <p>{{ 'forum.moderation_text'|trans({}, t) }}</p>
+                <h4>{{ hp('forum.moderation_title') }}</h4>
+                <p>{{ hp('forum.moderation_text') }}</p>
             </div>
             <div class="feature-card" data-delay="0">
                 <div class="feature-icon"><i class="bi bi-award"></i></div>
-                <h4>{{ 'forum.ranks_title'|trans({}, t) }}</h4>
-                <p>{{ 'forum.ranks_text'|trans({}, t) }}</p>
+                <h4>{{ hp('forum.ranks_title') }}</h4>
+                <p>{{ hp('forum.ranks_text') }}</p>
             </div>
             <div class="feature-card" data-delay="100">
                 <div class="feature-icon"><i class="bi bi-layout-sidebar"></i></div>
-                <h4>{{ 'forum.layout_title'|trans({}, t) }}</h4>
-                <p>{{ 'forum.layout_text'|trans({}, t) }}</p>
+                <h4>{{ hp('forum.layout_title') }}</h4>
+                <p>{{ hp('forum.layout_text') }}</p>
             </div>
             <div class="feature-card" data-delay="200">
                 <div class="feature-icon"><i class="bi bi-chat-square-quote"></i></div>
-                <h4>{{ 'forum.cta_title'|trans({}, t) }}</h4>
-                <p>{{ 'forum.cta_text'|trans({}, t) }}</p>
+                <h4>{{ hp('forum.cta_title') }}</h4>
+                <p>{{ hp('forum.cta_text') }}</p>
                 {% if forumAvailable|default(false) %}
                     <p style="margin-top: var(--sp-sm);">
                         <a href="{{ path('forum_index') }}" class="btn btn-outline">
-                            <i class="bi bi-arrow-right"></i> {{ 'community.cta_discuss'|trans({}, t) }}
+                            <i class="bi bi-arrow-right"></i> {{ hp('community.cta_discuss') }}
                         </a>
                     </p>
                 {% endif %}
@@ -49,9 +49,9 @@
 
         <div class="code-block fade-in" style="margin-top: var(--sp-xl);">
             <div class="code-block-header">
-                <i class="bi bi-columns-gap"></i> {{ 'forum.layout_code_header'|trans({}, t) }}
+                <i class="bi bi-columns-gap"></i> {{ hp('forum.layout_code_header') }}
             </div>
-            <pre>{{ 'forum.layout_code'|trans({}, t) }}</pre>
+            <pre>{{ hp('forum.layout_code') }}</pre>
         </div>
     </div>
 </section>

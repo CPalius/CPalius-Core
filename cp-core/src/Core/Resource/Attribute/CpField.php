@@ -21,6 +21,8 @@ final class CpField
      * @param bool        $searchable include in the list search (string columns only)
      * @param int         $priority   lower = earlier (both list columns and form order)
      * @param string|null $widget     force a form widget: text|textarea|email|url|number|checkbox|date|datetime|choice|reference
+     * @param bool        $sensitive  personal or financial data (salary, national id, IBAN): the audit log records THAT the
+     *                                value changed, never the value itself
      */
     public function __construct(
         public readonly ?string $label = null,
@@ -31,6 +33,7 @@ final class CpField
         public readonly bool $searchable = false,
         public readonly int $priority = 0,
         public readonly ?string $widget = null,
+        public readonly bool $sensitive = false,
     ) {
     }
 }

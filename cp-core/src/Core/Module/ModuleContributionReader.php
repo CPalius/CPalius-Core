@@ -50,7 +50,8 @@ use Symfony\Component\Yaml\Yaml;
  *     schema_types: array<string, string>,
  *     account: AccountConfig,
  *     inbound_webhooks: array<string, InboundWebhook>,
- *     notification_types: array<string, NotificationType>
+ *     notification_types: array<string, NotificationType>,
+ *     waf_content_save_paths: list<string>
  * }
  * @phpstan-type NotificationType array{
  *     label: string,
@@ -91,6 +92,7 @@ final class ModuleContributionReader
             ],
             'inbound_webhooks' => [],
             'notification_types' => [],
+            'waf_content_save_paths' => [],
         ];
     }
 
@@ -158,6 +160,7 @@ final class ModuleContributionReader
 
         $base['inbound_webhooks'] = array_merge($base['inbound_webhooks'], $incoming['inbound_webhooks']);
         $base['notification_types'] = array_merge($base['notification_types'], $incoming['notification_types']);
+        $base['waf_content_save_paths'] = array_values(array_unique(array_merge($base['waf_content_save_paths'], $incoming['waf_content_save_paths'])));
 
         return $base;
     }
@@ -189,6 +192,7 @@ final class ModuleContributionReader
         $empty['account'] = self::accountConfig($data['account'] ?? null);
         $empty['inbound_webhooks'] = self::inboundWebhooks($data['inbound_webhooks'] ?? null);
         $empty['notification_types'] = self::notificationTypes($data['notification_types'] ?? null);
+        $empty['waf_content_save_paths'] = self::exactPaths($data['waf_content_save_paths'] ?? null);
 
         return $empty;
     }
@@ -470,6 +474,23 @@ final class ModuleContributionReader
         }
 
         return $list;
+    }
+
+    /**
+     * Exact URL paths only: a leading slash, no wildcard, no "..", no whitespace or control characters.
+     * The WAF exemption this feeds must stay a list of single routes, never a prefix that could cover more
+     * than the module meant, so anything that is not a plain path is dropped here rather than trusted later.
+     *
+     * @return list<string>
+     */
+    private static function exactPaths(mixed $raw): array
+    {
+        return array_values(array_filter(
+            self::stringList($raw),
+            static fn (string $path): bool => preg_match('#^/[A-Za-z0-9._~/-]{1,200}$#', $path) === 1
+                && !str_contains($path, '..')
+                && !str_contains($path, '//'),
+        ));
     }
 
     /**

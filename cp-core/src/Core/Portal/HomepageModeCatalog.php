@@ -42,7 +42,7 @@ final class HomepageModeCatalog
     /**
      * Modes that can be selected right now.
      *
-     * @return array<string, array{label: string, route: string, module: ?string}>
+     * @return array<string, array{label: string, route: string, module: ?string, dir: ?string}>
      */
     public function available(): array
     {
@@ -57,6 +57,7 @@ final class HomepageModeCatalog
                 'label' => 'studio.homepage.mode.portal',
                 'route' => 'theme_home_root',
                 'module' => null,
+                'dir' => null,
             ],
         ];
 
@@ -64,7 +65,8 @@ final class HomepageModeCatalog
             $out[$id] = [
                 'label' => $mode['label'],
                 'route' => $mode['route'],
-                'module' => $owners[$id] ?? null,
+                'module' => $owners[$id]['name'] ?? null,
+                'dir' => $owners[$id]['dir'] ?? null,
             ];
         }
 
@@ -104,7 +106,7 @@ final class HomepageModeCatalog
     /**
      * Which module each active mode came from, for the label beside it.
      *
-     * @return array<string, string> mode id => module name
+     * @return array<string, array{name: string, dir: string}> mode id => owning module
      */
     private function declaredByModule(): array
     {
@@ -116,7 +118,7 @@ final class HomepageModeCatalog
             }
 
             foreach (array_keys($this->declarationsIn($module['dirName'])) as $id) {
-                $owners[$id] = $module['name'];
+                $owners[$id] = ['name' => $module['name'], 'dir' => $module['dirName']];
             }
         }
 
@@ -134,7 +136,7 @@ final class HomepageModeCatalog
      *
      * @return array<string, string> mode id => label key
      */
-    private function declarationsIn(string $dirName): array
+    public function declarationsIn(string $dirName): array
     {
         $file = $this->modulesDir.'/'.$dirName.'/Resources/config/contributions.yaml';
 

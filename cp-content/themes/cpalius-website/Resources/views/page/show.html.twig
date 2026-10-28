@@ -10,7 +10,7 @@
 
 {% block stylesheets %}
     {{ parent() }}
-    <style>
+    <style{{ csp_nonce_attr() }}>
         .page-acf { display: grid; gap: 1.75rem; margin-top: 2.5rem; }
         .page-acf-label { font-size: 0.85rem; letter-spacing: .08em; text-transform: uppercase; opacity: .7; margin-bottom: .5rem; }
         .page-acf-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: .75rem; }
@@ -19,7 +19,7 @@
         .page-show--landing .page-body, .page-show--landing .page-acf { max-width: 44rem; margin-inline: auto; }
     </style>
     {% if customCss|default('') is not empty %}
-        <style>{{ customCss|raw }}</style>
+        <style{{ csp_nonce_attr() }}>{{ customCss|raw }}</style>
     {% endif %}
 {% endblock %}
 
@@ -37,7 +37,7 @@
     <div class="container{% if layout == 'landing' %} container-narrow{% endif %}">
         {% if layout != 'landing' %}
             <ul class="slw-breadcrumb fade-in">
-                <li><a href="{{ path('theme_cpalius_website_home') }}">~/</a></li>
+                <li><a href="{{ path('site_home') }}">~/</a></li>
                 <li>{{ page.slug }}</li>
             </ul>
         {% endif %}

@@ -13,6 +13,8 @@ final class FrontMenuExtension extends AbstractExtension
     {
         return [
             new TwigFunction('cp_menu', [FrontMenuRuntime::class, 'render']),
+            new TwigFunction('cp_menu_location', [MenuLocationRuntime::class, 'render'], ['is_safe' => ['html']]),
+            new TwigFunction('cp_menu_location_items', [MenuLocationRuntime::class, 'items']),
         ];
     }
 }

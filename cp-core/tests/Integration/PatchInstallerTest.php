@@ -36,8 +36,8 @@ final class PatchInstallerTest extends IntegrationTestCase
     private const MANIFEST_URL = 'https://com.net.tr/CPalius/patches/9.9.9.json';
 
     private const VERSION_FILE = 'cp-core/src/Core/Version/CpVersion.php';
-    private const TOUCHED_FILE = 'cp-content/modules/Blog/Service/BlogCommentService.php';
-    private const DOOMED_FILE = 'cp-content/modules/Blog/Service/Obsolete.php';
+    private const TOUCHED_FILE = 'cp-core/src/Core/Example/Touched.php';
+    private const DOOMED_FILE = 'cp-core/src/Core/Example/Obsolete.php';
 
     private string $projectDir;
     private Filesystem $fs;

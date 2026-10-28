@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use Modules\Forum\Entity\ForumPost;
@@ -13,6 +14,9 @@ use Modules\Forum\ForumDiscussionState;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
+use Symfony\Component\Cache\Adapter\NullAdapter;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 final class ForumSearchService
 {
@@ -22,6 +26,7 @@ final class ForumSearchService
         private readonly ForumSectionRepository $sectionRepository,
         private readonly EntityManagerInterface $em,
         private readonly ForumWordFilterService $wordFilterService,
+        // Optional on purpose: a module updated on its own can run for a moment against a container compiled before\n        // this argument existed. Without a cache the value is simply computed.\n        private readonly ?CacheInterface $cache = null,
     ) {
     }
 
@@ -29,6 +34,67 @@ final class ForumSearchService
      * @return array{topics: ForumTopic[], posts: ForumPost[], totalTopics: int, totalPosts: int}
      */
     public function search(
+        string $query,
+        string $scope = 'all',
+        ?int $sectionId = null,
+        int $limit = 20,
+        ?string $locale = null,
+        ?string $author = null,
+        ?\DateTimeImmutable $from = null,
+        ?\DateTimeImmutable $to = null,
+    ): array {
+        // The posts query is a LIKE '%…%' scan (0.7 s at 200k posts), run twice when the page is full.
+        // A result that is a minute old is as good to a reader, so remember the ids; the entities are
+        // re-read so edits and deletions inside that minute still show. The key carries everything the
+        // result depends on, including the viewer's word filter.
+        $key = 'forum_search_'.hash('xxh128', json_encode([
+            $query, $scope, $sectionId, $limit, $locale, $author,
+            $from?->getTimestamp(), $to?->getTimestamp(), $this->wordFilterService->termsForViewer(),
+        ], \JSON_THROW_ON_ERROR));
+
+        $hit = ($this->cache ?? new NullAdapter())->get($key, function (ItemInterface $item) use ($query, $scope, $sectionId, $limit, $locale, $author, $from, $to): array {
+            $item->expiresAfter(60);
+            $r = $this->scan($query, $scope, $sectionId, $limit, $locale, $author, $from, $to);
+
+            return [
+                'topics' => array_map(static fn (ForumTopic $t): int => (int) $t->getId(), $r['topics']),
+                'posts' => array_map(static fn (ForumPost $p): int => (int) $p->getId(), $r['posts']),
+                'totalTopics' => $r['totalTopics'],
+                'totalPosts' => $r['totalPosts'],
+            ];
+        });
+
+        return [
+            'topics' => $this->inOrder($this->topicRepository, $hit['topics']),
+            'posts' => $this->inOrder($this->postRepository, $hit['posts'], 'topic'),
+            'totalTopics' => $hit['totalTopics'],
+            'totalPosts' => $hit['totalPosts'],
+        ];
+    }
+
+    /**
+     * @param list<int> $ids
+     *
+     * @return list<object> entities for the ids that still exist, in the order given
+     */
+    private function inOrder(ServiceEntityRepository $repository, array $ids, ?string $join = null): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+        $byId = [];
+        $qb = $repository->createQueryBuilder('e')->andWhere('e.id IN (:ids)')->setParameter('ids', $ids);
+        if ($join !== null) {
+            $qb->innerJoin('e.'.$join, 'j')->addSelect('j');
+        }
+        foreach ($qb->getQuery()->getResult() as $entity) {
+            $byId[$entity->getId()] = $entity;
+        }
+
+        return array_values(array_filter(array_map(static fn (int $id): ?object => $byId[$id] ?? null, $ids)));
+    }
+
+    private function scan(
         string $query,
         string $scope = 'all',
         ?int $sectionId = null,

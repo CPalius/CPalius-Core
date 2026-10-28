@@ -53,7 +53,9 @@ when@prod:
                 buffer_size: 50
             nested:
                 type: stream
-                path: php://stderr
+                # php://stderr is closed under web SAPIs and the installer, which turns every log call
+                # into "Bad file descriptor" and hides the real error behind it.
+                path: "%kernel.logs_dir%/%kernel.environment%.log"
                 level: debug
                 formatter: monolog.formatter.json
             console:
@@ -63,7 +65,7 @@ when@prod:
             deprecation:
                 type: stream
                 channels: [deprecation]
-                path: php://stderr
+                path: "%kernel.logs_dir%/deprecation.log"
                 formatter: monolog.formatter.json
             cp_db:
                 type: service

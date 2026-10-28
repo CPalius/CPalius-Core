@@ -117,16 +117,46 @@ class TagRepository
                 continue;
             }
 
+            // Keyed by slug: "PHP" and "php" in one request must resolve to one term,
+            // not two inserts racing the unique slug index (nothing is flushed yet).
+            if (isset($tags[$baseSlug])) {
+                continue;
+            }
+
             $tag = $this->terms->findOneBySlug($vocabulary, $baseSlug, $locale);
             if ($tag === null) {
                 $tag = new Term($vocabulary, $name, $baseSlug, $locale);
                 $this->entityManager->persist($tag);
             }
 
-            $tags[] = $tag;
+            $tags[$baseSlug] = $tag;
         }
 
-        return $tags;
+        return array_values($tags);
+    }
+
+    /**
+     * Case-insensitive name search for the post form's tag autocomplete.
+     *
+     * @return list<Term>
+     */
+    public function searchByName(string $query, string $locale, int $limit = 10): array
+    {
+        $escaped = addcslashes(mb_strtolower(trim($query)), '%_\\');
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('t')
+            ->from(Term::class, 't')
+            ->andWhere('t.vocabulary = :vocabulary')
+            ->andWhere('t.locale = :locale')
+            ->andWhere('LOWER(t.name) LIKE :q')
+            ->setParameter('vocabulary', $this->vocabulary())
+            ->setParameter('locale', $locale)
+            ->setParameter('q', '%'.$escaped.'%')
+            ->orderBy('t.name', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
     }
 
     public function vocabulary(): Vocabulary

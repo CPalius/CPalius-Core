@@ -132,6 +132,27 @@ class TermRepository extends ServiceEntityRepository
         return $rows;
     }
 
+    /**
+     * Term counts for every vocabulary in one query (the list screen must not count per vocabulary).
+     *
+     * @return array<int, int> vocabulary id => term count
+     */
+    public function countsPerVocabulary(): array
+    {
+        $rows = $this->createQueryBuilder('t')
+            ->select('IDENTITY(t.vocabulary) AS vocabularyId, COUNT(t.id) AS total')
+            ->groupBy('t.vocabulary')
+            ->getQuery()
+            ->getArrayResult();
+
+        $counts = [];
+        foreach ($rows as $row) {
+            $counts[(int) $row['vocabularyId']] = (int) $row['total'];
+        }
+
+        return $counts;
+    }
+
     public function countByVocabulary(Vocabulary $vocabulary): int
     {
         return (int) $this->createQueryBuilder('t')

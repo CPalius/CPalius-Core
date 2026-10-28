@@ -1244,3 +1244,6 @@
         @apply [overflow-wrap:anywhere];
     }
 }
+
+/* Tailwind preflight zeroes margins, which un-centers modal <dialog>s; restore the browser default. */
+dialog:modal{margin:auto}

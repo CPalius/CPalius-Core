@@ -13,5 +13,12 @@ services:
     Modules\Menu\Studio\:
         resource: '../../Studio/'
 
+    Modules\Menu\Location\:
+        resource: '../../Location/'
+
     Modules\Menu\Twig\:
         resource: '../../Twig/'
+
+    # Widget/ holds the "Navigation menu" widget type (WidgetTypeInterface autoconfigure tag).
+    Modules\Menu\Widget\:
+        resource: '../../Widget/'

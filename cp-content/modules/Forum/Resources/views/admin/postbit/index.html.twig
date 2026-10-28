@@ -60,7 +60,7 @@
     </form>
 
     <form method="post" action="{{ path('admin_forum_postbit_reset') }}" style="margin-top:.75rem;"
-          onsubmit="return confirm({{ 'studio.forum.postbit.reset_confirm'|trans|json_encode|raw }});">
+          data-confirm="{{ 'studio.forum.postbit.reset_confirm'|trans|e('html_attr') }}">
         <input type="hidden" name="_token" value="{{ csrf_token(csrfToken) }}">
         <button type="submit" class="btn btn-sm btn-neutral">{{ 'studio.forum.postbit.reset'|trans }}</button>
     </form>

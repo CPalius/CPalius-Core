@@ -32,7 +32,7 @@ final class OriginCachePurgerTagTest extends TestCase
     {
         $this->projectDir = sys_get_temp_dir().'/cpalius-cache-tag-test-'.bin2hex(random_bytes(6));
         $this->store = new OriginCacheStore($this->projectDir);
-        $this->tagIndex = new CacheTagIndex(new ArrayAdapter());
+        $this->tagIndex = new CacheTagIndex($this->store);
         $this->purger = new OriginCachePurger($this->store, $this->fakeLocaleProvider(), $this->tagIndex);
     }
 

@@ -27,7 +27,9 @@ final class DatabaseDumper
             throw new BackupException('The zlib extension is required to write gzipped SQL dumps.');
         }
 
-        $handle = gzopen($targetPath, 'wb9');
+        // Level 4, not 9: SQL text compresses almost as well, and on a large database level 9 was several times slower.
+        // The update snapshot is written inside a web request, so the time it takes is downtime.
+        $handle = gzopen($targetPath, 'wb4');
         if ($handle === false) {
             throw new BackupException(sprintf('Could not write dump file "%s".', $targetPath));
         }

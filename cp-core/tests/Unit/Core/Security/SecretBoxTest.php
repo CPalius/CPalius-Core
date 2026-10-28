@@ -101,7 +101,7 @@ final class SecretBoxTest extends TestCase
     public function testTamperedCiphertextIsRejected(): void
     {
         $sealed = $this->box->seal('the-real-secret-value');
-        $raw = base64_decode(substr($sealed, 3), true);
+        $raw = base64_decode(explode(':', $sealed, 3)[2], true);
         self::assertIsString($raw);
 
         $rejected = 0;
@@ -118,7 +118,7 @@ final class SecretBoxTest extends TestCase
             $tampered[$offset] = \chr(\ord($tampered[$offset]) ^ 0x01);
 
             try {
-                $this->box->open('v2:'.base64_encode($tampered));
+                $this->box->open(substr($sealed, 0, 12).base64_encode($tampered));
             } catch (\RuntimeException) {
                 ++$rejected;
             }
@@ -131,16 +131,17 @@ final class SecretBoxTest extends TestCase
     public function testTruncatedCiphertextIsRejected(): void
     {
         $sealed = $this->box->seal('the-real-secret-value');
-        $raw = base64_decode(substr($sealed, 3), true);
+        $raw = base64_decode(explode(':', $sealed, 3)[2], true);
         self::assertIsString($raw);
 
         $this->expectException(\RuntimeException::class);
-        $this->box->open('v2:'.base64_encode(substr($raw, 0, -1)));
+        [$v, $kid] = explode(':', $sealed, 3);
+        $this->box->open($v.':'.$kid.':'.base64_encode(substr($raw, 0, -1)));
     }
 
     public function testSealedValuesCarryTheVersionMarker(): void
     {
-        self::assertStringStartsWith('v2:', $this->box->seal('anything'));
+        self::assertStringStartsWith('v3:', $this->box->seal('anything'));
     }
 
     /**
@@ -171,7 +172,7 @@ final class SecretBoxTest extends TestCase
 
         $upgraded = $this->box->seal($this->box->open(base64_encode($iv.$cipher)));
 
-        self::assertStringStartsWith('v2:', $upgraded);
+        self::assertStringStartsWith('v3:', $upgraded);
         self::assertSame($plain, $this->box->open($upgraded));
     }
 
@@ -184,5 +185,46 @@ final class SecretBoxTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $this->box->open(base64_encode($iv.$cipher));
+    }
+
+    public function testNewValuesCarryAKeyIdAndAreNotThePlainSha256Format(): void
+    {
+        self::assertMatchesRegularExpression('/^v3:[0-9a-f]{8}:/', $this->box->seal('x'));
+    }
+
+    public function testAValueSealedBeforeARotationIsStillReadAndThenNeedsRewrapping(): void
+    {
+        $old = (new SecretBox('the-old-kernel-secret-0123456789abcdef'))->seal('smtp-password');
+
+        $rotated = new SecretBox(self::SECRET, 'the-old-kernel-secret-0123456789abcdef');
+
+        self::assertSame('smtp-password', $rotated->open($old));
+        self::assertTrue($rotated->needsRewrap($old));
+
+        $fresh = $rotated->seal($rotated->open($old));
+        self::assertFalse($rotated->needsRewrap($fresh));
+        self::assertSame('smtp-password', $this->box->open($fresh), 'the new secret alone opens it, so the old one can be dropped');
+    }
+
+    public function testTheKeyIdIsAuthenticated(): void
+    {
+        $sealed = $this->box->seal('x');
+        [$v, $kid, $body] = explode(':', $sealed, 3);
+        $other = new SecretBox('a-second-kernel-secret-0123456789abcdef');
+        $forgedKid = $v.':'.substr(hash_hmac('sha256', 'kid', 'a-second-kernel-secret-0123456789abcdef'), 0, 8).':'.$body;
+
+        $this->expectException(\RuntimeException::class);
+        $other->open($forgedKid);
+    }
+
+    public function testValuesInTheOlderV2FormatStayReadable(): void
+    {
+        $iv = random_bytes(12);
+        $tag = '';
+        $cipher = openssl_encrypt('legacy', 'aes-256-gcm', hash('sha256', self::SECRET, true), \OPENSSL_RAW_DATA, $iv, $tag, '', 16);
+        $v2 = 'v2:'.base64_encode($iv.$tag.$cipher);
+
+        self::assertSame('legacy', $this->box->open($v2));
+        self::assertTrue($this->box->needsRewrap($v2));
     }
 }

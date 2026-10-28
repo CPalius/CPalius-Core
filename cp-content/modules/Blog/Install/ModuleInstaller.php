@@ -32,6 +32,7 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
     {
         return [
             'cp_blog_comments',
+            'cp_blog_post_views',
         ];
     }
 

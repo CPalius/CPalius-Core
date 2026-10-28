@@ -68,6 +68,46 @@ use App\Core\Annotation\CpSetting;
     translatable: true,
 )]
 #[CpSetting(
+    key: 'forum.cards_enabled',
+    label: 'forum.settings.cards_enabled',
+    type: 'checkbox',
+    default: true,
+    module: 'forum',
+    group: 'forum.cards',
+)]
+#[CpSetting(
+    key: 'forum.cards_section',
+    label: 'forum.settings.cards_section',
+    type: 'text',
+    default: '',
+    module: 'forum',
+    group: 'forum.cards',
+)]
+#[CpSetting(
+    key: 'forum.cards_limit',
+    label: 'forum.settings.cards_limit',
+    type: 'integer',
+    default: 5,
+    module: 'forum',
+    group: 'forum.cards',
+)]
+#[CpSetting(
+    key: 'forum.cards_show_latest',
+    label: 'forum.settings.cards_show_latest',
+    type: 'checkbox',
+    default: true,
+    module: 'forum',
+    group: 'forum.cards',
+)]
+#[CpSetting(
+    key: 'forum.cards_show_popular',
+    label: 'forum.settings.cards_show_popular',
+    type: 'checkbox',
+    default: true,
+    module: 'forum',
+    group: 'forum.cards',
+)]
+#[CpSetting(
     key: 'forum.activity_enabled',
     label: 'forum.settings.activity_enabled',
     type: 'checkbox',

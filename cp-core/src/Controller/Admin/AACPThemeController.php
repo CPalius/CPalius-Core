@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Core\Security\Reauth\RequiresRecentAuth;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Cache\CacheRebuildManager;
 use App\Core\Theme\SiteAppearance;
@@ -11,7 +12,9 @@ use App\Core\Theme\ThemeDefinition;
 use App\Core\Theme\ThemeFileEditor;
 use App\Core\Theme\ThemePackageService;
 use App\Core\Theme\ThemeRegistry;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -52,6 +55,12 @@ final class AACPThemeController
 
         $html = $this->twig->render('aacp/themes.html.twig', [
             'themes' => $this->themeRegistry->all(),
+            'previews' => array_map(
+                fn (ThemeDefinition $t): bool => $this->themeRegistry->screenshotPath($t) !== null,
+                $this->themeRegistry->all(),
+            ),
+            'assets' => array_map($this->describeAssets(...), $this->themeRegistry->all()),
+            'fallbacks' => array_map($this->themeRegistry->fallbackAreas(...), $this->themeRegistry->all()),
             'activeDirName' => $active?->dirName,
             'csrf_token' => $this->csrfTokenManager->getToken(self::CSRF_TOKEN_ID)->getValue(),
             'activated' => $request->query->getBoolean('activated'),
@@ -63,8 +72,37 @@ final class AACPThemeController
         return new Response($html);
     }
 
-    #[Route('/aacp/themes/{dirName}/activate', name: 'aacp_themes_activate', methods: ['POST'], requirements: ['dirName' => '[A-Za-z0-9_-]+'])]
+    /** Same screen as the "Appearance" parent, reachable as its own "Themes" submenu entry. */
+    #[Route('/aacp/themes/gallery', name: 'aacp_theme_gallery', methods: ['GET'])]
+    #[CpAdminMenu(label: 'aacp.menu.theme_list', icon: 'heroicons:squares-2x2', panel: 'aacp', priority: 71, capability: 'system.settings.manage', parent: 'aacp_themes')]
     #[IsGranted('system.settings.manage')]
+    public function gallery(Request $request): Response
+    {
+        return $this->index($request);
+    }
+
+    #[Route('/aacp/themes/{dirName}/screenshot', name: 'aacp_theme_screenshot', methods: ['GET'], requirements: ['dirName' => '[A-Za-z0-9_-]+'])]
+    #[IsGranted('system.settings.manage')]
+    public function screenshot(string $dirName): Response
+    {
+        $theme = $this->themeRegistry->get($dirName);
+        $path = $theme instanceof ThemeDefinition ? $this->themeRegistry->screenshotPath($theme) : null;
+        if ($path === null) {
+            throw new NotFoundHttpException();
+        }
+
+        $response = new BinaryFileResponse($path);
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        // An SVG preview is an image here, never a document: no scripts, no navigation.
+        $response->headers->set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox");
+        $response->setMaxAge(300);
+
+        return $response;
+    }
+
+    #[Route('/aacp/themes/{dirName}/activate',name: 'aacp_themes_activate', methods: ['POST'], requirements: ['dirName' => '[A-Za-z0-9_-]+'])]
+    #[IsGranted('system.settings.manage')]
+    #[RequiresRecentAuth]
     public function activate(string $dirName, Request $request): RedirectResponse
     {
         $this->assertValidCsrf($request);
@@ -84,6 +122,7 @@ final class AACPThemeController
 
     #[Route('/aacp/themes/upload', name: 'aacp_theme_upload', methods: ['POST'])]
     #[IsGranted('system.settings.manage')]
+    #[RequiresRecentAuth]
     public function upload(Request $request): RedirectResponse
     {
         $this->assertValidCsrf($request);
@@ -113,7 +152,7 @@ final class AACPThemeController
      * grow without touching the switcher.
      */
     #[Route('/aacp/themes/options', name: 'aacp_theme_options', methods: ['GET', 'POST'])]
-    #[CpAdminMenu(label: 'aacp.menu.theme_options', icon: 'heroicons:adjustments-horizontal', panel: 'aacp', priority: 71, capability: 'system.settings.manage', parent: 'aacp_themes')]
+    #[CpAdminMenu(label: 'aacp.menu.theme_options', icon: 'heroicons:adjustments-horizontal', panel: 'aacp', priority: 73, capability: 'system.settings.manage', parent: 'aacp_themes')]
     #[IsGranted('system.settings.manage')]
     public function options(Request $request): Response
     {
@@ -178,7 +217,7 @@ final class AACPThemeController
     }
 
     #[Route('/aacp/themes/editor', name: 'aacp_theme_editor', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.theme_editor', icon: 'heroicons:code-bracket', panel: 'aacp', priority: 72, capability: 'system.settings.manage', parent: 'aacp_themes')]
+    #[CpAdminMenu(label: 'aacp.menu.theme_editor', icon: 'heroicons:code-bracket', panel: 'aacp', priority: 75, capability: 'system.settings.manage', parent: 'aacp_themes')]
     #[IsGranted('system.settings.manage')]
     public function editor(Request $request): Response
     {
@@ -231,6 +270,7 @@ final class AACPThemeController
 
     #[Route('/aacp/themes/editor/save', name: 'aacp_theme_editor_save', methods: ['POST'])]
     #[IsGranted('system.settings.manage')]
+    #[RequiresRecentAuth]
     public function save(Request $request): RedirectResponse
     {
         $this->assertValidCsrf($request);

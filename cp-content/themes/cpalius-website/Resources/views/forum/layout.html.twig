@@ -1,7 +1,9 @@
+{# The token only matters to someone who can post. For a guest it would start a session and put Set-Cookie on the page, which keeps the origin HTML cache from ever storing it. #}
 {% extends '@Theme/layout.html.twig' %}
 
 {% block stylesheets %}
-    <link rel="stylesheet" href="/themes/cpalius-website/dist/forum.css">
+    <link rel="stylesheet" href="{{ cp_theme_url('dist/forum.css') }}">
+    <style{{ csp_nonce_attr() }}>.forum-widgets{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:1rem;margin-top:1.5rem}.forum-widgets .cp-widget{padding:1rem;border:1px solid rgba(120,130,150,.3);border-radius:.5rem}.forum-widgets .cp-widget__title{margin:0 0 .5rem;font-size:.95rem}.forum-widgets ul{list-style:none;margin:0;padding:0}.forum-widgets li{padding:.2rem 0}</style>
     {# Operator CSS from Studio -> Forum -> Postbit. Last, so it wins over the
        theme without anyone having to write !important. ForumPostbitLayout::css()
        has already removed anything that could close this tag. #}
@@ -12,7 +14,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="section forum-page forum" id="forum" data-unfurl-endpoint="{{ path('forum_unfurl') }}" data-unfurl-token="{{ csrf_token('forum_unfurl') }}" data-i18n-report-prompt="{{ 'forum.js.report_prompt'|trans({}, 'forums') }}" data-i18n-link-copied="{{ 'forum.js.link_copied'|trans({}, 'forums') }}" data-i18n-close="{{ 'forum.js.close'|trans({}, 'forums') }}" data-i18n-prev="{{ 'forum.js.prev'|trans({}, 'forums') }}" data-i18n-next="{{ 'forum.js.next'|trans({}, 'forums') }}" data-i18n-sel-quote="{{ 'forum.js.selection_quote'|trans }}" data-i18n-sel-multi="{{ 'forum.js.selection_multi_quote'|trans }}" data-i18n-view-profile="{{ 'forum.js.view_profile'|trans }}" data-i18n-stat-posts="{{ 'forum.stat.post'|trans }}" data-i18n-stat-joined="{{ 'forum.js.joined_label'|trans }}" data-member-card-url="{{ path('forum_api_member_card', {username: '__SLUG__'}) }}" data-post-preview-url="{{ path('forum_api_post_preview', {topicId: 0, number: 0}) }}">
+<section class="section forum-page forum" id="forum" data-unfurl-endpoint="{{ path('forum_unfurl') }}"{% if app.user %} data-unfurl-token="{{ csrf_token('forum_unfurl') }}"{% endif %} data-i18n-report-prompt="{{ 'forum.js.report_prompt'|trans({}, 'forums') }}" data-i18n-link-copied="{{ 'forum.js.link_copied'|trans({}, 'forums') }}" data-i18n-close="{{ 'forum.js.close'|trans({}, 'forums') }}" data-i18n-prev="{{ 'forum.js.prev'|trans({}, 'forums') }}" data-i18n-next="{{ 'forum.js.next'|trans({}, 'forums') }}" data-i18n-sel-quote="{{ 'forum.js.selection_quote'|trans }}" data-i18n-sel-multi="{{ 'forum.js.selection_multi_quote'|trans }}" data-i18n-view-profile="{{ 'forum.js.view_profile'|trans }}" data-i18n-stat-posts="{{ 'forum.stat.post'|trans }}" data-i18n-stat-joined="{{ 'forum.js.joined_label'|trans }}" data-member-card-url="{{ path('forum_api_member_card', {username: '__SLUG__'}) }}" data-post-preview-url="{{ path('forum_api_post_preview', {topicId: 0, number: 0}) }}">
     <div class="container">
         {% block forum_breadcrumbs %}{% endblock %}
 
@@ -23,10 +25,13 @@
         {% endfor %}
 
         {% block forum_content %}{% endblock %}
+
+        {# Latest / popular topic cards; Studio → Forum → Settings → Topic cards. #}
+        {% include '@Theme/forum/partials/_topic_cards.html.twig' %}
     </div>
 </section>
 {% endblock %}
 
 {% block javascripts %}
-    <script{{ csp_nonce_attr() }} src="/themes/cpalius-website/dist/forum.js" defer></script>
+    <script{{ csp_nonce_attr() }} src="{{ cp_theme_url('dist/forum.js') }}" defer></script>
 {% endblock %}

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Core\Module;
 
 use App\Core\Command\ModuleCreateCommand;
+use App\Core\Version\CpVersion;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -55,6 +56,6 @@ final class ModuleCreateCommandTest extends TestCase
         $manifest = json_decode((string) file_get_contents($root.'/module.json'), true);
         self::assertIsArray($manifest);
         self::assertSame('Modules\\Portfolio\\PortfolioModule', $manifest['bundle']);
-        self::assertSame('^1.0', $manifest['core_version']);
+        self::assertSame('^'.explode('.', CpVersion::VERSION)[0].'.0', $manifest['core_version']);
     }
 }

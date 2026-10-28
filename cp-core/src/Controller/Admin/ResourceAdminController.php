@@ -5,21 +5,27 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Core\Annotation\CpAdminMenu;
+use App\Core\Audit\Entity\AuditLog;
 use App\Core\Database\Traits\SoftDeletableTrait;
+use App\Core\Export\CsvWriter;
 use App\Core\Pagination\Paginator;
 use App\Core\Resource\Admin\ResourceFieldResolver;
 use App\Core\Resource\Admin\ResourceFormBuilder;
 use App\Core\Resource\ResourceDefinition;
 use App\Core\Resource\ResourceRegistry;
+use App\Core\Resource\SensitiveFields;
 use App\Core\Workflow\Exception\WorkflowException;
 use App\Core\Workflow\WorkflowManager;
 use App\Core\Workflow\WorkflowRegistry;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\OptimisticLockException;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -38,6 +44,10 @@ use Twig\Environment;
 final class ResourceAdminController
 {
     private const PER_PAGE = 25;
+
+    /** One export never reads more than this many rows, in batches of EXPORT_BATCH: the request must not exhaust the server. */
+    private const EXPORT_MAX_ROWS = 50000;
+    private const EXPORT_BATCH = 500;
 
     public function __construct(
         private readonly Environment $twig,
@@ -112,8 +122,112 @@ final class ResourceAdminController
             'canCreate' => $this->security->isGranted($definition->name.'.create'),
             'canEdit' => $this->security->isGranted($definition->name.'.edit'),
             'canDelete' => $this->security->isGranted($definition->name.'.delete'),
+            'canExport' => $this->security->isGranted('system.data.export'),
             'identifier' => $identifier,
         ]));
+    }
+
+    /**
+     * The list as a CSV file: same search and sort as the screen, every page, capped.
+     *
+     * Exporting every row at once is a bigger act than looking at one page, so it needs its own capability on top of
+     * "view". Columns marked sensitive never leave, whatever the list shows. The file is streamed in batches (memory
+     * stays flat on a large table) and cells that a spreadsheet would run as formulas are neutralised by CsvWriter.
+     */
+    #[Route('/aacp/resources/{name}/export.csv', name: 'aacp_resource_export', methods: ['GET'], requirements: ['name' => '[a-z][a-z0-9_]{0,62}'])]
+    public function export(string $name, Request $request): Response
+    {
+        $definition = $this->require($name, 'view');
+
+        if (!$this->security->isGranted('system.data.export')) {
+            throw new AccessDeniedHttpException();
+        }
+
+        $sensitive = SensitiveFields::of($definition->entityClass);
+        $columns = array_values(array_filter(
+            $this->fields->listColumns($definition->entityClass),
+            static fn ($column): bool => !isset($sensitive[$column->property]),
+        ));
+
+        $metadata = $this->entityManager->getClassMetadata($definition->entityClass);
+        $sortable = array_map(static fn ($c) => $c->property, array_filter($columns, static fn ($c) => $c->sortable));
+        $searchable = array_map(static fn ($c) => $c->property, array_filter($columns, static fn ($c) => $c->searchable));
+        $sort = \in_array((string) $request->query->get('sort'), $sortable, true) ? (string) $request->query->get('sort') : null;
+        $dir = strtolower((string) $request->query->get('dir')) === 'asc' ? 'ASC' : 'DESC';
+        $q = trim((string) $request->query->get('q'));
+
+        $qb = $this->entityManager->createQueryBuilder()->select('e')->from($definition->entityClass, 'e');
+
+        if ($q !== '' && $searchable !== []) {
+            $or = $qb->expr()->orX();
+            foreach (array_values($searchable) as $i => $property) {
+                $or->add(sprintf('e.%s LIKE :q%d', $property, $i));
+                $qb->setParameter('q'.$i, '%'.$q.'%');
+            }
+            $qb->andWhere($or);
+        }
+
+        $qb->orderBy('e.'.($sort ?? $metadata->getSingleIdentifierFieldName()), $sort !== null ? $dir : 'DESC');
+
+        $headers = array_map(fn ($column): string => $this->translator->trans($column->label), $columns);
+        $resourceName = $definition->name;
+        $userId = $this->security->getUser() instanceof User ? $this->security->getUser()->getId() : null;
+
+        $response = new StreamedResponse(function () use ($qb, $columns, $metadata, $headers, $resourceName, $userId): void {
+            $out = fopen('php://output', 'w');
+            fwrite($out, CsvWriter::UTF8_BOM);
+            CsvWriter::writeRow($out, $headers);
+
+            $written = 0;
+            while ($written < self::EXPORT_MAX_ROWS) {
+                $batch = (clone $qb)
+                    ->setFirstResult($written)
+                    ->setMaxResults(min(self::EXPORT_BATCH, self::EXPORT_MAX_ROWS - $written))
+                    ->getQuery()
+                    ->getResult();
+
+                if ($batch === []) {
+                    break;
+                }
+
+                foreach ($batch as $entity) {
+                    $row = [];
+                    foreach ($columns as $column) {
+                        $row[] = $this->exportCell($metadata->getFieldValue($entity, $column->property));
+                    }
+                    CsvWriter::writeRow($out, $row);
+                }
+
+                $written += \count($batch);
+                // Detach what was written: a long export must not hold the whole table in memory.
+                $this->entityManager->clear();
+                flush();
+            }
+
+            fclose($out);
+
+            // Who took how much data out is exactly what an audit trail is for.
+            $this->entityManager->persist(new AuditLog($resourceName, null, 'export', ['rows' => [null, $written]], $userId));
+            $this->entityManager->flush();
+        });
+
+        $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+        $response->headers->set('Content-Disposition', sprintf('attachment; filename="%s-%s.csv"', $definition->name, date('Ymd-His')));
+        $response->headers->set('Cache-Control', 'no-store, private');
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+
+        return $response;
+    }
+
+    private function exportCell(mixed $value): string|int|float|bool|null
+    {
+        return match (true) {
+            $value === null, \is_scalar($value) => $value,
+            $value instanceof \DateTimeInterface => $value->format('Y-m-d H:i:s'),
+            $value instanceof \BackedEnum => $value->value,
+            \is_object($value) && method_exists($value, 'getId') => $value->getId(),
+            default => '',
+        };
     }
 
     #[Route('/aacp/resources/{name}/new', name: 'aacp_resource_new', methods: ['GET'], requirements: ['name' => '[a-z][a-z0-9_]{0,62}'])]
@@ -143,8 +257,19 @@ final class ResourceAdminController
         $this->assertGranted($definition, $id === null ? 'create' : 'edit');
 
         $entity = $id === null ? $this->blankEntity($definition->entityClass) : $this->loadOrFail($definition, $id);
+
+        // An entity with an #[ORM\Version] column refuses a save made from a stale copy: two staff editing the same
+        // booking must not silently overwrite each other. The form carries the version it was opened at.
+        $stale = $id !== null && $this->isStale($definition->entityClass, $entity, $request);
+
         $form = $this->formBuilder->build($entity, $definition);
         $form->handleRequest($request);
+
+        if ($stale && $form->isSubmitted()) {
+            $form->addError(new FormError($this->translator->trans('aacp.resources.stale_version')));
+
+            return $this->renderForm($definition, $entity, $form->createView(), $id, Response::HTTP_CONFLICT);
+        }
 
         if (!$form->isSubmitted() || !$form->isValid()) {
             return $this->renderForm($definition, $entity, $form->createView(), $id, Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -153,7 +278,15 @@ final class ResourceAdminController
         if ($id === null) {
             $this->entityManager->persist($entity);
         }
-        $this->entityManager->flush();
+
+        try {
+            $this->entityManager->flush();
+        } catch (OptimisticLockException) {
+            // Someone saved between loading this row and writing it: the version check in the UPDATE caught it.
+            $form->addError(new FormError($this->translator->trans('aacp.resources.stale_version')));
+
+            return $this->renderForm($definition, $entity, $form->createView(), $id, Response::HTTP_CONFLICT);
+        }
 
         return new RedirectResponse('/aacp/resources/'.$name.'/'.$entity->getId().'?saved=1');
     }
@@ -202,8 +335,28 @@ final class ResourceAdminController
         return new RedirectResponse('/aacp/resources/'.$name.'/'.$id.'?transitioned=1');
     }
 
+    /**
+     * Whether the entity was changed by someone else since the form was opened. Only for entities that declare a
+     * version column; a form that did not send a version (an older page left open) is not treated as stale.
+     */
+    private function isStale(string $entityClass, object $entity, Request $request): bool
+    {
+        $metadata = $this->entityManager->getClassMetadata($entityClass);
+
+        if (!$metadata->isVersioned || $metadata->versionField === null || !$request->request->has('_version')) {
+            return false;
+        }
+
+        return (string) $metadata->getFieldValue($entity, $metadata->versionField) !== (string) $request->request->get('_version');
+    }
+
     private function renderForm(ResourceDefinition $definition, object $entity, $formView, ?int $id, int $status = Response::HTTP_OK): Response
     {
+        $metadata = $this->entityManager->getClassMetadata($definition->entityClass);
+        $version = $id !== null && $metadata->isVersioned && $metadata->versionField !== null
+            ? (string) $metadata->getFieldValue($entity, $metadata->versionField)
+            : null;
+
         $transitions = [];
         $workflow = null;
         if ($id !== null && $definition->workflow !== null && $definition->workflow !== '') {
@@ -235,6 +388,7 @@ final class ResourceAdminController
             'entity' => $entity,
             'form' => $formView,
             'id' => $id,
+            'version' => $version,
             'wideFields' => $wide,
             'hasRichText' => $hasRichText,
             'workflow' => $workflow,

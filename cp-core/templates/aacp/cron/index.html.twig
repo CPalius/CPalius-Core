@@ -155,7 +155,7 @@
                                             {{ 'aacp.users.edit_action'|trans }}
                                         </a>
                                         <form method="post" action="{{ path('aacp_cron_delete', {id: task.id}) }}"
-                                              onsubmit="return confirm('&quot;' + {{ task.name|json_encode|raw }} + '&quot; {{ 'aacp.cron.delete_confirm_suffix'|trans }}');">
+                                              data-confirm="{{ ('"' ~ task.name ~ '" ' ~ 'aacp.cron.delete_confirm_suffix'|trans)|e('html_attr') }}">
                                             <input type="hidden" name="_token" value="{{ csrf_token }}">
                                             <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
                                                 {{ 'aacp.cron.delete'|trans }}

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Security\Http;
 
 use App\Core\Settings\SettingsRegistry;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -19,9 +20,33 @@ final class SecurityHeaderPolicy
 
     public const REPORT_PATH = '/_cp/csp-report';
 
+    /**
+     * @param iterable<CspSourceProviderInterface> $sourceProviders
+     */
     public function __construct(
         private readonly SettingsRegistry $settings,
+        #[AutowireIterator('cp.csp_source_provider')]
+        private readonly iterable $sourceProviders = [],
     ) {
+    }
+
+    /**
+     * Hosts modules asked for, for one directive.
+     *
+     * @return list<string>
+     */
+    private function provided(string $directive): array
+    {
+        $sources = [];
+        foreach ($this->sourceProviders as $provider) {
+            try {
+                array_push($sources, ...($provider->cspSources()[$directive] ?? []));
+            } catch (\Throwable) {
+                // A module's provider must never be able to take the headers down.
+            }
+        }
+
+        return $this->tokens(implode(' ', $sources));
     }
 
     public function enabled(): bool
@@ -139,15 +164,15 @@ final class SecurityHeaderPolicy
             'object-src' => ["'none'"],
             'form-action' => ["'self'"],
             'frame-ancestors' => $this->tokens($this->frameAncestors()),
-            'script-src' => array_merge($scriptSrc, $this->extra('security.csp_script_src')),
+            'script-src' => array_merge($scriptSrc, $this->extra('security.csp_script_src'), $this->provided('script-src')),
             // Inline style stays allowed in every mode: themes and Twig components
             // set style attributes the core cannot nonce, and injected CSS is a far
             // weaker primitive than injected script.
             'style-src' => array_merge(["'self'", "'unsafe-inline'"], $this->extra('security.csp_style_src')),
-            'img-src' => array_merge(["'self'", 'data:', 'https:'], $this->extra('security.csp_img_src')),
+            'img-src' => array_merge(["'self'", 'data:', 'https:'], $this->extra('security.csp_img_src'), $this->provided('img-src')),
             'font-src' => ["'self'", 'data:'],
-            'connect-src' => array_merge(["'self'"], $this->extra('security.csp_connect_src')),
-            'frame-src' => array_merge(["'self'"], $this->extra('security.csp_frame_src')),
+            'connect-src' => array_merge(["'self'"], $this->extra('security.csp_connect_src'), $this->provided('connect-src')),
+            'frame-src' => array_merge(["'self'"], $this->extra('security.csp_frame_src'), $this->provided('frame-src')),
             'media-src' => ["'self'", 'https:'],
             'worker-src' => ["'self'", 'blob:'],
             'manifest-src' => ["'self'"],

@@ -155,7 +155,8 @@ final class PageAdminController extends AbstractController
 
         $previousSlug = $node->getSlug();
         $dto = $this->buildDtoFromNode($node);
-        $form = $this->createPageForm($dto, $this->allowEditTranslate(), true);
+        $syncLocales = $this->allowEditTranslate() ? $this->aiSiblingLocales($node) : [];
+        $form = $this->createPageForm($dto, $this->allowEditTranslate(), true, $syncLocales !== []);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -179,6 +180,14 @@ final class PageAdminController extends AbstractController
 
             if ($dto->autoTranslate && $this->allowEditTranslate()) {
                 $this->requestTranslation($node);
+            }
+
+            // Re-translate into the AI-written siblings only; hand-written ones are never touched.
+            if ($dto->syncTranslations && $syncLocales !== []) {
+                $this->eventDispatcher->dispatch(
+                    new PageCreatedEvent($node, true),
+                    PageCreatedEvent::SYNC,
+                );
             }
 
             $this->addFlash('success', $this->translator->trans('pages.flash.updated', ['title' => $node->getTitle()]));
@@ -256,22 +265,46 @@ final class PageAdminController extends AbstractController
             'fieldTypeChoices' => PageFieldType::choices(),
             'presets' => PageFieldPresets::all($this->translator, $locale),
             'existingTranslationLocales' => $existing,
+            'aiSyncLocales' => $page instanceof Node && $this->allowEditTranslate() ? $this->aiSiblingLocales($page) : [],
             'missingTranslationLocales' => $page instanceof Node ? $this->missingTranslationLocales($page, $existing) : [],
         ];
     }
 
-    private function createPageForm(PageFormModel $dto, bool $includeAutoTranslate = false, bool $autoTranslateEdit = false): FormInterface
+    private function createPageForm(PageFormModel $dto, bool $includeAutoTranslate = false, bool $autoTranslateEdit = false, bool $includeSync = false): FormInterface
     {
         return $this->createForm(PageType::class, $dto, [
             'include_auto_translate' => $includeAutoTranslate,
             'auto_translate_edit' => $autoTranslateEdit,
+            'include_sync_translations' => $includeSync,
         ]);
     }
 
     private function allowEditTranslate(): bool
     {
-        return (string) $this->settingsRegistry->get('ai.allow_edit_translate', '0') === '1'
+        // The Ai module is found by bundle name, never imported: with it off, every AI option stays hidden.
+        return isset($this->getParameter('kernel.bundles')['AiModule'])
+            && (string) $this->settingsRegistry->get('ai.allow_edit_translate', '0') === '1'
             && (string) $this->settingsRegistry->get('ai.enabled', '1') === '1';
+    }
+
+    /**
+     * Locales whose page the Ai module wrote from this one (ai_source_id = this page).
+     *
+     * @return list<string>
+     */
+    private function aiSiblingLocales(Node $node): array
+    {
+        $locales = [];
+        foreach ($this->buildTranslationsMap($node) as $code => $sibling) {
+            if ($sibling->getId() !== $node->getId()
+                && $sibling->getDeletedAt() === null
+                && $sibling->getDataValue(PageCreatedEvent::AI_SOURCE_KEY) === $node->getId()
+            ) {
+                $locales[] = $code;
+            }
+        }
+
+        return $locales;
     }
 
     private function requestTranslation(Node $node): void
@@ -378,8 +411,12 @@ final class PageAdminController extends AbstractController
         $node->setDataValue('featured_image_asset_id', $dto->featuredImageAssetId);
         $node->setDataValue('field_group_id', $dto->fieldGroupId && $dto->fieldGroupId > 0 ? $dto->fieldGroupId : null);
         $node->setDataValue('custom_fields', $this->decodeAndNormalizeFields($dto->customFieldsJson, true));
-        $node->setDataValue('custom_css', $this->fieldNormalizer->sanitizeCss((string) $dto->customCss));
-        $node->setDataValue('custom_js', $this->fieldNormalizer->sanitizeJs((string) $dto->customJs));
+        // Per-page code runs on the public site: only a settings admin may change it. Anyone else's submitted
+        // value is ignored and the stored one stays as it was.
+        if ($this->isGranted('system.settings.manage')) {
+            $node->setDataValue('custom_css', $this->fieldNormalizer->sanitizeCss((string) $dto->customCss));
+            $node->setDataValue('custom_js', $this->fieldNormalizer->sanitizeJs((string) $dto->customJs));
+        }
         $node->setDataValue('seo', [
             'meta_description' => trim((string) $dto->seoMetaDescription) ?: null,
             'focus_keyword' => trim((string) $dto->seoFocusKeyword) ?: null,

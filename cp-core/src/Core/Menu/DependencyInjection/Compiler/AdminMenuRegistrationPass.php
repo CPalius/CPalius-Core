@@ -20,6 +20,8 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
 {
     private const MODULE_NAMESPACE_PREFIX = 'Modules\\';
 
+    private const TOOLS_HUB = 'aacp_hub_tools';
+
     public const CONTAINER_PARAMETER = 'cpalius.admin_menu_definitions';
 
     public function process(ContainerBuilder $container): void
@@ -52,6 +54,8 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
             }
         }
 
+        $collected = $this->fileModuleItemsUnderTools($collected);
+
         $container->setParameter(self::CONTAINER_PARAMETER, $collected);
 
         if ($container->hasDefinition('App\Core\Menu\AdminMenuRegistry')) {
@@ -74,6 +78,37 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
                 ])]);
             }
         }
+    }
+
+    /**
+     * AACP rule: a module never adds a top-level AACP entry. Items with no parent, or parented to another
+     * module item, are filed under the Tools hub; a module that names a core parent explicitly keeps it.
+     *
+     * @param list<array<string, mixed>> $collected
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function fileModuleItemsUnderTools(array $collected): array
+    {
+        $moduleRoutes = [];
+        foreach ($collected as $item) {
+            if ($item['module'] !== 'core' && $item['panel'] === 'aacp') {
+                $moduleRoutes[$item['routeName']] = true;
+            }
+        }
+
+        foreach ($collected as &$item) {
+            if ($item['module'] === 'core' || $item['panel'] !== 'aacp') {
+                continue;
+            }
+
+            if ($item['parent'] === null || isset($moduleRoutes[$item['parent']])) {
+                $item['parent'] = self::TOOLS_HUB;
+            }
+        }
+        unset($item);
+
+        return $collected;
     }
 
     /**
@@ -110,7 +145,7 @@ final class AdminMenuRegistrationPass implements CompilerPassInterface
                 if ($classRouteAttributes !== []) {
                     /** @var Route $classRoute */
                     $classRoute = $classRouteAttributes[0]->newInstance();
-                    $classRoutePrefix = (string) ($classRoute->getName() ?? '');
+                    $classRoutePrefix = (string) ($classRoute->name ?? '');
                 }
 
                 foreach ($reflection->getMethods() as $method) {

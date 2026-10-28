@@ -14,6 +14,8 @@ final class NotificationExtension extends AbstractExtension
         return [
             new TwigFunction('cp_notification_unread_count', [NotificationRuntime::class, 'unreadCount']),
             new TwigFunction('cp_recent_notifications', [NotificationRuntime::class, 'recent']),
+            new TwigFunction('cp_pending_identity_count', [NotificationRuntime::class, 'pendingIdentityCount']),
+            new TwigFunction('cp_admin_bell', [NotificationRuntime::class, 'adminBell']),
         ];
     }
 }

@@ -40,6 +40,6 @@ studio:
     view_routes:
         post: [blog_show, slug]
     quick_create:
-        - { label_key: studio.dashboard.create.post, route: admin_posts_create, icon: heroicons:document-plus }
+        - { label_key: studio.dashboard.create.post, route: admin_posts_create, icon: heroicons:document-text }
     quick_links:
         - { label_key: studio.dashboard.link.categories, route: admin_categories_index, icon: heroicons:folder }

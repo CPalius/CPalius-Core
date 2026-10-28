@@ -6,6 +6,7 @@ namespace App\Core\Security\EventListener;
 
 use App\Core\Security\Dto\ThreatResult;
 use App\Core\Security\Entity\SystemTelemetryLog;
+use App\Core\Module\ModuleContributionCatalog;
 use App\Core\Security\Service\IpBanService;
 use App\Core\Security\Service\SecurityEventRecorder;
 use App\Core\Security\Service\ThreatAnalyzer;
@@ -46,6 +47,16 @@ final class RequestGuardSubscriber implements EventSubscriberInterface
      */
     private const BAN_EXEMPT_PATH = '/aacp/recovery';
 
+    /** @var list<string> see isAdminContentSave() */
+    private const ADMIN_CONTENT_SAVE_PATHS = [
+        '/admin/docs/pages/save',
+        '/admin/docs/translate/save',
+        '/aacp/module-editor/lint',
+        '/aacp/module-editor/save',
+        '/aacp/themes/editor/lint',
+        '/aacp/themes/editor/save',
+    ];
+
     /**
      * Skipped by the signature scanner only. The profiler's own URLs carry
      * serialised request data that trips the traversal and XSS signatures, so
@@ -63,6 +74,7 @@ final class RequestGuardSubscriber implements EventSubscriberInterface
         private readonly ThreatAnalyzer $threatAnalyzer,
         private readonly SettingsRegistry $settings,
         private readonly SecurityEventRecorder $recorder,
+        private readonly ?ModuleContributionCatalog $contributions = null,
     ) {
     }
 
@@ -103,7 +115,7 @@ final class RequestGuardSubscriber implements EventSubscriberInterface
             }
 
             $mode = $this->wafMode();
-            if ($mode === self::MODE_OFF || $this->isWafSkipped($request)) {
+            if ($mode === self::MODE_OFF || $this->isWafSkipped($request) || $this->isAdminContentSave($ip, $request)) {
                 return;
             }
 
@@ -139,6 +151,30 @@ final class RequestGuardSubscriber implements EventSubscriberInterface
         $path = $request->getPathInfo();
 
         return $path === self::BAN_EXEMPT_PATH || str_starts_with($path, self::BAN_EXEMPT_PATH.'/');
+    }
+
+    /**
+     * The few screens whose whole job is saving content or code (docs pages, module and theme editors) are not
+     * signature-scanned for a signed-in administrator: Markdown rules ("--"), SQL and JavaScript examples look like
+     * attacks to the signatures, and one false positive used to ban the site owner for a day.
+     *
+     * Deliberately narrow: POST only, an exact list of routes (no "/admin" prefix), an administrator signed in from
+     * this very address, and the ban list is still checked before this. Every other request is scanned as before.
+     *
+     * The list is the core's own screens plus the exact paths active modules declare under
+     * "waf_content_save_paths" in their contributions.yaml (the reader drops anything that is not a plain path).
+     * A module can name a route; it cannot change who qualifies or add a prefix.
+     */
+    private function isAdminContentSave(string $ip, Request $request): bool
+    {
+        if ($ip === '' || !$request->isMethod('POST')) {
+            return false;
+        }
+
+        $path = $request->getPathInfo();
+
+        return (\in_array($path, self::ADMIN_CONTENT_SAVE_PATHS, true) || \in_array($path, $this->contributions?->wafContentSavePaths() ?? [], true))
+            && $this->ipBanService->isSignedInAdmin($ip);
     }
 
     private function isWafSkipped(Request $request): bool

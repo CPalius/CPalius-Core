@@ -61,7 +61,7 @@
                                         {{ 'aacp.users.edit_action'|trans }}
                                     </a>
                                     <form method="post" action="{{ path('aacp_webhooks_rotate', {id: subscription.id}) }}"
-                                          onsubmit="return confirm({{ 'aacp.webhooks.rotate_confirm'|trans|json_encode|raw }});">
+                                          data-confirm="{{ 'aacp.webhooks.rotate_confirm'|trans|e('html_attr') }}">
                                         <input type="hidden" name="_token" value="{{ csrf_token }}">
                                         <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-300">{{ 'aacp.webhooks.rotate_action'|trans }}</button>
                                     </form>
@@ -72,7 +72,7 @@
                                         </button>
                                     </form>
                                     <form method="post" action="{{ path('aacp_webhooks_delete', {id: subscription.id}) }}"
-                                          onsubmit="return confirm({{ 'aacp.webhooks.delete_confirm'|trans|json_encode|raw }});">
+                                          data-confirm="{{ 'aacp.webhooks.delete_confirm'|trans|e('html_attr') }}">
                                         <input type="hidden" name="_token" value="{{ csrf_token }}">
                                         <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">{{ 'aacp.webhooks.delete'|trans }}</button>
                                     </form>

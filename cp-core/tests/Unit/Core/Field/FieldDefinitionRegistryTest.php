@@ -19,8 +19,7 @@ final class FieldDefinitionRegistryTest extends TestCase
     {
         $repository = $this->createMock(FieldDefinitionRepository::class);
         $repository->expects(self::once())
-            ->method('findByBundle')
-            ->with('page')
+            ->method('findAllOrdered')
             ->willReturn([new FieldDefinition('page', 'subtitle', 'text', 'Subtitle')]);
 
         $registry = new FieldDefinitionRegistry($repository, new ArrayAdapter());
@@ -37,7 +36,7 @@ final class FieldDefinitionRegistryTest extends TestCase
         $repository = $this->createMock(FieldDefinitionRepository::class);
         $repository->method('distinctBundles')->willReturn(['page']);
         $repository->expects(self::exactly(2))
-            ->method('findByBundle')
+            ->method('findAllOrdered')
             ->willReturnOnConsecutiveCalls(
                 [new FieldDefinition('page', 'a', 'text', 'A')],
                 [new FieldDefinition('page', 'a', 'text', 'A'), new FieldDefinition('page', 'b', 'text', 'B')],
@@ -53,7 +52,7 @@ final class FieldDefinitionRegistryTest extends TestCase
     public function testReturnsDetachedDefinitions(): void
     {
         $repository = $this->createMock(FieldDefinitionRepository::class);
-        $repository->method('findByBundle')->willReturn([
+        $repository->method('findAllOrdered')->willReturn([
             (new FieldDefinition('page', 'x', 'text', 'X'))->setQueryable(true)->setCardinality(FieldDefinition::UNLIMITED),
         ]);
 

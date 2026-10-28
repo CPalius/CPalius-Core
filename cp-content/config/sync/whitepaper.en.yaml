@@ -1,8 +1,8 @@
 title: 'CPalius CMF: Evolving from a Content Management System into a "Bulletproof" Enterprise Application Framework'
-version: v1.3.0
+version: v1.4.0
 intro_html: |
     <p><strong>Publication Type:</strong> Technical Review (Whitepaper) &amp; Architectural Roadmap (RFC)<br>
-    <strong>Version:</strong> v1.2.0<br>
+    <strong>Version:</strong> v1.4.0<br>
     <strong>Audience:</strong> Senior PHP Developers, System Architects, Open Source Contributors, and AI Agents<br>
     <strong>Author / Founder:</strong> Ali Çömez (slaweally)<br>
     <strong>Technology Stack:</strong> PHP 8.4+, Symfony 7.4 LTS, Doctrine ORM, AssetMapper, Tailwind CSS Standalone Binary</p>
@@ -268,6 +268,10 @@ sections:
             <p><strong>WordPress-style module packages</strong></p>
 
             <p>A first-party module may ship <code>Resources/config/importmap.php</code> and <code>contributions.yaml</code>. <code>ModulePackageContract</code> validates the on-disk layout; operators can upload a ZIP from AACP. Homepage modes, portal feed blocks, schema types, and the account post-login landing are declared in contributions&mdash;core does not hardcode <code>forum_index</code> or <code>blog_index</code>.</p>
+
+            <h3>The rebuild rule</h3>
+
+            <p>The core cannot recount or re-index a table it has never heard of. So there is a rule: <strong>every module that produces content must hook itself into the rebuild system.</strong> The way is to implement <code>RebuilderInterface</code>; the interface tags itself automatically, so nothing extra is needed in the module&apos;s <code>services.yaml</code>. Work runs in batches (<code>getBatchSize</code>, <code>rebuild($offset, $limit)</code>) and the AJAX runner shows a progress percentage. The rule is checked by <code>cp:doctor</code>: an active module that has entities and neither registers a rebuilder nor states in <code>module.json</code> with <code>&quot;rebuild&quot;: {&quot;exempt&quot;: &quot;why&quot;}</code> that it keeps no derived data raises a warning. Forum, Blog and Docs (which re-renders each page&apos;s stored HTML) meet the rule; the remaining modules are listed by name in the doctor output.</p>
     -
         slug: migrate
         title: 'Migrate: moving an installation off another CMS'
@@ -315,6 +319,12 @@ sections:
             <p><strong>Quarantine, localization, performance backends</strong></p>
 
             <p><code>/aacp/quarantine</code> is a read-only view of <code>module_quarantine.log</code>. <code>TranslationManager</code> edits core and module ICU YAML with atomic <code>.tmp</code> + <code>rename()</code> writes. The Performance screen tests Redis, Memcached, Varnish, Nginx PageSpeed, and CPalius Origin Cache; the enabled flag is set only after a successful probe&mdash;never a fake-green toggle. <code>/aacp/backup</code> is the Backup Management desk (capability <code>system.backup.manage</code>): database dump, files ZIP, or full archive, with download and delete.</p>
+
+            <h3>Menus and module management</h3>
+
+            <p>No dropdown in the AACP sidebar links to a page; it only opens its submenu, and every screen is a child entry. The <strong>Security Centre</strong> is one menu: overview, live threats, audit findings, security settings, telemetry settings and the malware scanner. The <strong>Modules</strong> menu gathers the module list (active ones by default; enable, disable, delete), the module store, module plugins and the <strong>module editor</strong>; the theme store lives under Appearance.</p>
+
+            <p>The module editor is the counterpart of the theme editor: it edits a module&apos;s PHP, Twig, CSS, JS, YAML and JSON files from the admin panel. Paths are confined to the module folder; syntax is checked before saving, <strong>PHP and <code>module.json</code> are never saved with errors</strong> (a broken module class can take the site down), the previous version is backed up under <code>cp-core/var/module-editor</code> before every save, and the cache is cleared.</p>
     -
         slug: operations
         title: 'Operating an installation: updates, diagnosis, queues and logs'
@@ -368,6 +378,30 @@ sections:
             </ul>
 
             <p>Probes are isolated and cached for a few seconds so a hanging Redis cannot 500 the dashboard.</p>
+    -
+        slug: updates
+        title: 'Updates, signatures and the extension store'
+        weight: 95
+        body_html: |
+            <p>A framework&apos;s security shows in how it updates itself: what happens when the update server is taken over, or an old package is served again? CPalius answers with signatures.</p>
+
+            <h3>Signed release information</h3>
+
+            <p><code>latest.json</code> is signed with Ed25519 and the public key is built into the core. The core <strong>rejects</strong> three things: an unsigned or malformed manifest, an expired manifest (30 days; a <em>freeze</em> attack) and a manifest older than the installed version (a <em>rollback</em> attack). When it rejects, the Updates screen says &quot;signature could not be verified&quot;, the update button is disabled and nothing is downloaded.</p>
+
+            <h3>Atomic updates and rollback</h3>
+
+            <p>An update takes a lock, shows a 503 maintenance page, snapshots the database and stages files side by side before putting them in place in one quick step. If a file, a migration or an update step fails, files and database are restored together; if the process dies midway the next request repairs itself in <code>public/index.php</code>. One honest limit: a rollback discards everything written between the snapshot and the failure.</p>
+
+            <p>An update only adds and overwrites files; a file a release deleted stays on the site. We hit this in practice: the old store screen that 2.2.47 removed lived on as a second store on updated sites. The answer is one-off <em>update hooks</em>: <code>RemoveObsoleteFilesHook</code> now removes files that were deleted, and every controller deleted in the future is added to its list.</p>
+
+            <h3>Private channel</h3>
+
+            <p>A release can go to one site first. The channel has an unguessable name; the site verifies both the stable and the channel manifest and sees the <strong>higher signed version</strong>. Every release is tried on a real live site, and nobody on the stable channel is affected if something goes wrong. When a site runs a channel build ahead of stable, an &quot;older&quot; stable manifest must not fail the whole check; that was a real bug, fixed in 2.2.54.</p>
+
+            <h3>Extension store</h3>
+
+            <p>Modules and themes are versioned independently of the core and distributed through a signed catalogue (<code>extensions/index.json</code> + <code>index.sig</code>, valid for 45 days). During installation the package&apos;s SHA-256 digest is compared with the digest in the <strong>signed catalogue</strong>; the address cannot leave the server&apos;s area, a download is capped at 32 MB, and files are backed up and put in place in one step. An active module&apos;s update goes through the same guarded flow: maintenance lock, database snapshot, the module&apos;s migrations and a shared rollback on failure. Every module carries a <code>core_version</code> range, and a core update that would break an installed module&apos;s range is blocked. The store screen has an &quot;Update all&quot; button.</p>
     -
         slug: backup
         title: 'Section 10: Backup Management'
@@ -428,6 +462,10 @@ sections:
             <p><strong>Zero Node.js in core UI</strong></p>
 
             <p>Admin and developer chrome use AssetMapper + the Tailwind standalone binary. There is no Node.js build for those surfaces. Public theme CSS may still be a static theme asset.</p>
+
+            <p><strong>Docs</strong> is a versioned, Docusaurus-style documentation site: unlimited versions (1.2.1, 2.0, next), Markdown and HTML pages, a sidebar tree, an &quot;On this page&quot; outline, Ctrl+K search, dark mode and <code>.md</code> / <code>.zip</code> import and export (also from the command line: <code>cp:docs:import</code>). Every page has its own language; the language is chosen when adding a page or uploading files, the language switcher goes to the page&apos;s counterpart in the other language and falls back to the first suitable page when there is none. HTML pages pass through a safe filter and no external calls are made.</p>
+
+            <p><strong>Notes</strong> is a personal notebook: folders, colours, images and screenshots, paging and search, plus sticky notes that can be dropped anywhere on <em>every</em> Studio page by drag and drop. This uses one hook point added to the core, <code>studio.body.end</code>: the module prints two tags on the page and the rest is its own script; the hook is isolated, so its failure cannot break Studio. Notes can be shared with other users (multi-select, optional edit rights). The access rule lives in one place (<code>NoteAccess</code>) and lists are <strong>translated into SQL</strong>; a user who types the id of a note they cannot see gets a 404, and e-mail addresses are never sent to the share picker.</p>
     -
         slug: quality
         title: 'How the claims in this document are verified'
@@ -450,6 +488,8 @@ sections:
             <p><strong><code>cp:doctor</code> was written after an incident, not designed in the abstract.</strong> Five migrations sat unapplied across several development sessions and nothing broke loudly, because the features that needed the new tables were written to degrade quietly. The only symptom was security telemetry writing nowhere. An unapplied migration is therefore rated HIGH: the danger is not that it fails, it is that it does not.</p>
 
             <p><strong>A diagnostic tool must survive the installation it is diagnosing.</strong> If one check throws, the run continues and the exception becomes a finding. A doctor that dies on the first real problem is useless at exactly the moment it is needed.</p>
+
+            <p>The development-mode N+1 guard caught a real defect while this document was being written: the taxonomy screen ran a separate <code>COUNT</code> query for every vocabulary and threw <code>MaxQueriesExceededException</code> past the limit. The fix was a single <code>GROUP BY</code> query. In the same period it turned out that the <code>?-&gt;</code> operator does not silence a missing array key, which surfaced as a warning on the path-pattern screen. Two examples show the guards are used, not decoration. <code>cp:doctor</code> also gained new checks: module rebuild coverage and pending module versions.</p>
     -
         slug: benchmark
         title: 'Benchmark: CPalius against Drupal, TYPO3, WordPress and ProcessWire'
@@ -477,7 +517,7 @@ sections:
 
             <ul>
             <li><strong>Release policy and package ecosystem (rows 31, 35 — both D).</strong> There is no semantic-versioning promise, no backwards-compatibility document and no module registry. The update machinery exists (<code>cp:update</code>); the policy around it does not.</li>
-            <li><strong>Documentation (row 33 — C).</strong> README and SECURITY.md exist. A developer handbook does not. This is the single lowest score on the card and it is not an oversight, it is unfinished work.</li>
+            <li><strong>Documentation (row 33 — B).</strong> A developer handbook now exists: sixty-odd pages from installation to module and theme development and the update system, in a versioned, searchable docs site. What is missing is translation into more languages and a document for every module.</li>
             <li><strong>Performance evidence (row 37 — D).</strong> The architecture is built for speed and no benchmark has been published. Until one is, the claim is an argument, not a measurement.</li>
             <li><strong>Database portability (row 40 — C).</strong> Every migration is raw MySQL DDL. The ORM layer is portable; the installation is not.</li>
             <li><strong>Accessibility (row 38 — unmeasured).</strong> The admin UI has never been audited against WCAG. Reporting it as "unknown" is more useful than guessing a grade.</li>
@@ -487,13 +527,18 @@ sections:
         title: 'Section 13: Future Roadmap and Technical Consultation (RFC)'
         weight: 130
         body_html: |
-            <p>The core security, performance, and architectural backbone of CPalius is complete. Since this whitepaper's first draft the following have shipped: AACP Safe Mode / Recovery Console, the isolated Hook system, the unified Cron engine, the REST API Gateway, the fourth defense line (<code>SafeModuleRouteLoader</code>), the on-demand image pipeline (<code>cp_thumb</code>), the <code>#[CpResource]</code> audit log, Studio dashboard stats, CPalius Origin Cache, the AACP performance inventory, optional security telemetry with IP ban, WordPress-style module packages and the contribution catalog (homepage, portal, schema, account landing), the Pages module, operator UI catalogue binding, and AACP Backup Management (<code>cp:backup:create</code>).</p>
+            <p>CPalius&apos;s core security, performance and architecture backbone is complete. Delivered since the first draft of this whitepaper: the AACP Safe Mode / Recovery Console, isolated hooks, the unified cron engine, the REST API gateway, the fourth defence line (<code>SafeModuleRouteLoader</code>), the <code>cp_thumb</code> image pipeline, the <code>#[CpResource]</code> audit log, Studio statistics, Origin Cache, the AACP performance inventory, security telemetry with IP bans, WordPress-style module packages, the Pages module, catalogue-driven localization, AACP backup and, <strong>added in this version</strong>: signed updates and private channels, the signed extension store, the versioned multi-language Docs module, the shareable Notes module, the module source editor, the unified Security Centre menu and the rebuild rule.</p>
 
-            <p>In upcoming development sprints we will build the following systems:</p>
+            <p>Two items the previous draft listed as &quot;next sprint&quot; are done: <strong>Workflow &amp; State Machine</strong> (a YAML-defined editorial workflow, per-transition capabilities, audit log) and the <strong>Messenger async queue</strong> (a Doctrine-backed <code>async</code> transport; mail and notifications are queued and cron drains them).</p>
+
+            <p>What comes next:</p>
 
             <ul>
-            <li><strong>Workflow &amp; State Machine:</strong> A mechanism that manages transition processes for business records such as invoices, vehicles, and reservations (<code>draft &rarr; preparation &rarr; sold</code>) via YAML definitions, and automatically ties every transition to the audit log and notification queue. <code>CpResource::$workflow</code> is already declared.</li>
-            <li><strong>Messenger Async Queue:</strong> Wiring a real transport (Doctrine/Redis) so email and notification work move onto an asynchronous queue. <code>symfony/messenger</code> is installed and visible on the AACP desk; no active transport is bound yet.</li>
+            <li><strong>Rebuild coverage:</strong> Media, Menu, SEO and the other content modules writing their own rebuilders; <code>cp:doctor</code> lists the gaps by name.</li>
+            <li><strong>Release policy (row 31):</strong> a semantic-versioning promise and a backwards-compatibility document; the update machinery is ready, the policy around it will be written.</li>
+            <li><strong>Performance evidence (row 37):</strong> a published, repeatable measurement.</li>
+            <li><strong>Accessibility (row 38):</strong> a WCAG audit of the admin UI.</li>
+            <li><strong>Documentation:</strong> translating the handbook into more languages and completing the module documentation as its own version.</li>
             </ul>
     -
         slug: community

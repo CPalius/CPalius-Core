@@ -54,7 +54,7 @@ final class AACPFontController
     }
 
     #[Route('/aacp/fonts', name: 'aacp_fonts', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.fonts', icon: 'heroicons:language', panel: 'aacp', priority: 73, capability: 'system.settings.manage', parent: 'aacp_themes')]
+    #[CpAdminMenu(label: 'aacp.menu.fonts', icon: 'heroicons:language', panel: 'aacp', priority: 74, capability: 'system.settings.manage', parent: 'aacp_themes')]
     #[IsGranted('system.settings.manage')]
     public function index(Request $request): Response
     {

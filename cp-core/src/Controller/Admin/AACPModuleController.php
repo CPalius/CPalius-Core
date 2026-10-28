@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Core\Security\Reauth\RequiresRecentAuth;
 use App\Core\Annotation\CpAdminMenu;
+use App\Core\Cache\CacheRebuildManager;
 use App\Core\Module\ModuleActivator;
+use App\Core\Module\ModuleFileEditor;
 use App\Core\Module\ModulePackageContract;
 use App\Core\Module\ModulePackageService;
 use App\Core\Module\ModuleRegistry;
 use App\Core\Module\ModuleTranslationContract;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -32,6 +36,8 @@ final class AACPModuleController
         private readonly ModuleRegistry $moduleRegistry,
         private readonly ModuleActivator $moduleActivator,
         private readonly ModulePackageService $modulePackageService,
+        private readonly ModuleFileEditor $fileEditor,
+        private readonly CacheRebuildManager $cache,
         private readonly Environment $twig,
         private readonly CsrfTokenManagerInterface $csrfTokenManager,
         private readonly TranslatorInterface $translator,
@@ -40,12 +46,19 @@ final class AACPModuleController
     }
 
     #[Route('/aacp/modules', name: 'aacp_modules', methods: ['GET'])]
-    #[CpAdminMenu(label: 'aacp.menu.modules', icon: 'heroicons:puzzle-piece', panel: 'aacp', priority: 21, capability: 'system.module.manage', parent: 'aacp_hub_system')]
+    #[CpAdminMenu(label: 'aacp.menu.modules', icon: 'heroicons:puzzle-piece', panel: 'aacp', priority: 21, capability: 'system.module.manage')]
     #[IsGranted('system.module.manage')]
     public function index(Request $request): Response
     {
+        $show = \in_array($request->query->getString('show'), ['active', 'inactive', 'all'], true) ? $request->query->getString('show') : 'active';
+        $modules = array_values(array_filter(
+            $this->moduleRegistry->discoverAllModules(),
+            static fn (array $m): bool => $show === 'all' || ($show === 'active' ? $m['status'] === 'active' : $m['status'] !== 'active'),
+        ));
+
         $html = $this->twig->render('aacp/modules.html.twig', [
-            'modules' => $this->moduleRegistry->discoverAllModules(),
+            'show' => $show,
+            'modules' => $modules,
             'csrf_token' => $this->csrfToken($request),
             'notice' => (string) $request->query->get('notice', ''),
             'error' => (string) $request->query->get('error', ''),
@@ -55,8 +68,102 @@ final class AACPModuleController
         return new Response($html);
     }
 
+    /** Same screen as the "Modules" parent, reachable as its own submenu entry. */
+    #[Route('/aacp/module-list', name: 'aacp_module_list', methods: ['GET'])]
+    #[CpAdminMenu(label: 'aacp.menu.module_list', icon: 'heroicons:puzzle-piece', panel: 'aacp', priority: 1, capability: 'system.module.manage', parent: 'aacp_modules')]
+    #[IsGranted('system.module.manage')]
+    public function list(Request $request): Response
+    {
+        return $this->index($request);
+    }
+
+    /** Source editor for the files of one installed module, the counterpart of the theme editor. */
+    #[Route('/aacp/module-editor', name: 'aacp_module_editor', methods: ['GET'])]
+    #[CpAdminMenu(label: 'aacp.menu.module_editor', icon: 'heroicons:code-bracket', panel: 'aacp', priority: 4, capability: 'system.module.manage', parent: 'aacp_modules')]
+    #[IsGranted('system.module.manage')]
+    public function editor(Request $request): Response
+    {
+        $modules = $this->moduleRegistry->discoverAllModules();
+        $dirName = (string) $request->query->get('module', (string) ($modules[0]['dirName'] ?? ''));
+        $module = null;
+        foreach ($modules as $candidate) {
+            if (strcasecmp((string) $candidate['dirName'], $dirName) === 0) {
+                $module = $candidate;
+            }
+        }
+
+        $files = $module !== null ? $this->fileEditor->listFiles((string) $module['dirName']) : [];
+        $relative = (string) $request->query->get('file', $files[0]['path'] ?? '');
+        $current = null;
+        $error = null;
+        if ($module !== null && $relative !== '') {
+            try {
+                $current = $this->fileEditor->read((string) $module['dirName'], $relative);
+            } catch (\Throwable $e) {
+                $error = $e->getMessage();
+            }
+        }
+
+        return new Response($this->twig->render('aacp/module_editor.html.twig', [
+            'modules' => $modules,
+            'module' => $module,
+            'files' => $files,
+            'current' => $current,
+            'error' => $error,
+            'csrf_token' => $this->csrfToken($request),
+            'saved' => $request->query->getBoolean('saved'),
+            'lint' => (string) $request->query->get('lint', ''),
+        ]));
+    }
+
+    #[Route('/aacp/module-editor/lint', name: 'aacp_module_editor_lint', methods: ['POST'])]
+    #[IsGranted('system.module.manage')]
+    public function lintFile(Request $request): JsonResponse
+    {
+        $this->assertCsrf($request);
+
+        try {
+            $relative = (string) $request->request->get('file');
+            $this->fileEditor->absolutePath((string) $request->request->get('theme'), $relative);
+            $problems = $this->fileEditor->lint((string) $this->fileEditor->kindFromRelative($relative), (string) $request->request->get('content'), $relative);
+        } catch (\Throwable $e) {
+            return new JsonResponse(['ok' => false, 'problems' => [$e->getMessage()]], 400);
+        }
+
+        return new JsonResponse(['ok' => $problems === [], 'problems' => $problems]);
+    }
+
+    #[Route('/aacp/module-editor/save', name: 'aacp_module_editor_save', methods: ['POST'])]
+    #[IsGranted('system.module.manage')]
+    #[RequiresRecentAuth]
+    public function saveFile(Request $request): RedirectResponse
+    {
+        $this->assertCsrf($request);
+
+        // The shared editor script posts the module directory in the "theme" field.
+        $module = (string) $request->request->get('theme');
+        $relative = (string) $request->request->get('file');
+        $query = ['module' => $module, 'file' => $relative];
+
+        try {
+            $problems = $this->fileEditor->write($module, $relative, (string) $request->request->get('content'), $request->request->getBoolean('force'));
+        } catch (\Throwable $e) {
+            return new RedirectResponse('/aacp/module-editor?'.http_build_query($query + ['error' => $e->getMessage()]));
+        }
+
+        if ($problems !== [] && !$request->request->getBoolean('force')) {
+            return new RedirectResponse('/aacp/module-editor?'.http_build_query($query + ['lint' => implode("\n", $problems)]));
+        }
+
+        // Templates, translations and routes live in the compiled cache.
+        $this->cache->clearSymfonyCache();
+
+        return new RedirectResponse('/aacp/module-editor?'.http_build_query($query + ['saved' => '1']));
+    }
+
     #[Route('/aacp/modules/upload', name: 'aacp_module_upload', methods: ['POST'])]
     #[IsGranted('system.module.manage')]
+    #[RequiresRecentAuth]
     public function upload(Request $request): RedirectResponse
     {
         $this->assertCsrf($request);
@@ -93,6 +200,7 @@ final class AACPModuleController
 
     #[Route('/aacp/modules/{dirName}/activate', name: 'aacp_module_activate', methods: ['POST'])]
     #[IsGranted('system.module.manage')]
+    #[RequiresRecentAuth]
     public function activate(string $dirName, Request $request): RedirectResponse
     {
         $this->assertCsrf($request);
@@ -104,11 +212,12 @@ final class AACPModuleController
             return $this->back($request, error: $result['message']);
         }
 
-        return $this->back($request, notice: 'activated');
+        return $this->back($request, notice: ($result['pending'] ?? false) ? 'activating' : 'activated');
     }
 
     #[Route('/aacp/modules/{dirName}/deactivate', name: 'aacp_module_deactivate', methods: ['POST'])]
     #[IsGranted('system.module.manage')]
+    #[RequiresRecentAuth]
     public function deactivate(string $dirName, Request $request): RedirectResponse
     {
         $this->assertCsrf($request);
@@ -146,6 +255,7 @@ final class AACPModuleController
 
     #[Route('/aacp/modules/{dirName}/update', name: 'aacp_module_update', methods: ['POST'])]
     #[IsGranted('system.module.manage')]
+    #[RequiresRecentAuth]
     public function update(string $dirName, Request $request): RedirectResponse
     {
         $this->assertCsrf($request);
@@ -166,6 +276,7 @@ final class AACPModuleController
 
     #[Route('/aacp/modules/{dirName}/delete', name: 'aacp_module_delete', methods: ['POST'])]
     #[IsGranted('system.module.manage')]
+    #[RequiresRecentAuth]
     public function delete(string $dirName, Request $request): RedirectResponse
     {
         $this->assertCsrf($request);

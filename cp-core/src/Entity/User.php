@@ -20,6 +20,9 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\UniqueConstraint(name: 'uniq_user_email', columns: ['email'])]
 #[ORM\UniqueConstraint(name: 'uniq_user_username', columns: ['username'])]
 #[ORM\Index(columns: ['status'], name: 'idx_user_status')]
+// "Newest member" and the newest-members list order by created_at; without these they sort the whole table.
+#[ORM\Index(columns: ['status', 'created_at'], name: 'idx_user_status_created')]
+#[ORM\Index(columns: ['created_at'], name: 'idx_user_created')]
 #[CpEntityType(id: 'user', label: 'entity.type.user')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface, FieldableInterface
 {
@@ -311,6 +314,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Fieldab
     public function setLastName(string $lastName): static
     {
         return $this->setDataValue('last_name', $lastName);
+    }
+
+    /** Private contact number (digits, optional leading +); never rendered publicly. */
+    public function getPhone(): string
+    {
+        return (string) $this->getDataValue('phone', '');
+    }
+
+    public function setPhone(string $phone): static
+    {
+        return $this->setDataValue('phone', $phone);
+    }
+
+    public function isRegistrationPendingApproval(): bool
+    {
+        return (bool) $this->getDataValue('registration_pending_approval', false);
     }
 
     public function getFullName(): string

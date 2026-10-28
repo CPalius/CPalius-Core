@@ -169,10 +169,10 @@ final class PatchManifestTest extends TestCase
     {
         $manifest = self::parse(['files' => [
             ['path' => PatchManifest::VERSION_FILE, 'sha256' => str_repeat('a', 64), 'size' => 1200],
-            ['path' => 'cp-content/modules/Blog/Old.php', 'action' => 'delete'],
+            ['path' => 'cp-core/src/Core/Old.php', 'action' => 'delete'],
         ]]);
 
         self::assertCount(1, $manifest->writes());
-        self::assertSame(['cp-content/modules/Blog/Old.php'], $manifest->deletions());
+        self::assertSame(['cp-core/src/Core/Old.php'], $manifest->deletions());
     }
 }

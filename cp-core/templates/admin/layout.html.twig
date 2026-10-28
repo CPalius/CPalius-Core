@@ -11,6 +11,7 @@
             layout, the console and /aacp are exactly where they were.
         #}
         {% set studioShell = cp_studio_shell() %}
+        {% set studioLook = cp_studio_appearance() %}
         {% set shellBrand = studioShell.brandText ?? (studioShell.brandKey ? studioShell.brandKey|trans : null) %}
 
         <title>{% block title %}{{ shellBrand ?? 'studio.layout.title.default'|trans }}{% endblock %}</title>
@@ -21,7 +22,10 @@
            resolves to a data: URL script that our CSP refuses, and a refused
            static import rejects the entire module graph (see app.js). #}
         {% block stylesheets %}
+            <link rel="stylesheet" href="/fonts/fonts.css">
             <link rel="stylesheet" href="{{ cp_asset('styles/app.css') }}">
+            {# Original Studio uses app.css alone; the other themes layer one sheet on top. #}
+            <link rel="stylesheet" href="{{ cp_asset(studioLook.theme == 'ledger' ? 'styles/studio.css' : (studioLook.theme == 'premium' ? 'styles/studio-premium.css' : 'styles/studio-classic.css')) }}">
         {% endblock %}
         {% block javascripts %}
             {{ importmap(['app', 'studio-quick-cache-clear']) }}
@@ -32,9 +36,11 @@
             loading: 'media.picker.loading'|trans,
             uploadFailed: 'media.picker.upload_failed'|trans,
             listFailed: 'media.picker.list_failed'|trans,
+            confirm: 'media.picker.confirm'|trans,
+            selected: 'media.picker.selected'|trans,
         }|json_encode|raw }}</script>
     </head>
-    <body class="h-full bg-neutral-50 text-neutral-700 antialiased text-fs-base font-sans">
+    <body data-confirm-delete="{{ 'aacp.confirm.delete'|trans }}" data-studio-theme="{{ studioLook.theme }}" data-studio-mode="{{ studioLook.mode }}"{% if studioLook.accent or studioLook.fontCss %} style="{% if studioLook.accent %}--studio-accent: {{ studioLook.accent }}; --on-studio-accent: {{ studioLook.onAccent }}; --studio-accent-lit: color-mix(in oklab, {{ studioLook.accent }} 72%, white);{% endif %}{% if studioLook.fontCss %} --studio-font: {{ studioLook.fontCss }};{% endif %}"{% endif %} class="studio-app h-full bg-neutral-50 text-neutral-700 antialiased text-fs-base font-sans">
         <div class="flex h-full">
             <div data-sidebar-overlay class="sidebar-overlay"></div>
 
@@ -147,14 +153,17 @@
                         <button type="button" data-sidebar-mobile-toggle class="sidebar-mobile-toggle">
                             <twig:ux:icon name="tabler:menu-2" class="h-5 w-5" />
                         </button>
-                        <h1 class="min-w-0 truncate text-fs-md font-semibold text-neutral-900">{% block header %}{{ 'studio.layout.header.default'|trans }}{% endblock %}</h1>
+                        <h1 class="min-w-0 truncate text-fs-md font-semibold text-neutral-900">{% if studioLook.theme == 'ledger' %}<svg class="studio-reg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><circle cx="8" cy="8" r="4.5"/><path d="M8 0v16M0 8h16"/></svg>{% endif %}
+                            <span class="truncate">{% block header %}{{ 'studio.layout.header.default'|trans }}{% endblock %}</span></h1>
                     </div>
-                    <div class="flex shrink-0 items-center gap-2">
+                    <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
                         <div class="flex flex-wrap items-center justify-end gap-2">
                             {% block header_actions %}{% endblock %}
                         </div>
 
-                        <a href="{{ path('theme_cpalius_website_home') }}"
+                        {{ include('admin/_live_search.html.twig', {panel: 'studio', dark: false}) }}
+
+                        <a href="{{ path('site_home') }}"
                            target="_blank"
                            rel="noopener"
                            title="{{ 'studio.layout.go_website'|trans }}"
@@ -211,7 +220,13 @@
                     {% for label, messages in app.flashes %}
                         {% for message in messages %}
                             <div class="toast {{ label == 'error' ? 'toast-error' : 'toast-success' }}">
-                                {{ message }}
+                                {# A flash may be {text, url, label}: message plus a follow-up link (e.g. "view on site"). #}
+                                {% if message is iterable %}
+                                    {{ message.text }}
+                                    <a href="{{ message.url }}" target="_blank" rel="noopener" class="pointer-events-auto ml-2 font-semibold underline">{{ message.label }}</a>
+                                {% else %}
+                                    {{ message }}
+                                {% endif %}
                             </div>
                         {% endfor %}
                     {% endfor %}
@@ -222,5 +237,8 @@
                 </div>
             </main>
         </div>
+
+        {# Modules add floating Studio-wide UI here (Notes draws its sticky notes). The hook is isolated: a failing listener never breaks a panel page. #}
+        {{ cp_hook('studio.body.end', {path: app.request.pathInfo}) }}
     </body>
 </html>

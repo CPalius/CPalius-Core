@@ -31,6 +31,10 @@ final class Version20260903120000 extends AbstractMigration
     public function up(Schema $schema): void
     {
         foreach (self::TABLES as $table => $indexName) {
+            if (!$this->connection->createSchemaManager()->tablesExist([$table])) {
+                continue;
+            }
+
             $this->addSql(sprintf(
                 'ALTER TABLE %s ADD translation_group_id BINARY(16) DEFAULT NULL COMMENT \'(DC2Type:uuid)\'',
                 $table,

@@ -9,7 +9,7 @@
         <ol class="forum-activity-thread__cols">
             <li class="forum-activity-thread__topic">
                 <a href="{{ topicHref }}" class="forum-activity-thread__link">
-                    {% include '@Theme/forum/partials/_avatar.html.twig' with {name: item.author|default('?')} %}
+                    {% include '@Theme/forum/partials/_avatar.html.twig' with {name: item.author|default('?'), avatarUrl: item.avatarUrl|default(null)} %}
                     <span class="forum-activity-thread__title-text">{{ item.title }}</span>
                 </a>
             </li>
@@ -41,12 +41,12 @@
             <li class="forum-activity-thread__topic">
                 {% if item.authorId %}
                     <a href="{{ path('forum_profile', {username: item.profileSlug|default(item.authorId)}) }}" class="forum-activity-thread__link">
-                        {% include '@Theme/forum/partials/_avatar.html.twig' with {name: item.title|default('?')} %}
+                        {% include '@Theme/forum/partials/_avatar.html.twig' with {name: item.title|default('?'), avatarUrl: item.avatarUrl|default(null)} %}
                         <span class="forum-activity-thread__title-text">{{ item.title }}</span>
                     </a>
                 {% else %}
                     <span class="forum-activity-thread__link">
-                        {% include '@Theme/forum/partials/_avatar.html.twig' with {name: item.title|default('?')} %}
+                        {% include '@Theme/forum/partials/_avatar.html.twig' with {name: item.title|default('?'), avatarUrl: item.avatarUrl|default(null)} %}
                         <span class="forum-activity-thread__title-text">{{ item.title }}</span>
                     </span>
                 {% endif %}

@@ -14,6 +14,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Modules\Forum\Attribute\ForumSettingsCard;
 use Modules\Forum\DependencyInjection\Compiler\ForumSettingsCardPass;
 use Modules\Forum\Navigation\ForumNavigation;
+use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Service\ForumCensorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -37,6 +38,7 @@ final class ForumSettingsAdminController extends AbstractController
         'admin_forum_settings_index',
         'admin_forum_settings_home',
         'admin_forum_settings_activity',
+        'admin_forum_settings_cards',
         'admin_forum_settings_engine',
         'admin_forum_settings_antibump',
         'admin_forum_settings_member',
@@ -55,6 +57,7 @@ final class ForumSettingsAdminController extends AbstractController
         private readonly EntityManagerInterface $entityManager,
         private readonly TranslatorInterface $translator,
         private readonly ForumCensorService $censorService,
+        private readonly ForumSectionRepository $sections,
         private readonly SystemSettingsService $systemSettings,
         #[Autowire(param: ForumSettingsCardPass::CONTAINER_PARAMETER)]
         private readonly array $cards,
@@ -110,6 +113,28 @@ final class ForumSettingsAdminController extends AbstractController
     public function activity(): Response
     {
         return $this->renderGroup('forum.activity', 'studio.forum.settings.card.activity', 'admin_forum_settings_activity');
+    }
+
+    #[Route('/cards', name: 'cards', methods: ['GET'])]
+    #[ForumSettingsCard(
+        label: 'studio.forum.settings.card.cards',
+        description: 'studio.forum.settings.card.cards_desc',
+        icon: 'heroicons:squares-2x2',
+        group: 'studio.forum.settings.hub.board',
+        priority: 25,
+    )]
+    public function cards(Request $request): Response
+    {
+        $definitions = array_values(array_filter(
+            $this->forumDefinitions(),
+            static fn (SettingDefinition $definition): bool => $definition->group === 'forum.cards',
+        ));
+
+        return $this->render('@ForumModule/admin/settings/cards.html.twig', [
+            'values' => $this->systemSettings->currentValuesForDefinitions($definitions, $this->settingsRegistry),
+            'keys' => array_map(static fn (SettingDefinition $definition): string => $definition->key, $definitions),
+            'sections' => $this->sections->findAllByLocale($request->getLocale()),
+        ]);
     }
 
     #[Route('/engine', name: 'engine', methods: ['GET'])]
@@ -353,6 +378,7 @@ final class ForumSettingsAdminController extends AbstractController
         return [
             ['label' => 'studio.forum.settings.card.home', 'description' => 'studio.forum.settings.card.home_desc', 'icon' => 'heroicons:home', 'group' => 'studio.forum.settings.hub.board', 'priority' => 10, 'capability' => 'forum.section.manage', 'route' => 'admin_forum_settings_home'],
             ['label' => 'studio.forum.settings.card.activity', 'description' => 'studio.forum.settings.card.activity_desc', 'icon' => 'heroicons:bolt', 'group' => 'studio.forum.settings.hub.board', 'priority' => 20, 'capability' => 'forum.section.manage', 'route' => 'admin_forum_settings_activity'],
+            ['label' => 'studio.forum.settings.card.cards', 'description' => 'studio.forum.settings.card.cards_desc', 'icon' => 'heroicons:squares-2x2', 'group' => 'studio.forum.settings.hub.board', 'priority' => 25, 'capability' => 'forum.section.manage', 'route' => 'admin_forum_settings_cards'],
             ['label' => 'studio.forum.settings.card.engine', 'description' => 'studio.forum.settings.card.engine_desc', 'icon' => 'heroicons:cog-6-tooth', 'group' => 'studio.forum.settings.hub.conversation', 'priority' => 30, 'capability' => 'forum.section.manage', 'route' => 'admin_forum_settings_engine'],
             ['label' => 'studio.forum.settings.card.antibump', 'description' => 'studio.forum.settings.card.antibump_desc', 'icon' => 'heroicons:no-symbol', 'group' => 'studio.forum.settings.hub.conversation', 'priority' => 40, 'capability' => 'forum.section.manage', 'route' => 'admin_forum_settings_antibump'],
             ['label' => 'studio.forum.settings.card.member', 'description' => 'studio.forum.settings.card.member_desc', 'icon' => 'heroicons:user', 'group' => 'studio.forum.settings.hub.people', 'priority' => 50, 'capability' => 'forum.section.manage', 'route' => 'admin_forum_settings_member'],

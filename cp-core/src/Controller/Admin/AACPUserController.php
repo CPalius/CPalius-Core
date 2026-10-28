@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Core\Security\Reauth\RequiresRecentAuth;
 use App\Core\Account\AccountIdentityChangeService;
 use App\Core\Account\AccountRegistrationService;
 use App\Core\Account\UserAvatarService;
@@ -23,6 +24,7 @@ use App\Core\Security\CapabilityLabeler;
 use App\Core\Security\RoleCapabilityPresenter;
 use App\Core\Security\RoleConfigManager;
 use App\Core\Security\UserCapabilityOverridePresenter;
+use App\Core\Notification\Repository\NotificationRepository;
 use App\Core\Security\UserCapabilityOverrideWriter;
 use App\Core\Security\UserRoleGuardService;
 use App\Entity\User;
@@ -76,6 +78,7 @@ final class AACPUserController extends AbstractController
         private readonly CapabilityLabeler $capabilityLabels,
         private readonly LocaleProvider $localeProvider,
         private readonly UserLocaleResolver $userLocale,
+        private readonly NotificationRepository $notifications,
     ) {
     }
 
@@ -119,6 +122,13 @@ final class AACPUserController extends AbstractController
     #[IsGranted('system.users.manage')]
     public function identityRequests(Request $request): Response
     {
+        // The admin is looking at the queue now, so the "requested" alerts have done their job. The bell
+        // keeps counting what is still pending (live), not what was merely announced.
+        $viewer = $this->getUser();
+        if ($viewer instanceof User && $request->isMethod('GET')) {
+            $this->notifications->markAllReadByEventPrefix($viewer, 'account.identity.');
+        }
+
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('aacp_user_identity', (string) $request->request->get('_token'))) {
                 throw new BadRequestHttpException($this->translator->trans('aacp.users.invalid_csrf'));
@@ -179,6 +189,14 @@ final class AACPUserController extends AbstractController
         return $this->renderUserList($request, null);
     }
 
+    #[Route('/aacp/users/all', name: 'aacp_users_all', methods: ['GET'])]
+    #[CpAdminMenu(label: 'aacp.menu.users_all', icon: 'heroicons:users', panel: 'aacp', priority: 40, capability: 'system.users.view', parent: 'aacp_users')]
+    #[IsGranted('system.users.view')]
+    public function all(Request $request): Response
+    {
+        return $this->renderUserList($request, null);
+    }
+
     #[Route('/aacp/users/role/admin', name: 'aacp_users_admin', methods: ['GET'])]
     #[CpAdminMenu(label: 'aacp.menu.administrators', icon: 'heroicons:shield-check', panel: 'aacp', priority: 41, capability: 'system.users.view', parent: 'aacp_users')]
     #[IsGranted('system.users.view')]
@@ -217,6 +235,7 @@ final class AACPUserController extends AbstractController
 
     #[Route('/aacp/users/create', name: 'aacp_users_create', methods: ['GET', 'POST'])]
     #[IsGranted('system.users.manage', message: 'You are not allowed to create users.', statusCode: 403)]
+    #[RequiresRecentAuth(writesOnly: true)]
     public function create(Request $request): Response
     {
         $dto = new UserFormModel();
@@ -262,6 +281,7 @@ final class AACPUserController extends AbstractController
 
     #[Route('/aacp/users/{id}/edit', name: 'aacp_users_edit', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('system.users.manage', message: 'You are not allowed to edit users.', statusCode: 403)]
+    #[RequiresRecentAuth(writesOnly: true)]
     public function edit(int $id, Request $request): Response
     {
         $user = $this->findUserOrFail($id);
@@ -313,6 +333,7 @@ final class AACPUserController extends AbstractController
      */
     #[Route('/aacp/users/{id}/overrides', name: 'aacp_users_overrides', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('system.users.manage', message: 'You are not allowed to edit users.', statusCode: 403)]
+    #[RequiresRecentAuth]
     public function saveOverrides(int $id, Request $request): Response
     {
         $user = $this->findUserOrFail($id);
@@ -341,6 +362,7 @@ final class AACPUserController extends AbstractController
 
     #[Route('/aacp/users/{id}/overrides/reset', name: 'aacp_users_overrides_reset', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('system.users.manage', message: 'You are not allowed to edit users.', statusCode: 403)]
+    #[RequiresRecentAuth]
     public function resetOverrides(int $id, Request $request): Response
     {
         $user = $this->findUserOrFail($id);
@@ -364,6 +386,7 @@ final class AACPUserController extends AbstractController
      */
     #[Route('/aacp/users/{id}/delete', name: 'aacp_users_delete', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('system.users.manage', message: 'You are not allowed to delete users.', statusCode: 403)]
+    #[RequiresRecentAuth]
     public function delete(int $id, Request $request): Response
     {
         $user = $this->findUserOrFail($id);
@@ -564,6 +587,7 @@ final class AACPUserController extends AbstractController
         $user->setStatus($dto->status);
         $user->setFirstName(trim((string) $dto->firstName));
         $user->setLastName(trim((string) $dto->lastName));
+        $user->setPhone(AccountRegistrationService::normalizePhone((string) $dto->phone) ?? trim((string) $dto->phone));
         $user->setLocation(trim((string) $dto->location));
         $user->setBio($this->richTextSanitizer->sanitize((string) $dto->bio));
         $user->setCustomTitle(trim((string) $dto->customTitle));

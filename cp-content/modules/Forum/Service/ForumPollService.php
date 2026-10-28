@@ -74,6 +74,37 @@ final class ForumPollService
     }
 
     /**
+     * Existing options keep their votes; extra lines are appended as new options.
+     *
+     * @param list<string> $newOptionLabels
+     */
+    public function update(ForumPoll $poll, string $question, int $maxChoices, bool $hideUntilClose, ?\DateTimeImmutable $closesAt, array $newOptionLabels = []): void
+    {
+        if ($question !== '') {
+            $poll->setQuestion(mb_substr($question, 0, 255));
+        }
+        $poll->setMaxChoices($maxChoices);
+        $poll->setHideUntilClose($hideUntilClose);
+        $poll->setClosesAt($closesAt);
+
+        $next = $poll->getOptions()->count();
+        foreach ($newOptionLabels as $label) {
+            $trimmed = trim($label);
+            if ($trimmed !== '') {
+                $this->entityManager->persist(new ForumPollOption($poll, mb_substr($trimmed, 0, 255), $next++));
+            }
+        }
+
+        $this->entityManager->flush();
+    }
+
+    public function delete(ForumPoll $poll): void
+    {
+        $this->entityManager->remove($poll);
+        $this->entityManager->flush();
+    }
+
+    /**
      * @param list<int> $optionIds
      */
     public function vote(ForumPoll $poll, User $user, array $optionIds): bool

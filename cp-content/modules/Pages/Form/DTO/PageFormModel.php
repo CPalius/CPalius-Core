@@ -64,6 +64,9 @@ final class PageFormModel
      */
     public bool $autoTranslate = false;
 
+    /** On edit: push this change into the AI-written translations of the page (hand-written ones are skipped). */
+    public bool $syncTranslations = false;
+
     public ?int $featuredImageAssetId = null;
 
     public ?int $fieldGroupId = null;

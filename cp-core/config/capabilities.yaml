@@ -11,6 +11,8 @@ capabilities:
     - system.update.manage
     - system.aacp.access
     - system.settings.manage
+    # Writing the homepage as HTML/CSS/JS is a bigger act than choosing a section order, so it is its own privilege.
+    - system.homepage.script
     - system.security.manage
     - system.queue.manage
     - system.logs.manage
@@ -19,9 +21,15 @@ capabilities:
     # them would let every log reader destroy the record of their own
     # actions.
     - system.logs.purge
+    # Restoring a deleted row and permanently erasing one are different
+    # privileges, for the same reason as logs.manage / logs.purge.
+    - system.trash.manage
+    - system.trash.purge
     - system.performance.manage
     - system.cron.manage
     - system.backup.manage
+    # Taking a whole table out as a file is a bigger act than viewing a page of it, so it is its own privilege.
+    - system.data.export
     - system.hooks.manage
     - system.api.manage
     - system.webhooks.manage

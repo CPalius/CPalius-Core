@@ -27,6 +27,7 @@ final class IpBanService
         private readonly Connection $connection,
         private readonly IpMatcher $matcher,
         private readonly SettingsRegistry $settings,
+        private readonly ?AdminIpAllowlist $adminIps = null,
     ) {
     }
 
@@ -82,9 +83,16 @@ final class IpBanService
         return null;
     }
 
+    /** True while an administrator is signed in from this address (see AdminIpAllowlist). */
+    public function isSignedInAdmin(string $ip): bool
+    {
+        return $this->adminIps?->has($ip) ?? false;
+    }
+
     public function isAllowlisted(string $ip): bool
     {
-        return $this->matcher->matchesAny($ip, $this->allowlist());
+        // The operator's list, or an administrator who is signed in from this address right now.
+        return $this->matcher->matchesAny($ip, $this->allowlist()) || ($this->adminIps?->has($ip) ?? false);
     }
 
     /**

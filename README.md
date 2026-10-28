@@ -1,127 +1,174 @@
 # CPalius CMF
 
-**A modular application core for PHP 8.4 and Symfony 7.4 LTS.**
+**Next-generation Content Management Framework** built on PHP 8.4+ and Symfony 7.4 LTS.
 
-CPalius is not a classic CMS. It gives you the parts every serious web application needs: authentication, capability-based access control, content and business-record models, media, localization, an admin panel, a signed update channel and a module and theme system. Products such as a blog, a forum, a portal, a marketplace or a booking system are modules on top of it.
+CPalius sits between heavy CMS platforms and bare frameworks. You get authentication, access control, file management, localization, an admin panel, and a modular extension system — without rebuilding them for every project, and without inheriting a decade of CMS technical debt.
 
-Website: [cpalius.com](https://www.cpalius.com) · Current stable release: **2.2.69** · [Türkçe](./README.tr.md)
+Website: [cpalius.com](https://www.cpalius.com)
 
 ---
 
-## What is in this repository
+## Why CPalius?
 
-This repository is the **core**, plus a small starter set so it runs on its own:
+| Approach | Problem |
+|----------|---------|
+| Classic CMS (WordPress, Drupal) | Rich plugins, but heavy schemas, debt, and security surface |
+| Pure frameworks (Symfony, Laravel) | Clean, but you rebuild auth, ACL, media, and admin every time |
+| **CPalius** | Symfony-grade core + ready enterprise building blocks + safe modules |
 
-| Included | What |
-|---|---|
-| Core | Kernel, AACP admin panel, security, update system, migrations (`cp-core/`) |
-| Modules | Blog, Forum, Media, Menu, Messages, Pages, Widget (`cp-content/modules/`) |
-| Theme | `cpalius-website`, the default theme (`cp-content/themes/`) |
-
-More modules and themes live in their own repositories:
-
-- Modules: [CPalius/Modules](https://github.com/CPalius/Modules)
-- Themes: [CPalius/Themes](https://github.com/CPalius/Themes)
+Use it for blogs and community sites today, or as the base for dealerships, travel agencies, CRM, and ERP-style apps tomorrow.
 
 ---
 
 ## Requirements
 
 - PHP 8.4 or newer
-- MySQL 8+ or MariaDB 10.6+ (PostgreSQL and SQLite are not supported for installation yet; the shipped migrations use MySQL-specific DDL)
-- A web server whose document root points at `public/` (Apache `.htaccess` is included)
-- Composer 2 only when installing from source; the release zip already contains `cp-includes/vendor`
+- Composer 2
+- MySQL 8+ or MariaDB 10.6+
+  (PostgreSQL and SQLite are not yet supported for installation: the shipped
+  migrations emit MySQL-specific DDL. The ORM layer itself is portable.)
+- A web server pointing at the `public/` directory
 
-Node.js is not needed for the core or the admin UI.
+No Node.js is required for the core or admin UI (AssetMapper + standalone Tailwind).
 
 ---
 
-## Install
+## Quick start
 
-**From the release zip:** upload it, open the site, and follow the setup wizard (requirements, empty database, site name, first administrator). The wizard removes itself when it finishes.
+> **First, install the commit guard:** `git config core.hooksPath .githooks`
+> It blocks commits that would empty a source file, shrink one by more than
+> 80%, or include a secret. See `.githooks/pre-commit`.
 
-**From the command line:**
+Upload the release zip (it already contains `cp-includes/vendor`) and open the site. If CPalius is not installed, the browser shows the setup wizard: requirements, an empty MySQL/MariaDB database, the site name, and the first administrator. When that finishes, the wizard deletes itself.
+
+Developers can still install from the command line:
 
 ```bash
 composer install
-cp .env.example .env        # set DATABASE_URL and APP_SECRET
+cp .env.example .env   # then set DATABASE_URL, APP_SECRET, tokens
 php cp-core/bin/console doctrine:migrations:migrate
 php cp-core/bin/console cp:user:create-admin
 ```
 
-If the host cannot point the document root at `public/`, the root `.htaccess` serves `public/` and blocks the rest of the tree.
+Point the vhost document root at `public/` when the panel allows it. If it does not, the project-root `.htaccess` serves `public/` and blocks the rest of the tree.
 
-Everyday commands:
+Useful commands:
 
 ```bash
 php cp-core/bin/console cp:module:list
-php cp-core/bin/console cp:module:activate <Name>
+php cp-core/bin/console cp:module:activate ModuleName
 php cp-core/bin/console cp:cron:run
-php cp-core/bin/console cp:doctor            # environment, security and performance checks
+php cp-core/bin/console cp:blog:seed-demo-content
 ```
 
 ---
 
-## Layout
+## Project layout
 
 ```
-cp-core/       Kernel, configuration, migrations, App\ namespace
-cp-includes/   Composer vendor (isolated)
-cp-content/    Your space: modules, themes, synced configuration, translations
-public/        Web root
+CPalius/
+├── cp-core/        # Kernel, config, migrations, App\ namespace
+├── cp-includes/    # Composer vendor (isolated)
+├── cp-content/     # Your space: modules, themes, sync config, translations
+├── public/         # Web root (front controller + assets)
+└── composer.json
 ```
 
-Namespaces: `App\` → `cp-core/src/`, `Modules\` → `cp-content/modules/`.
+Namespaces:
+
+- `App\` → `cp-core/src/`
+- `Modules\` → `cp-content/modules/`
+
+Developer code stays in `cp-content/`. Framework system files stay in `cp-core/`.
 
 ---
 
-## Ideas behind it
+## Core Never Dies
 
-- **The core never dies.** A module that fails at boot is quarantined; the core and the admin panel keep running. A database-free recovery console is available at `/aacp/recovery`.
-- **Two data models.** *Node* for content (revisions, translations, workflow, fields). *Resource* for business records; mark a Doctrine entity with `#[CpResource]` and get list, form and permissions for free.
-- **Capabilities, not roles.** Access is granted through named capabilities (`forum.post.edit.own`). Roles are YAML and travel with Git. Capabilities that could take over the site are flagged as restricted in the UI.
-- **Configuration in code, settings in the panel.** `#[CpSetting]`, `#[CpAdminMenu]`, `#[CpHook]`, `#[CpApi]`, `#[CpCronJob]`.
-- **Measured, not claimed.** Performance and security tooling ships with the product.
+Broken third-party code must not take the whole app down. CPalius treats the core like an OS:
 
----
+1. **Static module list** — Active modules are written to `active_modules.php`. Boot never queries the database for module status.
+2. **Runtime quarantine** — Module boot/route/hook/API failures are caught; the core and AACP keep running.
+3. **Pre-activation checks** — Before enabling a module, an isolated process runs container/YAML lint. Failures cancel activation.
+4. **Recovery console** — `/aacp/recovery` can stay available even when the database is down (token from `.env`).
 
-## Security
-
-- bcrypt (cost 13) passwords with rehash on login, leak checks, login throttling, captcha, IP bans and a built-in WAF
-- Two-factor authentication (TOTP, e-mail code, recovery codes) and step-up re-authentication for sensitive panel actions
-- AES-256-GCM sealed secrets with zero-downtime key rotation (`cp:secrets:rotate`)
-- CSP with nonces and a report endpoint, HSTS, trusted hosts; `cp:security:csp-suggest` turns violation reports into suggestions
-- Upload checks (real MIME, double extensions, no execution); SVG upload is intentionally refused
-- Ed25519-signed update manifests and extension index, sha256-verified packages, rollback attacks rejected, signed security advisories for extensions
-
-Report vulnerabilities privately; see [SECURITY.md](./SECURITY.md).
+Faulty modules are logged to the quarantine log and can be reviewed in AACP.
 
 ---
 
-## Performance
+## What you get out of the box
 
-- Guest pages are stored as files and served by the web server without starting PHP, with stale-while-revalidate on purge
-- Tag-based invalidation (about 3 ms per page)
-- Tooling: `cp:perf:probe`, `cp:perf:routes`, `cp:doctor --only=performance`, and a development-mode N+1 query guard
+### Content & business data
 
-Figures from a database with 100k users, 200k posts and 100k bookings are single-request timings, not concurrent load tests.
+- **Nodes** — Pages, posts, and similar content: SQL columns for title, slug, status, locale + flexible JSON `data`
+- **Flat field index** — Queryable JSON fields indexed for fast filters
+- **Localization** — Built into the core (`UNIQUE(slug, locale)`, translation groups)
+- **Resources** — Business records via `#[CpResource]` (capabilities, multi-tenant flags, workflow hooks — infrastructure ready)
+
+### Admin surfaces
+
+- **Studio (`/admin`)** — Content operations: posts, media, menus, forum, homepage portal
+- **AACP (`/aacp`)** — System console: modules, plugins, cron, hooks, API keys, metrics, localization, cache rebuild, quarantine, recovery
+
+### Extensibility
+
+| Layer | How |
+|-------|-----|
+| Modules | Independent Symfony bundles under `cp-content/modules/` |
+| REST API | `#[CpApi]` methods → `/api/...` with `X-CP-API-KEY` |
+| Hooks | Flat-file `Hooks/` and/or `#[CpHook]` services |
+| Cron | DB jobs, `#[CpCronJob]`, and hook files — one runner |
+| Plugins | Optional sub-features toggled without disabling the whole module |
+| Settings | `#[CpSetting]` definitions, loaded lazily from the database |
+
+### Security & performance
+
+- Capability-based access control (not `ROLE_ADMIN` checks in app code)
+- Roles as YAML in `cp-content/config/sync/` (travel with Git); users stay in the database
+- Query scoping: `.own` / `.any` capabilities become SQL `WHERE` clauses
+- Rich-text XSS sanitization at save time
+- Dev-mode N+1 query guard
+- Tenant SQL filter infrastructure for SaaS-style isolation
 
 ---
 
-## Updates
+## Included modules
 
-Core updates are applied from the admin panel: signed manifest → download → sha256 check → atomic install → migrations → cache rebuild. Modules and themes are versioned separately through a signed extension catalogue.
+| Module | Purpose |
+|--------|---------|
+| **Blog** | Posts on Node, categories/tags, scheduled publish, public API, hooks & plugins |
+| **Forum** | Sections, topics, posts, likes, reports, bans, ranks, moderation |
+| **Media** | Asset library and image picker (hash-based storage) |
+| **Menu** | Named menus and items for the frontend |
+
+Default theme: `cpalius-website` (portal, blog, and forum UI; `tr` / `en`).
 
 ---
 
-## Documentation
+## Roadmap
 
-[cpalius.com/tr/docs](https://www.cpalius.com/tr/docs) · [CPALIUS_MANIFESTO.md](./CPALIUS_MANIFESTO.md) for the architectural rules.
+- Workflow / state machine for business records
+- On-demand image derivatives (Imagine-style pipeline)
+- First concrete `#[CpResource]` example + audit log
+- Messenger transports for email and bulk jobs
+- Theme manager UI in AACP
+
+See [cpalius.com](https://www.cpalius.com) for the full product story and [CPALIUS_MANIFESTO.md](./CPALIUS_MANIFESTO.md) for architectural laws.
+
+---
+
+## Contributing
+
+Ideas, issues, and pull requests that respect the manifesto (especially **Core Never Dies** and the `cp-core` / `cp-content` split) are welcome.
+
+---
 
 ## License
 
-Proprietary. All rights reserved. See [LICENSE](./LICENSE).
+See `composer.json` / the `LICENSE` file in this repository for the current license terms.
 
 ---
 
-A project of [MEGABRE](https://www.cpalius.com) · Founder: Ali Çömez ([slaweally](https://github.com/slaweally))
+**CPalius CMF** — a project of [MEGABRE](https://www.cpalius.com) · Founder: Ali Çömez ([slaweally](https://github.com/slaweally))
+
+[Türkçe README](./README.tr.md) · [GitHub](https://github.com/CPalius/CPalius-Core)

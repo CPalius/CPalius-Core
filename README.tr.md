@@ -1,127 +1,174 @@
 # CPalius CMF
 
-**PHP 8.4 ve Symfony 7.4 LTS üzerinde çalışan modüler bir uygulama çekirdeği.**
+**PHP 8.4+ ve Symfony 7.4 LTS** üzerine kurulu yeni nesil **İçerik Yönetim Çerçevesi** (Content Management Framework).
 
-CPalius klasik bir CMS değildir. Ciddi her web uygulamasının ihtiyaç duyduğu parçaları hazır verir: kimlik doğrulama, yetenek tabanlı erişim, içerik ve iş kaydı modelleri, medya, çok dillilik, yönetim paneli, imzalı güncelleme kanalı ve modül/tema sistemi. Blog, forum, portal, pazar yeri, rezervasyon gibi ürünler bunun üzerine modül olarak kurulur.
+CPalius, ağır CMS platformları ile sıfırdan yazılan framework’ler arasında durur. Kimlik doğrulama, yetkilendirme, dosya yönetimi, çok dillilik, yönetim paneli ve modüler genişleme sistemi hazır gelir — her projede tekerleği yeniden icat etmezsiniz, klasik CMS’lerin teknik borcunu da taşımazsınız.
 
-Site: [cpalius.com](https://www.cpalius.com) · Güncel kararlı sürüm: **2.2.69** · [English](./README.md)
+Site: [cpalius.com](https://www.cpalius.com)
 
 ---
 
-## Bu depoda ne var
+## Neden CPalius?
 
-Bu depo **çekirdektir**; tek başına çalışsın diye küçük bir başlangıç seti de içerir:
+| Yaklaşım | Sorun |
+|----------|--------|
+| Klasik CMS (WordPress, Drupal) | Eklenti zengin; şema ağır, borç ve güvenlik yüzeyi büyük |
+| Saf framework (Symfony, Laravel) | Temiz; ama auth, ACL, medya ve admin her seferinde yeniden yazılır |
+| **CPalius** | Symfony seviyesinde çekirdek + hazır kurumsal bileşenler + güvenli modüller |
 
-| Dahil | Ne |
-|---|---|
-| Çekirdek | Kernel, AACP yönetim paneli, güvenlik, güncelleme sistemi, göçler (`cp-core/`) |
-| Modüller | Blog, Forum, Media, Menu, Messages, Pages, Widget (`cp-content/modules/`) |
-| Tema | `cpalius-website`, varsayılan tema (`cp-content/themes/`) |
-
-Diğer modül ve temalar ayrı depolardadır:
-
-- Modüller: [CPalius/Modules](https://github.com/CPalius/Modules)
-- Temalar: [CPalius/Themes](https://github.com/CPalius/Themes)
+Bugün blog ve topluluk siteleri; yarın galeri, acente, CRM veya ERP tarzı uygulamalar için aynı temel kullanılabilir.
 
 ---
 
 ## Gereksinimler
 
 - PHP 8.4 veya üzeri
-- MySQL 8+ ya da MariaDB 10.6+ (PostgreSQL ve SQLite kurulum için henüz desteklenmez; göçler MySQL'e özgü DDL üretir)
-- Belge kökü `public/` olan bir web sunucusu (Apache `.htaccess` dahil)
-- Composer 2 yalnızca kaynaktan kurulumda gerekir; yayın zip'inde `cp-includes/vendor` hazır gelir
+- Composer 2
+- MySQL 8+ veya MariaDB 10.6+
+  (PostgreSQL ve SQLite ile kurulum henüz desteklenmiyor: depodaki migration
+  dosyaları MySQL’e özgü DDL üretiyor. ORM katmanının kendisi taşınabilir.)
+- Belge kökü `public/` olan bir web sunucusu
 
-Çekirdek ve yönetim arayüzü için Node.js gerekmez.
+Çekirdek ve yönetim arayüzü için Node.js gerekmez (AssetMapper + bağımsız Tailwind).
 
 ---
 
-## Kurulum
+## Hızlı başlangıç
 
-**Yayın zip'inden:** yükleyin, siteyi açın, kurulum sihirbazını izleyin (gereksinimler, boş veritabanı, site adı, ilk yönetici). Sihirbaz bitince kendini siler.
+> **İlk iş, commit korumasını kurun:** `git config core.hooksPath .githooks`
+> Bir kaynak dosyayı boşaltan, %80’den fazla küçülten veya sır içeren
+> commit’leri engeller. Bkz. `.githooks/pre-commit`.
 
-**Komut satırından:**
+Yayın zip’ini yükleyin (`cp-includes/vendor` içindedir) ve siteyi açın. Kurulum yoksa tarayıcı sihirbazı gösterir: gereksinimler, boş bir MySQL/MariaDB veritabanı, site adı ve ilk yönetici. Bitince sihirbaz kendini siler.
+
+Geliştirme kurulumunu komut satırından da yapabilirsiniz:
 
 ```bash
 composer install
-cp .env.example .env        # DATABASE_URL ve APP_SECRET'i girin
+cp .env.example .env   # ardından DATABASE_URL, APP_SECRET, token’ları ayarlayın
 php cp-core/bin/console doctrine:migrations:migrate
 php cp-core/bin/console cp:user:create-admin
 ```
 
-Barındırma belge kökünü `public/` yapmaya izin vermiyorsa kökteki `.htaccess` `public/` klasörünü sunar ve ağacın geri kalanını kapatır.
+Panel izin veriyorsa document root `public/` olsun. İzin vermiyorsa proje kökündeki `.htaccess`, `public/` dizinini sunar ve ağacın geri kalanını kapatır.
 
-Sık kullanılan komutlar:
+Faydalı komutlar:
 
 ```bash
 php cp-core/bin/console cp:module:list
-php cp-core/bin/console cp:module:activate <Ad>
+php cp-core/bin/console cp:module:activate ModuleName
 php cp-core/bin/console cp:cron:run
-php cp-core/bin/console cp:doctor            # ortam, güvenlik ve performans denetimi
+php cp-core/bin/console cp:blog:seed-demo-content
 ```
 
 ---
 
-## Dizin yapısı
+## Proje düzeni
 
 ```
-cp-core/       Kernel, yapılandırma, göçler, App\ ad alanı
-cp-includes/   Composer vendor (yalıtılmış)
-cp-content/    Sizin alanınız: modüller, temalar, senkron yapılandırma, çeviriler
-public/        Web kökü
+CPalius/
+├── cp-core/        # Kernel, config, migration’lar, App\ ad alanı
+├── cp-includes/    # Composer vendor (ayrı tutulur)
+├── cp-content/     # Sizin alanınız: modüller, temalar, sync config, çeviriler
+├── public/         # Web kökü (ön denetleyici + asset’ler)
+└── composer.json
 ```
 
-Ad alanları: `App\` → `cp-core/src/`, `Modules\` → `cp-content/modules/`.
+Ad alanları:
+
+- `App\` → `cp-core/src/`
+- `Modules\` → `cp-content/modules/`
+
+Geliştirici kodu `cp-content/` içinde kalır. Sistem dosyaları `cp-core/` içindedir.
 
 ---
 
-## Arkasındaki fikirler
+## Core Never Dies (Çekirdek düşmez)
 
-- **Çekirdek ölmez.** Açılışta hata veren modül karantinaya alınır; çekirdek ve yönetim paneli çalışmaya devam eder. `/aacp/recovery` adresinde veritabanından bağımsız bir kurtarma konsolu vardır.
-- **İki veri modeli.** İçerik için *Node* (revizyon, çeviri, iş akışı, alanlar). İş kayıtları için *Resource*; bir Doctrine varlığını `#[CpResource]` ile işaretleyin, liste, form ve yetkiler hazır gelsin.
-- **Rol değil yetenek.** Erişim adlandırılmış yeteneklerle verilir (`forum.post.edit.own`). Roller YAML'dır ve Git ile taşınır. Siteyi ele geçirebilecek yetenekler arayüzde "Kısıtlı" diye işaretlenir.
-- **Yapılandırma kodda, ayarlar panelde.** `#[CpSetting]`, `#[CpAdminMenu]`, `#[CpHook]`, `#[CpApi]`, `#[CpCronJob]`.
-- **İddia değil ölçüm.** Performans ve güvenlik araçları ürünle birlikte gelir.
+Hatalı üçüncü parti kod tüm uygulamayı kilitlememelidir. CPalius çekirdeği bir işletim sistemi gibi korur:
 
----
+1. **Statik modül listesi** — Aktif modüller `active_modules.php` dosyasına yazılır. Boot sırasında modül durumu için veritabanına bakılmaz.
+2. **Çalışma zamanı karantina** — Modül boot / rota / hook / API hataları yakalanır; çekirdek ve AACP ayakta kalır.
+3. **Aktivasyon öncesi kontrol** — Modül açılmadan önce izole süreçte container/YAML lint çalışır. Hata varsa aktivasyon iptal edilir.
+4. **Kurtarma konsolu** — `/aacp/recovery` veritabanı düşse bile kullanılabilir (token `.env` içinde).
 
-## Güvenlik
-
-- bcrypt (maliyet 13) parolalar, girişte yeniden hash, sızıntı denetimi, giriş kısıtlama, captcha, IP yasaklama ve yerleşik WAF
-- İki aşamalı doğrulama (TOTP, e-posta kodu, kurtarma kodları) ve hassas panel işlemlerinde kimlik yeniden doğrulama
-- AES-256-GCM ile mühürlü sırlar ve kesintisiz anahtar döndürme (`cp:secrets:rotate`)
-- Nonce'lu CSP ve rapor alıcı, HSTS, güvenilir host listesi; `cp:security:csp-suggest` ihlal raporlarını öneriye çevirir
-- Yükleme denetimleri (gerçek MIME, çift uzantı, yürütme engeli); SVG yükleme bilerek reddedilir
-- Ed25519 imzalı güncelleme bildirimi ve eklenti dizini, sha256 doğrulamalı paketler, sürüm geri alma saldırısına ret, eklentiler için imzalı güvenlik duyuruları
-
-Güvenlik açıklarını özel olarak bildirin; bkz. [SECURITY.md](./SECURITY.md).
+Hatalı modüller karantina günlüğüne yazılır ve AACP’den incelenebilir.
 
 ---
 
-## Performans
+## Kutudan çıkanlar
 
-- Misafir sayfaları dosya olarak saklanır ve PHP başlatılmadan web sunucusu tarafından sunulur; temizlemede eskiyi sun, arkada yenile
-- Etiket tabanlı geçersiz kılma (sayfa başına yaklaşık 3 ms)
-- Araçlar: `cp:perf:probe`, `cp:perf:routes`, `cp:doctor --only=performance` ve geliştirme modunda N+1 sorgu bekçisi
+### İçerik ve iş verisi
 
-100 bin kullanıcı, 200 bin mesaj ve 100 bin rezervasyonlu veritabanındaki rakamlar tek istek ölçümüdür, eşzamanlı yük testi değildir.
+- **Node** — Sayfa, yazı vb.: başlık, slug, durum, dil için SQL kolonları + esnek JSON `data`
+- **Düz alan indeksi** — Sorgulanabilir JSON alanları hızlı filtre için indekslenir
+- **Çok dillilik** — Çekirdekte yerleşik (`UNIQUE(slug, locale)`, çeviri grupları)
+- **Resource** — `#[CpResource]` ile iş kayıtları (yetki, çok kiracılı bayraklar, workflow — altyapı hazır)
+
+### Yönetim yüzeyleri
+
+- **Studio (`/admin`)** — İçerik işleri: yazılar, medya, menüler, forum, ana sayfa portalı
+- **AACP (`/aacp`)** — Sistem konsolu: modüller, eklentiler, cron, hook’lar, API anahtarları, metrikler, yerelleştirme, önbellek, karantina, kurtarma
+
+### Genişletilebilirlik
+
+| Katman | Nasıl |
+|--------|--------|
+| Modüller | `cp-content/modules/` altında bağımsız Symfony bundle’lar |
+| REST API | `#[CpApi]` metotları → `/api/...`, `X-CP-API-KEY` |
+| Hook’lar | Flat-file `Hooks/` ve/veya `#[CpHook]` servisleri |
+| Cron | DB işleri, `#[CpCronJob]` ve hook dosyaları — tek çalıştırıcı |
+| Eklentiler | Tüm modülü kapatmadan alt özellik aç/kapa |
+| Ayarlar | `#[CpSetting]` tanımları, veritabanından tembel yükleme |
+
+### Güvenlik ve performans
+
+- Yeteneğe (capability) dayalı erişim kontrolü (uygulama kodunda `ROLE_ADMIN` kontrolü yok)
+- Roller YAML olarak `cp-content/config/sync/` içinde (Git ile taşınır); kullanıcılar veritabanında
+- Sorgu kapsamı: `.own` / `.any` yetenekleri SQL `WHERE` koşullarına dönüşür
+- Kayıt anında zengin metin XSS temizliği
+- Geliştirme ortamında N+1 sorgu koruması
+- SaaS tarzı izolasyon için kiracı SQL filtresi altyapısı
 
 ---
 
-## Güncelleme
+## Dahil modüller
 
-Çekirdek güncellemesi panelden uygulanır: imzalı bildirim → indirme → sha256 doğrulama → atomik kurulum → göçler → önbellek yenileme. Modüller ve temalar imzalı eklenti kataloğu üzerinden ayrı sürümlenir.
+| Modül | Amaç |
+|-------|------|
+| **Blog** | Node üzerinde yazılar, kategori/etiket, zamanlanmış yayın, genel API, hook ve eklenti |
+| **Forum** | Bölüm, konu, gönderi, beğeni, şikayet, ban, rütbe, moderasyon |
+| **Media** | Medya kütüphanesi ve görsel seçici (hash tabanlı depolama) |
+| **Menu** | Ön yüz için adlandırılmış menüler ve öğeler |
+
+Varsayılan tema: `cpalius-website` (portal, blog ve forum arayüzü; `tr` / `en`).
 
 ---
 
-## Dokümantasyon
+## Yol haritası
 
-[cpalius.com/tr/docs](https://www.cpalius.com/tr/docs) · Mimari kurallar için [CPALIUS_MANIFESTO.md](./CPALIUS_MANIFESTO.md).
+- İş kayıtları için workflow / durum makinesi
+- İstek üzerine görsel türevleri (Imagine tarzı boru hattı)
+- İlk somut `#[CpResource]` örneği + denetim günlüğü
+- E-posta ve toplu işler için Messenger transport’ları
+- AACP’de tema yöneticisi arayüzü
+
+Ürün anlatımı için [cpalius.com](https://www.cpalius.com), mimari kurallar için [CPALIUS_MANIFESTO.md](./CPALIUS_MANIFESTO.md).
+
+---
+
+## Katkı
+
+Manifestoya (özellikle **Core Never Dies** ve `cp-core` / `cp-content` ayrımına) saygı duyan fikirler, issue’lar ve pull request’ler memnuniyetle karşılanır.
+
+---
 
 ## Lisans
 
-Kapalı kaynak. Tüm hakları saklıdır. Bkz. [LICENSE](./LICENSE).
+Güncel lisans koşulları için bu depodaki `composer.json` / `LICENSE` dosyasına bakın.
 
 ---
 
-[MEGABRE](https://www.cpalius.com) projesi · Kurucu: Ali Çömez ([slaweally](https://github.com/slaweally))
+**CPalius CMF** — [MEGABRE](https://www.cpalius.com) projesi · Kurucu: Ali Çömez ([slaweally](https://github.com/slaweally))
+
+[English README](./README.md) · [GitHub](https://github.com/CPalius/CPalius-Core)

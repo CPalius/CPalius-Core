@@ -1,6 +1,6 @@
 <nav class="navbar" id="navbar">
     <div class="container navbar-inner">
-        <a href="{{ path('theme_cpalius_website_home') }}" class="navbar-brand">
+        <a href="{{ path('site_home') }}" class="navbar-brand">
             <img src="{{ cp_appearance().logo }}" alt="{{ 'aacp.appearance.logo'|trans }}" class="navbar-logo">
         </a>
 
@@ -13,17 +13,17 @@
             <ul class="navbar-menu" id="navMenu">
                 {% for item in cp_menu('header', app.request.locale) %}
                     <li class="{{ item.children is not empty ? 'navbar-menu__item--dropdown' : '' }}">
-                        <a href="{{ item.url }}" {{ item.openInNewTab ? 'target="_blank" rel="noopener"' : '' }}>{{ item.label }}</a>
+                        <a href="{{ item.url }}"{{ item.attributes|raw }}>{% if item.icon %}<i class="bi bi-{{ item.icon }}"></i> {% endif %}{{ item.label }}</a>
                         {% if item.children is not empty %}
                             <ul class="navbar-submenu">
                                 {% for child in item.children %}
-                                    <li><a href="{{ child.url }}" {{ child.openInNewTab ? 'target="_blank" rel="noopener"' : '' }}>{{ child.label }}</a></li>
+                                    <li><a href="{{ child.url }}"{{ child.attributes|raw }}>{% if child.icon %}<i class="bi bi-{{ child.icon }}"></i> {% endif %}{{ child.label }}</a></li>
                                 {% endfor %}
                             </ul>
                         {% endif %}
                     </li>
                 {% else %}
-                    <li><a href="{{ path('theme_cpalius_website_home') }}">{{ 'website.nav.home'|trans }}</a></li>
+                    <li><a href="{{ path('site_home') }}">{{ 'website.nav.home'|trans }}</a></li>
                 {% endfor %}
             </ul>
 
@@ -112,17 +112,23 @@
 
                                 <div class="navbar-user__divider"></div>
 
-                                <a href="{{ path('forum_profile', {username: currentUser.profileSlug}) }}" class="navbar-user__link">
-                                    <i class="bi bi-person-circle"></i> {{ 'website.nav.profile'|trans }}
-                                </a>
+                                {% set profileUrl = cp_path_if_exists('forum_profile', {username: currentUser.profileSlug}) %}
+                                {% if profileUrl %}
+                                    <a href="{{ profileUrl }}" class="navbar-user__link">
+                                        <i class="bi bi-person-circle"></i> {{ 'website.nav.profile'|trans }}
+                                    </a>
+                                {% endif %}
                                 {{ cp_hook('theme.header.user_menu', { user: currentUser }) }}
                                 <a href="{{ path('account_profile') }}" class="navbar-user__link">
                                     <i class="bi bi-gear"></i> {{ 'website.nav.account_settings'|trans }}
                                 </a>
                                 {% if cp_is_granted('system.aacp.access') %}
-                                    <a href="{{ path('admin_forum_dashboard') }}" target="_blank" rel="noopener" class="navbar-user__link">
-                                        <i class="bi bi-grid-1x2"></i> {{ 'website.nav.studio'|trans }}
-                                    </a>
+                                    {% set studioUrl = cp_path_if_exists('admin_forum_dashboard') %}
+                                    {% if studioUrl %}
+                                        <a href="{{ studioUrl }}" target="_blank" rel="noopener" class="navbar-user__link">
+                                            <i class="bi bi-grid-1x2"></i> {{ 'website.nav.studio'|trans }}
+                                        </a>
+                                    {% endif %}
                                     <a href="{{ path('aacp_dashboard') }}" target="_blank" rel="noopener" class="navbar-user__link">
                                         <i class="bi bi-shield-lock"></i> {{ 'website.nav.aacp'|trans }}
                                     </a>

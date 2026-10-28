@@ -1,509 +1,714 @@
 {#
-    Lives on AACP, under Appearance, next to themes and fonts.
+    AACP → Appearance → Homepage.
 
-    It used to sit in Studio, and the mismatch showed: the markup below already
-    reaches for twig:cp:card and hard-codes slate on #0f172a — the dark console
-    palette — while the Studio layout it extended is white. Which homepage the
-    site serves is a presentation decision about the site, not a content task,
-    so it belongs beside the theme it is presented through.
+    One screen, written to stay small: pick who can see the site, pick what the
+    front door is, edit it next to a live preview, publish. The whole editing
+    state lives in the browser; "draft" feeds the preview frame, "publish" is
+    the only thing that touches the live page. See HomepageSettingsController.
 #}
 {% extends 'aacp/layout.html.twig' %}
 
 {% block header %}{{ 'studio.homepage.header'|trans }}{% endblock %}
 
 {% block body %}
-    <style>
-        .portal-locale-switch {
-            display: inline-flex;
-            gap: 0;
-            padding: 4px;
-            border-radius: 10px;
-            background: #0f172a;
-            border: 1px solid #1e293b;
-        }
-        .portal-locale-switch [data-copy-locale-tab] {
-            min-width: 7.5rem;
-            padding: 0.55rem 1rem;
-            border-radius: 7px;
-            border: 0;
-            background: transparent;
-            color: #94a3b8;
-            font-size: 0.8125rem;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: background .15s ease, color .15s ease, box-shadow .15s ease;
-        }
-        .portal-locale-switch [data-copy-locale-tab][aria-selected="true"] {
-            background: #0284c7;
-            color: #fff;
-            box-shadow: 0 0 0 1px rgba(14, 165, 233, .45), 0 6px 16px rgba(2, 132, 199, .35);
-        }
-        .portal-locale-switch [data-copy-locale-tab]:hover:not([aria-selected="true"]) {
-            color: #e2e8f0;
-            background: rgba(148, 163, 184, .12);
-        }
-        .portal-block-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            align-items: center;
-            justify-content: flex-end;
-            padding-top: 0.75rem;
-            margin-top: 0.75rem;
-            border-top: 1px solid #e5e7eb;
-        }
-        .portal-footer-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            align-items: center;
-            justify-content: space-between;
-            padding: 1rem 1.1rem;
-            border-radius: 0.75rem;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-        }
-        .portal-status {
-            min-height: 1.25rem;
-            font-size: 0.75rem;
-            color: #0369a1;
-        }
-        .portal-status.is-error { color: #b91c1c; }
-        .portal-status.is-ok { color: #047857; }
-        .portal-copy-panel {
-            max-height: 28rem;
-            overflow: auto;
-            border-radius: 0.5rem;
-            border: 1px solid #e5e7eb;
-            background: #fff;
-        }
-        .portal-field-label {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.5rem;
-        }
-        .portal-field-key {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 0.7rem;
-            color: #64748b;
-            background: #f1f5f9;
-            border-radius: 999px;
-            padding: 0.15rem 0.5rem;
-        }
+    {% include 'aacp/_appearance_nav.html.twig' %}
+    {% set ui = {
+        access_title: 'studio.hp.ui.access_title'|trans,
+        access_desc: 'studio.hp.ui.access_desc'|trans,
+        access_open: 'studio.hp.ui.access_open'|trans,
+        access_open_d: 'studio.hp.ui.access_open_d'|trans,
+        access_login_only: 'studio.hp.ui.access_login_only'|trans,
+        access_login_only_d: 'studio.hp.ui.access_login_only_d'|trans,
+        access_admin_only: 'studio.hp.ui.access_admin_only'|trans,
+        access_admin_only_d: 'studio.hp.ui.access_admin_only_d'|trans,
+        access_confirm: 'studio.hp.ui.access_confirm'|trans,
+        source_title: 'studio.hp.ui.source_title'|trans,
+        source_sections: 'studio.hp.ui.source_sections'|trans,
+        source_sections_d: 'studio.hp.ui.source_sections_d'|trans,
+        source_html: 'studio.hp.ui.source_html'|trans,
+        source_html_d: 'studio.hp.ui.source_html_d'|trans,
+        source_module_d: 'studio.hp.ui.source_module_d'|trans,
+        source_dormant: 'studio.hp.ui.source_dormant'|trans,
+        tab_content: 'studio.hp.ui.tab_content'|trans,
+        tab_html: 'studio.hp.ui.tab_html'|trans,
+        tab_seo: 'studio.hp.ui.tab_seo'|trans,
+        tpl_simple: 'studio.homepage.template.simple'|trans,
+        tpl_simple_d: 'studio.homepage.template.simple_help'|trans,
+        tpl_feed: 'studio.homepage.template.feed'|trans,
+        tpl_feed_d: 'studio.homepage.template.feed_help'|trans,
+        tpl_showcase: 'studio.homepage.template.showcase'|trans,
+        tpl_showcase_d: 'studio.homepage.template.showcase_help'|trans,
+        sections_title: 'studio.hp.ui.sections_title'|trans,
+        sections_help: 'studio.hp.ui.sections_help'|trans,
+        move_up: 'studio.hp.ui.move_up'|trans,
+        move_down: 'studio.hp.ui.move_down'|trans,
+        enabled: 'studio.homepage.enabled'|trans,
+        section_title: 'studio.hp.ui.section_title'|trans,
+        section_limit: 'studio.hp.ui.section_limit'|trans,
+        shipped: 'studio.hp.ui.shipped'|trans,
+        reset_field: 'studio.hp.ui.reset_field'|trans,
+        cleared: 'studio.hp.ui.cleared'|trans,
+        url_hint: 'studio.hp.ui.url_hint'|trans,
+        remove_link: 'studio.hp.ui.remove_link'|trans,
+        elements: 'studio.hp.ui.elements'|trans,
+        show: 'studio.hp.ui.show'|trans,
+        no_fields: 'studio.hp.ui.no_fields'|trans,
+        s_title: 'studio.homepage.simple.title'|trans,
+        s_subtitle: 'studio.homepage.simple.subtitle'|trans,
+        s_body: 'studio.homepage.simple.body'|trans,
+        s_cta_label: 'studio.homepage.simple.cta_label'|trans,
+        s_cta_url: 'studio.homepage.simple.cta_url'|trans,
+        s_cta2_label: 'studio.homepage.simple.cta2_label'|trans,
+        s_cta2_url: 'studio.homepage.simple.cta2_url'|trans,
+        s_image: 'studio.homepage.simple.image'|trans,
+        s_image_help: 'studio.homepage.simple.image_help'|trans,
+        preview: 'studio.hp.ui.preview'|trans,
+        preview_reload: 'studio.hp.ui.preview_reload'|trans,
+        device_desktop: 'studio.hp.ui.device_desktop'|trans,
+        device_mobile: 'studio.hp.ui.device_mobile'|trans,
+        preview_na: 'studio.hp.ui.preview_na'|trans,
+        preview_hint: 'studio.hp.ui.preview_hint'|trans,
+        publish: 'studio.hp.ui.publish'|trans,
+        publishing: 'studio.hp.ui.publishing'|trans,
+        unsaved: 'studio.hp.ui.unsaved'|trans,
+        published: 'studio.hp.published'|trans,
+        failed: 'studio.hp.ui.failed'|trans,
+        html_help: 'studio.hp.ui.html_help'|trans,
+        html_import: 'studio.hp.ui.html_import'|trans,
+        html_example: 'studio.hp.ui.html_example'|trans,
+        html_locked: 'studio.hp.ui.html_locked'|trans,
+        html_security: 'studio.hp.ui.html_security'|trans,
+        html_errors: 'studio.hp.ui.html_errors'|trans,
+        html_ok: 'studio.hp.ui.html_ok'|trans,
+        html_confirm_import: 'studio.hp.ui.html_confirm_import'|trans,
+        seo_help: 'studio.hp.ui.seo_help'|trans,
+        seo_page_title: 'studio.hp.ui.seo_page_title'|trans,
+        seo_page_desc: 'studio.hp.ui.seo_page_desc'|trans,
+        seo_image: 'studio.hp.ui.seo_image'|trans,
+        seo_noindex: 'studio.hp.ui.seo_noindex'|trans,
+        seo_noindex_d: 'studio.hp.ui.seo_noindex_d'|trans,
+        seo_serp: 'studio.hp.ui.seo_serp'|trans,
+        seo_checks: 'studio.hp.ui.seo_checks'|trans,
+        seo_ok_title: 'studio.hp.ui.seo_ok_title'|trans,
+        seo_bad_title: 'studio.hp.ui.seo_bad_title'|trans,
+        seo_ok_desc: 'studio.hp.ui.seo_ok_desc'|trans,
+        seo_bad_desc: 'studio.hp.ui.seo_bad_desc'|trans,
+        seo_no_image: 'studio.hp.ui.seo_no_image'|trans,
+        seo_ok_image: 'studio.hp.ui.seo_ok_image'|trans,
+        seo_is_noindex: 'studio.hp.ui.seo_is_noindex'|trans,
+        seo_html_note: 'studio.hp.ui.seo_html_note'|trans,
+    } %}
+
+    <style{{ csp_nonce_attr() }}>
+        .hp { --hp-bg: #0f172a; --hp-card: #111c33; --hp-line: #1e293b; --hp-text: #e2e8f0; --hp-mut: #94a3b8; --hp-acc: #0ea5e9; --hp-acc2: #0284c7; --hp-warn: #f59e0b; --hp-bad: #f87171; --hp-ok: #34d399; color: var(--hp-text); }
+        .hp * { box-sizing: border-box; }
+        .hp-card { background: var(--hp-card); border: 1px solid var(--hp-line); border-radius: 12px; padding: 1.1rem 1.25rem; margin-bottom: 1rem; }
+        .hp-card > h2 { margin: 0 0 .15rem; font-size: 1rem; font-weight: 700; }
+        .hp-card > p.hp-sub { margin: 0 0 .85rem; font-size: .8125rem; color: var(--hp-mut); }
+        .hp-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .75rem; }
+        .hp-choice { position: relative; display: block; cursor: pointer; border: 1px solid var(--hp-line); border-radius: 10px; padding: .75rem .9rem; background: rgba(255,255,255,.02); }
+        .hp-choice input { position: absolute; opacity: 0; pointer-events: none; }
+        .hp-choice strong { display: block; font-size: .875rem; }
+        .hp-choice span { display: block; margin-top: .2rem; font-size: .75rem; color: var(--hp-mut); line-height: 1.4; }
+        .hp-choice:has(input:checked) { border-color: var(--hp-acc); background: rgba(14,165,233,.1); box-shadow: 0 0 0 1px rgba(14,165,233,.35); }
+        .hp-choice:has(input:focus-visible) { outline: 2px solid var(--hp-acc); outline-offset: 2px; }
+        .hp-select { width: 100%; max-width: 28rem; margin-top: .6rem; padding: .5rem .65rem; border-radius: 8px; border: 1px solid var(--hp-line); background: var(--hp-bg); color: var(--hp-text); }
+        .hp-tabs { display: inline-flex; padding: 3px; gap: 2px; border-radius: 9px; background: var(--hp-bg); border: 1px solid var(--hp-line); margin-bottom: .9rem; flex-wrap: wrap; }
+        .hp-tabs button { border: 0; background: transparent; color: var(--hp-mut); padding: .45rem .95rem; border-radius: 7px; font-size: .8125rem; font-weight: 700; cursor: pointer; }
+        .hp-tabs button[aria-selected="true"] { background: var(--hp-acc2); color: #fff; }
+        .hp-tabs button:hover:not([aria-selected="true"]) { color: var(--hp-text); background: rgba(148,163,184,.12); }
+        .hp-work { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 1rem; align-items: start; }
+        @media (max-width: 1100px) { .hp-work { grid-template-columns: 1fr; } }
+        .hp-prev { position: sticky; top: .75rem; border: 1px solid var(--hp-line); border-radius: 12px; overflow: hidden; background: #fff; }
+        .hp-prev__bar { display: flex; gap: .5rem; align-items: center; justify-content: space-between; padding: .45rem .7rem; background: var(--hp-card); color: var(--hp-mut); font-size: .75rem; }
+        .hp-prev__stage { height: 78vh; overflow: hidden; background: #cbd5e1; display: flex; justify-content: flex-start; }
+        .hp-prev iframe { display: block; flex: none; border: 0; background: #fff; transform-origin: top left; }
+        .hp-prev.is-mobile .hp-prev__stage { justify-content: center; padding: .6rem 0; }
+        .hp-prev.is-mobile iframe { border-radius: 18px; box-shadow: 0 0 0 6px #0f172a; }
+        .hp-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--hp-bg); border: 1px solid var(--hp-line); }
+        .hp-seg button { border: 0; background: transparent; color: var(--hp-mut); padding: .25rem .6rem; border-radius: 6px; font-size: .75rem; font-weight: 700; cursor: pointer; }
+        .hp-seg button[aria-pressed="true"] { background: var(--hp-acc2); color: #fff; }
+        .hp-choice__shot { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; border-radius: 7px; margin-bottom: .55rem; border: 1px solid var(--hp-line); background: #0b1224; }
+        .hp-choice__ph { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 16 / 10; border-radius: 7px; margin-bottom: .55rem; border: 1px dashed var(--hp-line); background: #0b1224; color: var(--hp-mut); font: 700 1.6rem ui-monospace, Menlo, Consolas, monospace; }
+        .hp-prev__na { padding: 2rem 1.25rem; color: var(--hp-mut); font-size: .8125rem; background: var(--hp-card); }
+        .hp-sec { border: 1px solid var(--hp-line); border-radius: 10px; margin-bottom: .5rem; background: rgba(255,255,255,.02); }
+        .hp-sec.is-open { border-color: rgba(14,165,233,.5); }
+        .hp-sec.is-off > .hp-sec__head .hp-sec__name { opacity: .55; }
+        .hp-sec.is-drop { outline: 2px dashed var(--hp-acc); }
+        .hp-sec__head { display: flex; align-items: center; gap: .5rem; padding: .55rem .7rem; cursor: pointer; }
+        .hp-sec__grip { cursor: grab; color: var(--hp-mut); user-select: none; padding: 0 .15rem; }
+        .hp-sec__name { flex: 1; font-size: .875rem; font-weight: 600; }
+        .hp-chip { font-size: .65rem; text-transform: uppercase; letter-spacing: .06em; color: var(--hp-mut); border: 1px solid var(--hp-line); border-radius: 999px; padding: .05rem .5rem; }
+        .hp-icon { border: 0; background: transparent; color: var(--hp-mut); cursor: pointer; padding: .2rem .35rem; border-radius: 6px; font-size: .9rem; }
+        .hp-icon:hover { color: var(--hp-text); background: rgba(148,163,184,.15); }
+        .hp-sw { position: relative; width: 34px; height: 20px; flex: none; }
+        .hp-sw input { position: absolute; inset: 0; opacity: 0; cursor: pointer; margin: 0; }
+        .hp-sw i { position: absolute; inset: 0; border-radius: 999px; background: #334155; transition: background .15s; pointer-events: none; }
+        .hp-sw i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+        .hp-sw input:checked + i { background: var(--hp-acc2); }
+        .hp-sw input:checked + i::after { transform: translateX(14px); }
+        .hp-sw input:focus-visible + i { outline: 2px solid var(--hp-acc); outline-offset: 2px; }
+        .hp-sec__body { display: none; padding: .2rem .9rem .9rem; border-top: 1px solid var(--hp-line); }
+        .hp-sec.is-open > .hp-sec__body { display: block; }
+        .hp-f { margin-top: .75rem; }
+        .hp-f label { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; font-size: .75rem; font-weight: 700; color: var(--hp-mut); margin-bottom: .25rem; }
+        .hp-f input[type=text], .hp-f textarea, .hp-f input[type=url], .hp-f input[type=number] { width: 100%; padding: .5rem .65rem; border-radius: 8px; border: 1px solid var(--hp-line); background: var(--hp-bg); color: var(--hp-text); font: inherit; font-size: .8125rem; }
+        .hp-f textarea { min-height: 4.5rem; resize: vertical; line-height: 1.45; }
+        .hp-f.is-set input, .hp-f.is-set textarea { border-left: 3px solid var(--hp-acc); }
+        .hp-f.is-code textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+        .hp-f small { display: block; margin-top: .2rem; font-size: .7rem; color: var(--hp-mut); }
+        .hp-f small.is-warn { color: var(--hp-warn); }
+        .hp-f__row { display: flex; gap: .4rem; }
+        .hp-btn { border: 1px solid var(--hp-line); background: transparent; color: var(--hp-text); border-radius: 8px; padding: .45rem .8rem; font-size: .8125rem; font-weight: 600; cursor: pointer; }
+        .hp-btn:hover { background: rgba(148,163,184,.12); }
+        .hp-btn--primary { background: var(--hp-acc2); border-color: var(--hp-acc2); color: #fff; }
+        .hp-btn--primary:hover { background: var(--hp-acc); }
+        .hp-btn[disabled] { opacity: .5; cursor: not-allowed; }
+        .hp-toggles { margin-top: .9rem; padding-top: .7rem; border-top: 1px dashed var(--hp-line); }
+        .hp-toggles h4 { margin: 0 0 .4rem; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--hp-mut); }
+        .hp-toggles label { display: flex; align-items: center; gap: .5rem; font-size: .8125rem; padding: .15rem 0; cursor: pointer; }
+        .hp-bar { position: sticky; bottom: 0; z-index: 5; display: flex; gap: .75rem; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: .75rem 1rem; margin-top: 1rem; border-radius: 12px; border: 1px solid var(--hp-line); background: rgba(15,23,42,.95); backdrop-filter: blur(6px); }
+        .hp-status { font-size: .8125rem; color: var(--hp-mut); }
+        .hp-status.is-dirty { color: var(--hp-warn); }
+        .hp-status.is-ok { color: var(--hp-ok); }
+        .hp-status.is-bad { color: var(--hp-bad); }
+        .hp-code { width: 100%; min-height: 22rem; padding: .7rem; border-radius: 8px; border: 1px solid var(--hp-line); background: #0b1224; color: #dbe7ff; font: .8125rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; resize: vertical; }
+        .hp-note { padding: .65rem .8rem; border-radius: 8px; font-size: .8125rem; margin: .6rem 0; border: 1px solid var(--hp-line); background: rgba(255,255,255,.03); color: var(--hp-mut); }
+        .hp-note--bad { border-color: rgba(248,113,113,.5); background: rgba(248,113,113,.08); color: #fecaca; }
+        .hp-note--ok { border-color: rgba(52,211,153,.4); color: #a7f3d0; }
+        .hp-note ul { margin: .3rem 0 0 1.1rem; padding: 0; }
+        .hp-serp { background: #fff; color: #202124; border-radius: 10px; padding: .8rem 1rem; font-family: Arial, sans-serif; max-width: 40rem; }
+        .hp-serp b { display: block; color: #1a0dab; font-size: 1.1rem; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .hp-serp i { display: block; color: #006621; font-style: normal; font-size: .8rem; }
+        .hp-serp span { display: block; color: #4d5156; font-size: .85rem; line-height: 1.4; }
+        .hp-count { font-weight: 400; }
+        .hp-count.is-bad { color: var(--hp-warn); }
+        .hp-hide { display: none !important; }
     </style>
 
-    <p class="mb-sp-md text-fs-sm text-neutral-500">{{ 'studio.homepage.description'|trans }}</p>
+    <div class="hp" id="hp-app">
+        <noscript><div class="hp-note hp-note--bad">JavaScript is required for this screen.</div></noscript>
 
-    <form method="post" action="{{ path('admin_homepage_settings_update') }}" id="portal-homepage-form" class="space-y-sp-md"
-          data-save-block-url="{{ save_block_url }}"
-          data-reset-block-url="{{ reset_block_url }}">
-        <input type="hidden" name="_token" value="{{ csrf_token }}" id="portal-csrf">
-        <input type="hidden" name="portal_layout" id="portal-layout-json" value="">
-        <input type="hidden" name="portal_copy" id="portal-copy-json" value="">
+        <section class="hp-card" id="hp-access" aria-labelledby="hp-access-h"></section>
+        <section class="hp-card" id="hp-source" aria-labelledby="hp-source-h"></section>
 
-        <twig:cp:card title="{{ 'studio.homepage.mode_card'|trans }}">
-            <label class="form-label" for="homepage_mode">{{ (modeDefinition.label|default('studio.homepage.mode_card'))|trans }}</label>
-            <select name="homepage_mode" id="homepage_mode" class="form-select lg:w-[61.8%]">
-                {% for value, label in modeDefinition.variants|default({}) %}
-                    {% set owner = availableModes[value].module|default(null) %}
-                    <option value="{{ value }}" {{ modeValue == value ? 'selected' : '' }}>
-                        {{ label|trans }}{% if owner %} — {{ owner }}{% endif %}
-                    </option>
-                {% endfor %}
-            </select>
-
-            <p class="mt-2 text-fs-xs text-slate-500">{{ 'studio.homepage.mode_help'|trans }}</p>
-
-            {#
-                What the platform could serve but currently cannot. Shown rather
-                than hidden: a dropdown with one entry in it gave no way to tell
-                whether that was everything on offer or the consequence of a
-                module being switched off on another screen.
-            #}
-            {% if dormantModes is not empty %}
-                <div class="mt-sp-sm rounded-lg border border-white/10 bg-white/5 px-3 py-3">
-                    <p class="mb-2 text-fs-xs font-semibold uppercase tracking-wider text-slate-400">
-                        {{ 'studio.homepage.dormant_title'|trans }}
-                    </p>
-                    <ul class="space-y-1">
-                        {% for id, mode in dormantModes %}
-                            <li class="flex flex-wrap items-center justify-between gap-2 text-fs-sm text-slate-400">
-                                <span>{{ mode.label|trans }}</span>
-                                <span class="text-fs-xs text-slate-500">
-                                    {{ 'studio.homepage.dormant_needs'|trans({module: mode.module}) }}
-                                </span>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                    <p class="mt-2 text-fs-xs text-slate-500">{{ 'studio.homepage.dormant_help'|trans }}</p>
-                </div>
-            {% endif %}
-        </twig:cp:card>
-
-        <twig:cp:card title="{{ 'studio.homepage.blocks_card'|trans }}">
-            <p class="mb-sp-sm text-fs-sm text-neutral-500">{{ 'studio.homepage.blocks_help'|trans }}</p>
-            <p class="mb-sp-sm text-fs-sm text-sky-900 bg-sky-50 border border-sky-200 rounded-md px-3 py-2">
-                {{ 'studio.homepage.copy_editor_help'|trans }}
-            </p>
-
-            <ul id="portal-block-list" class="space-y-3" data-portal-block-list>
-                {% for block in portalBlocks %}
-                    {% set meta = portalCatalog[block.id]|default(null) %}
-                    {% if meta %}
-                        {% set copyKeys = portalCopyFields[block.id]|default([]) %}
-                        {% set hasCopy = copyKeys is not empty %}
-                        <li class="rounded-xl border border-neutral-200 bg-white shadow-sm"
-                            data-block-id="{{ block.id }}"
-                            {% if hasCopy %}data-has-copy="1"{% endif %}
-                            draggable="true">
-                            <div class="flex flex-wrap items-center gap-3 px-3 py-2.5">
-                                <button type="button"
-                                        class="cursor-grab text-neutral-400 hover:text-neutral-700"
-                                        data-drag-handle
-                                        aria-label="{{ 'studio.homepage.drag'|trans }}">
-                                    <twig:ux:icon name="tabler:grip-vertical" class="h-5 w-5" />
-                                </button>
-
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-fs-sm font-semibold text-neutral-900">{{ meta.label|trans }}</p>
-                                    <p class="text-fs-xs text-neutral-500">
-                                        {{ block.id }} · {{ ('studio.homepage.group.' ~ meta.group)|trans }}
-                                        {% if hasCopy %}
-                                            · {{ 'studio.homepage.copy_fields_count'|trans({'count': copyKeys|length}) }}
-                                        {% endif %}
-                                    </p>
-                                </div>
-
-                                <label class="inline-flex items-center gap-2 text-fs-sm text-neutral-700">
-                                    <input type="checkbox"
-                                           class="form-check-input h-4 w-4"
-                                           data-field="enabled"
-                                           {{ block.enabled ? 'checked' : '' }}>
-                                    {{ 'studio.homepage.enabled'|trans }}
-                                </label>
-
-                                <button type="button"
-                                        class="btn btn-secondary btn-sm"
-                                        data-toggle-settings
-                                        aria-expanded="false">
-                                    {{ 'studio.homepage.settings'|trans }}
-                                </button>
-                            </div>
-
-                            <div class="hidden border-t border-neutral-100 px-3 py-3 space-y-sp-sm bg-slate-50/80" data-block-settings>
-                                {% if meta.supportsLimit or meta.supportsLayout %}
-                                    <div class="grid gap-3 md:grid-cols-2">
-                                        {% if meta.supportsLimit %}
-                                            <div>
-                                                <label class="form-label">{{ 'studio.homepage.field.limit'|trans }}</label>
-                                                <input type="number" min="3" max="20" class="form-control" data-field="limit" value="{{ block.limit|default(5) }}">
-                                            </div>
-                                        {% endif %}
-                                        {% if meta.supportsLayout %}
-                                            <div>
-                                                <label class="form-label">{{ 'studio.homepage.field.layout'|trans }}</label>
-                                                <select class="form-select" data-field="layout">
-                                                    <option value="list" {{ (block.layout|default('list')) == 'list' ? 'selected' : '' }}>{{ 'studio.homepage.layout.list'|trans }}</option>
-                                                    <option value="cards" {{ (block.layout|default('')) == 'cards' ? 'selected' : '' }}>{{ 'studio.homepage.layout.cards'|trans }}</option>
-                                                    <option value="slider" {{ (block.layout|default('')) == 'slider' ? 'selected' : '' }}>{{ 'studio.homepage.layout.slider'|trans }}</option>
-                                                </select>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                {% endif %}
-
-                                <div>
-                                    <label class="form-label">{{ 'studio.homepage.field.title'|trans }}</label>
-                                    <input type="text" class="form-control" data-field="title" value="{{ block.title|default('') }}" placeholder="{{ 'studio.homepage.field.title_placeholder'|trans }}">
-                                    {% if hasCopy %}
-                                        <p class="mt-1 text-fs-xs text-neutral-500">{{ 'studio.homepage.field.title_optional_help'|trans }}</p>
-                                    {% endif %}
-                                </div>
-
-                                {% if hasCopy %}
-                                    <div class="rounded-lg border border-slate-200 bg-white p-3 space-y-3" data-copy-editor>
-                                        <div class="flex flex-wrap items-center justify-between gap-3">
-                                            <div>
-                                                <p class="text-fs-sm font-semibold text-slate-900">{{ 'studio.homepage.copy_languages'|trans }}</p>
-                                                <p class="text-fs-xs text-slate-500">{{ 'studio.homepage.copy_languages_help'|trans }}</p>
-                                            </div>
-                                            <div class="portal-locale-switch" role="tablist" aria-label="{{ 'studio.homepage.copy_languages'|trans }}">
-                                                {% for tab in portalLocaleTabs %}
-                                                    <button type="button"
-                                                            data-copy-locale-tab="{{ tab.code }}"
-                                                            data-block="{{ block.id }}"
-                                                            aria-selected="{{ loop.first ? 'true' : 'false' }}">
-                                                        {{ tab.label }}
-                                                    </button>
-                                                {% endfor %}
-                                            </div>
-                                        </div>
-
-                                        {% for tab in portalLocaleTabs %}
-                                            {% set locale = tab.code %}
-                                            <div class="portal-copy-panel space-y-3 p-3 {{ not loop.first ? 'hidden' : '' }}"
-                                                 data-copy-locale-panel="{{ locale }}"
-                                                 data-block="{{ block.id }}">
-                                                <p class="text-fs-xs font-semibold uppercase tracking-wide text-sky-700">
-                                                    {{ 'studio.homepage.copy_locale_hint'|trans({'locale': tab.label}) }}
-                                                </p>
-                                                {% for fieldKey in copyKeys %}
-                                                    {% set fieldValue = portalCopyValues[block.id][locale][fieldKey]|default('') %}
-                                                    {% set isArea = portalCopyTextareas[block.id][fieldKey]|default(false) %}
-                                                    <div>
-                                                        <div class="portal-field-label mb-1">
-                                                            <label class="form-label mb-0">{{ fieldKey|replace({'_': ' '})|title }}</label>
-                                                            <span class="portal-field-key">{{ fieldKey }}</span>
-                                                        </div>
-                                                        {% if isArea %}
-                                                            <textarea class="form-control font-mono text-fs-xs"
-                                                                      rows="{{ fieldValue|length > 400 ? 8 : 4 }}"
-                                                                      data-copy-block="{{ block.id }}"
-                                                                      data-copy-locale="{{ locale }}"
-                                                                      data-copy-key="{{ fieldKey }}">{{ fieldValue }}</textarea>
-                                                        {% else %}
-                                                            <input type="text"
-                                                                   class="form-control"
-                                                                   data-copy-block="{{ block.id }}"
-                                                                   data-copy-locale="{{ locale }}"
-                                                                   data-copy-key="{{ fieldKey }}"
-                                                                   value="{{ fieldValue }}">
-                                                        {% endif %}
-                                                    </div>
-                                                {% endfor %}
-                                            </div>
-                                        {% endfor %}
-
-                                        <div class="portal-block-actions">
-                                            <p class="portal-status mr-auto" data-block-status="{{ block.id }}" aria-live="polite"></p>
-                                            <button type="button"
-                                                    class="btn btn-secondary btn-sm"
-                                                    data-reset-block="{{ block.id }}">
-                                                <twig:ux:icon name="tabler:restore" class="h-4 w-4" />
-                                                {{ 'studio.homepage.reset_block'|trans }}
-                                            </button>
-                                            <button type="button"
-                                                    class="btn btn-primary btn-sm"
-                                                    data-save-block="{{ block.id }}">
-                                                <twig:ux:icon name="tabler:device-floppy" class="h-4 w-4" />
-                                                {{ 'studio.homepage.save_block'|trans }}
-                                            </button>
-                                        </div>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-            </ul>
-        </twig:cp:card>
-
-        <div class="portal-footer-actions">
-            <button type="submit"
-                    formaction="{{ reset_all_url }}"
-                    class="btn btn-secondary"
-                    data-confirm-reset-all
-                    onclick="return confirm({{ 'studio.homepage.reset_all_confirm'|trans|json_encode|raw }});">
-                <twig:ux:icon name="tabler:history" class="h-4 w-4" />
-                {{ 'studio.homepage.reset_all'|trans }}
-            </button>
-            <button type="submit" class="btn btn-primary">
-                <twig:ux:icon name="tabler:checks" class="h-4 w-4" />
-                {{ 'studio.homepage.save_all'|trans }}
-            </button>
+        <div id="hp-editor" class="hp-hide">
+            <div class="hp-tabs" role="tablist" id="hp-maintabs"></div>
+            <div id="hp-panel"></div>
         </div>
-    </form>
+
+        <div class="hp-bar">
+            <span class="hp-status" id="hp-status" role="status" aria-live="polite"></span>
+            <button type="button" class="hp-btn hp-btn--primary" id="hp-publish">{{ ui.publish }}</button>
+        </div>
+    </div>
+
+    <script type="application/json" id="hp-state">{{ state_json|raw }}</script>
+    <script type="application/json" id="hp-ui">{{ ui|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP') b-or constant('JSON_UNESCAPED_UNICODE'))|raw }}</script>
 
     <script{{ csp_nonce_attr() }}>
     (() => {
-        const list = document.querySelector('[data-portal-block-list]');
-        const form = document.getElementById('portal-homepage-form');
-        const jsonInput = document.getElementById('portal-layout-json');
-        const copyInput = document.getElementById('portal-copy-json');
-        const csrf = document.getElementById('portal-csrf');
-        if (!list || !form || !jsonInput || !copyInput || !csrf) return;
+        'use strict';
+        const state = JSON.parse(document.getElementById('hp-state').textContent);
+        const S = JSON.parse(document.getElementById('hp-ui').textContent);
+        const CSRF = {{ csrf_token|json_encode|raw }};
+        const DRAFT = {{ draft_url|json_encode|raw }};
+        const PUBLISH = {{ publish_url|json_encode|raw }};
 
-        const saveBlockUrl = form.dataset.saveBlockUrl;
-        const resetBlockUrl = form.dataset.resetBlockUrl;
-        let dragEl = null;
-
-        const setStatus = (blockId, message, kind) => {
-            const el = list.querySelector('[data-block-status="' + blockId + '"]');
-            if (!el) return;
-            el.textContent = message || '';
-            el.classList.remove('is-ok', 'is-error');
-            if (kind) el.classList.add(kind);
+        const $ = (sel, root = document) => root.querySelector(sel);
+        // Text is always assigned as textContent / attributes — never as HTML.
+        const h = (tag, attrs = {}, ...kids) => {
+            const node = document.createElement(tag);
+            for (const [k, v] of Object.entries(attrs)) {
+                if (v === false || v == null) continue;
+                if (k === 'class') node.className = v;
+                else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+                else if (k === 'value') node.value = v;
+                else if (k === 'checked' || k === 'selected' || k === 'disabled') node[k] = !!v;
+                else node.setAttribute(k, v === true ? '' : v);
+            }
+            for (const kid of kids.flat()) {
+                if (kid == null || kid === false) continue;
+                node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+            }
+            return node;
         };
 
-        const applyValuesToDom = (blockId, valuesByLocale) => {
-            Object.entries(valuesByLocale || {}).forEach(([locale, fields]) => {
-                Object.entries(fields || {}).forEach(([key, value]) => {
-                    const el = list.querySelector(
-                        '[data-copy-block="' + blockId + '"][data-copy-locale="' + locale + '"][data-copy-key="' + CSS.escape(key) + '"]'
-                    );
-                    if (el) el.value = value;
-                });
-            });
+        // ---- model: the whole editing state; nothing is saved until Publish ----
+        const model = {
+            access: state.access,
+            mode: state.mode,
+            engine: state.engine,
+            template: state.template,
+            layout: state.sections.map(s => ({ id: s.id, enabled: s.enabled, title: s.title, limit: s.limit })),
+            o: {},
+            h: {},
+            seo: { title: { ...(state.seo.title || {}) }, description: { ...(state.seo.description || {}) }, image: state.seo.image || '', noindex: !!state.seo.noindex },
+            html: { ...state.html },
+            simple: JSON.parse(JSON.stringify(state.simple.values)),
+            simple_image: state.simple.image,
         };
-
-        list.querySelectorAll('[data-toggle-settings]').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const row = btn.closest('li');
-                const panel = row?.querySelector('[data-block-settings]');
-                if (!panel) return;
-                const open = panel.classList.toggle('hidden') === false;
-                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-            });
+        const sectionById = Object.fromEntries(state.sections.map(s => [s.id, s]));
+        state.sections.forEach(s => {
+            s.fields.forEach(f => { for (const c in f.value) if (f.value[c] !== null) (model.o[f.key] ||= {})[c] = f.value[c]; });
+            s.toggles.forEach(t => { if (t.hidden) model.h[t.key] = true; });
         });
 
-        list.querySelectorAll('[data-copy-locale-tab]').forEach((tab) => {
-            tab.addEventListener('click', () => {
-                const blockId = tab.getAttribute('data-block');
-                const locale = tab.getAttribute('data-copy-locale-tab');
-                const editor = tab.closest('[data-copy-editor]');
-                if (!editor || !blockId || !locale) return;
+        let lang = state.locales[0].code;
+        let tab = 'content';
+        let device = 'desktop';
+        let openId = null;
+        let dirty = false;
+        let publishing = false;
+        let draftTimer = null;
+        let draftReady = false;
+        let htmlReport = { errors: [], notes: [] };
 
-                editor.querySelectorAll('[data-copy-locale-tab][data-block="' + blockId + '"]').forEach((t) => {
-                    t.setAttribute('aria-selected', t === tab ? 'true' : 'false');
-                });
-
-                editor.querySelectorAll('[data-copy-locale-panel][data-block="' + blockId + '"]').forEach((panel) => {
-                    panel.classList.toggle('hidden', panel.getAttribute('data-copy-locale-panel') !== locale);
-                });
-            });
+        // ---- status / draft / preview ----
+        const status = (text, cls = '') => { const s = $('#hp-status'); s.textContent = text; s.className = 'hp-status ' + cls; };
+        const touch = () => {
+            dirty = true;
+            status(S.unsaved, 'is-dirty');
+            clearTimeout(draftTimer);
+            draftTimer = setTimeout(sendDraft, 600);
+        };
+        const payload = () => ({
+            access: model.access, mode: model.mode, engine: model.engine, template: model.template,
+            layout: model.layout, o: model.o, h: model.h, seo: model.seo, html: model.html,
+            simple: model.simple, simple_image: model.simple_image,
         });
+        const post = async (url, body) => {
+            const res = await fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF }, body: JSON.stringify(body) });
+            let data = {};
+            try { data = await res.json(); } catch (e) { /* non-JSON error page */ }
+            return { ok: res.ok && data.ok !== false, status: res.status, data };
+        };
+        async function sendDraft() {
+            try {
+                const r = await post(DRAFT, payload());
+                htmlReport = { errors: r.data.errors || [], notes: r.data.notes || [] };
+                renderHtmlReport();
+                if (r.ok) { draftReady = true; reloadPreview(); }
+            } catch (e) { /* the preview just stays as it was */ }
+        }
+        let scrollY = 0;
+        function previewUrl() {
+            const base = state.homeUrl.replace(/\/[^/]*$/, '/' + lang);
+            return base + '?_hp=draft&_=' + Date.now();
+        }
+        function reloadPreview() {
+            const frame = $('#hp-frame');
+            if (!frame) return;
+            try { scrollY = frame.contentWindow.scrollY || 0; } catch (e) { scrollY = 0; }
+            frame.src = previewUrl();
+        }
+        function wirePreviewClicks(frame) {
+            frame.addEventListener('load', () => {
+                try {
+                    const doc = frame.contentDocument;
+                    frame.contentWindow.scrollTo(0, scrollY);
+                    doc.addEventListener('click', ev => {
+                        const sec = ev.target.closest && ev.target.closest('section[id]');
+                        const id = sec && model.layout.find(b => b.id === sec.id || (sec.id === 'tech' && b.id === 'techstack'))?.id;
+                        if (id) { ev.preventDefault(); openSection(id, true); }
+                    }, true);
+                } catch (e) { /* cross-origin (html engine is sandboxed): no click-through */ }
+            });
+        }
 
-        list.querySelectorAll('li[draggable="true"]').forEach((item) => {
-            item.addEventListener('dragstart', (e) => {
-                dragEl = item;
-                item.classList.add('opacity-60');
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', item.dataset.blockId || '');
-            });
-            item.addEventListener('dragend', () => {
-                item.classList.remove('opacity-60');
-                dragEl = null;
-            });
-            item.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                const target = e.currentTarget;
-                if (!dragEl || dragEl === target) return;
-                const rect = target.getBoundingClientRect();
-                const before = (e.clientY - rect.top) < rect.height / 2;
-                list.insertBefore(dragEl, before ? target : target.nextSibling);
-            });
-        });
+        // ---- access ----
+        function renderAccess() {
+            const root = $('#hp-access');
+            root.replaceChildren(
+                h('h2', { id: 'hp-access-h' }, S.access_title),
+                h('p', { class: 'hp-sub' }, S.access_desc),
+                h('div', { class: 'hp-choices', role: 'radiogroup', 'aria-labelledby': 'hp-access-h' },
+                    ['open', 'login_only', 'admin_only'].map(v => h('label', { class: 'hp-choice' },
+                        h('input', { type: 'radio', name: 'hp-access', value: v, checked: model.access === v, onchange: () => {
+                            if (v !== 'open' && !window.confirm(S.access_confirm)) { renderAccess(); return; }
+                            model.access = v; touch(); renderAccess(); syncVisibility();
+                        } }),
+                        h('strong', {}, S['access_' + v]),
+                        h('span', {}, S['access_' + v + '_d']),
+                    ))),
+            );
+        }
 
-        const readBlock = (li) => {
-            const block = { id: li.dataset.blockId };
-            li.querySelectorAll('[data-field]').forEach((el) => {
-                const key = el.getAttribute('data-field');
-                if (!key) return;
-                if (el.type === 'checkbox') {
-                    block[key] = el.checked;
-                } else if (el.type === 'number') {
-                    block[key] = Number(el.value || 0);
+        // ---- source: what the front door is ----
+        function sourceValue() { return model.mode !== 'portal' ? 'module:' + model.mode : model.engine; }
+        function renderSource() {
+            const root = $('#hp-source');
+            const cur = sourceValue();
+            const thumb = (shot, glyph) => shot
+                ? h('img', { class: 'hp-choice__shot', src: shot, alt: '', loading: 'lazy' })
+                : h('span', { class: 'hp-choice__ph', 'aria-hidden': 'true' }, glyph);
+            const pick = (value, title, desc, disabled, shot, glyph) => h('label', { class: 'hp-choice', style: disabled ? 'opacity:.5;cursor:not-allowed' : null },
+                h('input', { type: 'radio', name: 'hp-source', value, checked: cur === value, disabled, onchange: () => {
+                    if (value.startsWith('module:')) { model.mode = value.slice(7); }
+                    else { model.mode = 'portal'; model.engine = value; }
+                    touch(); renderSource(); renderEditor();
+                } }),
+                thumb(shot, glyph || title.charAt(0)), h('strong', {}, title), h('span', {}, desc));
+            const modules = state.modes.filter(m => m.value !== 'portal');
+            root.replaceChildren(
+                h('h2', { id: 'hp-source-h' }, S.source_title),
+                h('div', { class: 'hp-choices', role: 'radiogroup', 'aria-labelledby': 'hp-source-h' },
+                    pick('blocks', S.source_sections, S.source_sections_d, false, state.blocksShot, '▤'),
+                    pick('html', S.source_html, state.canScript ? S.source_html_d : S.html_locked, !state.canScript && model.engine !== 'html', null, '</>'),
+                    modules.map(m => pick('module:' + m.value, m.label, S.source_module_d, false, m.shot)),
+                ),
+                state.dormantModes.length ? h('p', { class: 'hp-sub', style: 'margin-top:.7rem' }, S.source_dormant + ' ' + state.dormantModes.map(d => d.label + ' (' + d.module + ')').join(', ')) : null,
+            );
+        }
+
+        function syncVisibility() {
+            // With the site closed there is no front door to edit; the editor steps aside.
+            const closed = model.access === 'admin_only';
+            $('#hp-source').classList.toggle('hp-hide', closed);
+            renderEditor();
+        }
+
+        // ---- the editor shell ----
+        function renderEditor() {
+            const box = $('#hp-editor');
+            const closed = model.access === 'admin_only' || model.mode !== 'portal';
+            box.classList.toggle('hp-hide', closed);
+            if (closed) return;
+
+            const tabs = model.engine === 'html'
+                ? [['html', S.tab_html], ['seo', S.tab_seo]]
+                : [['content', S.tab_content], ['seo', S.tab_seo]];
+            if (!tabs.some(t => t[0] === tab)) tab = tabs[0][0];
+            $('#hp-maintabs').replaceChildren(...tabs.map(([id, label]) => h('button', {
+                type: 'button', role: 'tab', 'aria-selected': tab === id ? 'true' : 'false',
+                onclick: () => { tab = id; renderEditor(); },
+            }, label)));
+            const panel = $('#hp-panel');
+            panel.replaceChildren();
+            if (tab === 'content') panel.append(contentPanel());
+            else if (tab === 'html') panel.append(htmlPanel());
+            else panel.append(seoPanel());
+            const frame = $('#hp-frame');
+            if (frame && draftReady && !frame.getAttribute('src')) reloadPreview();
+        }
+
+        function langTabs(onChange) {
+            if (state.locales.length < 2) return null;
+            return h('div', { class: 'hp-tabs', role: 'tablist' }, state.locales.map(l => h('button', {
+                type: 'button', role: 'tab', 'aria-selected': lang === l.code ? 'true' : 'false',
+                onclick: () => { lang = l.code; onChange(); },
+            }, l.code.toUpperCase())));
+        }
+
+        function previewPane() {
+            const frame = h('iframe', { id: 'hp-frame', title: S.preview, referrerpolicy: 'same-origin' });
+            wirePreviewClicks(frame);
+            const stage = h('div', { class: 'hp-prev__stage' }, frame);
+            const box = h('div', { class: 'hp-prev' + (device === 'mobile' ? ' is-mobile' : '') });
+            // Desktop renders the page at a real 1280px and scales it down to the pane; mobile is a true 390px column.
+            const fit = () => {
+                if (device === 'mobile') {
+                    frame.style.width = '390px'; frame.style.height = '100%'; frame.style.transform = 'none';
                 } else {
-                    block[key] = el.value;
+                    const k = Math.min(1, stage.clientWidth / 1280) || 1;
+                    frame.style.width = '1280px'; frame.style.height = (stage.clientHeight / k) + 'px'; frame.style.transform = 'scale(' + k + ')';
                 }
-            });
-            return block;
-        };
+            };
+            const seg = h('div', { class: 'hp-seg', role: 'group', 'aria-label': S.preview },
+                ['desktop', 'mobile'].map(d => h('button', { type: 'button', 'aria-pressed': device === d ? 'true' : 'false',
+                    onclick: () => { device = d; box.classList.toggle('is-mobile', d === 'mobile'); seg.querySelectorAll('button').forEach((b, i) => b.setAttribute('aria-pressed', ['desktop', 'mobile'][i] === d ? 'true' : 'false')); fit(); } }, S['device_' + d])));
+            box.append(
+                h('div', { class: 'hp-prev__bar' }, h('span', {}, S.preview + ' · ' + S.preview_hint), seg,
+                    h('button', { type: 'button', class: 'hp-icon', onclick: sendDraft, 'aria-label': S.preview_reload, title: S.preview_reload }, '↻')),
+                stage);
+            if (window.ResizeObserver) new ResizeObserver(fit).observe(stage);
+            queueMicrotask(fit);
+            return box;
+        }
 
-        const readCopyForBlock = (blockId) => {
-            const payload = {};
-            list.querySelectorAll('[data-copy-block="' + blockId + '"][data-copy-locale][data-copy-key]').forEach((el) => {
-                const locale = el.getAttribute('data-copy-locale');
-                const key = el.getAttribute('data-copy-key');
-                if (!locale || !key) return;
-                payload[locale] = payload[locale] || {};
-                payload[locale][key] = el.value;
-            });
-            return payload;
-        };
+        // ---- content tab ----
+        function contentPanel() {
+            const left = h('div', {});
+            left.append(h('div', { class: 'hp-tabs', role: 'tablist', 'aria-label': 'template' },
+                ['simple', 'feed', 'showcase'].map(t => h('button', { type: 'button', role: 'tab', title: S['tpl_' + t + '_d'], 'aria-selected': model.template === t ? 'true' : 'false',
+                    onclick: () => { model.template = t; touch(); renderEditor(); } }, S['tpl_' + t]))));
+            left.append(h('p', { class: 'hp-sub', style: 'font-size:.75rem;color:var(--hp-mut);margin:-.4rem 0 .8rem' }, S['tpl_' + model.template + '_d']));
+            const lt = langTabs(renderEditor);
+            if (lt) left.append(lt);
 
-        const readCopy = () => {
-            const payload = {};
-            list.querySelectorAll('li[data-has-copy="1"]').forEach((li) => {
-                const id = li.dataset.blockId;
-                if (!id) return;
-                payload[id] = readCopyForBlock(id);
-            });
-            return payload;
-        };
+            if (model.template !== 'showcase') left.append(simpleForm());
+            if (model.template !== 'simple') left.append(sectionList(model.template === 'showcase'));
 
-        const postForm = async (url, fields) => {
-            const body = new FormData();
-            body.append('_token', csrf.value);
-            Object.entries(fields).forEach(([k, v]) => body.append(k, v));
-            const res = await fetch(url, {
-                method: 'POST',
-                body,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                credentials: 'same-origin',
-            });
-            const data = await res.json().catch(() => ({ ok: false, message: 'Request failed' }));
-            if (!res.ok || !data.ok) {
-                throw new Error(data.message || 'Request failed');
-            }
-            return data;
-        };
+            return h('div', { class: 'hp-work' }, left, previewPane());
+        }
 
-        list.querySelectorAll('[data-save-block]').forEach((btn) => {
-            btn.addEventListener('click', async () => {
-                const blockId = btn.getAttribute('data-save-block');
-                if (!blockId) return;
-                btn.disabled = true;
-                setStatus(blockId, '', null);
-                try {
-                    const data = await postForm(saveBlockUrl, {
-                        block_id: blockId,
-                        copy: JSON.stringify(readCopyForBlock(blockId)),
+        function simpleForm() {
+            const fields = [['title', S.s_title], ['subtitle', S.s_subtitle], ['body', S.s_body, 'textarea'], ['cta_label', S.s_cta_label], ['cta_url', S.s_cta_url, 'url'], ['cta2_label', S.s_cta2_label], ['cta2_url', S.s_cta2_url, 'url']];
+            const wrap = h('div', { class: 'hp-card' });
+            const vals = model.simple[lang] ||= {};
+            fields.forEach(([key, label, type]) => {
+                const input = type === 'textarea'
+                    ? h('textarea', { id: 'hp-s-' + key, oninput: e => { vals[key] = e.target.value; touch(); } })
+                    : h('input', { type: 'text', id: 'hp-s-' + key, oninput: e => { vals[key] = e.target.value; touch(); } });
+                input.value = vals[key] || '';
+                wrap.append(h('div', { class: 'hp-f' }, h('label', { for: 'hp-s-' + key }, label), input));
+            });
+            const img = h('input', { type: 'text', id: 'hp-s-image', oninput: e => { model.simple_image = e.target.value; touch(); } });
+            img.value = model.simple_image || '';
+            wrap.append(h('div', { class: 'hp-f' }, h('label', { for: 'hp-s-image' }, S.s_image), img, h('small', {}, S.s_image_help)));
+            return wrap;
+        }
+
+        function sectionList(reorderable) {
+            const wrap = h('div', {});
+            wrap.append(h('div', { class: 'hp-sub', style: 'font-size:.75rem;color:var(--hp-mut);margin-bottom:.5rem' }, S.sections_help));
+            let dragId = null;
+            model.layout.forEach((b, idx) => {
+                const sec = sectionById[b.id];
+                if (!sec) return;
+                const open = openId === b.id;
+                const item = h('div', { class: 'hp-sec' + (open ? ' is-open' : '') + (b.enabled ? '' : ' is-off'), id: 'hp-sec-' + b.id, draggable: reorderable ? 'true' : null });
+                if (reorderable) {
+                    item.addEventListener('dragstart', e => { dragId = b.id; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', b.id); });
+                    item.addEventListener('dragover', e => { if (dragId && dragId !== b.id) { e.preventDefault(); item.classList.add('is-drop'); } });
+                    item.addEventListener('dragleave', () => item.classList.remove('is-drop'));
+                    item.addEventListener('drop', e => {
+                        e.preventDefault(); item.classList.remove('is-drop');
+                        const from = model.layout.findIndex(x => x.id === dragId);
+                        if (from < 0 || dragId === b.id) return;
+                        const [moved] = model.layout.splice(from, 1);
+                        model.layout.splice(model.layout.findIndex(x => x.id === b.id), 0, moved);
+                        dragId = null; touch(); renderEditor();
                     });
-                    if (data.values) applyValuesToDom(blockId, data.values);
-                    setStatus(blockId, data.message || 'Saved', 'is-ok');
-                } catch (err) {
-                    setStatus(blockId, err.message || 'Error', 'is-error');
-                } finally {
-                    btn.disabled = false;
                 }
+                const sw = h('label', { class: 'hp-sw', title: S.enabled }, h('input', { type: 'checkbox', checked: b.enabled, 'aria-label': S.enabled + ': ' + sec.label,
+                    onclick: e => e.stopPropagation(),
+                    onchange: e => { b.enabled = e.target.checked; item.classList.toggle('is-off', !b.enabled); touch(); } }), h('i'));
+                const head = h('div', { class: 'hp-sec__head', onclick: () => openSection(b.id) },
+                    reorderable ? h('span', { class: 'hp-sec__grip', 'aria-hidden': 'true' }, '⋮⋮') : null,
+                    sw,
+                    h('span', { class: 'hp-sec__name' }, sec.label),
+                    h('span', { class: 'hp-chip' }, sec.group),
+                    reorderable ? h('button', { type: 'button', class: 'hp-icon', 'aria-label': S.move_up, title: S.move_up, disabled: idx === 0, onclick: e => { e.stopPropagation(); move(idx, -1); } }, '↑') : null,
+                    reorderable ? h('button', { type: 'button', class: 'hp-icon', 'aria-label': S.move_down, title: S.move_down, disabled: idx === model.layout.length - 1, onclick: e => { e.stopPropagation(); move(idx, 1); } }, '↓') : null,
+                );
+                item.append(head);
+                if (open) item.append(sectionBody(b, sec));
+                wrap.append(item);
             });
-        });
+            return wrap;
+        }
+        function move(idx, dir) {
+            const to = idx + dir;
+            if (to < 0 || to >= model.layout.length) return;
+            [model.layout[idx], model.layout[to]] = [model.layout[to], model.layout[idx]];
+            touch(); renderEditor();
+        }
+        function openSection(id, scroll) {
+            openId = openId === id && !scroll ? null : id;
+            if (tab !== 'content') tab = 'content';
+            renderEditor();
+            if (scroll) $('#hp-sec-' + id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
 
-        list.querySelectorAll('[data-reset-block]').forEach((btn) => {
-            btn.addEventListener('click', async () => {
-                const blockId = btn.getAttribute('data-reset-block');
-                if (!blockId) return;
-                if (!confirm({{ 'studio.homepage.reset_block_confirm'|trans|json_encode|raw }})) return;
-                btn.disabled = true;
-                setStatus(blockId, '', null);
-                try {
-                    const data = await postForm(resetBlockUrl, { block_id: blockId });
-                    if (data.values) applyValuesToDom(blockId, data.values);
-                    setStatus(blockId, data.message || 'Reset', 'is-ok');
-                } catch (err) {
-                    setStatus(blockId, err.message || 'Error', 'is-error');
-                } finally {
-                    btn.disabled = false;
-                }
-            });
-        });
-
-        form.addEventListener('submit', (e) => {
-            // Skip packing when the dedicated reset-all formaction is used — still need layout? Reset all only resets copy.
-            const submitter = e.submitter;
-            const isResetAll = submitter && submitter.getAttribute('formaction');
-            const blocks = Array.from(list.querySelectorAll('li[data-block-id]')).map(readBlock);
-            jsonInput.value = JSON.stringify(blocks);
-            if (!isResetAll) {
-                copyInput.value = JSON.stringify(readCopy());
-            } else {
-                copyInput.value = '{}';
+        function sectionBody(b, sec) {
+            const body = h('div', { class: 'hp-sec__body' });
+            if (sec.limit !== null) {
+                body.append(h('div', { class: 'hp-f' }, h('label', {}, S.section_limit),
+                    h('input', { type: 'number', min: 3, max: 20, value: b.limit, oninput: e => { b.limit = parseInt(e.target.value, 10) || 5; touch(); } })));
             }
+            if (sec.group !== 'marketing' && sec.group !== 'hero') {
+                const t = h('input', { type: 'text', value: b.title, oninput: e => { b.title = e.target.value; touch(); } });
+                body.append(h('div', { class: 'hp-f' }, h('label', {}, S.section_title), t));
+            }
+            if (!sec.fields.length && !sec.toggles.length && body.childElementCount === 0) body.append(h('p', { class: 'hp-note' }, S.no_fields));
+            sec.fields.forEach(f => body.append(fieldRow(f)));
+            if (sec.toggles.length) {
+                const box = h('div', { class: 'hp-toggles' }, h('h4', {}, S.elements));
+                sec.toggles.forEach(t => box.append(h('label', {},
+                    h('span', { class: 'hp-sw' }, h('input', { type: 'checkbox', checked: !model.h[t.key], onchange: e => { if (e.target.checked) delete model.h[t.key]; else model.h[t.key] = true; touch(); } }), h('i')),
+                    S.show + ': ' + t.label)));
+                body.append(box);
+            }
+            return body;
+        }
+
+        // A field's value is null (shipped text) until the operator types; an empty string is a deliberate "show nothing".
+        function fieldRow(f) {
+            const isUrl = f.type === 'url';
+            const get = () => (model.o[f.key] || {})[isUrl ? state.locales[0].code : lang];
+            const set = v => {
+                const codes = isUrl ? state.locales.map(l => l.code) : [lang];
+                if (v === null) { codes.forEach(c => { if (model.o[f.key]) delete model.o[f.key][c]; }); if (model.o[f.key] && !Object.keys(model.o[f.key]).length) delete model.o[f.key]; }
+                else codes.forEach(c => { (model.o[f.key] ||= {})[c] = v; });
+            };
+            const shipped = f.shipped[isUrl ? state.locales[0].code : lang] || '';
+            const val = get();
+            const row = h('div', { class: 'hp-f' + (val != null ? ' is-set' : '') + (f.type === 'code' ? ' is-code' : '') });
+            const id = 'hp-f-' + f.key.replace(/[^a-z0-9]/gi, '_');
+            const input = (f.type === 'textarea' || f.type === 'html' || f.type === 'code')
+                ? h('textarea', { id, placeholder: shipped, rows: f.type === 'textarea' ? 3 : 4 })
+                : h('input', { type: 'text', id, placeholder: shipped, inputmode: isUrl ? 'url' : null, autocomplete: 'off' });
+            input.value = val ?? '';
+            const hint = h('small', {});
+            const refresh = () => {
+                const v = get();
+                row.classList.toggle('is-set', v != null);
+                hint.className = v === '' ? 'is-warn' : '';
+                hint.textContent = v === '' ? (isUrl ? S.url_hint : S.cleared) : (v == null && shipped ? S.shipped + ' ' + shipped.slice(0, 140) : (isUrl ? S.url_hint : ''));
+                reset.classList.toggle('hp-hide', v == null);
+            };
+            const reset = h('button', { type: 'button', class: 'hp-icon', title: S.reset_field, 'aria-label': S.reset_field, onclick: () => { set(null); input.value = ''; refresh(); touch(); } }, '↺');
+            input.addEventListener('input', () => { set(input.value); refresh(); touch(); });
+            row.append(h('label', { for: id }, h('span', {}, f.label), reset));
+            if (isUrl) {
+                row.append(h('div', { class: 'hp-f__row' }, input, h('button', { type: 'button', class: 'hp-btn', onclick: () => { set(''); input.value = ''; refresh(); touch(); } }, S.remove_link)));
+            } else {
+                row.append(input);
+            }
+            row.append(hint);
+            refresh();
+            return row;
+        }
+
+        // ---- html tab ----
+        const EXAMPLE = {
+            html: '<main class="wrap">\n  <h1>Hello</h1>\n  <p>This page is yours: HTML, CSS and a little JavaScript.</p>\n  <button type="button" id="go">Click me</button>\n  <p id="out"></p>\n</main>',
+            css: 'body { margin: 0; font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }\n.wrap { max-width: 40rem; margin: 12vh auto; padding: 0 1.25rem; text-align: center; }\nbutton { padding: .7rem 1.3rem; border: 0; border-radius: 8px; background: #0ea5e9; color: #fff; font-size: 1rem; cursor: pointer; }',
+            js: "document.getElementById('go').addEventListener('click', function () {\n  document.getElementById('out').textContent = 'It works.';\n});",
+        };
+        function htmlPanel() {
+            if (!state.canScript) return h('div', { class: 'hp-note hp-note--bad' }, S.html_locked);
+            const wrap = h('div', { class: 'hp-work' });
+            const left = h('div', {});
+            const area = h('div', {});
+            let part = 'html';
+            const draw = () => {
+                area.replaceChildren(h('textarea', { class: 'hp-code', spellcheck: 'false', 'aria-label': part.toUpperCase(), value: model.html[part] || '',
+                    oninput: e => { model.html[part] = e.target.value; touch(); } }));
+                area.firstChild.value = model.html[part] || '';
+                tabsEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-selected', b.dataset.part === part ? 'true' : 'false'));
+            };
+            const tabsEl = h('div', { class: 'hp-tabs', role: 'tablist' }, ['html', 'css', 'js'].map(p => h('button', { type: 'button', role: 'tab', 'data-part': p, onclick: () => { part = p; draw(); } }, p.toUpperCase())));
+            const file = h('input', { type: 'file', accept: '.html,.htm,text/html', class: 'hp-hide', id: 'hp-file', onchange: e => importFile(e.target.files[0], draw) });
+            left.append(
+                h('p', { class: 'hp-sub', style: 'font-size:.8125rem;color:var(--hp-mut);margin:0 0 .7rem' }, S.html_help),
+                h('div', { class: 'hp-note' }, S.html_security),
+                h('div', { style: 'display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem' },
+                    h('button', { type: 'button', class: 'hp-btn', onclick: () => file.click() }, S.html_import),
+                    h('button', { type: 'button', class: 'hp-btn', onclick: () => { if (!model.html.html || window.confirm(S.html_confirm_import)) { model.html = { ...EXAMPLE }; touch(); draw(); } } }, S.html_example),
+                    file),
+                tabsEl, area,
+                h('div', { id: 'hp-report' }),
+            );
+            draw();
+            wrap.append(left, previewPane());
+            queueMicrotask(renderHtmlReport);
+            return wrap;
+        }
+        function importFile(f, redraw) {
+            if (!f) return;
+            if (model.html.html && !window.confirm(S.html_confirm_import)) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const doc = new DOMParser().parseFromString(String(reader.result), 'text/html');
+                const css = [...doc.querySelectorAll('style')].map(s => s.textContent).join('\n\n');
+                const js = [...doc.querySelectorAll('script:not([src]):not([type="application/ld+json"])')].map(s => s.textContent).join('\n\n');
+                doc.querySelectorAll('style, script, link, meta, title, base').forEach(n => n.remove());
+                model.html = { html: doc.body.innerHTML.trim(), css: css.trim(), js: js.trim() };
+                const t = doc.title || new DOMParser().parseFromString(String(reader.result), 'text/html').title;
+                if (t && !model.seo.title[lang]) model.seo.title[lang] = t;
+                touch(); redraw();
+            };
+            reader.readAsText(f);
+        }
+        function renderHtmlReport() {
+            const box = $('#hp-report');
+            if (!box) return;
+            const out = [];
+            if (htmlReport.errors.length) {
+                out.push(h('div', { class: 'hp-note hp-note--bad' }, S.html_errors, h('ul', {}, htmlReport.errors.map(e => h('li', {}, e)))));
+            } else if (model.html.js || model.html.html) {
+                out.push(h('div', { class: 'hp-note hp-note--ok' }, S.html_ok));
+            }
+            htmlReport.notes.forEach(n => out.push(h('div', { class: 'hp-note' }, n)));
+            box.replaceChildren(...out);
+        }
+
+        // ---- seo tab ----
+        function seoPanel() {
+            const left = h('div', {});
+            const lt = langTabs(renderEditor);
+            if (lt) left.append(lt);
+            left.append(h('p', { class: 'hp-sub', style: 'font-size:.8125rem;color:var(--hp-mut);margin:0 0 .7rem' }, S.seo_help));
+            if (model.engine === 'html') left.append(h('div', { class: 'hp-note' }, S.seo_html_note));
+
+            const serp = h('div', { class: 'hp-serp' });
+            const checks = h('div', {});
+            const siteTitle = () => state.locales.length ? document.title : '';
+            const counter = (el, len, lo, hi) => { el.textContent = len + ' / ' + hi; el.className = 'hp-count' + (len && (len < lo || len > hi) ? ' is-bad' : ''); };
+
+            const t = h('input', { type: 'text', id: 'hp-seo-t', maxlength: 180, autocomplete: 'off' });
+            const d = h('textarea', { id: 'hp-seo-d', maxlength: 400, rows: 3 });
+            const tc = h('span', { class: 'hp-count' }), dc = h('span', { class: 'hp-count' });
+            t.value = model.seo.title[lang] || ''; d.value = model.seo.description[lang] || '';
+            const redraw = () => {
+                const tt = model.seo.title[lang] || '', dd = model.seo.description[lang] || '';
+                counter(tc, tt.length, 30, 60); counter(dc, dd.length, 70, 160);
+                serp.replaceChildren(h('b', {}, tt || siteTitle()), h('i', {}, location.origin + '/' + lang), h('span', {}, dd.slice(0, 160)));
+                const items = [
+                    [tt.length >= 30 && tt.length <= 60, S.seo_ok_title, S.seo_bad_title],
+                    [dd.length >= 70 && dd.length <= 160, S.seo_ok_desc, S.seo_bad_desc],
+                    [!!model.seo.image, S.seo_ok_image, S.seo_no_image],
+                ];
+                const list = items.map(([ok, good, bad]) => h('li', { style: 'color:' + (ok ? 'var(--hp-ok)' : 'var(--hp-warn)') }, (ok ? '✓ ' : '! ') + (ok ? good : bad)));
+                if (model.seo.noindex) list.push(h('li', { style: 'color:var(--hp-bad)' }, '! ' + S.seo_is_noindex));
+                checks.replaceChildren(h('ul', { style: 'list-style:none;margin:.5rem 0 0;padding:0;font-size:.8125rem;line-height:1.7' }, list));
+            };
+            t.addEventListener('input', () => { model.seo.title[lang] = t.value; redraw(); touch(); });
+            d.addEventListener('input', () => { model.seo.description[lang] = d.value; redraw(); touch(); });
+            const img = h('input', { type: 'text', id: 'hp-seo-i', placeholder: '/uploads/…  https://…', autocomplete: 'off' });
+            img.value = model.seo.image || '';
+            img.addEventListener('input', () => { model.seo.image = img.value; redraw(); touch(); });
+            const noindex = h('input', { type: 'checkbox', id: 'hp-seo-n', checked: model.seo.noindex, onchange: e => { model.seo.noindex = e.target.checked; redraw(); touch(); } });
+
+            left.append(
+                h('div', { class: 'hp-f' }, h('label', { for: 'hp-seo-t' }, h('span', {}, S.seo_page_title), tc), t),
+                h('div', { class: 'hp-f' }, h('label', { for: 'hp-seo-d' }, h('span', {}, S.seo_page_desc), dc), d),
+                h('div', { class: 'hp-f' }, h('label', { for: 'hp-seo-i' }, S.seo_image), img),
+                h('div', { class: 'hp-f' }, h('label', { for: 'hp-seo-n', style: 'justify-content:flex-start;align-items:center;gap:.5rem;cursor:pointer' }, noindex, S.seo_noindex), h('small', {}, S.seo_noindex_d)),
+                h('h3', { style: 'margin:1.1rem 0 .4rem;font-size:.8125rem;color:var(--hp-mut)' }, S.seo_serp), serp,
+                h('h3', { style: 'margin:1.1rem 0 0;font-size:.8125rem;color:var(--hp-mut)' }, S.seo_checks), checks,
+            );
+            redraw();
+            return h('div', { class: 'hp-work' }, left, previewPane());
+        }
+
+        // ---- publish ----
+        $('#hp-publish').addEventListener('click', async () => {
+            if (publishing) return;
+            publishing = true;
+            const btn = $('#hp-publish');
+            btn.disabled = true; status(S.publishing);
+            clearTimeout(draftTimer);
+            try {
+                const r = await post(PUBLISH, payload());
+                if (r.ok) { dirty = false; status(r.data.message || S.published, 'is-ok'); reloadPreview(); }
+                else {
+                    htmlReport = { errors: r.data.errors || [], notes: [] };
+                    status(r.data.message || S.failed, 'is-bad');
+                    if (htmlReport.errors.length) { tab = model.engine === 'html' ? 'html' : tab; renderEditor(); }
+                }
+            } catch (e) { status(S.failed, 'is-bad'); }
+            publishing = false; btn.disabled = false;
         });
+        window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+        renderAccess();
+        renderSource();
+        syncVisibility();
+        // A draft left over from an earlier visit must not be what the preview shows.
+        sendDraft();
     })();
     </script>
 {% endblock %}

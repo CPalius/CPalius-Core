@@ -4,17 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Core\Account;
 
+use App\Core\Account\AccountMailer;
 use App\Core\Account\AccountRegistrationService;
 use App\Core\Localization\LocaleProvider;
-use App\Core\Mail\CpMailerService;
-use App\Core\Mail\Repository\MailLogRepository;
+use App\Core\Localization\Service\UserLocaleResolver;
 use App\Core\Security\Password\BreachChecker;
 use App\Core\Security\Password\PasswordHistory;
 use App\Core\Security\Password\PasswordPolicy;
 use App\Core\Settings\SettingDefinition;
 use App\Core\Settings\SettingsRegistry;
-use App\Core\Token\TokenReplacer;
-use App\Core\Token\TokenTypeRegistry;
 use App\Repository\LocaleRepository;
 use App\Repository\SettingRepository;
 use App\Repository\UserRepository;
@@ -67,9 +65,11 @@ final class AccountRegistrationServiceTest extends TestCase
         $localeRepository = $this->createMock(LocaleRepository::class);
         $localeRepository->method('findActive')->willReturn([]);
 
+        $localeProvider = new LocaleProvider($localeRepository, new ArrayAdapter(), 'tr,en', 'tr');
+
         $settings = new SettingsRegistry(
             $settingRepository,
-            new LocaleProvider($localeRepository, new ArrayAdapter(), 'tr,en', 'tr'),
+            $localeProvider,
             new RequestStack(),
             new ArrayAdapter(),
         );
@@ -140,15 +140,9 @@ final class AccountRegistrationServiceTest extends TestCase
             $this->createMock(EntityManagerInterface::class),
             $this->createMock(UrlGeneratorInterface::class),
             $translator,
-            // Real CpMailerService — no mail.enabled definition, so no mail is sent.
-            new CpMailerService(
-                $settings,
-                $this->createMock(MessageBusInterface::class),
-                $this->createMock(EntityManagerInterface::class),
-                $this->createMock(MailLogRepository::class),
-            ),
-            // Real TokenReplacer, no providers needed — this test never exercises mail sending.
-            new TokenReplacer([], new TokenTypeRegistry()),
+            // AccountMailer is final and this test never sends mail, so it is built without its collaborators.
+            (new \ReflectionClass(AccountMailer::class))->newInstanceWithoutConstructor(),
+            new UserLocaleResolver($localeProvider),
             $passwordPolicy,
         );
     }

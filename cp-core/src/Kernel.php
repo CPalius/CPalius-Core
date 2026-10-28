@@ -100,7 +100,12 @@ class Kernel extends BaseKernel
             return $raw;
         }
 
-        return $projectDir.'/cp-core/var/cache/'.$environment;
+        $base = $projectDir.'/cp-core/var/cache/'.$environment;
+        // Blue/green: after a module toggle the new container is compiled in <env>-<slot> by a
+        // background process, and this pointer flips only once it is warm. No request ever waits for a compile.
+        $slot = is_file($base.'.active') ? trim((string) @file_get_contents($base.'.active')) : '';
+
+        return preg_match('/^[a-z0-9]{4,16}$/', $slot) === 1 && is_dir($base.'-'.$slot) ? $base.'-'.$slot : $base;
     }
 
     public function getLogDir(): string

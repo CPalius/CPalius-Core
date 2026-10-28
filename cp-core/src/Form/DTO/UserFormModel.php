@@ -37,6 +37,9 @@ final class UserFormModel
     #[Assert\Length(max: 120, maxMessage: 'Soyad en fazla {{ limit }} karakter olabilir.')]
     public ?string $lastName = null;
 
+    #[Assert\Length(max: 25)]
+    public ?string $phone = null;
+
     #[Assert\Length(max: 120, maxMessage: 'Konum en fazla {{ limit }} karakter olabilir.')]
     public ?string $location = null;
 
@@ -82,6 +85,7 @@ final class UserFormModel
         $dto->username = $user->getUsername();
         $dto->firstName = $user->getFirstName() ?: null;
         $dto->lastName = $user->getLastName() ?: null;
+        $dto->phone = $user->getPhone() !== '' ? $user->getPhone() : null;
         $dto->location = $user->getLocation() !== '' ? $user->getLocation() : null;
         $dto->bio = $user->getBio();
         $dto->customTitle = $user->getCustomTitle() !== '' ? $user->getCustomTitle() : null;

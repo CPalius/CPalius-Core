@@ -47,6 +47,7 @@ use Modules\Forum\Service\ForumWordFilterService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
+use App\Core\Security\Flood\FloodService;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -94,6 +95,7 @@ final class ForumFrontController extends AbstractController
         private readonly SettingsRegistry $settingsRegistry,
         private readonly EntityManagerInterface $entityManager,
         private readonly TranslatorInterface $translator,
+        private readonly FloodService $flood,
     ) {
     }
 
@@ -622,6 +624,7 @@ final class ForumFrontController extends AbstractController
 
             $body = trim((string) $request->request->get('body'));
             $topicTitle = $isFirstPost ? trim((string) $request->request->get('title')) : null;
+            $topicDescription = $isFirstPost ? mb_substr(trim((string) $request->request->get('description')), 0, 255) : null;
 
             if ($body === '' || ($isFirstPost && $topicTitle === '')) {
                 $this->addFlash('error', $this->translator->trans('site.forum.edit_post.title_body_required'));
@@ -629,11 +632,22 @@ final class ForumFrontController extends AbstractController
                 return $this->render('@Theme/forum/edit_post.html.twig', $this->editPostViewData(
                     $post,
                     $isFirstPost,
-                    ['body' => $body, 'title' => $topicTitle ?? $post->getTopic()->getTitle()],
+                    ['body' => $body, 'title' => $topicTitle ?? $post->getTopic()->getTitle(), 'description' => $topicDescription ?? ''],
                 ));
             }
 
+            // What the translations were made from, before this save replaces it.
+            $before = [
+                'title' => $post->getTopic()->getTitle(),
+                'description' => (string) $post->getTopic()->getDescription(),
+                'body' => $post->getBody(),
+            ];
+
+            if ($topicDescription !== null) {
+                $post->getTopic()->setDescription($topicDescription !== '' ? $topicDescription : null);
+            }
             $this->topicService->updatePost($post, $user, $body, $isFirstPost ? $topicTitle : null);
+            $this->applyEditExtras($request, $post, $user, $isFirstPost);
 
             $allowEditTranslate = (string) $this->settingsRegistry->get('ai.allow_edit_translate', '0') === '1'
                 && (string) $this->settingsRegistry->get('ai.enabled', '1') === '1';
@@ -642,9 +656,12 @@ final class ForumFrontController extends AbstractController
                 $this->topicService->ensureTranslationGroup($post->getTopic());
                 $existingLocales = $this->topicRepository->findSiblingLocales($post->getTopic());
                 $missing = $this->missingTranslationLocales($post->getTopic(), $existingLocales);
-                if ($missing === []) {
-                    $this->addFlash('warning', $this->translator->trans('ai.flash.already_exists'));
-                } else {
+                // Translations that already exist are edited in place (only what
+                // changed is re-translated); only absent languages get a new topic.
+                if ($existingLocales !== []) {
+                    $this->topicService->requestTranslationSync($post->getTopic(), $opening, $user, $request, $before['title'], $before['description'], $before['body']);
+                }
+                if ($missing !== []) {
                     $this->topicService->requestTranslation($post->getTopic(), $opening, $user, $request);
                 }
             }
@@ -657,8 +674,50 @@ final class ForumFrontController extends AbstractController
         return $this->render('@Theme/forum/edit_post.html.twig', $this->editPostViewData(
             $post,
             $isFirstPost,
-            ['body' => $post->getBody(), 'title' => $post->getTopic()->getTitle()],
+            ['body' => $post->getBody(), 'title' => $post->getTopic()->getTitle(), 'description' => (string) $post->getTopic()->getDescription()],
         ));
+    }
+
+    /**
+     * Attachments (any post) and the poll (opening post) — the parts of the
+     * composer that used to disappear the moment a topic was saved.
+     */
+    private function applyEditExtras(Request $request, ForumPost $post, ?User $user, bool $isFirstPost): void
+    {
+        if (!$user instanceof User) {
+            return;
+        }
+
+        $remove = array_map('intval', (array) $request->request->all('remove_attachments'));
+        if ($remove !== []) {
+            $this->attachmentService->remove($post, $remove);
+        }
+        $this->attachmentService->attachUploaded($post, $user, $this->uploadedFiles($request));
+
+        if (!$isFirstPost || !$this->pollService->isEnabled()) {
+            return;
+        }
+
+        $topic = $post->getTopic();
+        $poll = $this->pollService->findForTopic($topic);
+        if ($poll !== null && $request->request->getBoolean('poll_delete')) {
+            $this->pollService->delete($poll);
+
+            return;
+        }
+
+        $question = trim((string) $request->request->get('poll_question'));
+        $lines = preg_split('/\r\n|\r|\n/', (string) $request->request->get('poll_options', '')) ?: [];
+        $closesRaw = trim((string) $request->request->get('poll_closes_at'));
+        $closesAt = $closesRaw !== '' ? \DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $closesRaw) ?: null : null;
+        $maxChoices = max(1, $request->request->getInt('poll_max_choices', 1));
+        $hide = $request->request->getBoolean('poll_hide_until_close');
+
+        if ($poll !== null) {
+            $this->pollService->update($poll, $question, $maxChoices, $hide, $closesAt, $lines);
+        } elseif ($question !== '') {
+            $this->pollService->create($topic, $user, $question, $lines, $maxChoices, $hide, $closesAt);
+        }
     }
 
     #[Route('/forum/mesaj/{postId}/sil', name: 'forum_delete_post', methods: ['POST'], requirements: ['postId' => '\d+'])]
@@ -872,6 +931,14 @@ final class ForumFrontController extends AbstractController
         $totalResults = 0;
 
         if ($query !== '' && mb_strlen($query) >= 2) {
+            // LIKE '%…%' over every post is a full scan (0.7 s at 200k posts) and this page is public:
+            // cap it per client so a handful of tabs cannot occupy the database.
+            $client = (string) $request->getClientIp();
+            if (!$this->flood->isAllowed('forum_search', $client, 10, 60)) {
+                return new Response($this->translator->trans('forum.search.too_many'), Response::HTTP_TOO_MANY_REQUESTS, ['Retry-After' => '60', 'Content-Type' => 'text/plain; charset=UTF-8']);
+            }
+            $this->flood->register('forum_search', $client, 60);
+
             $searchScope = $scope;
             if ($this->guestView->hidePostBodies() && ($searchScope === 'all' || $searchScope === 'posts')) {
                 $searchScope = 'topics';
@@ -989,7 +1056,7 @@ final class ForumFrontController extends AbstractController
     }
 
     /**
-     * @param array{body: string, title: string} $formValues
+     * @param array{body: string, title: string, description?: string} $formValues
      *
      * @return array<string, mixed>
      */
@@ -1008,6 +1075,9 @@ final class ForumFrontController extends AbstractController
             'isFirstPost' => $isFirstPost,
             'formValues' => $formValues,
             'attachmentsEnabled' => $this->composerUploadEnabled($section),
+            'attachments' => $this->attachmentService->forPost($post),
+            'poll' => $isFirstPost && $this->pollService->isEnabled() ? $this->pollService->findForTopic($topic) : null,
+            'pollsEnabled' => $isFirstPost && $this->pollService->isEnabled(),
             'editWindowMinutes' => $windowMinutes,
             'editMinutesLeft' => max(0, (int) ceil(($deadline - time()) / 60)),
             'existingTranslationLocales' => $existingTranslationLocales,
@@ -1327,6 +1397,12 @@ final class ForumFrontController extends AbstractController
 
     private function withLastVisitCookie(Response $response): Response
     {
+        // A guest's response must stay cookie-free: Set-Cookie makes the origin HTML cache refuse to
+        // store the page, and on a forum that is nearly every page a visitor from a search engine lands on.
+        if ($this->getUser() === null) {
+            return $response;
+        }
+
         $response->headers->setCookie(new Cookie(
             'forum_last_visit',
             (string) time(),

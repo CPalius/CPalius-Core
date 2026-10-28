@@ -57,6 +57,12 @@ final class PortalCopyService
         return isset(self::ROOT_BY_BLOCK[$blockId]);
     }
 
+    /** The key prefix the block's strings carry in portal.{locale}.yaml (hero => "hero", techstack => "tech"). */
+    public function rootOf(string $blockId): string
+    {
+        return self::ROOT_BY_BLOCK[$blockId] ?? $blockId;
+    }
+
     /**
      * Active locale codes for Studio tabs.
      *

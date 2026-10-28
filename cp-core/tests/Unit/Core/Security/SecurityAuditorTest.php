@@ -203,6 +203,8 @@ final class SecurityAuditorTest extends TestCase
             'password.breach' => SecurityFinding::SEVERITY_PASS,
             'twofactor.enabled' => SecurityFinding::SEVERITY_MEDIUM,
             'session.idle' => SecurityFinding::SEVERITY_LOW,
+            'session.sweep' => SecurityFinding::SEVERITY_PASS,
+            'aacp.gate' => SecurityFinding::SEVERITY_LOW,
             'settings.secrets' => SecurityFinding::SEVERITY_PASS,
             'users.admins' => SecurityFinding::SEVERITY_LOW,
         ], $this->bySeverity($findings));
@@ -211,11 +213,11 @@ final class SecurityAuditorTest extends TestCase
         self::assertSame(0, $summary[SecurityFinding::SEVERITY_CRITICAL]);
         self::assertSame(0, $summary[SecurityFinding::SEVERITY_HIGH]);
         self::assertSame(6, $summary[SecurityFinding::SEVERITY_MEDIUM]);
-        self::assertSame(3, $summary[SecurityFinding::SEVERITY_LOW]);
-        self::assertSame(8, $summary[SecurityFinding::SEVERITY_PASS]);
+        self::assertSame(4, $summary[SecurityFinding::SEVERITY_LOW]);
+        self::assertSame(9, $summary[SecurityFinding::SEVERITY_PASS]);
 
-        // 6 medium (6 each) + 3 low (2 each) = 42 points off.
-        self::assertSame(58, $auditor->score($findings));
+        // 6 medium (6 each) + 4 low (2 each) = 44 points off.
+        self::assertSame(56, $auditor->score($findings));
     }
 
     /**
@@ -475,6 +477,9 @@ final class SecurityAuditorTest extends TestCase
             'telemetry.security_enabled' => true,
             'security.twofactor_enforce_privileged' => true,
             'security.session_idle_minutes' => 30,
+            'security.aacp_gate_enabled' => true,
+            'security.aacp_gate_question' => 'Question?',
+            'security.aacp_gate_answer' => 'Answer',
         ]);
         $findings = $hardened->run();
 

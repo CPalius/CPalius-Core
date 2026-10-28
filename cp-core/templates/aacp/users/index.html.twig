@@ -40,6 +40,8 @@
                         </td>
                         <td class="!text-slate-300">
                             {{ user.fullName }}
+                            {% if user.phone %}<p class="text-fs-xs !text-slate-500">{{ user.phone }}</p>{% endif %}
+                            {% if user.registrationPendingApproval %}<a href="{{ path('aacp_users_pending') }}" class="badge badge-warning">{{ 'aacp.users.pending_menu'|trans }}</a>{% endif %}
                         </td>
                         <td>
                             {% for role in user.cpaliusRoles %}
@@ -64,7 +66,7 @@
                                     </a>
                                     {% if user.id != app.user.id %}
                                         <form method="post" action="{{ path('aacp_users_delete', {id: user.id}) }}"
-                                              onsubmit="return confirm({{ 'aacp.users.delete_confirm'|trans({email: user.email})|json_encode|raw }});">
+                                              data-confirm="{{ 'aacp.users.delete_confirm'|trans({email: user.email})|e('html_attr') }}">
                                             <input type="hidden" name="_token" value="{{ csrf_token('aacp_user_delete_' ~ user.id) }}">
                                             <button type="submit" class="btn btn-sm btn-outline-danger">
                                                 {{ 'aacp.users.delete_action'|trans }}

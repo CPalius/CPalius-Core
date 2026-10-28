@@ -42,6 +42,10 @@ final class ProtectedPathsTest extends TestCase
         yield 'dotenv local' => ['.env.local'];
         yield 'nested dotenv' => ['cp-core/.env.prod'];
 
+        // Modules and themes update through the extension store, never through a core patch.
+        yield 'module' => ['cp-content/modules/Blog/Entity/BlogComment.php'];
+        yield 'theme' => ['cp-content/themes/pazar/theme.json'];
+
         // Composer owns cp-includes/vendor and it is not in version control, so
         // a patch has nowhere to fetch those files from anyway.
         yield 'vendor' => ['cp-includes/vendor/symfony/console/Application.php'];
@@ -64,7 +68,7 @@ final class ProtectedPathsTest extends TestCase
     public static function acceptedPaths(): iterable
     {
         yield 'core source' => ['cp-core/src/Core/Version/CpVersion.php', 'cp-core/src/Core/Version/CpVersion.php'];
-        yield 'module' => ['cp-content/modules/Blog/Entity/BlogComment.php', 'cp-content/modules/Blog/Entity/BlogComment.php'];
+        yield 'version tooling source' => ['cp-core/src/Core/Version/PatchManifest.php', 'cp-core/src/Core/Version/PatchManifest.php'];
         yield 'public asset' => ['public/index.php', 'public/index.php'];
         yield 'root composer' => ['composer.json', 'composer.json'];
         yield 'shared host front controller' => ['index.php', 'index.php'];

@@ -1,8 +1,8 @@
 title: 'CPalius CMF: Bir İçerik Yönetim Sisteminden "Kurşun Geçirmez" Kurumsal Uygulama Framework''üne Evrim'
-version: v1.3.0
+version: v1.4.0
 intro_html: |
     <p><strong>Yayın Türü:</strong> Teknik İnceleme (Whitepaper) &amp; Mimari Yol Haritası (RFC)<br>
-    <strong>Sürüm:</strong> v1.2.0<br>
+    <strong>Sürüm:</strong> v1.4.0<br>
     <strong>Hedef Kitle:</strong> Kıdemli PHP Geliştiricileri, Sistem Mimarları, Açık Kaynak Geliştiricileri ve Yapay Zeka Ajanları<br>
     <strong>Yazar / Kurucu:</strong> Ali Çömez (slaweally)<br>
     <strong>Teknoloji Yığını:</strong> PHP 8.4+, Symfony 7.4 LTS, Doctrine ORM, AssetMapper, Tailwind CSS Standalone Binary</p>
@@ -268,6 +268,10 @@ sections:
             <p><strong>WordPress tarzı modül paketleri</strong></p>
 
             <p>Birinci parti bir modül <code>Resources/config/importmap.php</code> ve <code>contributions.yaml</code> taşıyabilir. <code>ModulePackageContract</code> disk düzenini doğrular; operatörler AACP'den ZIP yükleyebilir. Ana sayfa kipleri, portal akış blokları, şema türleri ve hesap giriş-sonrası iniş noktası contribution kataloğunda ilan edilir — çekirdek <code>forum_index</code> veya <code>blog_index</code>'i sabit kodlamaz.</p>
+
+            <h3>Yeniden oluşturma (Rebuild) kuralı</h3>
+
+            <p>Çekirdek, hiç duymadığı bir tabloyu yeniden sayamaz ya da yeniden dizinleyemez. Bu yüzden bir kural vardır: <strong>içerik üreten her modül, yeniden oluşturma sistemine kendini dahil etmelidir.</strong> Yol, <code>RebuilderInterface</code> uygulamaktır; arayüz kendini otomatik etiketler, modülün <code>services.yaml</code>&apos;ında ek bir şey gerekmez. İş partiler halinde çalışır (<code>getBatchSize</code>, <code>rebuild($offset, $limit)</code>), AJAX koşucusu ilerleme yüzdesini gösterir. Kural <code>cp:doctor</code> tarafından denetlenir: varlığı (entity) olan etkin bir modül ne bir rebuilder kaydediyorsa ne de <code>module.json</code>&apos;da <code>&quot;rebuild&quot;: {&quot;exempt&quot;: &quot;neden&quot;}</code> ile türetilmiş veri tutmadığını söylüyorsa uyarı üretilir. Forum, Blog ve Belgeler (sayfaların kayıtlı HTML&apos;ini yeniden üretir) kuralı karşılar; kalan modüller doctor çıktısında adlarıyla listelenir.</p>
     -
         slug: migrate
         title: 'Migrate: bir kurulumu başka bir CMS''ten taşımak'
@@ -315,6 +319,12 @@ sections:
             <p><strong>Karantina, lokalizasyon, performans backend'leri</strong></p>
 
             <p><code>/aacp/quarantine</code>, <code>module_quarantine.log</code>'un salt-okunur görünümüdür. <code>TranslationManager</code> çekirdek ve modül ICU YAML'ini atomik <code>.tmp</code> + <code>rename()</code> ile yazar. Performans ekranı Redis, Memcached, Varnish, Nginx PageSpeed ve CPalius Origin Cache'i test eder; &ldquo;aktif&rdquo; bayrağı yalnızca başarılı probe'dan sonra konur — sahte yeşil toggle yoktur. <code>/aacp/backup</code> Yedek Yönetimi masasıdır (<code>system.backup.manage</code> yeteneği): veritabanı dökümü, dosya ZIP'i veya tam arşiv; indirme ve silme dahildir.</p>
+
+            <h3>Menü ve modül yönetimi</h3>
+
+            <p>AACP kenar çubuğunda açılır menülerin hiçbiri bir sayfaya link vermez; yalnızca alt menüsünü açar ve her ekran bir alt öğedir. <strong>Güvenlik Merkezi</strong> tek menüdür: genel bakış, canlı tehditler, denetim bulguları, güvenlik ayarları, telemetri ayarları ve zararlı yazılım tarayıcı. <strong>Modüller</strong> menüsü modül listesini (aktifler varsayılan; aç, kapat, sil), modül mağazasını, modül eklentilerini ve <strong>modül editörünü</strong> toplar; tema mağazası Görünüm menüsündedir.</p>
+
+            <p>Modül editörü, tema editörünün karşılığıdır: modülün PHP, Twig, CSS, JS, YAML ve JSON dosyalarını yönetim panelinden düzenler. Yol, modül klasörüyle sınırlıdır; kaydetmeden önce söz dizimi denetlenir, <strong>PHP ve <code>module.json</code> hatalıyken hiç kaydedilmez</strong> (bozuk bir modül sınıfı siteyi düşürebilir), her kayıttan önce önceki sürüm <code>cp-core/var/module-editor</code> altına yedeklenir ve önbellek temizlenir.</p>
     -
         slug: operations
         title: 'Bir kurulumu işletmek: güncelleme, teşhis, kuyruklar ve loglar'
@@ -368,6 +378,30 @@ sections:
             </ul>
 
             <p>Probe'lar izole edilir ve birkaç saniye önbelleğe alınır; takılan bir Redis dashboard'u 500'e düşüremez.</p>
+    -
+        slug: updates
+        title: 'Güncelleme, İmza ve Eklenti Mağazası'
+        weight: 95
+        body_html: |
+            <p>Bir framework&apos;ün güvenliği, kendi kendini güncelleme biçiminde sınanır: güncelleme sunucusu ele geçirilirse ya da eski bir paket tekrar sunulursa ne olur? CPalius bu soruya imza ile cevap verir.</p>
+
+            <h3>İmzalı sürüm bilgisi</h3>
+
+            <p><code>latest.json</code> Ed25519 ile imzalanır; genel anahtar çekirdeğe gömülüdür. Çekirdek üç şeyi <strong>reddeder</strong>: imzasız ya da bozuk manifest, süresi dolmuş manifest (30 gün; <em>freeze</em> saldırısı) ve kurulu sürümden eski manifest (<em>rollback</em> saldırısı). Reddedilince Güncellemeler ekranı &quot;imza doğrulanamadı&quot; der, güncelle düğmesi pasifleşir ve hiçbir şey indirilmez.</p>
+
+            <h3>Atomik güncelleme ve geri alma</h3>
+
+            <p>Güncelleme sırasında kilit alınır, 503 bakım sayfası açılır, veritabanının anlık görüntüsü alınır ve dosyalar önce yan yana hazırlanıp sonra hızlıca yerine konur. Dosya, migration veya güncelleme adımı hata verirse dosyalar ve veritabanı birlikte geri yüklenir; süreç ortada ölürse bir sonraki istek <code>public/index.php</code> içinde kendini onarır. Açık bir sınır: geri alma, anlık görüntü ile hata arasında yazılan her şeyi siler.</p>
+
+            <p>Güncelleme yalnızca dosya ekler ve üzerine yazar; bir sürümün sildiği dosya sitede kalır. Bunu pratikte yaşadık: 2.2.47&apos;nin kaldırdığı eski mağaza ekranı, güncellenen sitede ikinci bir mağaza olarak yaşamaya devam etti. Çözüm, tek seferlik <em>update hook</em>&apos;lar: <code>RemoveObsoleteFilesHook</code> artık silinmiş dosyaları temizler ve silinen her yeni denetleyici bu listeye eklenir.</p>
+
+            <h3>Özel kanal</h3>
+
+            <p>Bir sürüm önce yalnızca belirli bir siteye gönderilebilir. Kanal, tahmin edilemez bir adla çalışır; site hem kararlı hem kanal manifestosunu doğrular ve <strong>yüksek olan imzalı sürümü</strong> görür. Böylece her sürüm gerçek bir canlı sitede denenir, sorun çıkarsa kararlı kanalı izleyen kimse etkilenmez. Kanal sürümü kararlıdan ilerideyken kararlı manifestonun &quot;eski&quot; sayılıp denetimi düşürmemesi gerekir; bu, 2.2.54&apos;te düzeltilen gerçek bir hataydı.</p>
+
+            <h3>Eklenti mağazası</h3>
+
+            <p>Modüller ve temalar çekirdekten bağımsız sürümlenir ve imzalı bir katalogla (<code>extensions/index.json</code> + <code>index.sig</code>, 45 gün geçerli) dağıtılır. Kurulum sırasında paketin SHA-256 özeti <strong>imzalı katalogdaki</strong> özetle karşılaştırılır; adres sunucu alanı dışına çıkamaz, indirme 32 MB ile sınırlıdır, dosyalar yedeklenip tek seferde yerine konur. Etkin bir modülün güncellemesi aynı korumalı akıştan geçer: bakım kilidi, veritabanı anlık görüntüsü, modülün migration&apos;ları, hata olursa ortak geri alma. Her modül <code>core_version</code> aralığını taşır; çekirdek, kurulu bir modülün aralığını bozacaksa güncelleme engellenir. Mağaza ekranında &quot;Tümünü güncelle&quot; düğmesi vardır.</p>
     -
         slug: backup
         title: '10. Bölüm: Yedek Yönetimi'
@@ -428,6 +462,10 @@ sections:
             <p><strong>Çekirdek arayüzde Zero Node.js</strong></p>
 
             <p>Admin ve geliştirici kromu AssetMapper + Tailwind standalone binary kullanır. Bu yüzeyler için Node.js derlemesi yoktur. Kamu tema CSS'i yine statik bir tema varlığı olabilir.</p>
+
+            <p><strong>Belgeler (Docs)</strong> Docusaurus tarzı, sürümlü bir belge sitesidir: sınırsız sürüm (1.2.1, 2.0, next), Markdown ve HTML sayfalar, kenar çubuğu ağacı, &quot;Bu sayfada&quot; içindekiler, Ctrl+K araması, koyu tema ve <code>.md</code> / <code>.zip</code> içe-dışa aktarma (komut satırından da: <code>cp:docs:import</code>). Her sayfa kendi dilindedir; sayfa eklerken ve dosya yüklerken dil seçilir, dil değiştirici sayfanın diğer dildeki karşılığına gider, olmayan karşılık için ilk uygun sayfaya yönlendirir. HTML sayfalar güvenli süzgeçten geçer ve dış çağrı yapılmaz.</p>
+
+            <p><strong>Notlar (Notes)</strong> kişisel bir not defteridir: klasörler, renkler, görsel ve ekran görüntüsü, sayfalama, arama; ayrıca Studio&apos;nun <em>her</em> sayfasında sürükle-bırak yerleştirilebilen yapışkan notlar. Bu, çekirdeğe eklenen tek bir hook noktası olan <code>studio.body.end</code> ile yapılır: modül sayfaya iki etiket basar, geri kalanı kendi betiğidir; hook izole olduğundan hatası Studio&apos;yu bozmaz. Notlar başka kullanıcılarla paylaşılabilir (çoklu seçim, isteğe bağlı düzenleme yetkisi). Erişim kuralı tek yerde (<code>NoteAccess</code>) verilir ve listeler <strong>SQL&apos;e çevrilir</strong>; yetkisi olmayan bir notun kimliğini yazan kullanıcı 404 alır, e-posta adresleri paylaşım seçicisine hiç gönderilmez.</p>
     -
         slug: quality
         title: 'Bu belgedeki iddialar nasıl doğrulanıyor'
@@ -450,6 +488,8 @@ sections:
             <p><strong><code>cp:doctor</code> soyut olarak tasarlanmadı, bir olaydan sonra yazıldı.</strong> Beş migration birkaç geliştirme oturumu boyunca uygulanmadan durdu ve hiçbir şey yüksek sesle bozulmadı; çünkü o tablolara ihtiyaç duyan özellikler sessizce bozulacak şekilde yazılmıştı. Tek belirti, güvenlik telemetrisinin hiçbir yere yazmamasıydı. Bu yüzden uygulanmamış bir migration YÜKSEK olarak derecelendirilir: tehlike başarısız olması değil, <em>olmamasıdır</em>.</p>
 
             <p><strong>Bir teşhis aracı, teşhis ettiği kurulumdan sağ çıkmalıdır.</strong> Bir kontrol patlarsa koşu devam eder ve istisna bir bulguya dönüşür. İlk gerçek problemde ölen bir doktor, tam ihtiyaç duyulduğu anda işe yaramaz.</p>
+
+            <p>Geliştirme kipindeki N+1 koruyucusu bu belgenin yazıldığı sürede gerçek bir hata yakaladı: sınıflandırma (taxonomy) ekranı her sözlük için ayrı bir <code>COUNT</code> sorgusu çalıştırıyordu ve sınırı aşınca <code>MaxQueriesExceededException</code> fırlattı. Çözüm tek bir <code>GROUP BY</code> sorgusuydu. Aynı dönemde <code>?-&gt;</code> işlecinin eksik bir dizi anahtarını susturmadığı da bir uyarı olarak ortaya çıktı (yol deseni ekranı). İki örnek, korumaların süs değil, kullanıldığını gösterir. <code>cp:doctor</code>&apos;a yeni denetimler de eklendi: modül yeniden oluşturma kapsamı ve bekleyen modül sürümleri.</p>
     -
         slug: benchmark
         title: "Kıyas: CPalius'un Drupal, TYPO3, WordPress ve ProcessWire karşısındaki yeri"
@@ -477,7 +517,7 @@ sections:
 
             <ul>
             <li><strong>Sürüm politikası ve paket ekosistemi (satır 31, 35 — ikisi de D).</strong> Semantik sürüm sözü, geriye dönük uyumluluk belgesi ve modül deposu yok. Güncelleme makinesi var (<code>cp:update</code>); etrafındaki politika yok.</li>
-            <li><strong>Dokümantasyon (satır 33 — C).</strong> README ve SECURITY.md var. Geliştirici el kitabı yok. Karttaki en düşük not budur ve bir gözden kaçma değil, bitmemiş iştir.</li>
+            <li><strong>Dokümantasyon (satır 33 — B).</strong> Artık bir geliştirici el kitabı var: kurulumdan modül ve tema geliştirmeye, güncelleme sistemine kadar altmış küsur sayfa, sürümlü ve aranabilir bir belge sitesinde. Eksik olan, diğer dillere çeviri ve her modülün kendi belgesidir.</li>
             <li><strong>Performans kanıtı (satır 37 — D).</strong> Mimari hız için kurulmuş ve yayımlanmış tek bir ölçüm yok. Bir tane çıkana kadar iddia bir argümandır, ölçüm değil.</li>
             <li><strong>Veritabanı taşınabilirliği (satır 40 — C).</strong> Her migration ham MySQL DDL&apos;i. ORM katmanı taşınabilir, kurulum değil.</li>
             <li><strong>Erişilebilirlik (satır 38 — ölçülmedi).</strong> Yönetim arayüzü WCAG&apos;a karşı hiç denetlenmedi. Bunu &quot;bilinmiyor&quot; diye raporlamak, bir not uydurmaktan daha yararlıdır.</li>
@@ -487,13 +527,18 @@ sections:
         title: '13. Bölüm: Gelecek Yol Haritası ve Teknik İstişare (RFC)'
         weight: 130
         body_html: |
-            <p>CPalius'un çekirdek güvenlik, performans ve mimari omurgası tamamlanmıştır. Bu whitepaper'ın ilk taslağından bu yana teslim edilenler: AACP Safe Mode / Kurtarma Konsolu, izole Hook sistemi, birleşik Cron motoru, REST API Gateway, dördüncü savunma hattı (<code>SafeModuleRouteLoader</code>), anlık görsel pipeline'ı (<code>cp_thumb</code>), <code>#[CpResource]</code> audit log, Studio dashboard istatistikleri, CPalius Origin Cache, AACP performans envanteri, isteğe bağlı güvenlik telemetrisi (IP ban dahil), WordPress tarzı modül paketleri ve contribution kataloğu (ana sayfa, portal, şema, hesap inişi), Pages modülü, operatör arayüz katalog bağlama ve AACP Yedek Yönetimi (<code>cp:backup:create</code>).</p>
+            <p>CPalius&apos;un çekirdek güvenlik, performans ve mimari omurgası tamamlanmıştır. Bu whitepaper&apos;ın ilk taslağından bu yana teslim edilenler: AACP Safe Mode / Kurtarma Konsolu, izole Hook sistemi, birleşik Cron motoru, REST API Gateway, dördüncü savunma hattı (<code>SafeModuleRouteLoader</code>), <code>cp_thumb</code> görsel hattı, <code>#[CpResource]</code> denetim kaydı, Studio istatistikleri, Origin Cache, AACP performans envanteri, güvenlik telemetrisi ve IP yasakları, WordPress tarzı modül paketleri, Pages modülü, katalog güdümlü yerelleştirme, AACP yedekleme ve <strong>bu sürümde eklenenler</strong>: imzalı güncelleme ve özel kanallar, imzalı eklenti mağazası, sürümlü ve çok dilli Belgeler modülü, paylaşımlı Notlar modülü, modül kaynak editörü, birleşik Güvenlik Merkezi menüsü ve yeniden oluşturma kuralı.</p>
 
-            <p>Sıradaki geliştirme sprintlerinde aşağıdaki sistemleri inşa edeceğiz:</p>
+            <p>Önceki taslakta &quot;sıradaki sprint&quot; olarak yazılan iki madde tamamlandı: <strong>Workflow &amp; State Machine</strong> (YAML tanımlı editoryal iş akışı, geçiş başına yetenek, denetim kaydı) ve <strong>Messenger async kuyruk</strong> (Doctrine tabanlı <code>async</code> transport; e-posta ve bildirimler kuyruğa gider, cron tüketir).</p>
+
+            <p>Sıradaki işler:</p>
 
             <ul>
-            <li><strong>Workflow &amp; State Machine:</strong> Fatura, araç, rezervasyon gibi iş kayıtlarının geçiş süreçlerini (<code>draft &rarr; preparation &rarr; sold</code>) YAML tanımlarıyla yöneten ve her geçişi otomatik audit log'a ve bildirim kuyruğuna bağlayan mekanizma. <code>CpResource::$workflow</code> alanı zaten deklare edilmiştir.</li>
-            <li><strong>Messenger Async Kuyruk:</strong> Gerçek bir transport (Doctrine/Redis) bağlayarak e-posta ve bildirim işlemlerini asenkron kuyruğa taşımak. <code>symfony/messenger</code> kurulu ve AACP masasında görünür; henüz aktif transport bağlı değildir.</li>
+            <li><strong>Yeniden oluşturma kapsamı:</strong> Medya, Menü, SEO ve diğer içerik modüllerinin kendi rebuilder&apos;larını yazması; <code>cp:doctor</code> eksikleri adıyla listeler.</li>
+            <li><strong>Sürüm politikası (satır 31):</strong> semantik sürüm sözü ve geriye dönük uyumluluk belgesi; güncelleme makinesi hazır, etrafındaki politika yazılacak.</li>
+            <li><strong>Performans kanıtı (satır 37):</strong> yayımlanmış, tekrarlanabilir bir ölçüm.</li>
+            <li><strong>Erişilebilirlik (satır 38):</strong> yönetim arayüzünün WCAG denetimi.</li>
+            <li><strong>Belgeler:</strong> el kitabının diğer dillere çevrilmesi ve modül belgelerinin ayrı bir sürümde tamamlanması.</li>
             </ul>
     -
         slug: community

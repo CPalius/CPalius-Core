@@ -5,7 +5,7 @@
 {% block forum_breadcrumbs %}
     <nav class="forum-crumb fade-in" aria-label="{{ 'forum.nav_aria'|trans }}">
         <ol class="forum-crumb__list">
-            <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+            <li><a href="{{ path('site_home') }}"><i class="bi bi-house-door"></i></a></li>
             <li><a href="{{ path('forum_index') }}">{{ 'forum.breadcrumb.home_title'|trans }}</a></li>
             <li><a href="{{ path('forum_section', {sectionSlug: section.slug}) }}">{{ section.title }}</a></li>
             <li><a href="{{ path('forum_topic', {topicId: topic.id, slug: topic.slug}) }}">{{ topic.title|length > 40 ? topic.title|slice(0, 40) ~ '...' : topic.title }}</a></li>
@@ -22,11 +22,15 @@
 {% block forum_content %}
 <div class="forum-form fade-in">
     <div class="forum-form__title"><i class="bi bi-pencil-square"></i> {{ isFirstPost ? 'forum.edit_post.edit_topic_title'|trans : 'forum.edit_post.title'|trans }}</div>
-    <form action="{{ path('forum_edit_post', {postId: post.id}) }}" method="post">
+    <form action="{{ path('forum_edit_post', {postId: post.id}) }}" method="post" enctype="multipart/form-data">
         {% if isFirstPost %}
             <div class="forum-field">
                 <label for="fe-title">{{ 'forum.edit_post.topic_title_label'|trans }}</label>
                 <input type="text" id="fe-title" name="title" value="{{ formValues.title }}" maxlength="255" required autofocus>
+            </div>
+            <div class="forum-field">
+                <label for="fe-desc">{{ 'forum.field.description'|trans }} <span style="text-transform:none; font-weight:400;">{{ 'forum.field.optional'|trans }}</span></label>
+                <input type="text" id="fe-desc" name="description" value="{{ formValues.description|default('') }}" maxlength="255">
             </div>
         {% endif %}
 
@@ -49,23 +53,78 @@
             {% endif %}
         </div>
 
+        {% if attachments|default([]) is not empty %}
+            <div class="forum-field">
+                <label>{{ 'forum.attach.label'|trans }}</label>
+                <ul class="forum-attachments">
+                    {% for file in attachments %}
+                        <li>
+                            {% if file.image %}
+                                <a class="forum-lightbox" href="{{ file.url }}"><img src="{{ file.url }}" alt="{{ file.originalName }}" class="forum-attachments__img"></a>
+                            {% else %}
+                                <a href="{{ file.url }}" target="_blank" rel="noopener"><i class="bi bi-paperclip"></i> {{ file.originalName }}</a>
+                            {% endif %}
+                            <label class="forum-checkbox"><input type="checkbox" name="remove_attachments[]" value="{{ file.id }}"> {{ 'forum.attach.remove'|trans }}</label>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        {% if attachmentsEnabled|default(false) %}
+            <div class="forum-field">
+                <label>{{ 'forum.attach.add'|trans }}</label>
+                <input type="file" name="attachments[]" multiple>
+            </div>
+        {% endif %}
+
+        {% if pollsEnabled|default(false) %}
+            <details class="forum-poll-composer"{{ poll ? ' open' : '' }}>
+                <summary>{{ (poll ? 'forum.poll.edit' : 'forum.poll.add')|trans }}</summary>
+                <div class="forum-field">
+                    <label>{{ 'forum.poll.question'|trans }}</label>
+                    <input type="text" name="poll_question" maxlength="255" value="{{ poll ? poll.question : '' }}">
+                </div>
+                {% if poll %}
+                    <ul>
+                        {% for option in poll.options %}
+                            <li>{{ option.label }} <small>({{ option.voteCount }})</small></li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                <div class="forum-field">
+                    <label>{{ (poll ? 'forum.poll.add_options' : 'forum.poll.options')|trans }}</label>
+                    <textarea name="poll_options" rows="4" placeholder="{{ 'forum.poll.options_hint'|trans }}"></textarea>
+                </div>
+                <div class="forum-field">
+                    <label>{{ 'forum.poll.max_choices'|trans }}</label>
+                    <input type="number" name="poll_max_choices" value="{{ poll ? poll.maxChoices : 1 }}" min="1" max="10">
+                </div>
+                <div class="forum-field">
+                    <label class="forum-checkbox"><input type="checkbox" name="poll_hide_until_close" value="1"{{ poll and poll.hideUntilClose ? ' checked' : '' }}> {{ 'forum.poll.hide'|trans }}</label>
+                </div>
+                <div class="forum-field">
+                    <label>{{ 'forum.poll.closes_at'|trans }}</label>
+                    <input type="datetime-local" name="poll_closes_at" value="{{ poll and poll.closesAt ? poll.closesAt|date('Y-m-d\TH:i') : '' }}">
+                </div>
+                {% if poll %}
+                    <div class="forum-field">
+                        <label class="forum-checkbox"><input type="checkbox" name="poll_delete" value="1"> {{ 'forum.poll.delete'|trans }}</label>
+                    </div>
+                {% endif %}
+            </details>
+        {% endif %}
+
         {% if isFirstPost and ai_auto_translate is defined and ai_auto_translate.on_edit|default(false) %}
-            {% if missingTranslationLocales|default([]) is empty and existingTranslationLocales|default([]) is not empty %}
-                <div class="forum-field">
+            <div class="forum-field">
+                <label class="forum-checkbox">
+                    <input type="checkbox" name="auto_translate" value="1">
+                    {{ (existingTranslationLocales|default([]) is not empty ? 'ai.form.auto_translate_edit_sync' : 'ai.form.auto_translate_edit')|trans }}
+                </label>
+                <p class="forum-field-hint">{{ (existingTranslationLocales|default([]) is not empty ? 'ai.form.auto_translate_edit_sync_help' : 'ai.form.auto_translate_edit_help')|trans }}</p>
+                {% if existingTranslationLocales|default([]) is not empty %}
                     <p class="forum-field-hint">{{ 'ai.form.already_exists'|trans({'locales': existingTranslationLocales|join(', ')}) }}</p>
-                </div>
-            {% else %}
-                <div class="forum-field">
-                    <label class="forum-checkbox">
-                        <input type="checkbox" name="auto_translate" value="1">
-                        {{ 'ai.form.auto_translate_edit'|trans }}
-                    </label>
-                    <p class="forum-field-hint">{{ 'ai.form.auto_translate_edit_help'|trans }}</p>
-                    {% if existingTranslationLocales|default([]) is not empty %}
-                        <p class="forum-field-hint">{{ 'ai.form.already_exists'|trans({'locales': existingTranslationLocales|join(', ')}) }}</p>
-                    {% endif %}
-                </div>
-            {% endif %}
+                {% endif %}
+            </div>
         {% endif %}
 
         <div class="forum-form__actions">

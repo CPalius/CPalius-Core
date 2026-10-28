@@ -85,21 +85,39 @@ final class ModuleLifecycleManager
     {
         $installer = $this->resolveInstaller($manifest);
 
-        if ($installer === null) {
-            $this->forgetVersion($manifest->dirName);
+        if ($installer !== null) {
+            try {
+                $installer->uninstall($this->buildContext($manifest));
+            } catch (\Throwable $e) {
+                return ['ran' => false, 'message' => $e->getMessage()];
+            }
+        }
 
-            return ['ran' => false, 'message' => null];
+        // Safety net for installers that forget a step: settings stored under the module's own id.
+        $this->buildContext($manifest)->purgeSettings(strtolower($manifest->dirName));
+        $this->forgetVersion($manifest->dirName);
+
+        return ['ran' => $installer !== null, 'message' => null];
+    }
+
+    /**
+     * Points the homepage back to the built-in portal when it was set to one of $modeIds.
+     */
+    public function resetHomepageMode(array $modeIds): void
+    {
+        if ($modeIds === []) {
+            return;
         }
 
         try {
-            $installer->uninstall($this->buildContext($manifest));
-        } catch (\Throwable $e) {
-            return ['ran' => false, 'message' => $e->getMessage()];
+            $this->connection->executeStatement(
+                'UPDATE cp_settings SET setting_value = :portal WHERE setting_key = :key AND setting_value IN (:modes)',
+                ['portal' => 'portal', 'key' => 'homepage.mode', 'modes' => array_values($modeIds)],
+                ['modes' => \Doctrine\DBAL\ArrayParameterType::STRING],
+            );
+        } catch (\Throwable) {
+            // Non-fatal: request-time resolution already ignores a mode whose module is gone.
         }
-
-        $this->forgetVersion($manifest->dirName);
-
-        return ['ran' => true, 'message' => null];
     }
 
     public function hasInstaller(ModuleManifest $manifest): bool

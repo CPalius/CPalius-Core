@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Core\Theme;
 
+use App\Core\Module\ModuleManifest;
+
 /**
  * Parsed, immutable theme.json contract.
  * Every field except the directory name is optional so a minimal theme still loads.
@@ -25,7 +27,27 @@ final class ThemeDefinition
         public readonly array $css = [],
         public readonly array $js = [],
         public readonly array $supports = [],
+        public readonly array $requiresModules = [],
     ) {
+    }
+
+    /**
+     * Required modules (theme.json "requires_modules", directory names) that are not booted.
+     * A theme that calls a module's Twig function would otherwise take the whole site down
+     * the moment that module is switched off.
+     *
+     * @param array<string, string> $bundles kernel.bundles (name => class)
+     *
+     * @return list<string>
+     */
+    public function unmetModules(array $bundles, string $modulesDir): array
+    {
+        $booted = array_values($bundles);
+
+        return array_values(array_filter(
+            $this->requiresModules,
+            static fn (string $dir): bool => !\in_array(ModuleManifest::fromDirectory(rtrim($modulesDir, '/\\').'/'.$dir)?->bundle, $booted, true),
+        ));
     }
 
     /**
@@ -64,6 +86,7 @@ final class ThemeDefinition
             css: self::stringList($entry['css'] ?? null),
             js: self::stringList($entry['js'] ?? null),
             supports: self::stringList($data['supports'] ?? null),
+            requiresModules: self::stringList($data['requires_modules'] ?? null),
         );
     }
 

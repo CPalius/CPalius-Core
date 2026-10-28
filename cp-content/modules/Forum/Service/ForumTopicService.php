@@ -369,6 +369,11 @@ final class ForumTopicService
         $this->domainDispatcher->dispatchTopicTranslate($topic, $opening, $author, $request);
     }
 
+    public function requestTranslationSync(ForumTopic $topic, ForumPost $opening, User $author, Request $request, string $oldTitle, string $oldDescription, string $oldBody): void
+    {
+        $this->domainDispatcher->dispatchTopicTranslationSync($topic, $opening, $author, $request, $oldTitle, $oldDescription, $oldBody);
+    }
+
     /**
      * Toggle like; returns true when the post is now liked.
      * Own posts cannot be liked or unliked.

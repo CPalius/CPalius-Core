@@ -203,7 +203,8 @@ final class OriginHtmlProcessor
         }
         $description = '';
         if (preg_match('/<meta[^>]+name=["\']description["\'][^>]*content=["\']([^"\']*)["\']/i', $html, $m) === 1) {
-            $description = $m[1];
+            // The head already escaped it (&#x20;); decode once so the stub does not escape it a second time.
+            $description = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
         }
         $payload = json_encode($html, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         $titleEsc = htmlspecialchars($title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');

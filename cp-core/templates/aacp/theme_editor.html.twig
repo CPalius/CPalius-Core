@@ -7,6 +7,7 @@
 {% endblock %}
 
 {% block body %}
+    {% include 'aacp/_appearance_nav.html.twig' %}
     {% if theme is null %}
         <twig:cp:card>
             <p class="text-fs-sm text-slate-500">{{ 'aacp.themes.editor.no_theme'|trans }}</p>
@@ -32,7 +33,7 @@
                 <twig:cp:card title="{{ 'aacp.themes.editor.files'|trans }}" padded="{{ false }}">
                     <form method="get" action="{{ path('aacp_theme_editor') }}" class="border-b border-white/10 p-sp-sm">
                         <label class="mb-1 block text-fs-xs text-slate-500">{{ 'aacp.themes.editor.theme'|trans }}</label>
-                        <select name="theme" class="form-control !bg-dark-1 !border-white/10 !text-slate-200" onchange="this.form.submit()">
+                        <select name="theme" class="form-control !bg-dark-1 !border-white/10 !text-slate-200" data-autosubmit>
                             {% for item in themes %}
                                 <option value="{{ item.dirName }}" {{ item.dirName == theme.dirName ? 'selected' : '' }}>
                                     {{ item.name }}

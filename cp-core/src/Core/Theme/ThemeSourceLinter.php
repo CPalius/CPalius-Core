@@ -15,6 +15,14 @@ use Twig\Source;
 final class ThemeSourceLinter
 {
     /**
+     * @param Environment|null $twig the application Twig environment, so project filters/functions
+     *                               (trans, path, cp_theme_url ...) are known; a bare one is used when null
+     */
+    public function __construct(private readonly ?Environment $twig = null)
+    {
+    }
+
+    /**
      * @return list<string> human-readable problems; empty means the source parses
      */
     public function problems(string $kind, string $content, string $label): array
@@ -31,7 +39,7 @@ final class ThemeSourceLinter
      */
     private function twigProblems(string $content, string $label): array
     {
-        $twig = new Environment(new ArrayLoader([]), [
+        $twig = $this->twig ?? new Environment(new ArrayLoader([]), [
             'autoescape' => false,
             'debug' => false,
             'cache' => false,

@@ -39,7 +39,7 @@
                         <td class="align-top pt-3 text-right">
                             {% if row.pattern %}
                                 <form method="post" action="{{ path('aacp_path_pattern_regenerate', {bundle: row.bundle}) }}"
-                                      onsubmit="return confirm('{{ 'aacp.path_pattern.action.regenerate_confirm'|trans }}');">
+                                      data-confirm="{{ 'aacp.path_pattern.action.regenerate_confirm'|trans|e('html_attr') }}">
                                     <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
                                     <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-400">
                                         {{ 'aacp.path_pattern.action.regenerate'|trans }}

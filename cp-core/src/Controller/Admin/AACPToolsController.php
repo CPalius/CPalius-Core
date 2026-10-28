@@ -29,6 +29,15 @@ final class AACPToolsController
         return new RedirectResponse('/aacp');
     }
 
+    /** Every security screen hangs under this heading; it opens the menu and goes nowhere itself. */
+    #[Route('/aacp/security-menu', name: 'aacp_hub_security', methods: ['GET'])]
+    #[CpAdminMenu(label: 'aacp.security.menu', icon: 'heroicons:shield-check', panel: 'aacp', priority: 30, capability: 'system.aacp.access')]
+    #[IsGranted('system.aacp.access')]
+    public function security(): RedirectResponse
+    {
+        return new RedirectResponse('/aacp/security');
+    }
+
     #[Route('/aacp/structure', name: 'aacp_hub_structure', methods: ['GET'])]
     #[CpAdminMenu(label: 'aacp.menu.hub.structure', icon: 'heroicons:squares-2x2', panel: 'aacp', priority: 60, capability: 'system.aacp.access')]
     #[IsGranted('system.aacp.access')]
@@ -41,6 +50,15 @@ final class AACPToolsController
     #[CpAdminMenu(label: 'aacp.menu.hub.automation', icon: 'heroicons:bolt', panel: 'aacp', priority: 70, capability: 'system.aacp.access')]
     #[IsGranted('system.aacp.access')]
     public function automation(): RedirectResponse
+    {
+        return new RedirectResponse('/aacp');
+    }
+
+    /** Home for module-contributed AACP items; AdminMenuRegistrationPass files them here. */
+    #[Route('/aacp/arac-menusu', name: 'aacp_hub_tools', methods: ['GET'])]
+    #[CpAdminMenu(label: 'aacp.menu.hub.tools', icon: 'heroicons:briefcase', panel: 'aacp', priority: 90, capability: 'system.aacp.access')]
+    #[IsGranted('system.aacp.access')]
+    public function toolsHub(): RedirectResponse
     {
         return new RedirectResponse('/aacp');
     }

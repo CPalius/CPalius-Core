@@ -7,6 +7,9 @@
     let modalEl = null;
     let onSelectCallback = null;
     let i18nCache = null;
+    // Multi mode (open(cb, {multiple: true})): clicks toggle items and the callback gets an array on confirm.
+    let multiple = false;
+    const picked = new Map();
 
     function t(key) {
         if (i18nCache === null) {
@@ -24,6 +27,8 @@
             loading: 'Loading…',
             uploadFailed: 'Upload failed.',
             listFailed: 'Could not load media list.',
+            confirm: 'Add selected',
+            selected: 'selected',
         };
 
         return i18nCache[key] || fallbacks[key] || key;
@@ -41,11 +46,23 @@
             + '<p class="text-fs-sm font-semibold text-cp-text">' + t('title') + '</p>'
             + '<button type="button" data-media-picker-close class="text-fs-sm text-cp-steel hover:text-cp-text">' + t('close') + '</button>'
             + '</div>'
-            + '<div data-media-picker-body></div>';
+            + '<div data-media-picker-body></div>'
+            + '<div data-media-picker-footer hidden class="flex items-center justify-between gap-sp-sm border-t border-cp-border p-sp-sm">'
+            + '<span data-media-picker-count class="text-fs-sm text-cp-steel"></span>'
+            + '<button type="button" data-media-picker-confirm class="btn btn-sm btn-primary">' + t('confirm') + '</button>'
+            + '</div>';
 
         document.body.appendChild(modalEl);
 
         modalEl.querySelector('[data-media-picker-close]').addEventListener('click', () => close());
+
+        modalEl.querySelector('[data-media-picker-confirm]').addEventListener('click', () => {
+            const assets = [...picked.values()];
+            if (onSelectCallback && assets.length > 0) {
+                onSelectCallback(assets);
+            }
+            close();
+        });
 
         modalEl.addEventListener('click', (event) => {
             const item = event.target.closest('[data-media-item]');
@@ -53,11 +70,23 @@
                 return;
             }
 
-            selectAsset({
+            const asset = {
                 id: item.getAttribute('data-asset-id'),
                 url: item.getAttribute('data-asset-url'),
                 originalName: item.getAttribute('data-asset-name'),
-            });
+            };
+
+            if (!multiple) {
+                selectAsset(asset);
+                return;
+            }
+
+            if (picked.has(asset.id)) {
+                picked.delete(asset.id);
+            } else {
+                picked.set(asset.id, asset);
+            }
+            markPicked();
         });
 
         modalEl.addEventListener('submit', (event) => {
@@ -143,6 +172,17 @@
             });
     }
 
+    function markPicked() {
+        modalEl.querySelectorAll('[data-media-item]').forEach((el) => {
+            const on = picked.has(el.getAttribute('data-asset-id'));
+            el.style.outline = on ? '3px solid #2563eb' : '';
+            el.style.outlineOffset = on ? '-3px' : '';
+        });
+        const count = modalEl.querySelector('[data-media-picker-count]');
+        count.textContent = picked.size + ' ' + t('selected');
+        modalEl.querySelector('[data-media-picker-confirm]').disabled = picked.size === 0;
+    }
+
     function selectAsset(asset) {
         if (onSelectCallback) {
             onSelectCallback(asset);
@@ -158,15 +198,24 @@
             .then((response) => response.text())
             .then((html) => {
                 body.innerHTML = html;
+                if (multiple) {
+                    markPicked();
+                }
             })
             .catch(() => {
                 body.innerHTML = '<p class="p-sp-md text-center text-fs-sm text-danger-600">' + t('listFailed') + '</p>';
             });
     }
 
-    function open(onSelect) {
+    function open(onSelect, options) {
         onSelectCallback = onSelect;
+        multiple = Boolean(options && options.multiple);
+        picked.clear();
         ensureModal();
+        modalEl.querySelector('[data-media-picker-footer]').hidden = !multiple;
+        if (multiple) {
+            markPicked();
+        }
         loadBody('');
         modalEl.showModal();
     }

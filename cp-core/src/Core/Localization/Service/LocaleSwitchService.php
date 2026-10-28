@@ -103,7 +103,7 @@ final class LocaleSwitchService
     public function homeUrl(string $locale): string
     {
         try {
-            return $this->urlGenerator->generate('theme_cpalius_website_home', [
+            return $this->urlGenerator->generate('site_home', [
                 '_locale' => $this->localeProvider->resolve($locale),
             ]);
         } catch (RoutingException) {

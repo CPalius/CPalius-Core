@@ -41,7 +41,7 @@
                     <button type="submit" class="btn btn-primary">
                         {{ locale ? 'aacp.locales.form.update'|trans : 'aacp.locales.form.create_submit'|trans }}
                     </button>
-                    <a href="{{ path('aacp_advanced_management', {tab: 'locales'}) }}" class="text-fs-sm font-medium !text-slate-400 hover:!text-slate-200">{{ 'aacp.locales.form.cancel'|trans }}</a>
+                    <a href="{{ path('aacp_languages_index') }}" class="text-fs-sm font-medium !text-slate-400 hover:!text-slate-200">{{ 'aacp.locales.form.cancel'|trans }}</a>
                 </div>
             </form>
         </twig:cp:card>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Core\Security\Reauth\RequiresRecentAuth;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Api\ApiKeyService;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -51,6 +52,7 @@ final class AACPApiKeyController
 
     #[Route('/aacp/api-keys/create', name: 'aacp_api_keys_create', methods: ['POST'])]
     #[IsGranted('system.api.manage')]
+    #[RequiresRecentAuth]
     public function create(Request $request): JsonResponse
     {
         $this->assertValidCsrfToken($request);
@@ -91,6 +93,7 @@ final class AACPApiKeyController
 
     #[Route('/aacp/api-keys/{id}/toggle', name: 'aacp_api_keys_toggle', methods: ['POST'])]
     #[IsGranted('system.api.manage')]
+    #[RequiresRecentAuth]
     public function toggle(string $id, Request $request): JsonResponse
     {
         $this->assertValidCsrfToken($request);
@@ -106,6 +109,7 @@ final class AACPApiKeyController
 
     #[Route('/aacp/api-keys/{id}/delete', name: 'aacp_api_keys_delete', methods: ['POST'])]
     #[IsGranted('system.api.manage')]
+    #[RequiresRecentAuth]
     public function delete(string $id, Request $request): JsonResponse
     {
         $this->assertValidCsrfToken($request);

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Core\Version;
 
 use App\Core\Settings\SettingsRegistry;
+use App\Core\Version\Service\ReleaseSecurityException;
+use App\Core\Version\Service\ReleaseVerifier;
 use App\Entity\Setting;
 use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -30,6 +32,12 @@ use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
 final class ReleaseChecker
 {
     private const KEY = 'update.core.latest_release';
+
+    /** Last signature/expiry/rollback failure; empty once a check verifies again. */
+    private const ERROR_KEY = 'update.core.verify_error';
+
+    /** Optional private channel (a hard-to-guess name) this installation also follows. */
+    private const CHANNEL_KEY = 'update.core.channel';
 
     /**
      * The update server: latest.json, versions.json, releases/, patches/ and
@@ -65,6 +73,7 @@ final class ReleaseChecker
         private readonly SettingRepository $settings,
         private readonly EntityManagerInterface $entityManager,
         private readonly SettingsRegistry $settingsRegistry,
+        private readonly ReleaseVerifier $verifier,
     ) {
     }
 
@@ -204,15 +213,23 @@ final class ReleaseChecker
      */
     private function noteUrls(string $version, ?string $locale): array
     {
-        $base = self::FEED.'releases/';
+        // A release published only on a private channel keeps its notes under that channel.
+        $bases = [];
+        if ($this->channel() !== '') {
+            $bases[] = self::FEED.'channels/'.$this->channel().'/releases/';
+        }
+        $bases[] = self::FEED.'releases/';
+
         $urls = [];
 
-        foreach ($this->localeCandidates($locale) as $candidate) {
-            $urls[] = $base.$version.'-'.$candidate.'.md';
-        }
+        foreach ($bases as $base) {
+            foreach ($this->localeCandidates($locale) as $candidate) {
+                $urls[] = $base.$version.'-'.$candidate.'.md';
+            }
 
-        // The default file is always the last resort and always English.
-        $urls[] = $base.$version.'.md';
+            // The default file is always the last resort and always English.
+            $urls[] = $base.$version.'.md';
+        }
 
         return $urls;
     }
@@ -280,6 +297,11 @@ final class ReleaseChecker
     {
         try {
             $payload = $this->fetch();
+        } catch (ReleaseSecurityException $e) {
+            // Kept apart from network blips: this one blocks the update button.
+            $this->store(self::ERROR_KEY, $e->getMessage());
+
+            return 'Release check failed, keeping last known state: signature check refused the manifest: '.$e->getMessage();
         } catch (\Throwable $e) {
             // The previous result is deliberately left in place. A network
             // blip must not erase a known-good "update available" notice.
@@ -287,6 +309,7 @@ final class ReleaseChecker
         }
 
         $this->persist($payload);
+        $this->store(self::ERROR_KEY, '');
 
         $latest = $payload['version'];
 
@@ -311,8 +334,81 @@ final class ReleaseChecker
      */
     private function fetch(): array
     {
+        $channel = $this->channel();
+
+        if ($channel === '') {
+            return $this->fetchFeed(self::SOURCE);
+        }
+
+        // A site on a channel build is legitimately ahead of stable, so stable that is merely older than the running
+        // version must not sink the check. Forged, unsigned or expired stable manifests still fail (see below).
+        $best = null;
+        $stableError = null;
+
         try {
-            $response = $this->client()->request('GET', self::SOURCE);
+            $best = $this->fetchFeed(self::SOURCE);
+        } catch (ReleaseSecurityException $e) {
+            if (!str_contains($e->getMessage(), 'possible rollback attack')) {
+                throw $e;
+            }
+            $stableError = $e;
+        }
+
+        // A private channel can only be ahead of stable, never behind: the higher signed version wins.
+        try {
+            $other = $this->fetchFeed(self::FEED.'channels/'.$channel.'/latest.json');
+
+            if ($best === null || version_compare($other['version'], $best['version'], '>')) {
+                $best = $other;
+            }
+        } catch (ReleaseSecurityException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            // A channel that is unreachable or does not exist yet leaves the stable result in place.
+            if ($best === null) {
+                throw $stableError ?? $e;
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * The private channel this installation follows, or an empty string for stable only.
+     */
+    public function channel(): string
+    {
+        $raw = strtolower(trim((string) ($this->settingsRegistry->getRaw(self::CHANNEL_KEY) ?? '')));
+
+        return preg_match('/^[a-z0-9][a-z0-9-]{5,63}$/', $raw) === 1 ? $raw : '';
+    }
+
+    /**
+     * Switches channel. The stored release is forgotten on purpose: the anti-rollback memory must
+     * not compare a stable feed against a version first seen on another channel.
+     */
+    public function changeChannel(string $channel): bool
+    {
+        $channel = strtolower(trim($channel));
+
+        if ($channel !== '' && preg_match('/^[a-z0-9][a-z0-9-]{5,63}$/', $channel) !== 1) {
+            return false;
+        }
+
+        $this->store(self::CHANNEL_KEY, $channel);
+        $this->store(self::KEY, '');
+        $this->store(self::ERROR_KEY, '');
+
+        return true;
+    }
+
+    /**
+     * @return array{version: string, released_at: ?string, critical: bool, notes_url: ?string, notes_raw: ?string, download_zip: ?string, download_sha256: ?string}
+     */
+    private function fetchFeed(string $url): array
+    {
+        try {
+            $response = $this->client()->request('GET', $url);
             $status = $response->getStatusCode();
 
             if ($status !== 200) {
@@ -333,6 +429,9 @@ final class ReleaseChecker
         if (!\is_array($decoded)) {
             throw new \RuntimeException('Malformed JSON');
         }
+
+        // Before any field is trusted: a forged or stale manifest stops here.
+        $this->verifier->verify($decoded, CpVersion::VERSION, $this->status()['version'] ?? null);
 
         $version = $decoded['version'] ?? null;
 
@@ -405,14 +504,30 @@ final class ReleaseChecker
     {
         $payload['checked_at'] = (new \DateTimeImmutable())->format(\DATE_ATOM);
 
-        $setting = $this->settings->findOneBy(['settingKey' => self::KEY]);
+        $this->store(self::KEY, json_encode($payload, \JSON_THROW_ON_ERROR));
+        $this->memo = null;
+    }
+
+    /**
+     * Why the last fetched manifest was refused, or null when none was.
+     */
+    public function securityError(): ?string
+    {
+        $raw = $this->settingsRegistry->getRaw(self::ERROR_KEY);
+
+        return \is_string($raw) && trim($raw) !== '' ? $raw : null;
+    }
+
+    private function store(string $key, string $value): void
+    {
+        $setting = $this->settings->findOneBy(['settingKey' => $key]);
 
         if (!$setting instanceof Setting) {
-            $setting = new Setting(self::KEY);
+            $setting = new Setting($key);
             $this->entityManager->persist($setting);
         }
 
-        $setting->setSettingValue(json_encode($payload, \JSON_THROW_ON_ERROR));
+        $setting->setSettingValue($value);
 
         $this->entityManager->flush();
 

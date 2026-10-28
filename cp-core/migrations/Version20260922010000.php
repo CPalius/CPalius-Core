@@ -29,6 +29,11 @@ final class Version20260922010000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
+        // Forum is not active: its schema is created when the module is activated.
+        if (!\App\Core\Module\ActiveModules::has(\Modules\Forum\ForumModule::class)) {
+            return;
+        }
+
         $this->alterNodePermissions();
         $this->createUserPermissions();
         $this->createModerators();

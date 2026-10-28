@@ -2,3 +2,4 @@ capabilities:
     - media.view
     - media.upload
     - media.delete
+    - media.settings.manage

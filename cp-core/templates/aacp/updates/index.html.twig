@@ -27,7 +27,7 @@
                 <div class="mt-sp-sm flex flex-wrap items-center gap-sp-xs">
                     {% if interrupted.resumable %}
                         <form method="post" action="{{ path('aacp_updates_recover') }}"
-                              onsubmit="return confirm('{{ 'aacp.version.recovery.resume_confirm'|trans|e('js') }}');">
+                              data-confirm="{{ 'aacp.version.recovery.resume_confirm'|trans|e('html_attr') }}">
                             <input type="hidden" name="_token" value="{{ recoverToken }}">
                             <input type="hidden" name="action" value="resume">
                             <button type="submit" class="btn btn-primary">
@@ -38,7 +38,7 @@
 
                     {% if interrupted.restorable %}
                         <form method="post" action="{{ path('aacp_updates_recover') }}"
-                              onsubmit="return confirm('{{ 'aacp.version.recovery.rollback_confirm'|trans|e('js') }}');">
+                              data-confirm="{{ 'aacp.version.recovery.rollback_confirm'|trans|e('html_attr') }}">
                             <input type="hidden" name="_token" value="{{ recoverToken }}">
                             <input type="hidden" name="action" value="rollback">
                             <button type="submit" class="btn btn-danger">
@@ -94,10 +94,36 @@
                 </div>
             </div>
 
+            <details class="mt-sp-sm text-fs-sm">
+                <summary class="cursor-pointer !text-slate-400">{{ 'aacp.version.channel.title'|trans }}{% if channel %}: <span class="font-mono !text-primary-300">{{ channel }}</span>{% endif %}</summary>
+                <form method="post" action="{{ path('aacp_updates_channel') }}" class="mt-sp-xs flex flex-wrap items-center gap-2">
+                    <input type="hidden" name="_token" value="{{ checkToken }}">
+                    <input type="text" name="channel" value="{{ channel }}" autocomplete="off" spellcheck="false" placeholder="{{ 'aacp.version.channel.placeholder'|trans }}" class="form-control !w-72 !bg-dark-1 !border-white/10 !text-slate-200 font-mono">
+                    <button type="submit" class="btn btn-secondary btn-sm">{{ 'aacp.version.channel.save'|trans }}</button>
+                </form>
+                <p class="mt-1 text-fs-xs !text-slate-500">{{ 'aacp.version.channel.hint'|trans }}</p>
+            </details>
+
             {% if checkError is defined and checkError %}
                 <div class="toast toast-warning mt-sp-sm">{{ checkError }}</div>
             {% elseif checkLog is defined and checkLog %}
                 <div class="toast toast-success mt-sp-sm">{{ checkLog }}</div>
+            {% endif %}
+
+            {% if rollbackNotice is not null %}
+                <div class="toast toast-warning mt-sp-sm" role="alert">
+                    <strong>{{ 'aacp.version.rollback.title'|trans }}</strong>
+                    <div>{{ 'aacp.version.rollback.done'|trans }}</div>
+                    <div class="font-mono text-fs-xs">{{ rollbackNotice.version }} · {{ rollbackNotice.at }} · {{ rollbackNotice.reason }}</div>
+                </div>
+            {% endif %}
+
+            {% if securityError is not null %}
+                <div class="toast toast-danger mt-sp-sm" role="alert">
+                    <strong>{{ 'aacp.version.security.title'|trans }}</strong>
+                    <div>{{ 'aacp.version.security.hint'|trans }}</div>
+                    <div class="font-mono text-fs-xs">{{ securityError }}</div>
+                </div>
             {% endif %}
 
             {% if upgradeError is not null %}
@@ -131,7 +157,7 @@
                     <div class="mt-sp-sm flex flex-wrap items-center gap-sp-xs">
                         {% if blockers is empty %}
                             <form method="post" action="{{ path('aacp_updates_upgrade') }}"
-                                  onsubmit="return confirm('{{ 'aacp.version.upgrade.confirm'|trans|e('js') }}');">
+                                  data-confirm="{{ 'aacp.version.upgrade.confirm'|trans|e('html_attr') }}">
                                 <input type="hidden" name="_token" value="{{ upgradeToken }}">
                                 <button type="submit" class="btn btn-primary">
                                     {{ 'aacp.version.upgrade.button'|trans({ version: release.version }) }}
@@ -143,6 +169,9 @@
                             <ul class="list-disc pl-4 text-fs-xs !text-slate-500">
                                 {% for blocker in blockers %}<li>{{ blocker|trans }}</li>{% endfor %}
                             </ul>
+                            {% if incompatible|default([]) is not empty %}
+                                <p class="mt-1 text-fs-xs !text-slate-500">{{ incompatible|join(', ') }}</p>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>
@@ -231,7 +260,7 @@
                     <div class="mt-sp-sm flex flex-wrap items-center gap-sp-xs">
                         {% if patchBlockers is empty %}
                             <form method="post" action="{{ path('aacp_updates_patch') }}"
-                                  onsubmit="return confirm('{{ 'aacp.patch.confirm'|trans|e('js') }}');">
+                                  data-confirm="{{ 'aacp.patch.confirm'|trans|e('html_attr') }}">
                                 <input type="hidden" name="_token" value="{{ patchToken }}">
                                 <button type="submit" class="btn btn-primary">
                                     {{ 'aacp.patch.apply'|trans({ version: patch.version }) }}
@@ -293,6 +322,16 @@
                     <div class="toast toast-danger mb-sp-sm">{{ 'aacp.updates.applied.partial'|trans }}</div>
                 {% else %}
                     <div class="toast toast-success mb-sp-sm">{{ 'aacp.updates.applied.ok'|trans }}</div>
+                    {% if updateAllLeft|default(0) > 0 %}
+                        <form method="post" action="{{ path('aacp_store_update_all') }}" class="mb-sp-sm" id="aacp-update-all-continue">
+                            <input type="hidden" name="_token" value="{{ storeToken }}">
+                            <button type="submit" class="btn btn-primary">{{ 'aacp.updates.continue_update_all'|trans({left: updateAllLeft}) }}</button>
+                        </form>
+                        {# "Update all" means all: the next module starts by itself; the button stays as a fallback. #}
+                        <script{{ csp_nonce_attr() }}>
+                            setTimeout(function () { document.getElementById('aacp-update-all-continue').submit(); }, 1200);
+                        </script>
+                    {% endif %}
                 {% endif %}
 
                 <twig:cp:table headers="{{ [
@@ -367,7 +406,7 @@
             <form method="post" action="{{ path('aacp_updates_apply') }}" id="aacp-updates-apply-form" class="mt-sp-md flex flex-wrap items-center gap-3">
                 <input type="hidden" name="_token" value="{{ token }}">
                 <button type="submit" class="btn btn-primary"
-                        onclick="return confirm('{{ 'aacp.updates.apply.confirm'|trans|e('js') }}')">
+                        data-confirm="{{ 'aacp.updates.apply.confirm'|trans|e('html_attr') }}">
                     {{ 'aacp.updates.apply.button'|trans }}
                 </button>
                 <p class="text-fs-xs !text-slate-500">{{ 'aacp.updates.apply.note'|trans }}</p>

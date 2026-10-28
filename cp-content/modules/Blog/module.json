@@ -1,6 +1,6 @@
 {
     "name": "Blog",
-    "version": "1.0.0",
+    "version": "1.0.3",
     "description": "CPalius core blog module.",
     "author": "CPalius",
     "bundle": "Modules\\Blog\\BlogModule",

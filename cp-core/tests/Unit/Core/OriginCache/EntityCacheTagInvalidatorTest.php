@@ -41,7 +41,7 @@ final class EntityCacheTagInvalidatorTest extends TestCase
     {
         $this->projectDir = sys_get_temp_dir().'/cpalius-invalidator-test-'.bin2hex(random_bytes(6));
         $this->store = new OriginCacheStore($this->projectDir);
-        $this->tagIndex = new CacheTagIndex(new ArrayAdapter());
+        $this->tagIndex = new CacheTagIndex($this->store);
         $purger = new OriginCachePurger($this->store, $this->fakeLocaleProvider(), $this->tagIndex);
         $this->invalidator = new EntityCacheTagInvalidator($purger);
     }

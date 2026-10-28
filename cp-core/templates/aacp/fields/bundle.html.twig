@@ -59,7 +59,7 @@
         {% for field in fields %}
             <form method="post" action="{{ path('aacp_fields_delete', {bundle: bundle, name: field.name}) }}" class="hidden"
                   id="delete-{{ field.name }}"
-                  onsubmit="return confirm({{ 'aacp.fields.delete_confirm'|trans({'field': field.name})|json_encode|raw }});">
+                  data-confirm="{{ 'aacp.fields.delete_confirm'|trans({'field': field.name})|e('html_attr') }}">
                 <input type="hidden" name="_token" value="{{ csrf_token }}">
             </form>
         {% endfor %}

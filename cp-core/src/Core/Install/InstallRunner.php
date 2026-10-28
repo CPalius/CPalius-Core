@@ -78,6 +78,9 @@ final class InstallRunner
         ]);
 
         InstallDefaults::writeActiveModules($projectDir);
+        // A container compiled before this point may still list modules that are no longer on disk (or miss new ones),
+        // e.g. their migration folders; the wizard changes the module set, so it starts from a cold cache.
+        (new \Symfony\Component\Filesystem\Filesystem())->remove(Kernel::resolveCacheDir($projectDir, 'prod'));
         $this->bootEnv($projectDir);
 
         $kernel = new Kernel('prod', false);
@@ -87,6 +90,19 @@ final class InstallRunner
 
         try {
             $this->console($application, ['command' => 'doctrine:migrations:migrate', '--no-interaction' => true]);
+            // Doctrine only covers the core schema. cp:update installs every active module (its own tables and
+            // columns from Resources/migrations/*.sql); without it Menu, Seo, Media and the rest hit missing tables.
+            $this->console($application, ['command' => 'cp:update', '--no-interaction' => true]);
+
+            // Transactional migrations that run DDL leave Doctrine's savepoint counter ahead of MySQL's real state
+            // (DDL commits implicitly), so the next flush on this connection fails with "SAVEPOINT DOCTRINE_n does
+            // not exist". A new kernel brings a clean connection, the same as running the next step as its own process.
+            $kernel->shutdown();
+            $kernel = new Kernel('prod', false);
+            $application = new Application($kernel);
+            $application->setAutoExit(false);
+            $application->setCatchExceptions(true);
+
             try {
                 $this->console($application, [
                     'command' => 'cp:user:create-admin',
@@ -257,6 +273,8 @@ final class InstallRunner
             'tr' => $config['siteName'],
             'en' => $config['siteName'],
         ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+        // A new site starts on the plain homepage, not on CPalius's own showcase.
+        $this->upsertSetting($em, 'homepage.portal.template', 'simple');
         $this->upsertSetting($em, 'core.default_locale', $locale);
         $this->upsertSetting($em, 'core.timezone', $config['timezone']);
         $em->flush();

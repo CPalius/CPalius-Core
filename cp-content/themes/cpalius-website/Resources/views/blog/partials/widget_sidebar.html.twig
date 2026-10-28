@@ -1,4 +1,16 @@
 {#
-    Embeds BlogWidgetPlugin in sidebar — cp_plugin() returns empty if inactive or on error (PluginRuntime); never breaks page render.
+    The blog sidebar: whatever widgets are set up for the "blog_sidebar" area in Studio → Widgets, in the
+    order set there. cp_widget_area() returns '' when the Widget module is off or an area is empty, so this
+    can never break the page. The page word lets a widget be limited to certain pages in Studio.
 #}
-{{ cp_plugin('blog_widget', {locale: app.request.locale}) }}
+{% set widgetPages = {
+    blog_show: 'post',
+    blog_search: 'search',
+    blog_category: 'category',
+    blog_tag: 'tag',
+    blog_archive_month: 'archive',
+} %}
+{{ cp_widget_area('blog_sidebar', {
+    page: widgetPages[app.request.attributes.get('_route')]|default('list'),
+    subject: post|default(null),
+}) }}

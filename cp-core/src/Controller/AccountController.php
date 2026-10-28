@@ -72,7 +72,7 @@ final class AccountController extends AbstractController
     public function login(Request $request, AuthenticationUtils $authenticationUtils, SettingsRegistry $settings): Response
     {
         if ($this->getUser() !== null) {
-            return $this->redirectToRoute('theme_cpalius_website_home');
+            return $this->redirectToRoute('site_home');
         }
 
         // Keep a navigable target_path; poll/JSON URLs and the login door itself are dropped.
@@ -102,7 +102,7 @@ final class AccountController extends AbstractController
     public function register(Request $request): Response
     {
         if ($this->getUser() !== null) {
-            return $this->redirectToRoute('theme_cpalius_website_home');
+            return $this->redirectToRoute('site_home');
         }
 
         if (!$this->registrationService->isRegistrationEnabled()) {
@@ -111,6 +111,9 @@ final class AccountController extends AbstractController
 
         $formValues = $this->registrationService->defaultFormValues();
         $fieldsForm = $this->registrationFieldsForm($request);
+        $inviteRequired = $this->registrationService->isInvitationRequired();
+        $inviteCode = strtoupper(trim((string) ($request->request->get('invite_code') ?? $request->query->get('davet', ''))));
+        $inviteCode = preg_replace('/[^A-Z0-9]/', '', $inviteCode) ?? '';
 
         if ($request->isMethod('POST')) {
             $this->assertValidCsrf($request);
@@ -120,6 +123,7 @@ final class AccountController extends AbstractController
             $username = trim((string) $request->request->get('username'));
             $firstName = trim((string) $request->request->get('first_name'));
             $lastName = trim((string) $request->request->get('last_name'));
+            $phone = trim((string) $request->request->get('phone'));
             $password = (string) $request->request->get('password');
             $passwordConfirm = (string) $request->request->get('password_confirm');
             $locale = (string) $request->request->get('locale', '');
@@ -130,6 +134,7 @@ final class AccountController extends AbstractController
                 'username' => $username,
                 'firstName' => $firstName,
                 'lastName' => $lastName,
+                'phone' => $phone,
                 // Phase 3: registration locale from active list; invalid falls back silently.
                 'locale' => $this->localeProvider->resolve($locale),
             ];
@@ -139,11 +144,16 @@ final class AccountController extends AbstractController
                 'username' => $username,
                 'firstName' => $firstName,
                 'lastName' => $lastName,
+                'phone' => $phone,
                 'password' => $password,
                 'passwordConfirm' => $passwordConfirm,
                 'termsAccepted' => $termsAccepted,
                 'locale' => $formValues['locale'],
             ]);
+
+            if ($inviteRequired && ($inviteError = $this->registrationService->validateInvitation($inviteCode)) !== null) {
+                $errors[] = $inviteError;
+            }
 
             if ($this->captchaService->enabledOnRegister() && !$this->captchaService->verifyRequest($request)) {
                 $errors[] = $this->translator->trans('account.captcha.failed');
@@ -158,6 +168,11 @@ final class AccountController extends AbstractController
                 if ($this->registrationService->lastNameMode() !== AccountRegistrationService::FIELD_HIDDEN) {
                     $user->setLastName($lastName);
                 }
+                if (($normalizedPhone = AccountRegistrationService::normalizePhone($phone)) !== null) {
+                    $user->setPhone($normalizedPhone);
+                }
+                // Real name on the public profile is opt-in (shown only if the member ticks it).
+                $user->setDataValue('profile_show_name', $request->request->getBoolean('profile_show_name'));
                 $this->passwordChanger->change($user, $password);
                 $user->setCpaliusRoles([self::DEFAULT_ROLE]);
                 $user->setDataValue('locale', $formValues['locale']);
@@ -176,8 +191,11 @@ final class AccountController extends AbstractController
                     }
                 } else {
                     $this->entityManager->flush();
+                    if ($inviteRequired) {
+                        $this->registrationService->consumeInvitation($inviteCode, $user);
+                    }
 
-                    $deferLogin = $this->registrationService->applyPostRegistrationState($user);
+                    $deferLogin =$this->registrationService->applyPostRegistrationState($user);
 
                     if ($deferLogin) {
                         $emailSent = $this->registrationService->sendVerificationEmail($user);
@@ -225,8 +243,11 @@ final class AccountController extends AbstractController
                 'termsRequired' => $this->registrationService->isTermsRequired(),
                 'firstNameMode' => $this->registrationService->firstNameMode(),
                 'lastNameMode' => $this->registrationService->lastNameMode(),
+                'phoneRequired' => $this->registrationService->isPhoneRequired(),
                 'emailVerification' => $this->registrationService->isEmailVerificationRequired(),
                 'adminApproval' => $this->registrationService->isAdminApprovalRequired(),
+                'inviteRequired' => $inviteRequired,
+                'inviteCode' => $inviteCode,
             ],
             'captchaEnabled' => $this->captchaService->enabledOnRegister(),
             'captchaConfig' => $this->captchaService->getWidgetConfig(),

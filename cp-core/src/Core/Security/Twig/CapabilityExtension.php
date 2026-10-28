@@ -7,6 +7,7 @@ namespace App\Core\Security\Twig;
 use App\Core\Security\CapabilityLabeler;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
+use App\Core\Security\RestrictedCapabilities;
 use Twig\TwigFunction;
 
 final class CapabilityExtension extends AbstractExtension
@@ -20,6 +21,7 @@ final class CapabilityExtension extends AbstractExtension
     {
         return [
             new TwigFunction('cp_capability', $this->labels->label(...)),
+            new TwigFunction('cp_capability_level', RestrictedCapabilities::level(...)),
         ];
     }
 

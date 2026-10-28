@@ -363,6 +363,13 @@ use App\Core\Annotation\CpSetting;
     group: 'security.aacp',
 )]
 #[CpSetting(
+    key: 'security.reauth_minutes',
+    label: 'aacp.security.reauth_minutes',
+    type: 'integer',
+    default: 10,
+    group: 'security.session',
+)]
+#[CpSetting(
     key: 'security.session_idle_minutes',
     label: 'aacp.security.session_idle_minutes',
     type: 'integer',

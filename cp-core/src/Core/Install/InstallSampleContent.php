@@ -23,7 +23,9 @@ final class InstallSampleContent
     public function seed(EntityManagerInterface $em, User $author, string $locale, string $siteName): void
     {
         $this->seedBlog($em, $author, $locale, $siteName);
-        $this->seedForum($em, $author, $locale, $siteName);
+        if (class_exists(ForumSection::class)) {
+            $this->seedForum($em, $author, $locale, $siteName);
+        }
         $em->flush();
     }
 

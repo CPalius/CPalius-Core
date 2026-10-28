@@ -136,7 +136,17 @@ final class DoctrineMigrationMap implements MigrationMapInterface
     {
         $this->hydrate($migrationId);
 
-        return $this->bySourceId[$migrationId][$sourceId] ?? null;
+        $entry = $this->bySourceId[$migrationId][$sourceId] ?? null;
+
+        // The manager was cleared (a failed row's recovery, a batch boundary) since this entry was cached, so it is
+        // detached: removing or refreshing it would throw or silently write nothing. Reload this migration once.
+        if ($entry !== null && !$this->entityManager->contains($entry)) {
+            unset($this->hydrated[$migrationId]);
+            $this->hydrate($migrationId);
+            $entry = $this->bySourceId[$migrationId][$sourceId] ?? null;
+        }
+
+        return $entry;
     }
 
     private function hydrate(string $migrationId): void

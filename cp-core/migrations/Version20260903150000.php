@@ -31,6 +31,10 @@ final class Version20260903150000 extends AbstractMigration
     public function up(Schema $schema): void
     {
         foreach (self::TABLES as $table => [$indexName, $uniqueName]) {
+            if (!$this->connection->createSchemaManager()->tablesExist([$table])) {
+                continue;
+            }
+
             $this->addSql(sprintf('DROP INDEX %s ON %s', $indexName, $table));
             $this->addSql(sprintf(
                 'CREATE UNIQUE INDEX %s ON %s (translation_group_id, locale)',

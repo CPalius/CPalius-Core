@@ -9,7 +9,7 @@
 {% block content %}
     <header class="whitepaper-hero">
         <div class="container">
-            <a href="{{ path('theme_cpalius_website_home', {_locale: app.request.locale}) }}" class="whitepaper-back">
+            <a href="{{ path('site_home', {_locale: app.request.locale}) }}" class="whitepaper-back">
                 <i class="bi bi-arrow-left"></i>
                 <span>{{ 'whitepaper.back'|trans({}, t) }}</span>
             </a>

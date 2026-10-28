@@ -30,6 +30,10 @@ services:
     Modules\Forum\Migrate\:
         resource: '../../Migrate/'
 
+    # Widget/ holds the forum widget types and the forum_sidebar area (core WidgetTypeInterface, autoconfigured).
+    Modules\Forum\Widget\:
+        resource: '../../Widget/'
+
     Modules\Forum\Settings\:
         resource: '../../Settings/'
 
@@ -58,6 +62,12 @@ services:
 
     Modules\Forum\Rebuild\:
         resource: '../../Rebuild/'
+
+    # Recycle bin: restore a deleted topic through the forum's own counters.
+    # The tag is explicit because core's autoconfigure rule does not reach module services.
+    Modules\Forum\Trash\:
+        resource: '../../Trash/'
+        tags: ['cp.trash_soft_handler']
 
     Modules\Forum\Portal\:
         resource: '../../Portal/'

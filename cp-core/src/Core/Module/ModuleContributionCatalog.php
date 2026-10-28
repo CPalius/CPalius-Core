@@ -18,6 +18,21 @@ final class ModuleContributionCatalog
     }
 
     /**
+     * Exact POST paths of screens whose whole job is saving free text or code (a module's notes or document
+     * editor), which the request guard does not signature-scan for a signed-in administrator. See
+     * RequestGuardSubscriber::isAdminContentSave() for the conditions; a module declares the path, it never
+     * widens them.
+     *
+     * @return list<string>
+     */
+    public function wafContentSavePaths(): array
+    {
+        $paths = $this->data['waf_content_save_paths'] ?? [];
+
+        return \is_array($paths) ? array_values(array_filter($paths, '\is_string')) : [];
+    }
+
+    /**
      * @return array<string, string>
      */
     public function nodeShowRoutes(): array

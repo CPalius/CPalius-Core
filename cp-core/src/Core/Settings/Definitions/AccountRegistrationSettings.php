@@ -88,6 +88,39 @@ use App\Core\Annotation\CpSetting;
     group: 'account.registration',
 )]
 #[CpSetting(
+    key: 'account.require_phone',
+    label: 'settings.account.require_phone',
+    type: 'checkbox',
+    default: false,
+    module: 'account',
+    group: 'account.registration',
+)]
+/*
+ * Invitation-only registration. Only takes effect when a module registers a
+ * RegistrationInvitationGate (the Marketplace does); otherwise it is inert.
+ */
+#[CpSetting(
+    key: 'account.invitation_mode',
+    label: 'settings.account.invitation_mode',
+    type: 'select',
+    default: 'off',
+    variants: [
+        'off' => 'settings.account.invitation_mode_off',
+        'after_members' => 'settings.account.invitation_mode_after_members',
+        'always' => 'settings.account.invitation_mode_always',
+    ],
+    module: 'account',
+    group: 'account.registration',
+)]
+#[CpSetting(
+    key: 'account.invitation_after_members',
+    label: 'settings.account.invitation_after_members',
+    type: 'integer',
+    default: 100,
+    module: 'account',
+    group: 'account.registration',
+)]
+#[CpSetting(
     key: 'account.require_terms',
     label: 'settings.account.require_terms',
     type: 'checkbox',

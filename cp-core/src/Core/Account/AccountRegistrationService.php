@@ -11,6 +11,7 @@ use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -45,7 +46,56 @@ final class AccountRegistrationService
         private readonly AccountMailer $accountMailer,
         private readonly UserLocaleResolver $userLocale,
         private readonly PasswordPolicy $passwordPolicy,
+        /** @var iterable<RegistrationInvitationGate> */
+        #[TaggedIterator('cpalius.account.registration_invitation_gate')]
+        private readonly iterable $invitationGates = [],
     ) {
+    }
+
+    /** True when the form must carry a valid invitation code: mode on, a gate registered, and (for after_members) enough members. */
+    public function isInvitationRequired(): bool
+    {
+        $mode = (string) ($this->settingsRegistry->get('account.invitation_mode') ?? 'off');
+        if ($mode !== 'always' && $mode !== 'after_members') {
+            return false;
+        }
+        $active = false;
+        foreach ($this->invitationGates as $gate) {
+            $active = $active || $gate->isRequired();
+        }
+        if (!$active) {
+            return false;
+        }
+        if ($mode === 'always') {
+            return true;
+        }
+
+        return $this->userRepository->countAll() >= max(0, (int) ($this->settingsRegistry->get('account.invitation_after_members') ?? 100));
+    }
+
+    /** Generic error or null; one message for every failure so a code's existence is never revealed. */
+    public function validateInvitation(string $code): ?string
+    {
+        $code = trim($code);
+        foreach ($this->invitationGates as $gate) {
+            if ($gate->isRequired() && $code !== '' && $gate->validate($code) === null) {
+                return null;
+            }
+        }
+
+        return $this->translator->trans('account.register.invite_invalid');
+    }
+
+    public function consumeInvitation(string $code, User $user): void
+    {
+        $code = trim($code);
+        foreach ($this->invitationGates as $gate) {
+            if ($gate->isRequired() && $gate->validate($code) === null) {
+                $gate->consume($code, $user);
+
+                return;
+            }
+        }
     }
 
     public function isRegistrationEnabled(): bool
@@ -86,6 +136,26 @@ final class AccountRegistrationService
         return (bool) ($this->settingsRegistry->get('account.require_terms') ?? true);
     }
 
+    public function isPhoneRequired(): bool
+    {
+        return (bool) ($this->settingsRegistry->get('account.require_phone') ?? false);
+    }
+
+    /** Digits with optional leading +, spaces/dashes/parens tolerated; 7-15 digits (E.164 max). */
+    public static function normalizePhone(string $raw): ?string
+    {
+        $raw = trim($raw);
+        if (preg_match('/^\+?[0-9 ()\-]{7,25}$/', $raw) !== 1) {
+            return null;
+        }
+        $digits = preg_replace('/\D/', '', $raw);
+        if (\strlen($digits) < 7 || \strlen($digits) > 15) {
+            return null;
+        }
+
+        return ($raw[0] === '+' ? '+' : '').$digits;
+    }
+
     public function firstNameMode(): string
     {
         return (string) ($this->settingsRegistry->get('account.show_first_name') ?? self::FIELD_REQUIRED);
@@ -114,7 +184,7 @@ final class AccountRegistrationService
     }
 
     /**
-     * @param array{email: string, username: string, firstName: string, lastName: string, password: string, passwordConfirm: string, termsAccepted: bool, locale: string} $input
+     * @param array{email: string, username: string, firstName: string, lastName: string, phone?: string, password: string, passwordConfirm: string, termsAccepted: bool, locale: string} $input
      *
      * @return string[]
      */
@@ -144,6 +214,11 @@ final class AccountRegistrationService
 
         $errors = array_merge($errors, $this->validateNameField('firstName', $this->firstNameMode(), trim($input['firstName'])));
         $errors = array_merge($errors, $this->validateNameField('lastName', $this->lastNameMode(), trim($input['lastName'])));
+
+        $phone = trim((string) ($input['phone'] ?? ''));
+        if (($phone !== '' || $this->isPhoneRequired()) && self::normalizePhone($phone) === null) {
+            $errors[] = $this->translator->trans($phone === '' ? 'account.register.phone_required' : 'account.register.phone_invalid');
+        }
 
         if ($password !== $passwordConfirm) {
             $errors[] = $this->translator->trans('account.register.password_mismatch');

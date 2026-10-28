@@ -10,6 +10,9 @@ use Modules\Forum\ForumSectionType;
 use Modules\Forum\Repository\ForumPostRepository;
 use Modules\Forum\Repository\ForumSectionRepository;
 use Modules\Forum\Repository\ForumTopicRepository;
+use Symfony\Component\Cache\Adapter\NullAdapter;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -34,6 +37,7 @@ final class ForumSectionHierarchyService
         private readonly ForumPostRepository $postRepository,
         private readonly UserRepository $userRepository,
         private readonly TranslatorInterface $translator,
+        // Optional on purpose: a module updated on its own can run for a moment against a container compiled before\n        // this argument existed. Without a cache the value is simply computed.\n        private readonly ?CacheInterface $cache = null,
     ) {
     }
 
@@ -50,11 +54,18 @@ final class ForumSectionHierarchyService
     /** @return array{topics: int, posts: int, users: int} */
     public function aggregateStats(?string $locale = null): array
     {
-        return [
-            'topics' => $this->topicRepository->countVisiblePublic($locale),
-            'posts' => $this->postRepository->countVisiblePublic($locale),
-            'users' => $this->userRepository->countAll(),
-        ];
+        // Three COUNT(*) over the biggest tables on the forum's front page, run for every visitor. Each is a
+        // full index scan, so the cost grows with the forum. A figure that is a minute old is as true to a
+        // reader; the cache also lets one request recompute while the rest keep the previous value.
+        return ($this->cache ?? new NullAdapter())->get('forum_aggregate_stats_'.($locale ?? 'all'), function (ItemInterface $item) use ($locale): array {
+            $item->expiresAfter(60);
+
+            return [
+                'topics' => $this->topicRepository->countVisiblePublic($locale),
+                'posts' => $this->postRepository->countVisiblePublic($locale),
+                'users' => $this->userRepository->countAll(),
+            ];
+        }, 1.0);
     }
 
     /**

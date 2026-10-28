@@ -46,6 +46,7 @@
                 <div class="space-y-sp-sm">
                     {{ form_row(form.firstName) }}
                     {{ form_row(form.lastName) }}
+                    {{ form_row(form.phone) }}
                     {{ form_row(form.location) }}
                     {{ form_row(form.locale) }}
                     {{ form_row(form.customTitle) }}
@@ -87,7 +88,7 @@
                                     </p>
                                     <ul class="space-y-0.5">
                                         {% for capability in capabilities %}
-                                            <li class="text-fs-xs !text-slate-400">{{ capability|cp_capability }}</li>
+                                            <li class="text-fs-xs !text-slate-400">{{ capability|cp_capability }}{% set lvl = cp_capability_level(capability) %}{% if lvl %} <span class="rounded px-1 text-[10px] font-semibold uppercase {{ lvl == 'critical' ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300' }}" title="{{ ('aacp.users.restricted.' ~ lvl)|trans|e('html_attr') }}">{{ ('aacp.users.restricted_badge.' ~ lvl)|trans }}</span>{% endif %}</li>
                                         {% endfor %}
                                     </ul>
                                 </div>
@@ -112,7 +113,7 @@
                         <input type="hidden" name="_token" value="{{ csrf_token('aacp_user_avatar_' ~ user.id) }}">
                         <label class="btn btn-sm btn-neutral !border-white/10 !text-slate-300 hover:!bg-white/5 w-full">
                             {{ 'aacp.users.profile.select_avatar'|trans }}
-                            <input type="file" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" hidden onchange="this.form.submit()">
+                            <input type="file" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" hidden data-autosubmit>
                         </label>
                     </form>
                     {% if avatarUrl %}
@@ -189,7 +190,7 @@
                                 {% for row in group.rows %}
                                     <div class="flex flex-col gap-1 rounded-md px-2 py-1.5 sm:flex-row sm:items-center sm:justify-between{{ row.overridden ? ' bg-primary-500/10' : '' }}">
                                         <div class="min-w-0">
-                                            <p class="text-fs-xs {{ row.overridden ? '!text-slate-200' : '!text-slate-300' }}">{{ row.label }}</p>
+                                            <p class="text-fs-xs {{ row.overridden ? '!text-slate-200' : '!text-slate-300' }}">{{ row.label }}{% set lvl = cp_capability_level(row.capability) %}{% if lvl %} <span class="rounded px-1 text-[10px] font-semibold uppercase {{ lvl == 'critical' ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300' }}" title="{{ ('aacp.users.restricted.' ~ lvl)|trans|e('html_attr') }}">{{ ('aacp.users.restricted_badge.' ~ lvl)|trans }}</span>{% endif %}</p>
                                             <p class="font-mono text-fs-xs !text-slate-600">{{ row.capability }}</p>
                                             <p class="text-fs-xs !text-slate-600">
                                                 {% if row.roleHas %}

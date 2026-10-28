@@ -28,6 +28,9 @@ final class ProtectedPaths
         'public/uploads/',
         'public/page-cache/',
         'cp-core/var/',
+        // Modules and themes update through the extension store, never through a core release.
+        'cp-content/modules/',
+        'cp-content/themes/',
     ];
 
     /**

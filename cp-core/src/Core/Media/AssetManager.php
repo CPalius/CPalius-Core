@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Media;
 
+use App\Core\Malware\MalwareGuard;
 use App\Core\Media\Exception\InvalidUploadException;
 use App\Core\Media\Exception\UnsupportedAssetTypeException;
 use App\Entity\Asset;
@@ -24,18 +25,23 @@ final class AssetManager
         private readonly AssetRepository $assetRepository,
         private readonly MimeTypeAllowlist $mimeTypeAllowlist,
         private readonly ?MediaOffloader $offloader = null,
+        private readonly ?MalwareGuard $malwareGuard = null,
     ) {
     }
 
     /**
      * @param list<string>|null $allowedMimePrefixes narrower allowlist for this call (e.g. ['image/']); null = core list
      * @param int|null          $maxBytes            reject larger uploads before write
+     * @param MimeTypeAllowlist|null $allowlist      replaces the core list for this call (media library settings)
      *
      * @throws InvalidUploadException        upload failed, is too large, or MIME could not be detected from content
      * @throws UnsupportedAssetTypeException detected MIME is not on the core allowlist, or not in $allowedMimePrefixes
      */
-    public function upload(UploadedFile $uploadedFile, ?array $allowedMimePrefixes = null, ?int $maxBytes = null): Asset
+    public function upload(UploadedFile $uploadedFile, ?array $allowedMimePrefixes = null, ?int $maxBytes = null, ?MimeTypeAllowlist $allowlist = null): Asset
     {
+        // A caller (the media library) may bring its own admin-chosen list; everyone else gets the core map.
+        $allowlist ??= $this->mimeTypeAllowlist;
+
         // Step 1: reject broken PHP uploads (size limit, partial transfer, missing temp dir).
         if (!$uploadedFile->isValid()) {
             throw new InvalidUploadException(sprintf('Upload failed before validation (PHP error code %d): %s', $uploadedFile->getError(), $uploadedFile->getErrorMessage()));
@@ -59,8 +65,14 @@ final class AssetManager
         // Step 3: detect real MIME from content via finfo (fail-closed; never fall back to extension guessing).
         $detectedMimeType = $this->detectMimeType($pathname);
 
+        // Step 3b: optional malware gate (mode "auto"); a no-op when the scanner is off.
+        $malware = $this->malwareGuard?->blockingFindingsForFile($pathname, 'media_upload') ?? [];
+        if ($malware !== []) {
+            throw new InvalidUploadException('Upload rejected by the malware scanner: '.implode('; ', MalwareGuard::describe($malware)));
+        }
+
         // Step 4: core allowlist — fail-closed.
-        $extension = $this->mimeTypeAllowlist->extensionFor($detectedMimeType);
+        $extension = $allowlist->extensionFor($detectedMimeType);
 
         if ($extension === null) {
             throw new UnsupportedAssetTypeException($detectedMimeType);

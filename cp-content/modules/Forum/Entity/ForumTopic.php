@@ -20,6 +20,10 @@ use Modules\Forum\Repository\ForumTopicRepository;
  */
 #[ORM\Entity(repositoryClass: ForumTopicRepository::class)]
 #[ORM\Table(name: 'cp_forum_topics')]
+#[ORM\Index(columns: ['locale', 'discussion_state', 'mode', 'view_count', 'post_count', 'updated_at'], name: 'idx_forum_topic_top_views')]
+#[ORM\Index(columns: ['locale', 'discussion_state', 'mode', 'last_post_date', 'updated_at'], name: 'idx_forum_topic_top_active')]
+#[ORM\Index(columns: ['locale', 'discussion_state', 'mode', 'created_at'], name: 'idx_forum_topic_top_new')]
+#[ORM\Index(columns: ['section_id', 'discussion_state', 'mode', 'locale', 'sticky', 'last_post_date', 'updated_at', 'moved_to_topic_id'], name: 'idx_forum_topic_section_page')]
 #[ORM\Index(columns: ['updated_at'], name: 'idx_forum_topic_updated')]
 #[ORM\Index(columns: ['state'], name: 'idx_forum_topic_state')]
 #[ORM\Index(columns: ['sticky'], name: 'idx_forum_topic_sticky')]

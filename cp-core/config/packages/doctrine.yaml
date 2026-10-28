@@ -9,6 +9,8 @@ doctrine:
         profiling_collect_backtrace: '%kernel.debug%'
         types:
             uuid: Symfony\Bridge\Doctrine\Types\UuidType
+            # Opt-in per column: encrypted at rest through SecretBox. See EncryptedStringType.
+            cp_encrypted: App\Core\Database\Type\EncryptedStringType
     orm:
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore
@@ -38,6 +40,12 @@ doctrine:
                 alias: CpTelemetry
             # Platform contracts (Law 2.x): each core slice keeps its Entity/ dir
             # outside src/Entity, so every one needs an explicit mapping entry.
+            CpTrash:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/cp-core/src/Core/Trash/Entity'
+                prefix: 'App\Core\Trash\Entity'
+                alias: CpTrash
             CpQueue:
                 type: attribute
                 is_bundle: false

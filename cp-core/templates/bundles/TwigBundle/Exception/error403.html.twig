@@ -12,7 +12,7 @@
         <h1 class="post-hero-title">{{ 'error.403.heading'|trans }}</h1>
         <p class="section-desc">{{ 'error.403.body'|trans }}</p>
         <p>
-            <a class="btn btn-primary" href="{{ path('theme_cpalius_website_home', {_locale: app.request.locale}) }}">
+            <a class="btn btn-primary" href="{{ path('site_home', {_locale: app.request.locale}) }}">
                 {{ 'error.403.home'|trans }}
             </a>
         </p>

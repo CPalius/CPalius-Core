@@ -3,8 +3,7 @@
 {% block header %}{{ post ? 'blog.posts.form.header_edit'|trans : 'blog.posts.form.header_create'|trans }}{% endblock %}
 
 {% block javascripts %}
-    {{ importmap(['app', 'studio-quick-cache-clear', 'admin-post-form', 'media-picker', 'cp-editor-init']) }}
-{% endblock %}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'admin-post-form', 'admin-post-taxonomy', 'media-picker', 'field-media', 'cp-editor-init']) }}{% endblock %}
 
 {% block body %}
     <div id="post-form-container" data-post-form-root data-i18n-save-first="{{ 'blog.posts.form.save_before_translate'|trans }}" data-current-url="{{ post ? path('admin_posts_edit', {id: post.id}) : path('admin_posts_create', {translation_group: translationGroupId, locale: currentLocale}) }}">
@@ -51,6 +50,10 @@
                     {{ form_row(form.excerpt) }}
                     {{ form_row(form.body) }}
                 </div>
+            </twig:studio:card>
+
+            <twig:studio:card title="{{ 'blog.posts.form.section_faq'|trans }}">
+                {{ form_row(form.faq) }}
             </twig:studio:card>
 
             <twig:studio:card title="{{ 'blog.posts.form.section_project'|trans }}" data-post-sub-type-panel="proje">
@@ -137,9 +140,19 @@
                         {% endif %}
                     {% endif %}
 
+                    {% if form.syncTranslations is defined %}
+                        {{ form_row(form.syncTranslations) }}
+                        <p class="text-fs-xs text-neutral-500">{{ 'blog.posts.form.sync_locales'|trans({locales: aiSyncLocales|join(', ')}) }}</p>
+                    {% endif %}
+
                     {% if post %}
-                        <div class="border-t border-neutral-200 pt-sp-sm">
+                        <div class="flex items-center justify-between gap-2 border-t border-neutral-200 pt-sp-sm">
                             <twig:studio:badge status="{{ post.status }}" />
+                            {% if viewUrl %}
+                                <a href="{{ viewUrl }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
+                                    {{ 'blog.posts.view_on_site'|trans }} ↗
+                                </a>
+                            {% endif %}
                         </div>
                     {% endif %}
 
@@ -154,12 +167,68 @@
                 </div>
             </twig:studio:card>
 
+            {% set canManageCategories = is_granted('blog.category.manage') %}
             <twig:studio:card title="{{ 'blog.categories.header'|trans }}">
-                {{ form_widget(form.categoryIds) }}
+                {# Categories are managed in place (modal + AJAX) by admin-post-taxonomy.js. #}
+                <div data-category-manager
+                     data-field-name="{{ form.categoryIds.vars.full_name }}[]"
+                     data-field-id="{{ form.categoryIds.vars.id }}"
+                     data-locale="{{ categoryLocale }}"
+                     data-create-url="{{ path('admin_categories_ajax_create') }}"
+                     data-update-url="{{ path('admin_categories_ajax_update', {id: 0}) }}"
+                     data-token="{{ csrf_token('admin_category_form') }}"
+                     data-meta="{{ categoryMeta|json_encode }}">
+                    <div class="space-y-1.5" data-category-list>
+                        {% for child in form.categoryIds %}
+                            <div class="flex items-center justify-between gap-2" data-category-row data-category-id="{{ child.vars.value }}">
+                                <label class="flex min-w-0 items-center gap-2 text-fs-sm text-neutral-700">
+                                    {{ form_widget(child, {attr: {class: 'h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-600'}}) }}
+                                    <span class="truncate" data-category-label>{{ child.vars.label }}</span>
+                                </label>
+                                {% if canManageCategories %}
+                                    <button type="button" data-category-edit class="shrink-0 text-fs-xs text-primary-600 hover:underline">{{ 'blog.posts.form.category_edit'|trans }}</button>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {{ form_errors(form.categoryIds) }}
+
+                    {% if canManageCategories %}
+                        <button type="button" data-category-add class="btn btn-sm btn-neutral mt-sp-xs w-full">+ {{ 'blog.posts.form.category_add'|trans }}</button>
+                        <template data-category-row-template>
+                            <div class="flex items-center justify-between gap-2" data-category-row>
+                                <label class="flex min-w-0 items-center gap-2 text-fs-sm text-neutral-700">
+                                    <input type="checkbox" class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-600" data-category-checkbox>
+                                    <span class="truncate" data-category-label></span>
+                                </label>
+                                <button type="button" data-category-edit class="shrink-0 text-fs-xs text-primary-600 hover:underline">{{ 'blog.posts.form.category_edit'|trans }}</button>
+                            </div>
+                        </template>
+                    {% endif %}
+                </div>
             </twig:studio:card>
 
             <twig:studio:card title="{{ 'blog.tags.header'|trans }}">
-                {{ form_widget(form.tags) }}
+                <div class="relative" data-tag-input data-suggest-url="{{ path('admin_posts_tags_suggest') }}" data-locale="{{ tagLocale }}">
+                    {{ form_widget(form.tags) }}
+                    <div hidden data-tag-ui>
+                        <div class="form-control flex flex-wrap items-center gap-1.5" data-tag-box>
+                            <input type="text" maxlength="100" autocomplete="off" data-tag-field
+                                   placeholder="{{ 'blog.posts.form.tags_placeholder'|trans }}"
+                                   class="min-w-[8rem] flex-1 border-0 bg-transparent p-0 text-fs-sm focus:outline-none focus:ring-0">
+                        </div>
+                        <ul hidden role="listbox" data-tag-suggestions class="absolute left-0 right-0 z-20 mt-1 max-h-48 overflow-auto rounded-lg border border-neutral-200 bg-white py-1 shadow-lg"></ul>
+                    </div>
+                    <template data-tag-chip-template>
+                        <span class="badge badge-neutral inline-flex items-center gap-1" data-tag-chip>
+                            <span data-tag-chip-label></span>
+                            <button type="button" data-tag-chip-remove aria-label="{{ 'blog.posts.form.tag_remove'|trans }}" class="leading-none">×</button>
+                        </span>
+                    </template>
+                    <template data-tag-option-template>
+                        <li role="option" data-tag-option class="cursor-pointer px-3 py-1.5 text-fs-sm text-neutral-700 hover:bg-neutral-100"></li>
+                    </template>
+                </div>
                 <p class="mt-1 text-fs-xs text-neutral-500">{{ 'blog.posts.form.tags_hint'|trans }}</p>
             </twig:studio:card>
 
@@ -181,5 +250,37 @@
         </div>
     </div>
     {{ form_end(form) }}
+
+    {% if canManageCategories %}
+        {# Outside <form>: its fields must never submit with the post. #}
+        <dialog data-category-modal
+                data-title-create="{{ 'blog.posts.form.category_add'|trans }}"
+                data-title-edit="{{ 'blog.posts.form.category_edit_title'|trans }}"
+                data-error-generic="{{ 'blog.categories.error.ajax_failed'|trans }}"
+                class="m-auto w-full max-w-md rounded-xl p-0 shadow-xl backdrop:bg-black/40">
+            <div class="space-y-sp-sm p-sp-md">
+                <h3 class="text-fs-base font-semibold text-neutral-900" data-category-modal-title></h3>
+                <div>
+                    <label class="form-label">{{ 'blog.categories.form.name'|trans }}</label>
+                    <input type="text" maxlength="190" class="form-control" data-cat-field="name">
+                </div>
+                <div>
+                    <label class="form-label">{{ 'blog.categories.form.description'|trans }}</label>
+                    <textarea rows="2" class="form-control" data-cat-field="description"></textarea>
+                </div>
+                <div>
+                    <label class="form-label">{{ 'blog.categories.form.parent'|trans }}</label>
+                    <select class="form-select" data-cat-field="parent">
+                        <option value="">{{ 'blog.categories.form.no_parent'|trans }}</option>
+                    </select>
+                </div>
+                <p class="text-fs-sm text-danger-600" hidden data-category-error></p>
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="btn btn-sm btn-neutral" data-category-cancel>{{ 'aacp.users.form.cancel'|trans }}</button>
+                    <button type="button" class="btn btn-sm btn-primary" data-category-save>{{ 'blog.posts.form.category_save'|trans }}</button>
+                </div>
+            </div>
+        </dialog>
+    {% endif %}
     </div>
 {% endblock %}

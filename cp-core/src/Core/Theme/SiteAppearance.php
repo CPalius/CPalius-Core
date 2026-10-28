@@ -53,7 +53,36 @@ final class SiteAppearance
         private readonly SettingRepository $repository,
         private readonly EntityManagerInterface $em,
         private readonly KernelInterface $kernel,
+        private readonly ThemeRegistry $themes,
     ) {
+    }
+
+    /**
+     * Logo, favicon and OG image are the site's brand and stay global. Colors and metrics belong
+     * to the active theme: the fallback theme keeps the original top-level keys (existing
+     * installations are untouched), every other theme lives under "themes.<dir>".
+     */
+    private function activeTheme(): string
+    {
+        try {
+            return $this->themes->activeDirName();
+        } catch (\Throwable) {
+            return ThemeRegistry::FALLBACK_THEME;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $stored
+     * @return array<string, mixed>
+     */
+    private function themeScope(array $stored, string $theme): array
+    {
+        if ($theme === ThemeRegistry::FALLBACK_THEME) {
+            return $stored;
+        }
+        $scoped = $stored['themes'][$theme] ?? null;
+
+        return \is_array($scoped) ? $scoped : [];
     }
 
     /**
@@ -63,8 +92,9 @@ final class SiteAppearance
     {
         $decoded = json_decode((string) $this->settings->get(self::KEY, '{}'), true);
         $stored = \is_array($decoded) ? $decoded : [];
+        $scope = $this->themeScope($stored, $this->activeTheme());
         $colors = [];
-        $savedColors = \is_array($stored['colors'] ?? null) ? $stored['colors'] : [];
+        $savedColors = \is_array($scope['colors'] ?? null) ? $scope['colors'] : [];
         foreach (self::COLORS as $name => $meta) {
             $value = strtoupper(trim((string) ($savedColors[$name] ?? '')));
             $colors[$name] = preg_match('/^#[0-9A-F]{6}$/', $value) === 1 ? $value : $meta['default'];
@@ -75,7 +105,7 @@ final class SiteAppearance
             'favicon' => $this->publicPath($stored['favicon'] ?? '', '/CPalius.png'),
             'og' => $this->publicPath($stored['og'] ?? '', ''),
             'colors' => $colors,
-            'metrics' => $this->metrics(\is_array($stored['metrics'] ?? null) ? $stored['metrics'] : []),
+            'metrics' => $this->metrics(\is_array($scope['metrics'] ?? null) ? $scope['metrics'] : []),
         ];
     }
 
@@ -83,12 +113,22 @@ final class SiteAppearance
     {
         $appearance = $this->read();
         $rules = [];
+        $own = $this->activeTheme() === ThemeRegistry::FALLBACK_THEME;
         foreach (self::COLORS as $name => $meta) {
-            $rules[] = $meta['var'].':'.$appearance['colors'][$name];
+            // Another theme ships its own palette: emit only what the operator changed, so the
+            // Default palette never overwrites that theme's tokens.
+            if ($own || $appearance['colors'][$name] !== $meta['default']) {
+                $rules[] = $meta['var'].':'.$appearance['colors'][$name];
+            }
         }
         $metrics = $appearance['metrics'];
-        $rules[] = '--container-max:'.$metrics['site_width'].'px';
-        $rules[] = '--navbar-h:'.$metrics['navbar_height'].'px';
+        // Another theme sizes its own column and bar; only a value the operator changed overrides it.
+        if ($own || $metrics['site_width'] !== self::METRICS['site_width']['default']) {
+            $rules[] = '--container-max:'.$metrics['site_width'].'px';
+        }
+        if ($own || $metrics['navbar_height'] !== self::METRICS['navbar_height']['default']) {
+            $rules[] = '--navbar-h:'.$metrics['navbar_height'].'px';
+        }
         $logoWidth = $metrics['logo_width'] > 0 ? $metrics['logo_width'].'px' : 'none';
 
         return ':root{'.implode(';', $rules).'}'
@@ -126,13 +166,18 @@ final class SiteAppearance
             $og = $this->store($files['og'], 'og');
         }
 
-        $json = json_encode([
-            'logo' => $logo,
-            'favicon' => $favicon,
-            'og' => $og,
-            'colors' => $nextColors,
-            'metrics' => $this->storedMetrics($metrics),
-        ], JSON_THROW_ON_ERROR);
+        $data = $stored;
+        $data['logo'] = $logo;
+        $data['favicon'] = $favicon;
+        $data['og'] = $og;
+        $theme = $this->activeTheme();
+        if ($theme === ThemeRegistry::FALLBACK_THEME) {
+            $data['colors'] = $nextColors;
+            $data['metrics'] = $this->storedMetrics($metrics);
+        } else {
+            $data['themes'][$theme] = ['colors' => $nextColors, 'metrics' => $this->storedMetrics($metrics)];
+        }
+        $json = json_encode($data, JSON_THROW_ON_ERROR);
 
         $setting = $this->repository->findOneBy(['settingKey' => self::KEY]);
         if (!$setting instanceof Setting) {

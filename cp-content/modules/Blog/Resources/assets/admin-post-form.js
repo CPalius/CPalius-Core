@@ -98,6 +98,8 @@ function initAll(root, options) {
     });
     initSeoCharCounters(root);
     initTranslationTabs(root);
+    // Categories modal + tag autocomplete live in admin-post-taxonomy.js; re-run after a tab swap.
+    window.CPaliusPostTaxonomy?.init(root);
 
     if (opts.ckEditor) {
         root.querySelectorAll('[data-cpeditor]').forEach((el) => {

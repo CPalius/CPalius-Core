@@ -89,41 +89,49 @@ final class BlogAppearanceService
             $limit = self::DEFAULT_FEATURED_LIMIT;
         }
 
-        // Oversample; prefer is_featured=1 (index join + PHP fallback).
+        // Featured posts first, then the newest to fill the strip. Two cheap queries instead of one that
+        // sorts every published post by a CASE expression: that sort cannot use an index, read all
+        // ~5 000 posts of a mid-sized blog (~50 ms) and grows with the archive. The featured set is a
+        // handful of rows found through the (field, value) index; the fill is the newest N, which the
+        // (type, locale, status, published_at) index answers by reading N rows.
         $poolSize = max($limit * 3, 24);
 
-        /** @var list<Node> $candidates */
-        $candidates = $this->nodeRepository
+        /** @var list<Node> $featured */
+        $featured = $this->nodeRepository
             ->createPublishedByTypeAndLocaleQueryBuilder(self::NODE_TYPE, $locale)
             ->leftJoin('n.author', 'a')
             ->addSelect('a')
-            ->addSelect('CASE WHEN idxFeat.valueInt = 1 THEN 0 ELSE 1 END AS HIDDEN featOrder')
-            ->leftJoin(
+            ->innerJoin(
                 NodeFieldIndex::class,
                 'idxFeat',
                 'WITH',
-                'idxFeat.node = n AND idxFeat.fieldName = :featField'
+                'idxFeat.node = n AND idxFeat.fieldName = :featField AND idxFeat.valueInt = 1'
             )
             ->setParameter('featField', 'is_featured')
             ->resetDQLPart('orderBy')
-            ->addOrderBy('featOrder', 'ASC')
             ->addOrderBy('n.publishedAt', 'DESC')
             ->setMaxResults($poolSize)
             ->getQuery()
             ->getResult();
 
-        usort($candidates, static function (Node $left, Node $right): int {
-            $leftFeatured = (int) $left->getDataValue('is_featured', 0) === 1 ? 1 : 0;
-            $rightFeatured = (int) $right->getDataValue('is_featured', 0) === 1 ? 1 : 0;
-            if ($leftFeatured !== $rightFeatured) {
-                return $rightFeatured <=> $leftFeatured;
+        $candidates = $featured;
+        $missing = $limit - \count($featured);
+        if ($missing > 0) {
+            $qb = $this->nodeRepository
+                ->createPublishedByTypeAndLocaleQueryBuilder(self::NODE_TYPE, $locale)
+                ->leftJoin('n.author', 'a')
+                ->addSelect('a')
+                ->resetDQLPart('orderBy')
+                ->addOrderBy('n.publishedAt', 'DESC')
+                ->setMaxResults($missing);
+            if ($featured !== []) {
+                $qb->andWhere('n.id NOT IN (:featuredIds)')
+                    ->setParameter('featuredIds', array_map(static fn (Node $n): ?int => $n->getId(), $featured));
             }
-
-            $leftTs = $left->getPublishedAt()?->getTimestamp() ?? 0;
-            $rightTs = $right->getPublishedAt()?->getTimestamp() ?? 0;
-
-            return $rightTs <=> $leftTs;
-        });
+            /** @var list<Node> $fill */
+            $fill = $qb->getQuery()->getResult();
+            $candidates = [...$featured, ...$fill];
+        }
 
         return array_values(array_slice($candidates, 0, $limit));
     }

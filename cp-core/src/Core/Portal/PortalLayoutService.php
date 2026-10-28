@@ -94,6 +94,21 @@ final class PortalLayoutService
     }
 
     /**
+     * The enabled blocks of a layout that has not been saved (the preview frame).
+     *
+     * @param list<array<string, mixed>> $draft
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function enabledFromDraft(array $draft): array
+    {
+        return array_values(array_filter(
+            $this->hideLandingFeeds($this->normalizeLayout($draft)),
+            static fn (array $block): bool => (bool) ($block['enabled'] ?? false),
+        ));
+    }
+
+    /**
      * @param list<array<string, mixed>>|array<int, array<string, mixed>> $blocks
      */
     public function saveLayout(array $blocks): void

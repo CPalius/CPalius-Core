@@ -49,7 +49,7 @@ final class ForumSettingsCardPass implements CompilerPassInterface
                     if ($classRouteAttributes !== []) {
                         /** @var Route $classRoute */
                         $classRoute = $classRouteAttributes[0]->newInstance();
-                        $classRoutePrefix = (string) ($classRoute->getName() ?? '');
+                        $classRoutePrefix = (string) ($classRoute->name ?? '');
                     }
 
                     foreach ($reflection->getMethods() as $method) {
@@ -69,7 +69,7 @@ final class ForumSettingsCardPass implements CompilerPassInterface
 
                         /** @var Route $methodRoute */
                         $methodRoute = $methodRouteAttributes[0]->newInstance();
-                        $routeName = $classRoutePrefix.(string) ($methodRoute->getName() ?? '');
+                        $routeName = $classRoutePrefix.(string) ($methodRoute->name ?? '');
 
                         if ($routeName === '') {
                             continue;

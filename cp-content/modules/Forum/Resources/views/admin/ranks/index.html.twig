@@ -36,7 +36,7 @@
                         <td class="text-right">
                             <div class="flex items-center justify-end gap-2">
                                 <a href="{{ path('admin_forum_ranks_edit', {id: rank.id}) }}" class="btn btn-sm btn-neutral">{{ 'aacp.users.edit_action'|trans }}</a>
-                                <form method="post" action="{{ path('admin_forum_ranks_delete', {id: rank.id}) }}" onsubmit="return confirm({{ 'studio.forum.ranks.index.delete_confirm'|trans|json_encode|raw }});">
+                                <form method="post" action="{{ path('admin_forum_ranks_delete', {id: rank.id}) }}" data-confirm="{{ 'studio.forum.ranks.index.delete_confirm'|trans|e('html_attr') }}">
                                     <input type="hidden" name="_token" value="{{ csrf_token('admin_forum_rank') }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'aacp.cron.delete'|trans }}</button>
                                 </form>

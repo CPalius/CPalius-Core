@@ -2,6 +2,11 @@
 
 {% block header %}{{ 'aacp.dashboard.header'|trans }}{% endblock %}
 
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ cp_asset('styles/dashboard-cards.css') }}">
+{% endblock %}
+
 {% block javascripts %}
     {{ importmap(['app', 'studio-quick-cache-clear', 'aacp-dashboard']) }}
 {% endblock %}
@@ -30,6 +35,9 @@
          data-label-perf-off="{{ 'aacp.dashboard.perf.offline'|trans }}"
          data-label-perf-na="{{ 'aacp.dashboard.perf.count_na'|trans }}"
          data-label-perf-pages-empty="{{ 'aacp.dashboard.perf.pages.empty'|trans }}"
+         data-cp-layout-url="{{ path('aacp_dashboard_layout') }}"
+         data-cp-layout-csrf="{{ csrf_token('aacp_dashboard_layout') }}"
+         data-label-drag="{{ 'studio.dashboard.layout.drag'|trans }}"
          data-aacp-widget-url="{{ path('aacp_dashboard_widget_visibility') }}"
          data-aacp-widget-csrf="{{ csrf_token('aacp_widget_visibility') }}"
          data-label-widget-collapse="{{ 'aacp.dashboard.widget.collapse'|trans }}"
@@ -52,6 +60,7 @@
                 <span class="aacp-cmd-uptime">{{ 'aacp.dashboard.request_time'|trans }}: <span data-aacp-dashboard-target="requestDurationMs">{{ system.requestDurationMs is not null ? system.requestDurationMs ~ ' ms' : '—' }}</span></span>
             </div>
             <div class="aacp-cmd-actions">
+                <button type="button" class="aacp-cyber-btn" data-cp-layout-open>{{ 'studio.dashboard.layout.edit'|trans }}</button>
                 <button type="button" class="aacp-cyber-btn" data-aacp-action="cache">{{ 'aacp.dashboard.action.cache_rebuild'|trans }}</button>
                 <button type="button" class="aacp-cyber-btn" data-aacp-action="opcache">{{ 'aacp.dashboard.action.opcache_flush'|trans }}</button>
                 <span class="aacp-cyber-btn" title="{{ 'aacp.dashboard.action.safe_mode'|trans }}">
@@ -88,268 +97,21 @@
             </div>
         </div>
 
-        {{ include('aacp/_platform_pulse.html.twig', { pulse: pulse|default({}), hidden: hiddenWidgets|default({}) }, with_context = false) }}
 
-        <div class="aacp-cmd-grid">
-            <section class="aacp-cmd-panel{{ hiddenWidgets["telemetry.feed"] is defined ? ' is-collapsed' }}" data-aacp-widget="telemetry.feed">
-                <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-                    <h3 class="aacp-cmd-panel-title !mb-0">{{ telemetrySecurityEnabled ? 'aacp.telemetry.feed.title'|trans : 'aacp.telemetry.visitors.title'|trans }}</h3>
-                    <a href="{{ path('aacp_telemetry_settings') }}" class="font-mono text-[0.65rem] uppercase tracking-wide text-emerald-400 hover:text-emerald-300">{{ 'aacp.telemetry.settings_link'|trans }} →</a>
+        {# Independent columns: moving a card changes only the column it left and the one it entered. #}
+        <div class="cp-cards">
+            {% for col in 0..(layoutColumns - 1) %}
+                <div class="cp-col" data-cp-col data-col="{{ col }}">
+                    {% for card in cards %}
+                        {% if card.column == col and not card.removed %}
+                            {{ include('aacp/cards/' ~ card.partial ~ '.html.twig') }}
+                        {% endif %}
+                    {% endfor %}
                 </div>
-                <div class="aacp-visitor-kpis mb-2">
-                    {% if visitorStatsAvailable %}
-                        <div>
-                            <span>{{ 'aacp.telemetry.visitors.page_views'|trans }}</span>
-                            <strong data-visitor-page-views>{{ visitorStats.pageViews }}</strong>
-                        </div>
-                        <div>
-                            <span>{{ 'aacp.telemetry.visitors.unique_ips'|trans }}</span>
-                            <strong data-visitor-unique-ips>{{ visitorStats.uniqueIps }}</strong>
-                        </div>
-                    {% else %}
-                        <div class="col-span-2 !flex flex-wrap items-center justify-between gap-2">
-                            <span class="!text-fs-xs normal-case tracking-normal !text-slate-400">{{ 'aacp.telemetry.visitors.module_missing'|trans }}</span>
-                            <a href="{{ path('aacp_modules') }}" class="font-mono text-[0.65rem] uppercase tracking-wide !text-emerald-400 hover:!text-emerald-300">{{ 'aacp.telemetry.visitors.module_missing_link'|trans }}</a>
-                        </div>
-                    {% endif %}
-                    <div>
-                        <span>{{ 'aacp.dashboard.security_summary.threats'|trans }}</span>
-                        <strong class="{{ securitySummary.threats > 0 ? 'text-danger-300' : '' }}">{{ securitySummary.threats }}</strong>
-                    </div>
-                    <div>
-                        <span>{{ 'aacp.dashboard.security_summary.bans'|trans }}</span>
-                        <strong>{{ banStats.total }}</strong>
-                    </div>
-                </div>
-                <p class="mb-2 font-mono text-[0.65rem] !text-slate-500">
-                    {{ 'aacp.dashboard.security_summary.line'|trans({
-                        events: securitySummary.events,
-                        warnings: securitySummary.warnings,
-                        critical: securitySummary.critical,
-                    }) }}
-                    ·
-                    <a href="{{ path('aacp_security_center') }}" class="text-emerald-400 hover:text-emerald-300">{{ 'aacp.dashboard.security_summary.open'|trans }}</a>
-                </p>
-                <div class="overflow-x-auto">
-                    <table class="aacp-cmd-feed" data-telemetry-table>
-                        <thead>
-                            <tr>
-                                <th>{{ 'aacp.telemetry.col.time'|trans }}</th>
-                                {% if telemetrySecurityEnabled %}
-                                    <th>{{ 'aacp.telemetry.col.severity'|trans }}</th>
-                                {% endif %}
-                                <th>{{ 'aacp.telemetry.col.ip'|trans }}</th>
-                                <th>{{ 'aacp.telemetry.col.user'|trans }}</th>
-                                <th>{{ telemetrySecurityEnabled ? 'aacp.telemetry.col.event'|trans : 'aacp.telemetry.col.path'|trans }}</th>
-                                {% if telemetrySecurityEnabled %}
-                                    <th>{{ 'aacp.telemetry.col.score'|trans }}</th>
-                                {% endif %}
-                                <th>{{ 'aacp.telemetry.col.details'|trans }}</th>
-                            </tr>
-                        </thead>
-                        <tbody data-telemetry-body>
-                            {% if telemetryFeed is empty %}
-                                <tr data-telemetry-empty>
-                                    <td colspan="{{ telemetrySecurityEnabled ? 7 : 5 }}" class="!text-slate-500">{{ telemetrySecurityEnabled ? 'aacp.telemetry.feed.empty'|trans : 'aacp.telemetry.visitors.empty'|trans }}</td>
-                                </tr>
-                            {% else %}
-                                {% for row in telemetryFeed %}
-                                    <tr data-telemetry-id="{{ row.id }}">
-                                        <td>{{ row.time }}</td>
-                                        {% if telemetrySecurityEnabled %}
-                                            <td><span class="aacp-sev aacp-sev-{{ row.severity }}">{{ row.severity }}</span></td>
-                                        {% endif %}
-                                        <td>{{ row.ip }}</td>
-                                        <td>{{ row.user }}</td>
-                                        <td>{{ row.method }} {{ row.uri|length > 48 ? row.uri|slice(0, 48) ~ '…' : row.uri }}</td>
-                                        {% if telemetrySecurityEnabled %}
-                                            <td>{{ row.threatScore }}</td>
-                                        {% endif %}
-                                        <td>
-                                            <button type="button" class="aacp-cyber-btn !py-0.5" data-telemetry-open>{{ 'aacp.telemetry.details'|trans }}</button>
-                                            <textarea hidden data-telemetry-json>{{ row|json_encode }}</textarea>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            {% endif %}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <aside class="aacp-cmd-subsys">
-                <section class="aacp-cmd-panel{{ hiddenWidgets["telemetry.trend"] is defined ? ' is-collapsed' }}" data-aacp-widget="telemetry.trend">
-                    <h3 class="aacp-cmd-panel-title">{{ telemetrySecurityEnabled ? 'aacp.telemetry.trend.title'|trans : 'aacp.telemetry.visitors.traffic'|trans }}</h3>
-                    <div class="aacp-chart-box">
-                        <canvas data-telemetry-chart="trend"></canvas>
-                    </div>
-                </section>
-                {% if telemetrySecurityEnabled %}
-                    <section class="aacp-cmd-panel{{ hiddenWidgets["telemetry.vectors"] is defined ? ' is-collapsed' }}" data-aacp-widget="telemetry.vectors">
-                        <h3 class="aacp-cmd-panel-title">{{ 'aacp.telemetry.vectors.title'|trans }}</h3>
-                        <div class="aacp-chart-box aacp-chart-box--donut">
-                            <canvas data-telemetry-chart="vectors"></canvas>
-                        </div>
-                    </section>
-                    <section class="aacp-cmd-panel{{ hiddenWidgets["telemetry.top_ips"] is defined ? ' is-collapsed' }}" data-aacp-widget="telemetry.top_ips">
-                        <h3 class="aacp-cmd-panel-title">{{ 'aacp.telemetry.top_ips.title'|trans }}</h3>
-                        <ul class="aacp-top-ips" data-telemetry-top-ips>
-                            {% if topThreatIps is empty %}
-                                <li class="!text-slate-500">{{ 'aacp.telemetry.top_ips.empty'|trans }}</li>
-                            {% else %}
-                                {% for ip in topThreatIps %}
-                                    <li data-ip="{{ ip.ip }}">
-                                        <div>
-                                            <span class="font-mono text-slate-100">{{ ip.ip }}</span>
-                                            <span class="ms-2 font-mono text-slate-500">{{ ip.score }} · {{ ip.hits }}</span>
-                                        </div>
-                                        {% if ip.banned %}
-                                            <span class="aacp-sev aacp-sev-threat">{{ 'aacp.telemetry.banned'|trans }}</span>
-                                        {% else %}
-                                            <button type="button" class="aacp-cyber-btn !py-0.5" data-ban-ip="{{ ip.ip }}">{{ 'aacp.telemetry.ban'|trans }}</button>
-                                        {% endif %}
-                                    </li>
-                                {% endfor %}
-                            {% endif %}
-                        </ul>
-                    </section>
-                {% endif %}
-                {# "Most visited pages" and "most frequent visitors" were removed
-                   on 2026-09-13: they are a website's questions, and this desk
-                   summarises the CPalius core. Traffic that matters as a
-                   security signal is still here — the threat panels above run
-                   when the scanner is on. #}
-                <section class="aacp-cmd-panel{{ hiddenWidgets["system.subsystems"] is defined ? ' is-collapsed' }}" data-aacp-widget="system.subsystems">
-                    <h3 class="aacp-cmd-panel-title">{{ 'aacp.dashboard.subsys.title'|trans }}</h3>
-                    <div class="space-y-2">
-                        <div class="aacp-cmd-subsys-item">
-                            <div class="aacp-cmd-subsys-name">{{ 'aacp.dashboard.subsys.database'|trans }}</div>
-                            <div class="aacp-cmd-subsys-value">
-                                {{ system.database.connected ? 'aacp.dashboard.subsys.online'|trans : 'aacp.dashboard.subsys.offline'|trans }}
-                                · {{ 'aacp.dashboard.subsys.latency'|trans }}
-                                <span data-aacp-dashboard-target="database" data-field="latencyMs">{{ system.database.latencyMs is not null ? system.database.latencyMs ~ ' ms' : '—' }}</span>
-                            </div>
-                            <dl class="aacp-cmd-db">
-                                <div>
-                                    <dt>{{ 'aacp.dashboard.db.name'|trans }}</dt>
-                                    <dd data-aacp-dashboard-target="database" data-field="name">{{ system.database.name ?? '—' }}</dd>
-                                </div>
-                                <div>
-                                    <dt>{{ 'aacp.dashboard.db.version'|trans }}</dt>
-                                    <dd data-aacp-dashboard-target="database" data-field="version">{{ system.database.version ?? '—' }}</dd>
-                                </div>
-                                <div>
-                                    <dt>{{ 'aacp.dashboard.db.size'|trans }}</dt>
-                                    <dd data-aacp-dashboard-target="database" data-field="sizeLabel">{{ system.database.sizeLabel ?? '—' }}</dd>
-                                </div>
-                                <div>
-                                    <dt>{{ 'aacp.dashboard.db.tables'|trans }}</dt>
-                                    <dd data-aacp-dashboard-target="database" data-field="tableCount">{{ system.database.tableCount ?? '—' }}</dd>
-                                </div>
-                                <div>
-                                    <dt>{{ 'aacp.dashboard.db.connections'|trans }}</dt>
-                                    <dd data-aacp-dashboard-target="database" data-field="connections">
-                                        {%- if system.database.threadsConnected is not null -%}
-                                            {{ system.database.threadsConnected }}{% if system.database.maxConnections is not null %} / {{ system.database.maxConnections }}{% endif %}
-                                        {%- else -%}
-                                            —
-                                        {%- endif -%}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt>{{ 'aacp.dashboard.db.charset'|trans }}</dt>
-                                    <dd data-aacp-dashboard-target="database" data-field="charset">{{ system.database.charset ?? '—' }}</dd>
-                                </div>
-                                <div>
-                                    <dt>{{ 'aacp.dashboard.db.slow_queries'|trans }}</dt>
-                                    <dd data-aacp-dashboard-target="database" data-field="slowQueries">{{ system.database.slowQueries ?? '—' }}</dd>
-                                </div>
-                                <div>
-                                    <dt>{{ 'aacp.dashboard.db.server_uptime'|trans }}</dt>
-                                    <dd data-aacp-dashboard-target="database" data-field="serverUptime">{{ system.database.serverUptime ?? '—' }}</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="aacp-cmd-subsys-item">
-                            <div class="aacp-cmd-subsys-name">{{ 'aacp.dashboard.subsys.redis'|trans }}</div>
-                            <div class="aacp-cmd-subsys-value">
-                                {{ system.cache.redisOnline ? 'aacp.dashboard.subsys.online'|trans : 'aacp.dashboard.subsys.offline'|trans }}
-                                · {{ 'aacp.dashboard.subsys.cache_pool'|trans }}: {{ system.cache.pool }}
-                            </div>
-                        </div>
-                        <div class="aacp-cmd-subsys-item">
-                            <div class="aacp-cmd-subsys-name">{{ 'aacp.dashboard.subsys.mailer'|trans }}</div>
-                            <div class="aacp-cmd-subsys-value">
-                                {{ system.mailer.configured ? 'aacp.dashboard.subsys.configured'|trans : 'aacp.dashboard.subsys.not_configured'|trans }}
-                                · {{ 'aacp.dashboard.subsys.dsn'|trans }}: {{ system.mailer.dsn }}
-                            </div>
-                        </div>
-                        <div class="aacp-cmd-subsys-item">
-                            <div class="aacp-cmd-subsys-name">{{ 'aacp.dashboard.subsys.quarantine'|trans }}</div>
-                            <div class="aacp-cmd-log">
-                                {% if quarantineLog is empty %}
-                                    {{ 'aacp.dashboard.quarantine_empty'|trans }}
-                                {% else %}
-                                    {% for line in quarantineLog %}
-                                        <div>{{ line }}</div>
-                                    {% endfor %}
-                                {% endif %}
-                            </div>
-                            <a href="{{ path('aacp_quarantine') }}" class="mt-2 inline-block font-mono text-fs-xs text-emerald-400 underline hover:text-emerald-300">{{ 'aacp.dashboard.quarantine_link'|trans }} →</a>
-                        </div>
-                    </div>
-                </section>
-            </aside>
+            {% endfor %}
         </div>
 
-        {% set perf = system.performance|default({}) %}
-        {% set origin = perf.cpalius|default({online: false, count: 0, sizeLabel: '—', meta: '', pages: []}) %}
-        <section class="aacp-cmd-panel aacp-perf{{ hiddenWidgets["system.performance"] is defined ? ' is-collapsed' }}" data-aacp-widget="system.performance">
-            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <h3 class="aacp-cmd-panel-title !mb-0">{{ 'aacp.dashboard.perf.title'|trans }}</h3>
-                <a href="{{ path('aacp_performance') }}" class="font-mono text-[0.65rem] uppercase tracking-wide text-emerald-400 hover:text-emerald-300">{{ 'aacp.dashboard.perf.settings'|trans }} →</a>
-            </div>
-            <div class="aacp-perf-grid">
-                {% for key in ['cpalius', 'redis', 'memcached', 'varnish', 'pagespeed', 'opcache'] %}
-                    {% set row = perf[key]|default({online: false, count: null, sizeLabel: '—', meta: '', countUnavailable: false}) %}
-                    <div class="aacp-perf-card" data-perf-backend="{{ key }}">
-                        <span class="aacp-perf-card-name">{{ ('aacp.dashboard.perf.backend.' ~ key)|trans }}</span>
-                        <span class="aacp-perf-card-status {{ row.online ? 'is-on' : 'is-off' }}" data-perf-field="status">{{ row.online ? 'aacp.dashboard.perf.online'|trans : 'aacp.dashboard.perf.offline'|trans }}</span>
-                        <span class="aacp-perf-card-count" data-perf-field="count">{{ row.countUnavailable|default(false) ? 'aacp.dashboard.perf.count_na'|trans : (row.count is not null ? row.count : '—') }}</span>
-                        <span class="aacp-perf-card-size" data-perf-field="size">{{ row.sizeLabel|default('—') }}</span>
-                        <span class="aacp-perf-card-meta" data-perf-field="meta">{{ row.meta|default('') }}</span>
-                    </div>
-                {% endfor %}
-            </div>
-            <h4 class="aacp-cmd-panel-title mt-3">{{ 'aacp.dashboard.perf.pages.title'|trans }}</h4>
-            <div class="overflow-x-auto">
-                <table class="aacp-cmd-feed">
-                    <thead>
-                        <tr>
-                            <th>{{ 'aacp.dashboard.perf.pages.path'|trans }}</th>
-                            <th>{{ 'aacp.dashboard.perf.pages.size'|trans }}</th>
-                            <th>{{ 'aacp.dashboard.perf.pages.time'|trans }}</th>
-                        </tr>
-                    </thead>
-                    <tbody data-perf-pages>
-                        {% if origin.pages is empty %}
-                            <tr data-perf-pages-empty>
-                                <td colspan="3" class="!text-slate-500">{{ 'aacp.dashboard.perf.pages.empty'|trans }}</td>
-                            </tr>
-                        {% else %}
-                            {% for page in origin.pages %}
-                                <tr>
-                                    <td class="!break-all">{{ page.path }}</td>
-                                    <td>{{ page.sizeLabel }}</td>
-                                    <td>{{ page.mtimeLabel }}</td>
-                                </tr>
-                            {% endfor %}
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
+        {{ include('admin/_dashboard_layout_modal.html.twig', {cards: cards, columns: layoutColumns}, with_context: false) }}
         <div class="aacp-modal" data-telemetry-modal>
             <div class="aacp-modal-panel">
                 <div class="flex items-center justify-between gap-2">

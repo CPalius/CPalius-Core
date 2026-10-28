@@ -1,6 +1,6 @@
 {
     "name": "Menu",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "WordPress-style frontend menu management.",
     "author": "CPalius",
     "bundle": "Modules\\Menu\\MenuModule",

@@ -83,7 +83,7 @@
                                         </form>
                                     {% endif %}
                                     <a href="{{ path('admin_blog_comments_edit', {id: comment.id}) }}" class="btn btn-sm btn-neutral">{{ 'studio.blog.comments.action.edit'|trans }}</a>
-                                    <form method="post" action="{{ path('admin_blog_comments_delete', {id: comment.id, status: currentStatus}) }}" onsubmit="return confirm({{ 'studio.blog.comments.delete_confirm'|trans|json_encode|raw }});">
+                                    <form method="post" action="{{ path('admin_blog_comments_delete', {id: comment.id, status: currentStatus}) }}" data-confirm="{{ 'studio.blog.comments.delete_confirm'|trans|e('html_attr') }}">
                                         <input type="hidden" name="_token" value="{{ csrf_token('admin_blog_comment') }}">
                                         <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'studio.blog.comments.action.delete'|trans }}</button>
                                     </form>

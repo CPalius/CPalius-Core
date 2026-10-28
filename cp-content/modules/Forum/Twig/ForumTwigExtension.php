@@ -18,6 +18,7 @@ use Modules\Forum\Service\ForumPresenceService;
 use Modules\Forum\Service\ForumReputationService;
 use Modules\Forum\Service\ForumSectionHierarchyService;
 use Modules\Forum\Service\ForumSpoilerGate;
+use Modules\Forum\Service\ForumTopicCards;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
@@ -47,6 +48,7 @@ final class ForumTwigExtension extends AbstractExtension
         private readonly ?UserRepository $userRepository = null,
         private readonly ?RequestStack $requestStack = null,
         private readonly ?UrlGeneratorInterface $urlGenerator = null,
+        private readonly ?ForumTopicCards $topicCards = null,
     ) {
     }
 
@@ -59,6 +61,7 @@ final class ForumTwigExtension extends AbstractExtension
             new TwigFunction('forum_online_presence', [$this, 'onlinePresence']),
             new TwigFunction('forum_online_url', [$this, 'onlineUrl']),
             new TwigFunction('forum_newest_member', [$this, 'newestMember']),
+            new TwigFunction('forum_topic_cards', [$this, 'topicCards']),
             new TwigFunction('forum_reputation_enabled', [$this, 'reputationEnabled']),
             new TwigFunction('forum_section_children', [$this, 'sectionChildren']),
             new TwigFunction('forum_user_avatar_url', [$this, 'userAvatarUrl']),
@@ -163,6 +166,16 @@ final class ForumTwigExtension extends AbstractExtension
         $locale = $this->requestStack?->getCurrentRequest()?->getLocale() ?? 'tr';
 
         return '/'.$locale.'/forums/cevrimici';
+    }
+
+    /**
+     * Topics for the cards under the forum pages; null when Studio switched them off.
+     *
+     * @return array{latest: list<\Modules\Forum\Entity\ForumTopic>|null, popular: list<\Modules\Forum\Entity\ForumTopic>|null}|null
+     */
+    public function topicCards(): ?array
+    {
+        return $this->topicCards?->load($this->requestStack?->getCurrentRequest()?->getLocale() ?? 'tr');
     }
 
     /**

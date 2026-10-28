@@ -14,6 +14,7 @@ final class ModuleManifest
      * @param array<string, string> $requires  module dir name => version constraint
      * @param array<string, string> $conflicts module dir name => version constraint
      * @param list<string>          $provides  free-form capability tags other modules may require
+     * @param string                $extends   dir name of the module this one is an add-on of ("" = stand-alone); the parent is also required
      */
     public function __construct(
         public readonly string $dirName,
@@ -26,6 +27,7 @@ final class ModuleManifest
         public readonly array $requires = [],
         public readonly array $conflicts = [],
         public readonly array $provides = [],
+        public readonly string $extends = '',
     ) {
     }
 
@@ -61,6 +63,11 @@ final class ModuleManifest
     public static function fromArray(string $dirName, array $data): self
     {
         $bundle = $data['bundle'] ?? null;
+        $extends = self::stringOr($data['extends'] ?? null, '');
+        $requires = self::constraintMap($data['requires'] ?? null);
+        if ($extends !== '' && !isset($requires[$extends])) {
+            $requires[$extends] = '*';
+        }
 
         return new self(
             dirName: $dirName,
@@ -70,9 +77,10 @@ final class ModuleManifest
             description: self::stringOr($data['description'] ?? null, ''),
             author: self::stringOr($data['author'] ?? null, ''),
             coreVersion: \is_string($data['core_version'] ?? null) ? $data['core_version'] : null,
-            requires: self::constraintMap($data['requires'] ?? null),
+            requires: $requires,
             conflicts: self::constraintMap($data['conflicts'] ?? null),
             provides: self::stringList($data['provides'] ?? null),
+            extends: $extends,
         );
     }
 
@@ -91,6 +99,7 @@ final class ModuleManifest
             'requires' => $this->requires,
             'conflicts' => $this->conflicts,
             'provides' => $this->provides,
+            'extends' => $this->extends,
         ];
     }
 

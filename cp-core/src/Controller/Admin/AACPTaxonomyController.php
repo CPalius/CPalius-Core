@@ -62,9 +62,10 @@ final class AACPTaxonomyController extends AbstractController
     public function index(): Response
     {
         $vocabularies = $this->vocabularyRepository->findAllOrdered();
+        $perVocabulary = $this->termRepository->countsPerVocabulary();
         $counts = [];
         foreach ($vocabularies as $vocabulary) {
-            $counts[(int) $vocabulary->getId()] = $this->termRepository->countByVocabulary($vocabulary);
+            $counts[(int) $vocabulary->getId()] = $perVocabulary[(int) $vocabulary->getId()] ?? 0;
         }
 
         return $this->render('aacp/taxonomy/index.html.twig', [

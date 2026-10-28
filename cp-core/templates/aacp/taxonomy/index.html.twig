@@ -40,7 +40,7 @@
                                 </a>
                                 <form method="post" class="inline"
                                       action="{{ path('aacp_taxonomy_vocabulary_delete', {machineName: vocabulary.machineName}) }}"
-                                      onsubmit="return confirm('{{ 'aacp.taxonomy.confirm_delete_vocabulary'|trans|e('js') }}');">
+                                      data-confirm="{{ 'aacp.taxonomy.confirm_delete_vocabulary'|trans|e('html_attr') }}">
                                     <input type="hidden" name="_token" value="{{ csrf_token('aacp_taxonomy_vocabulary') }}">
                                     <button type="submit" class="text-fs-xs font-medium !text-danger-400 hover:!text-danger-300">
                                         {{ 'aacp.taxonomy.delete'|trans }}

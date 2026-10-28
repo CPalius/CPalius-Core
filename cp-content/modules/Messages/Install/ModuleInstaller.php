@@ -60,14 +60,12 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
     {
         parent::install($context);
         $this->grantRoleCapabilities($context);
-        $this->retractMenuLinks($context);
     }
 
     public function upgrade(ModuleInstallContext $context, string $fromVersion, string $toVersion): void
     {
         parent::upgrade($context, $fromVersion, $toVersion);
         $this->grantRoleCapabilities($context);
-        $this->retractMenuLinks($context);
     }
 
     public function uninstall(ModuleInstallContext $context): void
@@ -78,9 +76,9 @@ final class ModuleInstaller extends AbstractSqlModuleInstaller
     }
 
     /**
-     * Navigation is the operator's to compose. An earlier installer published
-     * header/footer links on activate; those are retracted here and never added
-     * again.
+     * Navigation is the operator's to compose. Links to the module's pages are
+     * removed only when the module itself is removed; install and upgrade must
+     * never touch them, or a link the operator added is deleted by every update.
      */
     private function retractMenuLinks(ModuleInstallContext $context): void
     {

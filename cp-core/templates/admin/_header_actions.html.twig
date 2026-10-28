@@ -2,20 +2,28 @@
     Studio chrome: profile dropdown. layout.html.twig includes this outside
     header_actions so page buttons cannot hide the menu.
 #}
+{% if is_granted('system.users.manage') %}
+    {{ include('admin/_notification_bell.html.twig') }}
+{% endif %}
 <div class="dropdown shrink-0">
     <button type="button" data-dropdown-trigger="studio-profile-menu"
             class="flex items-center gap-2 rounded-full border border-neutral-300 py-1 pe-3 ps-1 hover:bg-neutral-50">
-        <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-fs-xs font-semibold text-primary-700">
-            {{ app.user ? app.user.email|slice(0, 1)|upper : '?' }}
-        </span>
-        <span class="hidden text-fs-sm text-neutral-700 sm:inline">{{ app.user ? app.user.email : '' }}</span>
+        {% set avatarUrl = cp_current_user_avatar_url() %}
+        {% if avatarUrl %}
+            <img src="{{ avatarUrl }}" alt="" class="h-7 w-7 rounded-full object-cover">
+        {% else %}
+            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-fs-xs font-semibold text-primary-700">
+                {{ app.user ? app.user.fullName|slice(0, 1)|upper : '?' }}
+            </span>
+        {% endif %}
+        <span class="hidden max-w-[8rem] truncate text-fs-sm text-neutral-700 sm:inline">{{ app.user ? app.user.fullName : '' }}</span>
     </button>
     <div id="studio-profile-menu" class="dropdown-menu end-0">
         <a href="{{ path('aacp_users_profile') }}">
             <twig:ux:icon name="tabler:user-circle" class="h-4 w-4" />
             {{ 'studio.layout.my_profile'|trans }}
         </a>
-        <a href="{{ path('theme_cpalius_website_home') }}" target="_blank" rel="noopener">
+        <a href="{{ path('site_home') }}" target="_blank" rel="noopener">
             <twig:ux:icon name="tabler:external-link" class="h-4 w-4" />
             {{ 'studio.layout.go_website'|trans }}
         </a>

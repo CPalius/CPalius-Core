@@ -57,7 +57,7 @@ final class LocaleSwitchController extends AbstractController
             }
         }
 
-        return $this->redirectToRoute('theme_cpalius_website_home', ['_locale' => $locale]);
+        return $this->redirectToRoute('site_home', ['_locale' => $locale]);
     }
 
     /**

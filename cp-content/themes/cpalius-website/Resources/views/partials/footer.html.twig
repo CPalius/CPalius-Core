@@ -12,9 +12,9 @@
                 <h5>{{ 'website.footer.quick_links'|trans }}</h5>
                 <ul class="footer-links">
                     {% for item in cp_menu('footer', app.request.locale) %}
-                        <li><a href="{{ item.url }}"><i class="bi bi-chevron-right"></i> {{ item.label }}</a></li>
+                        <li><a href="{{ item.url }}"{{ item.attributes|raw }}><i class="bi bi-{{ item.icon ?: 'chevron-right' }}"></i> {{ item.label }}</a></li>
                     {% else %}
-                        <li><a href="{{ path('theme_cpalius_website_home') }}#about"><i class="bi bi-chevron-right"></i> {{ 'website.footer.about'|trans }}</a></li>
+                        <li><a href="{{ path('site_home') }}#about"><i class="bi bi-chevron-right"></i> {{ 'website.footer.about'|trans }}</a></li>
                         <li><a href="{{ path('blog_index') }}"><i class="bi bi-chevron-right"></i> {{ 'website.footer.blog'|trans }}</a></li>
                     {% endfor %}
                 </ul>
@@ -24,7 +24,7 @@
                 <h5>{{ 'website.footer.contact'|trans }}</h5>
                 <ul class="footer-links">
                     {% for item in cp_menu('footer_contact', app.request.locale) %}
-                        <li><a href="{{ item.url }}" {{ item.openInNewTab ? 'target="_blank" rel="noopener"' : '' }}>{{ item.label }}</a></li>
+                        <li><a href="{{ item.url }}"{{ item.attributes|raw }}>{% if item.icon %}<i class="bi bi-{{ item.icon }}"></i> {% endif %}{{ item.label }}</a></li>
                     {% else %}
                         <li><a href="#"><i class="bi bi-github"></i> {{ 'website.footer.github'|trans }}</a></li>
                         <li><a href="#"><i class="bi bi-envelope"></i> {{ 'website.footer.contact'|trans }}</a></li>

@@ -44,7 +44,12 @@ final class TemplateScriptNonceTest extends TestCase
 
         foreach ($this->templates() as $path => $relative) {
             ++$scanned;
-            $source = (string) file_get_contents($path);
+            // A Twig comment is never rendered, so a "<script>" mentioned inside one is prose, not a tag.
+            $source = (string) preg_replace_callback(
+                '/\{#.*?#\}/s',
+                static fn (array $m): string => str_repeat("\n", substr_count($m[0], "\n")),
+                (string) file_get_contents($path),
+            );
 
             if (!preg_match_all('/<script\b[^>]*>/i', $source, $matches, \PREG_OFFSET_CAPTURE)) {
                 continue;
@@ -55,9 +60,16 @@ final class TemplateScriptNonceTest extends TestCase
                     continue;
                 }
 
+                // A tag named in a JavaScript "//" comment inside an already-nonced script is text, not markup.
+                $lineStart = strrpos(substr($source, 0, $offset), "\n");
+                $before = substr($source, $lineStart === false ? 0 : $lineStart + 1, $offset - ($lineStart === false ? 0 : $lineStart + 1));
+                if (str_starts_with(ltrim($before), '//')) {
+                    continue;
+                }
+
                 ++$checked;
 
-                if (!str_contains($tag, self::NONCE_CALL)) {
+                if (!str_contains($tag, self::NONCE_CALL) && !str_contains($tag, 'nonce="')) {
                     $line = substr_count($source, "\n", 0, $offset) + 1;
                     $offenders[] = sprintf('%s:%d  %s', $relative, $line, trim($tag));
                 }

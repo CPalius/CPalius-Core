@@ -70,6 +70,12 @@
                         </td>
                         <td class="text-right">
                             <div class="flex items-center justify-end gap-2">
+                                {# Only a live post has a public page; drafts/scheduled would 404. #}
+                                {% if post.status == 'published' %}
+                                    <a href="{{ path('blog_show', {_locale: post.locale, slug: post.slug}) }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
+                                        {{ 'blog.posts.view_on_site'|trans }} ↗
+                                    </a>
+                                {% endif %}
                                 <a href="{{ path('admin_posts_edit', {id: post.id}) }}" class="btn btn-sm btn-neutral">
                                     {{ 'aacp.users.edit_action'|trans }}
                                 </a>
@@ -84,7 +90,7 @@
                                 {% endif %}
 
                                 <form method="post" action="{{ path('admin_posts_delete', {id: post.id}) }}"
-                                      onsubmit="return confirm({{ 'blog.posts.delete_confirm'|trans|json_encode|raw }});">
+                                      data-confirm="{{ 'blog.posts.delete_confirm'|trans|e('html_attr') }}">
                                     <input type="hidden" name="_token" value="{{ csrf_token('admin_post_form') }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">
                                         {{ 'aacp.cron.delete'|trans }}

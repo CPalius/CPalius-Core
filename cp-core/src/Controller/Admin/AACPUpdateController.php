@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Core\Security\Reauth\RequiresRecentAuth;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Cache\CacheRebuildManager;
 use App\Core\TextFormat\Filter\MarkdownFilter;
@@ -15,6 +16,8 @@ use App\Core\Version\CpVersion;
 use App\Core\Version\PatchChecker;
 use App\Core\Version\PatchInstaller;
 use App\Core\Version\ReleaseChecker;
+use App\Core\Version\Service\AtomicUpdateInstaller;
+use App\Core\Version\Service\DatabaseUpdateGuard;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -65,6 +68,8 @@ final class AACPUpdateController extends AbstractController
         private readonly PatchInstaller $patchInstaller,
         private readonly RequestStack $requestStack,
         private readonly CacheRebuildManager $cacheRebuild,
+        private readonly DatabaseUpdateGuard $guard,
+        private readonly AtomicUpdateInstaller $installer,
     ) {
     }
 
@@ -80,6 +85,11 @@ final class AACPUpdateController extends AbstractController
 
         $results = $this->runner->run(dryRun: true);
         $pending = $this->pendingCount($results);
+
+        // A parked update with nothing left to run must still be closed, or the site stays in maintenance.
+        if ($pending === 0 && $this->guard->stageIs(AtomicUpdateInstaller::STAGE_AWAITING_HOOKS)) {
+            $this->guard->commit();
+        }
 
         $flashed = $request->getSession()->getFlashBag()->get('patch_log');
         $checkLog = $request->getSession()->getFlashBag()->get('check_log');
@@ -111,6 +121,28 @@ final class AACPUpdateController extends AbstractController
      * operator who just published a release, or who landed here inside that
      * window, needs a way to ask again without waiting.
      */
+    /**
+     * Follows a private update channel (a hard-to-guess name) next to stable, or leaves it when blank.
+     */
+    #[Route('/channel', name: 'channel', methods: ['POST'])]
+    public function channel(Request $request): Response
+    {
+        if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(self::CSRF_CHECK, (string) $request->request->get('_token')))) {
+            throw new BadRequestHttpException($this->translator->trans('aacp.common.error.invalid_csrf'));
+        }
+
+        if (!$this->releases->changeChannel((string) $request->request->get('channel', ''))) {
+            $this->addFlash('check_error', $this->translator->trans('aacp.version.channel.invalid'));
+
+            return $this->redirectToRoute('aacp_updates_index');
+        }
+
+        $this->releases->refresh();
+        $this->addFlash('check_log', $this->translator->trans($this->releases->channel() === '' ? 'aacp.version.channel.cleared' : 'aacp.version.channel.saved'));
+
+        return $this->redirectToRoute('aacp_updates_index');
+    }
+
     #[Route('/check', name: 'check', methods: ['POST'])]
     public function check(Request $request): Response
     {
@@ -150,6 +182,7 @@ final class AACPUpdateController extends AbstractController
      * left open in a tab to install something other than what the page showed.
      */
     #[Route('/patch', name: 'patch', methods: ['POST'])]
+    #[RequiresRecentAuth]
     public function patch(Request $request): Response
     {
         if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(self::CSRF_PATCH, (string) $request->request->get('_token')))) {
@@ -211,6 +244,7 @@ final class AACPUpdateController extends AbstractController
      * anything else is a bad request, not a default.
      */
     #[Route('/recover', name: 'recover', methods: ['POST'])]
+    #[RequiresRecentAuth]
     public function recover(Request $request): Response
     {
         if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(self::CSRF_RECOVER, (string) $request->request->get('_token')))) {
@@ -263,108 +297,56 @@ final class AACPUpdateController extends AbstractController
     }
 
     #[Route('/upgrade', name: 'upgrade', methods: ['POST'])]
+    #[RequiresRecentAuth]
     public function upgrade(Request $request): Response
     {
         if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(self::CSRF_UPGRADE, (string) $request->request->get('_token')))) {
             throw new BadRequestHttpException($this->translator->trans('aacp.common.error.invalid_csrf'));
         }
 
-        $log = null;
+        $log = [];
         $error = null;
+        $status = $this->releases->status();
+        $engaged = false;
 
+        // Snapshot and file backup come first; any later failure undoes both together.
         try {
+            $blockers = $this->updater->blockers();
+
+            if ($blockers !== [] || $status === null) {
+                throw new \RuntimeException('Update refused: '.implode(', ', $blockers));
+            }
+
+            $this->guard->begin($status['version'], $this->installer->backupDir($status['version']));
+            $engaged = true;
             $log = $this->updater->apply();
+
+            // Schema runs in this request, before the new code renders anything (see git history of 2.0.0).
+            // The compiled container is only purged afterwards so lazy services keep working.
+            $this->guard->advance(AtomicUpdateInstaller::STAGE_MIGRATING);
+            $result = $this->runner->migrateOnly();
+
+            if ($result->isFailure()) {
+                throw new \RuntimeException($this->translator->trans('aacp.version.upgrade.migration_failed', ['error' => $result->summary]));
+            }
+
+            $this->guard->advance(AtomicUpdateInstaller::STAGE_AWAITING_HOOKS);
+            $log[] = $this->updater->finishCacheRebuild();
         } catch (\Throwable $e) {
             $error = $e->getMessage();
+            $engaged && $this->undoUpdate($error);
         }
 
-        /*
-         * Schema first, in this request, before anything renders.
-         *
-         * The old shape of this method left migrations to "the next request via
-         * the existing apply step" and then rendered the updates screen. That
-         * screen is served by the code that just landed, against a database that
-         * has not moved yet. It held until 2.0.0, which renames every table:
-         * the render died with "Table 'cp_users' doesn't exist", and because the
-         * panel was what died, the operator could never reach the button that
-         * would have run the migrations. The site was down with no way back in.
-         *
-         * Migrations are the one step that survives the window — but only
-         * because apply() no longer purges the compiled container itself
-         * (see CoreUpdater::finishCacheRebuild()'s docblock). This request
-         * booted with, and $this->runner already holds, services resolved
-         * from the container that existed BEFORE apply() wrote a single new
-         * file. Migrations lazily resolving anything through those
-         * already-instantiated services — the Doctrine migrations
-         * DependencyFactory has done exactly this — need that container's
-         * files to still be sitting where they were when this request
-         * started. Purging it here, before migrations run, doesn't just
-         * leave a gap for some later request: it deletes the files THIS
-         * request's own lazy service resolution is about to reach for.
-         * That used to happen inside apply() itself and was the actual
-         * cause of a crash 2.2.11 through 2.2.14 each chased in the wrong
-         * place. The container is purged and rebuilt below, only once
-         * migrations no longer need the old one.
-         *
-         * A failure here is reported and not retried: the files are already the
-         * new version, so the honest thing is to say the schema did not move and
-         * let the operator run it from the apply step once they know why.
-         */
-        $migrationError = null;
-        if ($error === null) {
-            try {
-                $result = $this->runner->migrateOnly();
-                if ($result->isFailure()) {
-                    $migrationError = $result->summary;
-                }
-            } catch (\Throwable $e) {
-                $migrationError = $e->getMessage();
-            }
-
-            // Now — and only now — is it safe to purge the compiled
-            // container: migrations just finished with the old one, and
-            // nothing else left in this request needs it. Runs regardless
-            // of $migrationError: the files on disk are already the new
-            // version either way, and leaving a container that describes
-            // neither the old nor the new code in place is worse than a
-            // stale cache an operator could otherwise just clear by hand.
-            try {
-                $log[] = $this->updater->finishCacheRebuild();
-            } catch (\Throwable $e) {
-                $log[] = 'WARNING: cache could not be rebuilt after migrations ('.$e->getMessage().').';
-            }
-        }
-
-        /*
-         * Redirect rather than render, for the same reason patch() does since
-         * 1.1.3: a RedirectResponse needs the router and nothing else, both long
-         * since instantiated, while rendering this screen walks half the service
-         * graph through a container that no longer matches the code on disk.
-         */
-        foreach ((array) $log as $line) {
+        // Redirect, not render: the container on disk no longer matches this request's services.
+        foreach ($log as $line) {
             $this->addFlash('upgrade_log', (string) $line);
         }
         if ($error !== null) {
             $this->addFlash('upgrade_error', $error);
         }
-        if ($migrationError !== null) {
-            $this->addFlash('upgrade_error', $this->translator->trans('aacp.version.upgrade.migration_failed', ['error' => $migrationError]));
-        }
 
-        // Files are on disk, the schema moved, and this request's own
-        // finishCacheRebuild() call above already left a freshly-compiled
-        // container in place. Update hooks, module upgrades and config
-        // import are still pending on purpose: they run project services
-        // through THAT now-current container rather than this request's
-        // already-instantiated ones, so they need a request that boots
-        // fresh — this one is already past that point. UpdateRunner's own
-        // pipeline rebuilds the container again at the end of that request
-        // too, since hooks/module upgrades/config import can themselves
-        // change what needs compiling. Flagging it instead of running it
-        // here lets the NEXT request auto-submit the same "Güncellemeyi
-        // çalıştır" action the operator would have clicked anyway, so one
-        // click finishes the whole update.
-        if ($error === null && $migrationError === null) {
+        // Hooks, module upgrades and config import need a freshly booted request, so the next page auto-submits them.
+        if ($error === null) {
             $this->addFlash('auto_apply', '1');
         }
 
@@ -408,6 +390,10 @@ final class AACPUpdateController extends AbstractController
             'currentReleasedAt' => CpVersion::RELEASED_AT,
             'channel' => CpVersion::CHANNEL,
             'release' => $status,
+            'securityError' => $this->releases->securityError(),
+            'channel' => $this->releases->channel(),
+            'incompatible' => $status !== null && $status['outdated'] ? $this->updater->incompatibleExtensions($status['version']) : [],
+            'rollbackNotice' => $this->guard->notice(),
             'blockers' => $this->updater->blockers(),
             'currentNotes' => $this->renderNotes(CpVersion::VERSION),
             'latestNotes' => $status !== null && $status['outdated'] ? $this->renderNotes($status['version']) : null,
@@ -456,27 +442,81 @@ final class AACPUpdateController extends AbstractController
     }
 
     #[Route('/apply', name: 'apply', methods: ['POST'])]
+    #[RequiresRecentAuth]
     public function apply(Request $request): Response
     {
         if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(self::CSRF_APPLY, (string) $request->request->get('_token')))) {
             throw new BadRequestHttpException($this->translator->trans('aacp.common.error.invalid_csrf'));
         }
 
-        $results = $this->runner->run();
+        $error = null;
+        $results = [];
+        $engaged = false;
 
-        // Rendered rather than redirected: the per-step detail is the whole
-        // point of having run it, and a redirect would reduce it to a flash
-        // message. A re-run is safe anyway — completed work is skipped.
+        try {
+            $engaged = $this->startHookGuard();
+            $results = $this->runner->run();
+
+            if ($this->hasFailure($results)) {
+                throw new \RuntimeException($this->translator->trans('aacp.version.upgrade.step_failed'));
+            }
+
+            $engaged && $this->guard->commit();
+        } catch (\Throwable $e) {
+            $error = $e->getMessage();
+            $engaged && $this->undoUpdate($error);
+        }
+
+        // "Update all" in the store applies one module at a time; what is left is offered once this one is done.
+        $left = (int) $request->getSession()->remove('store_update_all_left');
+
+        // Rendered, not redirected: the per-step detail is the point. A re-run is safe, finished work is skipped.
         return $this->render('aacp/updates/index.html.twig', $this->viewData([
+            'updateAllLeft' => $error === null ? $left : 0,
+            'storeToken' => $this->csrfTokenManager->getToken('aacp_store')->getValue(),
             'results' => $this->runner->run(dryRun: true),
             'pending' => 0,
             'hasFailure' => $this->hasFailure($results),
             'applied' => $results,
             'upgradeLog' => null,
-            'upgradeError' => null,
+            'upgradeError' => $error,
             'patchLog' => null,
             'patchError' => null,
         ]));
+    }
+
+    /**
+     * Continues a parked update, or snapshots first when pending work would touch the database.
+     */
+    private function startHookGuard(): bool
+    {
+        if ($this->guard->stageIs(AtomicUpdateInstaller::STAGE_AWAITING_HOOKS)) {
+            $this->guard->advance(AtomicUpdateInstaller::STAGE_HOOKS);
+
+            return true;
+        }
+
+        if ($this->guard->active() || $this->pendingCount($this->runner->run(dryRun: true)) === 0) {
+            return false;
+        }
+
+        $this->guard->begin(CpVersion::VERSION, null);
+        $this->guard->advance(AtomicUpdateInstaller::STAGE_HOOKS);
+
+        return true;
+    }
+
+    /**
+     * Rolls files and database back; a failed rollback is reported loudly and retried on the next request.
+     */
+    private function undoUpdate(string $reason): void
+    {
+        try {
+            $this->guard->rollback($reason, false);
+            $this->cacheRebuild->clearSymfonyCache();
+        } catch (\Throwable $e) {
+            $this->addFlash('upgrade_error', $this->translator->trans('aacp.version.rollback.failed', ['error' => $e->getMessage()]));
+        }
     }
 
     /**

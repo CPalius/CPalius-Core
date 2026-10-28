@@ -46,6 +46,8 @@ final class ForumSectionRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('s')
             ->leftJoin('s.parent', 'p')->addSelect('p')
+            // The board list shows each board's last poster; one join here instead of one lazy load per board.
+            ->leftJoin('s.lastPoster', 'lp')->addSelect('lp')
             ->andWhere('s.locale = :locale')
             ->setParameter('locale', $locale)
             ->orderBy('s.sortOrder', 'ASC')

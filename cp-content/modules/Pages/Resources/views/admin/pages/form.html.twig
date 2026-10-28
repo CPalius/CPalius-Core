@@ -3,7 +3,7 @@
 {% block header %}{{ page ? 'pages.form.header_edit'|trans : 'pages.form.header_create'|trans }}{% endblock %}
 
 {% block javascripts %}
-    {{ importmap(['app', 'studio-quick-cache-clear', 'admin-page-form', 'media-picker', 'cp-editor-init']) }}
+    {{ importmap(['app', 'studio-quick-cache-clear', 'admin-page-form', 'media-picker', 'field-media', 'cp-editor-init']) }}
 {% endblock %}
 
 {% block body %}
@@ -105,14 +105,19 @@
 
                 {{ form_widget(form.customFieldsJson) }}
                 {{ form_widget(form.fieldGroupId) }}
-            </twig:studio:card>
 
-            <twig:studio:card title="{{ 'pages.form.section_code'|trans }}">
-                <div class="space-y-sp-sm">
-                    {{ form_row(form.customCss) }}
-                    {{ form_row(form.customJs) }}
-                    <p class="text-fs-xs text-neutral-500">{{ 'pages.form.code_hint'|trans }}</p>
-                </div>
+                {# Per-page code lives with the custom fields and stays closed unless the page already has some. #}
+                <details class="group mt-sp-md border-t border-neutral-200 pt-sp-sm" {{ form.vars.value.customCss or form.vars.value.customJs ? 'open' : '' }}>
+                    <summary class="flex cursor-pointer list-none items-center justify-between text-fs-sm font-semibold text-neutral-900">
+                        {{ 'pages.form.section_code'|trans }}
+                        <span class="text-fs-xs text-neutral-500 transition group-open:rotate-180">▾</span>
+                    </summary>
+                    <div class="mt-sp-sm space-y-sp-sm">
+                        {{ form_row(form.customCss) }}
+                        {{ form_row(form.customJs) }}
+                        <p class="text-fs-xs text-neutral-500">{{ 'pages.form.code_hint'|trans }}</p>
+                    </div>
+                </details>
             </twig:studio:card>
 
             <twig:studio:card padded="{{ false }}">
@@ -176,6 +181,11 @@
                         {% else %}
                             {% do form.autoTranslate.setRendered %}
                         {% endif %}
+                    {% endif %}
+
+                    {% if form.syncTranslations is defined %}
+                        {{ form_row(form.syncTranslations) }}
+                        <p class="text-fs-xs text-neutral-500">{{ 'pages.form.sync_locales'|trans({locales: aiSyncLocales|default([])|join(', ')}) }}</p>
                     {% endif %}
 
                     {% if page %}

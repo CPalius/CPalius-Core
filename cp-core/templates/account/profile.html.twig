@@ -7,7 +7,7 @@
 {% block forum_breadcrumbs %}
     <nav class="forum-crumb fade-in" aria-label="{{ 'account.nav_aria'|trans }}">
         <ol class="forum-crumb__list">
-            <li><a href="{{ path('theme_cpalius_website_home') }}"><i class="bi bi-house-door"></i></a></li>
+            <li><a href="{{ path('site_home') }}"><i class="bi bi-house-door"></i></a></li>
             {% if accountHomeRoute|default('') not in ['', 'theme_cpalius_website_home'] %}
                 <li><a href="{{ path(accountHomeRoute) }}">{{ 'account.breadcrumb.home'|trans }}</a></li>
             {% endif %}

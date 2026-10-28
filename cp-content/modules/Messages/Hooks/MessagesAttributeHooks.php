@@ -83,6 +83,42 @@ final class MessagesAttributeHooks
         ], 'showcase-btn showcase-btn--block messages-hook--showcase', '<p style="margin-top:.75rem">', '</p>');
     }
 
+    /**
+     * Marketplace listing page: "Message the seller". Payload contract (published by the
+     * Marketplace module, never imported): owner (User), item_id, label, url.
+     */
+    #[CpHook('marketplace.listing.actions', priority: 40)]
+    public function onMarketplaceListingActions(HookContext $context): HookContext
+    {
+        return $this->marketplaceCompose($context, 'marketplace_listing', 'messages.action.contact_seller');
+    }
+
+    /** Marketplace deal page: write to the other party. Payload: owner (the counterpart User), item_id (deal id), label, url. */
+    #[CpHook('marketplace.deal.actions', priority: 40)]
+    public function onMarketplaceDealActions(HookContext $context): HookContext
+    {
+        return $this->marketplaceCompose($context, 'marketplace_deal', 'messages.action.send');
+    }
+
+    private function marketplaceCompose(HookContext $context, string $contextType, string $labelKey): HookContext
+    {
+        $owner = $context->get('owner') ?? $context->get('user');
+        if (!$owner instanceof User) {
+            return $context;
+        }
+
+        $label = trim((string) $context->get('label', ''));
+        $itemId = $context->get('item_id') ?? $context->get('id');
+        $url = trim((string) $context->get('url', ''));
+
+        return $this->appendComposeLink($context, $owner, $labelKey, [
+            'context_type' => $contextType,
+            'context_id' => is_numeric($itemId) ? (string) (int) $itemId : '',
+            'context_label' => $label !== '' ? $label : $owner->getPublicDisplayName(),
+            'context_url' => $url,
+        ], 'btn btn-sm btn-outline messages-hook messages-hook--marketplace', '<p style="margin-top:.75rem">', '</p>');
+    }
+
     #[CpHook('theme.header.alerts', priority: 40)]
     public function onHeaderAlerts(HookContext $context): HookContext
     {

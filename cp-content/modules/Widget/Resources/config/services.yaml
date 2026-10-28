@@ -3,7 +3,16 @@ services:
         autowire: true
         autoconfigure: true
 
-    # Settings carriers are scanned by SettingsRegistrationPass, but the
-    # directory must still be a registered service resource.
-    Modules\Widget\Settings\:
-        resource: '../../Settings/'
+    Modules\Widget\Controller\:
+        resource: '../../Controller/'
+        tags: ['controller.service_arguments']
+
+    Modules\Widget\Repository\:
+        resource: '../../Repository/'
+
+    Modules\Widget\Service\:
+        resource: '../../Service/'
+
+    # Type/ holds the general widget types (WidgetTypeInterface autoconfigure tag).
+    Modules\Widget\Type\:
+        resource: '../../Type/'

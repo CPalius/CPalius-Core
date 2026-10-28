@@ -36,6 +36,7 @@ final class CacheRebuildManager
     public const PURGE_FAILURE_MARKER = 'cache-purge-failed.json';
 
     private bool $deferKernelPurge = false;
+    private bool $blueGreen = false;
 
     public function __construct(
         #[Autowire(param: 'kernel.project_dir')]
@@ -69,6 +70,19 @@ final class CacheRebuildManager
      *
      * @return array{success: bool, output: string}
      */
+    /**
+     * Module toggle: the code on disk is unchanged, so the old container may keep serving while a new one is
+     * compiled in the background (blue/green). Every other clear (code updates!) purges at once.
+     *
+     * @return array{success: bool, output: string}
+     */
+    public function clearForModuleToggle(): array
+    {
+        $this->blueGreen = true;
+
+        return $this->clearSymfonyCache();
+    }
+
     public function clearSymfonyCache(): array
     {
         $msg = $this->translateLogTemplates();
@@ -167,6 +181,14 @@ final class CacheRebuildManager
      */
     private function purgeCacheDirectoryNow(): void
     {
+        if ($this->environment !== 'test' && $this->spawnBlueGreenRebuild()) {
+            // The live container is left untouched and keeps serving; a background process compiles
+            // the new one and flips var/cache/<env>.active when it is warm (see Kernel::resolveCacheDir()).
+            $this->recordPurgeOutcome(null);
+
+            return;
+        }
+
         $problem = null;
 
         try {
@@ -209,6 +231,115 @@ final class CacheRebuildManager
         }
 
         $this->recordPurgeOutcome($problem);
+    }
+
+    /**
+     * Blue/green container swap for SAPIs that cannot release the response early (Apache mod_php,
+     * Windows/Laragon). A detached process compiles the new container into <env>-<slot>, then flips
+     * the <env>.active pointer; until then the old container keeps serving, so no click ever waits
+     * for a compile. False (caller does the classic inline purge) under fastcgi/CLI or on spawn failure.
+     */
+    private function spawnBlueGreenRebuild(): bool
+    {
+        // Only for module toggles, and only where the response cannot be released early (mod_fcgid): php-fpm
+        // keeps the inline purge. Plain CLI does too, unless a background job opts in with CPALIUS_BLUEGREEN=1.
+        if (!$this->blueGreen || \function_exists('fastcgi_finish_request') || (\PHP_SAPI === 'cli' && getenv('CPALIUS_BLUEGREEN') !== '1')) {
+            return false;
+        }
+
+        $windows = \PHP_OS_FAMILY === 'Windows';
+        $nl = $windows ? "\r\n" : "\n";
+        $fix = static fn (string $p): string => $windows ? str_replace('/', '\\', $p) : $p;
+        $q = static fn (string $s): string => '"'.$s.'"';
+
+        $php = (new PhpExecutableFinder())->find() ?: 'php';
+        $console = $this->projectDir.'/cp-core/bin/console';
+        $base = $this->projectDir.'/cp-core/var/cache/'.$this->environment;
+        $slot = bin2hex(random_bytes(4));
+        $newDir = $base.'-'.$slot;
+        $run = fn (string $cmd): string => $q($fix($php)).' '.$q($fix($console)).' '.$cmd.' --env='.$this->environment;
+        $pointer = $q($fix($base.'.active'));
+        $marker = $q($fix($this->purgeMarkerPath()));
+        $failJson = '{"reason":"background container warmup failed"}';
+        // Same guard as compileMappedAssets(): asset-map:compile without built CSS deletes the manifest.
+        $assets = (new TailwindBuildSeeder($this->projectDir))->seed();
+
+        $lines = $windows
+            ? ['@echo off', 'set "CPALIUS_CACHE_DIR='.$fix($newDir).'"', $run('cache:warmup').' > NUL 2>&1',
+                'if errorlevel 1 (', '  echo '.$failJson.'> '.$marker, '  exit /b 1', ')', '(echo '.$slot.')> '.$pointer]
+            : ['export CPALIUS_CACHE_DIR='.escapeshellarg($newDir), $run('cache:warmup').' > /dev/null 2>&1 || { echo \''.$failJson.'\' > '.$marker.'; exit 1; }', 'echo '.$slot.' > '.$pointer];
+        if ($assets) {
+            $lines[] = $run('asset-map:compile').($windows ? ' > NUL 2>&1' : ' > /dev/null 2>&1');
+        }
+
+        $dir = $this->projectDir.'/cp-core/var/update';
+        @mkdir($dir, 0775, true);
+        $script = $dir.'/deferred-rebuild.'.($windows ? 'cmd' : 'sh');
+        if (@file_put_contents($script, implode($nl, $lines).$nl) === false) {
+            return false;
+        }
+
+        // Old slots are garbage once the pointer moves; the active one and the new one stay.
+        foreach (glob($base.'-*', GLOB_ONLYDIR) ?: [] as $old) {
+            if (basename($old) !== basename($this->cacheDir) && $old !== $newDir) {
+                try {
+                    (new Filesystem())->remove($old);
+                } catch (\Throwable) {
+                }
+            }
+        }
+
+        return $this->launchScript($script);
+    }
+
+    /**
+     * Runs `console <command>` in a detached process (own console, outlives this request) and
+     * returns at once. For work a browser must not wait on, e.g. module activation (Law 2.2 dry-run).
+     *
+     * @param array<string, string> $env
+     */
+    public function startConsoleJob(string $command, array $env = []): bool
+    {
+        $windows = \PHP_OS_FAMILY === 'Windows';
+        $q = static fn (string $v): string => '"'.$v.'"';
+        $fix = static fn (string $p): string => $windows ? str_replace('/', '\\', $p) : $p;
+        $php = (new PhpExecutableFinder())->find() ?: 'php';
+        $run = $q($fix($php)).' '.$q($fix($this->projectDir.'/cp-core/bin/console')).' '.$command.' --env='.$this->environment;
+
+        $dir = $this->projectDir.'/cp-core/var/update';
+        @mkdir($dir, 0775, true);
+        $script = $dir.'/job-'.bin2hex(random_bytes(4)).'.'.($windows ? 'cmd' : 'sh');
+        $lines = [];
+        foreach ($env as $k => $v) {
+            $lines[] = $windows ? 'set "'.$k.'='.$v.'"' : 'export '.$k.'='.escapeshellarg($v);
+        }
+        $lines[] = $run.($windows ? ' > NUL 2>&1' : ' > /dev/null 2>&1');
+        $lines[] = $windows ? '(goto) 2>nul & del "%~f0"' : 'rm -- "$0"';
+        $nl = $windows ? "\r\n" : "\n";
+        if (@file_put_contents($script, implode($nl, $lines).$nl) === false) {
+            return false;
+        }
+
+        return $this->launchScript($script);
+    }
+
+    private function launchScript(string $script): bool
+    {
+        $windows = \PHP_OS_FAMILY === 'Windows';
+        // Windows: `start` without /B gives the child its own console so cmd exits at once;
+        // /B (or popen) would keep PHP waiting on it. Files, not pipes, so nothing is inherited.
+        $null = $windows ? 'NUL' : '/dev/null';
+        $process = @proc_open(
+            $windows ? 'cmd /c start "" /MIN "'.str_replace('/', '\\', $script).'"' : 'nohup sh '.escapeshellarg($script).' > /dev/null 2>&1 &',
+            [0 => ['file', $null, 'r'], 1 => ['file', $null, 'w'], 2 => ['file', $null, 'w']],
+            $pipes,
+        );
+        if (!\is_resource($process)) {
+            return false;
+        }
+        proc_close($process);
+
+        return true;
     }
 
     /**

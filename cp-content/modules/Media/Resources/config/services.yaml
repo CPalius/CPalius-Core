@@ -3,9 +3,18 @@ services:
         autowire: true
         autoconfigure: true
 
+    # _instanceof only applies to services defined in this same file, so core's
+    # rule for this tag cannot reach the module's handler.
+    _instanceof:
+        App\Core\Trash\TrashPurgeHandlerInterface:
+            tags: ['cp.trash_purge_handler']
+
     Modules\Media\Controller\:
         resource: '../../Controller/'
         tags: ['controller.service_arguments']
 
     Modules\Media\Studio\:
         resource: '../../Studio/'
+
+    Modules\Media\Service\:
+        resource: '../../Service/'

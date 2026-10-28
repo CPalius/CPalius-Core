@@ -65,7 +65,7 @@ final class UpdateRunnerTest extends IntegrationTestCase
 
         $hooks = $this->step($results, UpdateRunner::STEP_HOOKS);
         self::assertTrue($hooks->changedAnything(), 'but it still reports what would happen');
-        self::assertStringContainsString('would run', $hooks->summary);
+        self::assertSame($this->container()->get(TranslatorInterface::class)->trans('aacp.updates.summary.hooks.would', ['count' => 1]), $hooks->summary);
     }
 
     public function testHooksRunOnceAndAreSkippedOnASecondRun(): void
@@ -113,7 +113,7 @@ final class UpdateRunnerTest extends IntegrationTestCase
         $hooks = $this->step($results, UpdateRunner::STEP_HOOKS);
 
         self::assertTrue($hooks->isFailure());
-        self::assertStringContainsString('1 hook(s) failed', $hooks->summary);
+        self::assertSame($this->container()->get(TranslatorInterface::class)->trans('aacp.updates.summary.hooks.partial', ['failed' => 1, 'ok' => 2]), $hooks->summary);
 
         // The neighbours still ran: one broken hook must not block the release.
         self::assertSame(['core.1_0_0.before', 'core.1_2_0.after'], RecordingHook::$ran);

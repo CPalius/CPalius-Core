@@ -72,7 +72,7 @@ final class LocaleAdminController
                 // Locale row persists even if seed fails; files appear on first edit.
             }
 
-            return new Response('', Response::HTTP_FOUND, ['Location' => '/aacp/advanced/management']);
+            return new Response('', Response::HTTP_FOUND, ['Location' => '/aacp/languages']);
         }
 
         return $this->render('aacp/locales/form.html.twig', [
@@ -111,7 +111,7 @@ final class LocaleAdminController
             $this->entityManager->flush();
             $this->localeProvider->invalidate();
 
-            return new Response('', Response::HTTP_FOUND, ['Location' => '/aacp/advanced/management']);
+            return new Response('', Response::HTTP_FOUND, ['Location' => '/aacp/languages']);
         }
 
         return $this->render('aacp/locales/form.html.twig', [

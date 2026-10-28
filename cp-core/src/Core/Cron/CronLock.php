@@ -29,7 +29,9 @@ use Psr\Log\LoggerInterface;
  * what a CPalius installation is — one document root, one PHP pool. A
  * deployment spreading cron across several application servers needs a shared
  * lock instead, and should take one in its own job rather than assume this
- * class covers it.
+ * class covers it: App\Core\Lock\NamedLock is that shared lock (database
+ * backed, released with the connection), and a job that must never overlap
+ * across servers wraps its work in NamedLock::synchronized() with a wait of 0.
  *
  * When the lock file cannot be opened at all, the job runs anyway and the
  * failure is logged. An installation whose var/ directory is unwritable is

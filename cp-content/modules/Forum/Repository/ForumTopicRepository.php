@@ -360,6 +360,33 @@ final class ForumTopicRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /**
+     * Public topics inside the given sections, by latest activity or by reads (the forum page cards).
+     *
+     * @param list<int>    $sectionIds
+     * @param list<string> $excludeTitleTerms
+     *
+     * @return list<ForumTopic>
+     */
+    public function findInSections(array $sectionIds, bool $popular, int $limit, string $contentLocale, array $excludeTitleTerms = []): array
+    {
+        if ($sectionIds === []) {
+            return [];
+        }
+
+        $qb = $this->createPublicTopicListQuery($contentLocale, $excludeTitleTerms)
+            ->andWhere('t.section IN (:sectionIds)')
+            ->setParameter('sectionIds', $sectionIds);
+
+        if ($popular) {
+            $qb->orderBy('t.viewCount', 'DESC')->addOrderBy('t.postCount', 'DESC')->addOrderBy('t.updatedAt', 'DESC');
+        } else {
+            $qb->orderBy('t.updatedAt', 'DESC');
+        }
+
+        return $qb->setMaxResults($limit)->getQuery()->getResult();
+    }
+
     public function countPublicByAuthor(User $author): int
     {
         return (int) $this->createQueryBuilder('t')

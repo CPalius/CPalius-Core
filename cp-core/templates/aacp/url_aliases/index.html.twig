@@ -41,7 +41,7 @@
                                 <a href="{{ path('aacp_url_alias_edit', {id: alias.id}) }}" class="text-fs-xs font-medium !text-slate-400 hover:!text-primary-400">
                                     {{ 'aacp.url_alias.action.edit'|trans }}
                                 </a>
-                                <form method="post" action="{{ path('aacp_url_alias_delete', {id: alias.id}) }}" onsubmit="return confirm('{{ 'aacp.url_alias.action.delete_confirm'|trans }}');">
+                                <form method="post" action="{{ path('aacp_url_alias_delete', {id: alias.id}) }}" data-confirm="{{ 'aacp.url_alias.action.delete_confirm'|trans|e('html_attr') }}">
                                     <input type="hidden" name="_token" value="{{ csrf_token('aacp_url_alias_form') }}">
                                     <button type="submit" class="text-fs-xs font-medium !text-slate-400 hover:!text-danger-300">
                                         {{ 'aacp.url_alias.action.delete'|trans }}

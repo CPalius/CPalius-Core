@@ -27,6 +27,7 @@ use Modules\Blog\Event\BlogArticleCreatedEvent;
 use Modules\Blog\Form\DTO\PostFormModel;
 use Modules\Blog\Form\PostType;
 use Modules\Blog\PostSubType;
+use Modules\Blog\Service\PostFaq;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -374,7 +375,7 @@ final class PostAdminController extends AbstractController
                 );
             }
 
-            $this->addFlash('success', $this->translator->trans('blog.posts.flash.created', ['title' => $node->getTitle()]));
+            $this->flashSaved($node, 'blog.posts.flash.created');
 
             return $this->redirectToRoute('admin_posts_index');
         }
@@ -389,7 +390,8 @@ final class PostAdminController extends AbstractController
         $this->assertOwnOrAny('node.post.edit', $node, $this->translator->trans('blog.posts.error.edit_denied'));
 
         $dto = $this->buildDtoFromNode($node);
-        $form = $this->createPostForm($dto, $this->allowEditTranslate(), true);
+        $syncLocales = $this->allowEditTranslate() ? $this->aiSiblingLocales($node) : [];
+        $form = $this->createPostForm($dto, $this->allowEditTranslate(), true, $syncLocales !== []);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -410,12 +412,46 @@ final class PostAdminController extends AbstractController
                 $this->requestTranslation($node);
             }
 
-            $this->addFlash('success', $this->translator->trans('blog.posts.flash.updated', ['title' => $node->getTitle()]));
+            // Re-translate into the AI-written siblings only; hand-written ones are never touched.
+            if ($dto->syncTranslations && $syncLocales !== []) {
+                $this->eventDispatcher->dispatch(
+                    new BlogArticleCreatedEvent($node, true),
+                    BlogArticleCreatedEvent::SYNC,
+                );
+            }
+
+            $this->flashSaved($node, 'blog.posts.flash.updated');
 
             return $this->redirectToRoute('admin_posts_index');
         }
 
         return $this->render('@BlogModule/admin/posts/form.html.twig', $this->formViewData($form, $dto, $node->getLocale(), $node->getTranslationGroupId(), $node));
+    }
+
+    /**
+     * Autocomplete source for the post form's tag box: existing tags of the post's locale.
+     * A name that matches nothing is created on save (findOrCreateByNames), so typing a new
+     * tag needs no round trip here.
+     */
+    #[Route('/tags/suggest', name: 'tags_suggest', methods: ['GET'])]
+    public function suggestTags(Request $request): JsonResponse
+    {
+        if (!$this->isGranted('node.post.create') && !$this->isGranted('node.post.edit.own') && !$this->isGranted('node.post.edit.any')) {
+            throw $this->createAccessDeniedException($this->translator->trans('blog.posts.error.edit_denied'));
+        }
+
+        $query = trim($request->query->getString('q'));
+        if ($query === '' || mb_strlen($query) > 80) {
+            return new JsonResponse(['tags' => []]);
+        }
+
+        $locale = $this->localeProvider->resolve($request->query->getString('locale') ?: null);
+        $names = array_map(
+            static fn (Term $tag): string => $tag->getName(),
+            $this->tagRepository->searchByName($query, $locale),
+        );
+
+        return new JsonResponse(['tags' => $names]);
     }
 
     /**
@@ -439,11 +475,10 @@ final class PostAdminController extends AbstractController
     /**
      * Build PostType with locale-aware category choices injected by the controller.
      */
-    private function createPostForm(PostFormModel $dto, bool $includeAutoTranslate = false, bool $autoTranslateEdit = false): FormInterface
+    private function createPostForm(PostFormModel $dto, bool $includeAutoTranslate = false, bool $autoTranslateEdit = false, bool $includeSync = false): FormInterface
     {
-        $categories = $this->categoryRepository->findByLocale($this->localeProvider->getDefaultCode());
         $categoryChoices = [];
-        foreach ($categories as $category) {
+        foreach ($this->formCategories() as $category) {
             $categoryChoices[$category->getName()] = $category;
         }
 
@@ -451,7 +486,84 @@ final class PostAdminController extends AbstractController
             'category_choices' => $categoryChoices,
             'include_auto_translate' => $includeAutoTranslate,
             'auto_translate_edit' => $autoTranslateEdit,
+            'include_sync_translations' => $includeSync,
         ]);
+    }
+
+    /**
+     * Categories offered by the form (default-locale vocabulary, as before).
+     *
+     * @return list<Term>
+     */
+    private function formCategories(): array
+    {
+        return $this->categoryRepository->findByLocale($this->localeProvider->getDefaultCode());
+    }
+
+    /**
+     * Locales of translations the AI wrote from this node (stamped ai_source_id) — the only
+     * ones an "also update translations" save may overwrite.
+     *
+     * @return list<string>
+     */
+    private function aiSiblingLocales(Node $node): array
+    {
+        $locales = [];
+        foreach ($this->buildTranslationsMap($node) as $code => $sibling) {
+            if ($sibling->getId() !== $node->getId()
+                && $sibling->getDeletedAt() === null
+                && $sibling->getDataValue(BlogArticleCreatedEvent::AI_SOURCE_KEY) === $node->getId()
+            ) {
+                $locales[] = $code;
+            }
+        }
+
+        return $locales;
+    }
+
+    /**
+     * Success flash; a published post carries a "view on site" link (rendered by the admin layout).
+     */
+    private function flashSaved(Node $node, string $messageKey): void
+    {
+        $text = $this->translator->trans($messageKey, ['title' => $node->getTitle()]);
+        $url = $this->frontUrl($node);
+
+        $this->addFlash('success', $url === null ? $text : [
+            'text' => $text,
+            'url' => $url,
+            'label' => $this->translator->trans('blog.posts.view_on_site'),
+        ]);
+    }
+
+    /**
+     * Public URL, only while the post is live — drafts and scheduled posts 404 on the front.
+     */
+    private function frontUrl(Node $node): ?string
+    {
+        if ($node->getStatus() !== Node::STATUS_PUBLISHED) {
+            return null;
+        }
+
+        return $this->generateUrl('blog_show', ['_locale' => $node->getLocale(), 'slug' => $node->getSlug()]);
+    }
+
+    /**
+     * id => {description, parentId} so the category edit modal can prefill without a request.
+     *
+     * @return array<int, array{description: string, parentId: int|null}>
+     */
+    private function categoryMeta(): array
+    {
+        $meta = [];
+        foreach ($this->formCategories() as $category) {
+            $meta[(int) $category->getId()] = [
+                'description' => (string) $category->getDescription(),
+                'parentId' => $category->getParent()?->getId(),
+            ];
+        }
+
+        return $meta;
     }
 
     /**
@@ -471,6 +583,11 @@ final class PostAdminController extends AbstractController
             'translationGroupId' => $translationGroupId,
             'existingTranslationLocales' => $existing,
             'missingTranslationLocales' => $post instanceof Node ? $this->missingTranslationLocales($post, $existing) : [],
+            'aiSyncLocales' => $post instanceof Node && $this->allowEditTranslate() ? $this->aiSiblingLocales($post) : [],
+            'viewUrl' => $post instanceof Node ? $this->frontUrl($post) : null,
+            'tagLocale' => $locale,
+            'categoryLocale' => $this->localeProvider->getDefaultCode(),
+            'categoryMeta' => $this->categoryMeta(),
         ];
     }
 
@@ -583,6 +700,7 @@ final class PostAdminController extends AbstractController
 
         $node->setDataValue('post_sub_type', $dto->postSubType);
         $node->setDataValue('type_fields', $this->buildTypeFields($dto));
+        $node->setDataValue('faq', PostFaq::parse($dto->faq));
 
         $this->syncTaxonomy($dto, $node);
 
@@ -716,6 +834,7 @@ final class PostAdminController extends AbstractController
         $dto->slug = $node->getSlug();
         $dto->excerpt = (string) $node->getDataValue('excerpt', '');
         $dto->body = (string) $node->getDataValue('body', '');
+        $dto->faq = PostFaq::format($node->getDataValue('faq', []));
         $dto->isFeatured = (bool) $node->getDataValue('is_featured', false);
         $rawComments = $node->getDataValue('comments_enabled', 1);
         $dto->commentsEnabled = !\in_array($rawComments, [0, '0', false, null, ''], true);
@@ -782,6 +901,8 @@ final class PostAdminController extends AbstractController
         $node = $this->findPostOrFail($id);
 
         $this->denyAccessUnlessGranted('node.post.publish', null, $this->translator->trans('blog.posts.error.publish_denied'));
+        // Publishing needs the right to edit THIS post too: the capability alone let a writer publish anyone's draft.
+        $this->assertOwnOrAny('node.post.edit', $node, $this->translator->trans('blog.posts.error.publish_denied'));
         $this->assertValidCsrf($request, 'admin_post_form');
 
         $node->publish();
@@ -789,12 +910,99 @@ final class PostAdminController extends AbstractController
         $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
 
         if ($request->isXmlHttpRequest()) {
-            return new JsonResponse(['ok' => true]);
+            return new JsonResponse(['ok' => true, 'url' => $this->frontUrl($node)]);
         }
 
-        $this->addFlash('success', $this->translator->trans('blog.posts.flash.published', ['title' => $node->getTitle()]));
+        // The writer's toolbar on the public page sends them back to the post they just published. The public
+        // theme prints flashes as plain text, so no "view on site" link payload there (they are already on it).
+        if ($request->request->getString('return') === 'front') {
+            $this->addFlash('success', $this->translator->trans('blog.posts.flash.published', ['title' => $node->getTitle()]));
+
+            return $this->redirectToRoute('blog_show', ['_locale' => $node->getLocale(), 'slug' => $node->getSlug()]);
+        }
+
+        $this->flashSaved($node, 'blog.posts.flash.published');
 
         return $this->redirectToRoute('admin_posts_index');
+    }
+
+    /**
+     * Quick edit behind the writer's side panel on the public post page: status and
+     * date, cover, comments, featured — without opening the Studio form. One action
+     * per call; the same capability rules as the form apply (editing needs edit
+     * rights on this post, changing status/date needs node.post.publish).
+     */
+    #[Route('/{id}/quick', name: 'quick', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function quick(int $id, Request $request): JsonResponse
+    {
+        $node = $this->findPostOrFail($id);
+        $this->assertOwnOrAny('node.post.edit', $node, $this->translator->trans('blog.posts.error.publish_denied'));
+
+        if (!$this->isCsrfTokenValid('admin_post_form', (string) $request->headers->get('X-CSRF-Token'))) {
+            return new JsonResponse(['error' => $this->translator->trans('aacp.common.error.invalid_csrf')], Response::HTTP_FORBIDDEN);
+        }
+
+        $in = json_decode($request->getContent(), true);
+        $in = \is_array($in) ? $in : [];
+
+        switch ((string) ($in['action'] ?? '')) {
+            case 'comments':
+                $node->setDataValue('comments_enabled', !empty($in['value']) ? 1 : 0);
+                break;
+
+            case 'featured':
+                $node->setDataValue('is_featured', !empty($in['value']) ? 1 : 0);
+                break;
+
+            case 'cover':
+                $assetId = isset($in['asset_id']) && is_numeric($in['asset_id']) ? (int) $in['asset_id'] : null;
+                if ($assetId !== null) {
+                    $asset = $this->assetRepository->find($assetId);
+                    if ($asset === null || !str_starts_with($asset->getMimeType(), 'image/')) {
+                        return new JsonResponse(['error' => $this->translator->trans('blog.author_tools.quick.cover_invalid')], Response::HTTP_BAD_REQUEST);
+                    }
+                }
+                $node->setDataValue('featured_image_asset_id', $assetId);
+                break;
+
+            case 'schedule':
+                if (!$this->isGranted('node.post.publish')) {
+                    return new JsonResponse(['error' => $this->translator->trans('blog.posts.error.publish_denied')], Response::HTTP_FORBIDDEN);
+                }
+
+                $status = (string) ($in['status'] ?? '');
+                if (!\in_array($status, [Node::STATUS_DRAFT, Node::STATUS_SCHEDULED, Node::STATUS_PUBLISHED], true)) {
+                    return new JsonResponse(['error' => $this->translator->trans('blog.author_tools.quick.status_invalid')], Response::HTTP_BAD_REQUEST);
+                }
+
+                $at = null;
+                $raw = trim((string) ($in['published_at'] ?? ''));
+                if ($raw !== '') {
+                    try {
+                        $at = new \DateTimeImmutable($raw);
+                    } catch (\Exception) {
+                        return new JsonResponse(['error' => $this->translator->trans('blog.author_tools.quick.date_invalid')], Response::HTTP_BAD_REQUEST);
+                    }
+                }
+
+                $dto = new PostFormModel();
+                $dto->status = $status;
+                $dto->publishedAt = $at;
+                $this->applyPublicationSchedule($dto, $node);
+                break;
+
+            default:
+                return new JsonResponse(['error' => $this->translator->trans('blog.author_tools.quick.action_invalid')], Response::HTTP_BAD_REQUEST);
+        }
+
+        $this->entityManager->flush();
+        $this->originCachePurger->purgeAreas('blog', 'home', 'roadmap');
+
+        return new JsonResponse([
+            'ok' => true,
+            'status' => $node->getStatus(),
+            'url' => $this->frontUrl($node),
+        ]);
     }
 
     #[Route('/{id}/delete', name: 'delete', methods: ['POST'], requirements: ['id' => '\d+'])]

@@ -1,8 +1,5 @@
 {% extends '@Theme/layout.html.twig' %}
 
-{% block title %}{{ 'meta.title'|trans({}, 'portal') }}{% endblock %}
-{% block meta_description %}{{ 'meta.description'|trans({}, 'portal') }}{% endblock %}
-
 {% block content %}
 {% for portalBlock in portalBlocks|default([]) %}
     {% include '@Theme/partials/portal/' ~ portalBlock.id ~ '.html.twig' ignore missing with {

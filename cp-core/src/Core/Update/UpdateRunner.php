@@ -343,18 +343,14 @@ final class UpdateRunner
     {
         try {
             if ($dryRun) {
-                $status = $this->config->status();
-                $changed = array_values(array_filter(
-                    array_keys($status),
-                    static fn (string $name): bool => ($status[$name]['changes'] ?? []) !== [],
-                ));
+                $changed = array_keys($this->config->releaseChanges());
 
                 return $changed === []
                     ? UpdateStepResult::skipped(self::STEP_CONFIG, $this->t('config.none'))
                     : UpdateStepResult::applied(self::STEP_CONFIG, $this->t('config.would', ['count' => \count($changed)]), $changed);
             }
 
-            $applied = $this->config->import();
+            $applied = $this->config->importRelease();
 
             if ($applied === []) {
                 return UpdateStepResult::skipped(self::STEP_CONFIG, $this->t('config.none'));

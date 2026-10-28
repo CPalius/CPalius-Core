@@ -1,6 +1,6 @@
 {
     "name": "Media",
-    "version": "1.0.0",
+    "version": "1.1.1",
     "description": "CPalius media library and image picker.",
     "author": "CPalius",
     "bundle": "Modules\\Media\\MediaModule",

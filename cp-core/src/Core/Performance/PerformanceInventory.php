@@ -272,6 +272,11 @@ final class PerformanceInventory
         $row['meta'] = $hit !== null
             ? $this->translator->trans('aacp.dashboard.perf.hit_rate', ['rate' => $hit])
             : '';
+        $strings = $status['interned_strings_usage'] ?? [];
+        // A full cache or string buffer silently disables caching: every request then recompiles all PHP.
+        if (($status['cache_full'] ?? false) || (($strings['buffer_size'] ?? 0) > 0 && ($strings['free_memory'] ?? 1) < 0.02 * $strings['buffer_size'])) {
+            $row['meta'] = $this->translator->trans('aacp.dashboard.perf.opcache_full');
+        }
 
         return $row;
     }

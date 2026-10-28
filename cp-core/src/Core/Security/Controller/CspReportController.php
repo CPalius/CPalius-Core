@@ -83,7 +83,31 @@ final class CspReportController
             return [];
         }
 
-        $report = $decoded['csp-report'] ?? $decoded;
+        // Reporting API (report-to): a list of {type: "csp-violation", body: {camelCase fields}}.
+        // Legacy report-uri: {"csp-report": {kebab-case fields}}. Both end up with the same labels.
+        if (array_is_list($decoded)) {
+            $first = null;
+            foreach ($decoded as $item) {
+                if (\is_array($item) && ($item['type'] ?? null) === 'csp-violation' && \is_array($item['body'] ?? null)) {
+                    $first = $item['body'];
+
+                    break;
+                }
+            }
+            if ($first === null) {
+                return [];
+            }
+            $report = [
+                'violated-directive' => $first['effectiveDirective'] ?? null,
+                'effective-directive' => $first['effectiveDirective'] ?? null,
+                'blocked-uri' => $first['blockedURL'] ?? null,
+                'document-uri' => $first['documentURL'] ?? null,
+                'disposition' => $first['disposition'] ?? null,
+                'source-file' => $first['sourceFile'] ?? null,
+            ];
+        } else {
+            $report = $decoded['csp-report'] ?? $decoded;
+        }
         if (!\is_array($report)) {
             return [];
         }

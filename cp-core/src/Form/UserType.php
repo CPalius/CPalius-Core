@@ -78,6 +78,14 @@ final class UserType extends AbstractType
                     'class' => 'form-control !border-white/10 !bg-dark-1 !text-slate-100',
                 ],
             ])
+            ->add('phone', TextType::class, [
+                'label' => 'aacp.users.form.field.phone',
+                'required' => false,
+                'attr' => [
+                    'class' => 'form-control !border-white/10 !bg-dark-1 !text-slate-100',
+                    'inputmode' => 'tel',
+                ],
+            ])
             ->add('location', TextType::class, [
                 'label' => 'aacp.users.form.field.location',
                 'required' => false,

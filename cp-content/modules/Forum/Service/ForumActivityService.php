@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Forum\Service;
 
+use App\Core\Account\UserAvatarService;
 use App\Core\Settings\SettingsRegistry;
 use App\Entity\User;
 use App\Repository\UserRepository;
@@ -27,6 +28,7 @@ final class ForumActivityService
         private readonly ForumPostRepository $postRepository,
         private readonly UserRepository $userRepository,
         private readonly ForumWordFilterService $wordFilterService,
+        private readonly UserAvatarService $avatarService,
     ) {
     }
 
@@ -167,6 +169,7 @@ final class ForumActivityService
                 'sectionSlug' => $topic->getSection()->getSlug(),
                 'author' => $topic->getFirstPosterName(),
                 'authorId' => $topic->getFirstPoster()?->getId(),
+                'avatarUrl' => $this->avatarService->resolveUrl($topic->getFirstPoster()),
                 'authorSlug' => $topic->getFirstPoster()?->getProfileSlug(),
                 'lastPoster' => $topic->getLastPosterName() ?: $topic->getFirstPosterName(),
                 'lastPosterId' => $topic->getLastPoster()?->getId() ?? $topic->getFirstPoster()?->getId(),
@@ -209,6 +212,7 @@ final class ForumActivityService
                 'id' => $user->getId(),
                 'title' => $name,
                 'authorId' => $user->getId(),
+                'avatarUrl' => $this->avatarService->resolveUrl($user),
                 'author' => $name,
                 'profileSlug' => $user->getProfileSlug(),
                 'at' => $user->getCreatedAt(),
@@ -256,6 +260,7 @@ final class ForumActivityService
                 'id' => $userId,
                 'title' => $name,
                 'authorId' => $userId,
+                'avatarUrl' => $this->avatarService->resolveUrl($user),
                 'author' => $name,
                 'profileSlug' => $user->getProfileSlug(),
                 'at' => $user->getCreatedAt(),

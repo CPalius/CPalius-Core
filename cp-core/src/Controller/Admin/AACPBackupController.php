@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Core\Security\Reauth\RequiresRecentAuth;
 use App\Core\Annotation\CpAdminMenu;
 use App\Core\Backup\BackupException;
 use App\Core\Backup\BackupFilename;
@@ -68,6 +69,7 @@ final class AACPBackupController extends AbstractController
 
     #[Route('/aacp/backup/create', name: 'aacp_backup_create', methods: ['POST'])]
     #[IsGranted('system.backup.manage')]
+    #[RequiresRecentAuth]
     public function create(Request $request): RedirectResponse
     {
         $this->assertValidCsrfToken($request);
@@ -132,6 +134,7 @@ final class AACPBackupController extends AbstractController
      */
     #[Route('/aacp/backup/delete-remote', name: 'aacp_backup_delete_remote', methods: ['POST'])]
     #[IsGranted('system.backup.manage')]
+    #[RequiresRecentAuth]
     public function deleteRemote(Request $request): RedirectResponse
     {
         $this->assertValidCsrfToken($request);
@@ -154,6 +157,7 @@ final class AACPBackupController extends AbstractController
 
     #[Route('/aacp/backup/archive/{stem}', name: 'aacp_backup_download', methods: ['GET'], requirements: ['stem' => 'cpalius-(db|files|full)-\d{8}-\d{6}'])]
     #[IsGranted('system.backup.manage')]
+    #[RequiresRecentAuth]
     public function download(string $stem): BinaryFileResponse
     {
         try {
@@ -179,6 +183,7 @@ final class AACPBackupController extends AbstractController
 
     #[Route('/aacp/backup/delete', name: 'aacp_backup_delete', methods: ['POST'])]
     #[IsGranted('system.backup.manage')]
+    #[RequiresRecentAuth]
     public function delete(Request $request): RedirectResponse
     {
         $this->assertValidCsrfToken($request);
