@@ -251,7 +251,8 @@ final class HomepageStore
     /** @return array<string, mixed> */
     private function published(): array
     {
-        $raw = (string) $this->settings->get(self::KEY, '');
+        // No #[CpSetting] definition: get() would answer the default without ever looking at the row.
+        $raw = (string) $this->settings->getRaw(self::KEY);
         $decoded = $raw !== '' ? json_decode($raw, true) : null;
 
         return self::normalize(\is_array($decoded) ? $decoded : [], $this->localeCodes(), $this->inlineSanitizer());

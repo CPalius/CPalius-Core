@@ -49,7 +49,7 @@ final class HomepageEditorState
     private const URL_DEFAULTS = [
         'hero.cta_download@url' => 'https://github.com/CPalius/CPalius-Core/releases/latest',
         'hero.github@url' => 'https://github.com/CPalius/CPalius-Core',
-        'community.cta_github@url' => 'https://github.com/slaweally',
+        'community.cta_github@url' => 'https://github.com/CPalius',
     ];
 
     public function __construct(

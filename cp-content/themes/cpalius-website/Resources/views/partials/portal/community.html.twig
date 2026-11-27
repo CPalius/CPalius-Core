@@ -9,7 +9,7 @@
                 </p>
                 {# Each button is its own link and its own switch: changing the address or emptying it removes the button. #}
                 {% set whitepaperUrl = hp_url('community.cta_whitepaper@url', cp_path_if_exists('whitepaper_show', {_locale: app.request.locale})) %}
-                {% set githubUrl = hp_url('community.cta_github@url', 'https://github.com/slaweally') %}
+                {% set githubUrl = hp_url('community.cta_github@url', 'https://github.com/CPalius') %}
                 {% set forumUrl = hp_url('community.cta_discuss@url', forumAvailable ? path('forum_index') : '') %}
                 <div class="hero-actions" style="justify-content:center;">
                     {% if whitepaperUrl and hp_on('community.cta_whitepaper') %}
