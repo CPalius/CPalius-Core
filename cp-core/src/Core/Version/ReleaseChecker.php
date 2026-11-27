@@ -362,7 +362,10 @@ final class ReleaseChecker
                 $best = $other;
             }
         } catch (ReleaseSecurityException $e) {
-            throw $e;
+            // Same allowance the other way round: stable moving past an idle channel must not sink the check.
+            if ($best === null || !str_contains($e->getMessage(), 'possible rollback attack')) {
+                throw $e;
+            }
         } catch (\Throwable $e) {
             // A channel that is unreachable or does not exist yet leaves the stable result in place.
             if ($best === null) {

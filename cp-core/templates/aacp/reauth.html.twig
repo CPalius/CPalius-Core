@@ -40,7 +40,7 @@
                         <input type="hidden" name="next" value="{{ next }}">
 
                         <div class="flex items-center justify-between gap-3">
-                            <a href="/aacp" class="text-fs-xs !text-slate-500 underline hover:!text-slate-300">{{ 'aacp.reauth.cancel'|trans }}</a>
+                            <a href="{{ path('aacp_dashboard') }}" class="text-fs-xs !text-slate-500 underline hover:!text-slate-300">{{ 'aacp.reauth.cancel'|trans }}</a>
                             <button type="submit" class="btn btn-primary">{{ 'aacp.reauth.submit'|trans }}</button>
                         </div>
                     </form>

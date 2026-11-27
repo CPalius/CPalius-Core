@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Security\Gate;
 
+use App\Core\Routing\PanelPaths;
 use App\Entity\User;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -126,7 +127,7 @@ final class AacpGateSubscriber implements EventSubscriberInterface
     private function challenge(Request $request): Response
     {
         if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
-            return new JsonResponse(['error' => 'aacp_gate_required', 'location' => AacpGate::GATE_PATH], Response::HTTP_FORBIDDEN);
+            return new JsonResponse(['error' => 'aacp_gate_required', 'location' => PanelPaths::toPublic(AacpGate::GATE_PATH, $request->getBaseUrl())], Response::HTTP_FORBIDDEN);
         }
 
         $target = $request->getRequestUri();

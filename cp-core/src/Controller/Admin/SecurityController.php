@@ -16,7 +16,9 @@ final class SecurityController extends AbstractController
     #[Route('/login', name: 'admin_login', methods: ['GET', 'POST'])]
     public function login(Request $request, AuthenticationUtils $authenticationUtils, SettingsRegistry $settings): Response
     {
-        if ($this->getUser() !== null) {
+        // Only a full sign-in has nothing left to do here. A remember-me session is sent back to this form by /aacp
+        // (IS_AUTHENTICATED_FULLY); bouncing it to the dashboard would leave the panel unreachable.
+        if ($this->isGranted('IS_AUTHENTICATED_FULLY')) {
             return $this->redirectToRoute('admin_dashboard');
         }
 

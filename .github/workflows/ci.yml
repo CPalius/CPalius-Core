@@ -77,6 +77,7 @@ jobs:
         if: matrix.suite == 'lint'
         run: |
           composer validate --no-check-publish --no-check-all
+          composer audit --locked
           find cp-core/src cp-content -name '*.php' -not -path '*/vendor/*' -print0 | xargs -0 -n1 -P4 php -l > /dev/null
           php cp-core/bin/console lint:container
           php cp-core/bin/console lint:yaml cp-content/translations cp-core/config --parse-tags

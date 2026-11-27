@@ -18,7 +18,7 @@ class VocabularyRepository extends ServiceEntityRepository
         parent::__construct($registry, Vocabulary::class);
     }
 
-    /** @var array<string, int|null> machine name => id, so a repeat lookup is an identity-map hit, not a query */
+    /** @var array<string, int> machine name => id, so a repeat lookup is an identity-map hit, not a query */
     private array $idByMachineName = [];
 
     public function findOneByMachineName(string $machineName): ?Vocabulary
@@ -26,14 +26,15 @@ class VocabularyRepository extends ServiceEntityRepository
         // A page asks for the same few vocabularies (tags, categories) many times; one request measured
         // five identical SELECTs for one of them. Remember only the id: find() answers from the entity
         // manager's identity map, and still queries again if the map was cleared.
-        if (\array_key_exists($machineName, $this->idByMachineName)) {
-            $id = $this->idByMachineName[$machineName];
-
-            return $id === null ? null : $this->find($id);
+        if (isset($this->idByMachineName[$machineName])) {
+            return $this->find($this->idByMachineName[$machineName]);
         }
 
         $vocabulary = $this->findOneBy(['machineName' => $machineName]);
-        $this->idByMachineName[$machineName] = $vocabulary?->getId();
+        // A miss is never remembered: "look it up, create it if absent" would keep seeing it as absent.
+        if (($id = $vocabulary?->getId()) !== null) {
+            $this->idByMachineName[$machineName] = $id;
+        }
 
         return $vocabulary;
     }

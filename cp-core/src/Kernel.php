@@ -20,6 +20,7 @@ use App\Core\Module\DependencyInjection\Compiler\ModuleMigrationsPass;
 use App\Core\Module\ModuleEntityMappingResolver;
 use App\Core\Module\ModuleRegistry;
 use App\Core\Resource\DependencyInjection\Compiler\ResourceRegistrationPass;
+use App\Core\Routing\PanelPaths;
 use App\Core\Security\DependencyInjection\Compiler\CapabilityRegistrationPass;
 use App\Core\Settings\DependencyInjection\Compiler\SettingsRegistrationPass;
 use App\Core\TextFormat\DependencyInjection\Compiler\TextFormatRegistrationPass;
@@ -31,6 +32,9 @@ use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\Kernel as BaseKernel;
 
 class Kernel extends BaseKernel
@@ -111,6 +115,44 @@ class Kernel extends BaseKernel
     public function getLogDir(): string
     {
         return $this->getProjectDir().'/cp-core/var/log';
+    }
+
+    /**
+     * The inbound half of PanelPaths: operator-chosen panel addresses are turned back into /admin, /aacp
+     * and /login before routing, the firewall or any listener sees the request.
+     */
+    public function handle(Request $request, int $type = HttpKernelInterface::MAIN_REQUEST, bool $catch = true): Response
+    {
+        if ($type === HttpKernelInterface::MAIN_REQUEST && ($map = PanelPaths::map()) !== []) {
+            $request = $this->internalRequest($request, $map);
+        }
+
+        return parent::handle($request, $type, $catch);
+    }
+
+    /** @param array<string, string> $map */
+    private function internalRequest(Request $request, array $map): Request
+    {
+        $base = $request->getBaseUrl();
+        $uri = $request->getRequestUri();
+        $server = $request->server->all();
+        $server['REQUEST_URI'] = PanelPaths::toInternal($uri, $base, $map);
+
+        // Listeners that return the visitor to the referring panel page compare it against internal paths.
+        $referer = (string) ($server['HTTP_REFERER'] ?? '');
+        $origin = $request->getSchemeAndHttpHost();
+        if (str_starts_with($referer, $origin.'/')) {
+            $path = substr($referer, \strlen($origin));
+            $internal = PanelPaths::toInternal($path, $base, $map);
+            $server['HTTP_REFERER'] = $origin.($internal === $base.PanelPaths::HIDDEN ? $path : $internal);
+        }
+
+        if ($server['REQUEST_URI'] === $uri && ($server['HTTP_REFERER'] ?? '') === $referer) {
+            return $request;
+        }
+
+        // duplicate() resets the cached path info; the headers are rebuilt from the new server bag.
+        return $request->duplicate(server: $server);
     }
 
     /**
