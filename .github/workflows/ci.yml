@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [lint, unit, integration, modules]
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -proot" --health-interval=5s --health-timeout=5s --health-retries=30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, pdo_mysql, pdo_sqlite, gd, zip, sodium, curl
+          coverage: none
+
+      - name: Environment
+        run: |
+          cp .env.example .env
+          sed -i 's/\r$//' .env
+          sed -i '/^APP_SECRET=/d;/^DATABASE_URL=/d;/^APP_ENV=/d' .env
+          {
+            echo 'APP_ENV=dev'
+            echo "APP_SECRET=$(openssl rand -hex 16)"
+            echo 'DATABASE_URL="mysql://root:root@127.0.0.1:3306/cpalius?serverVersion=8.4.0&charset=utf8mb4"'
+          } >> .env
+          mysql -h127.0.0.1 -uroot -proot -e 'CREATE DATABASE cpalius; CREATE DATABASE cpalius_test;'
+
+      - name: Dependencies
+        run: composer install --no-interaction --no-progress --no-scripts
+
+      - name: Front-end assets
+        if: matrix.suite != 'lint'
+        run: |
+          # The CKEditor build is not in git (releases add it); templates only need the files to exist.
+          mkdir -p cp-core/assets/vendor/ckeditor5-custom
+          (cd cp-core/assets/vendor/ckeditor5-custom && touch ckeditor5.js ckeditor5.css tr.js)
+          php cp-core/bin/console importmap:install --no-interaction
+          php cp-core/bin/console tailwind:build --no-interaction
+
+      # The published core carries only the bundled modules. A test of a module that is not in this
+      # checkout cannot run here; it is removed from the run and named in the log.
+      - name: Leave out tests of absent modules
+        if: matrix.suite != 'lint'
+        run: |
+          for file in $(grep -rlE 'Modules\\[A-Za-z]+\\' cp-core/tests --include='*Test.php'); do
+            for module in $(grep -ohE 'Modules\\[A-Za-z]+\\' "$file" | cut -d'\' -f2 | sort -u); do
+              if [ ! -d "cp-content/modules/$module" ]; then
+                echo "::notice file=$file::left out, module $module is not in this repository"
+                rm "$file"
+                break
+              fi
+            done
+          done
+
+      - name: Lint
+        if: matrix.suite == 'lint'
+        run: |
+          composer validate --no-check-publish --no-check-all
+          composer audit --locked
+          find cp-core/src cp-content -name '*.php' -not -path '*/vendor/*' -print0 | xargs -0 -n1 -P4 php -l > /dev/null
+          php cp-core/bin/console lint:container
+          php cp-core/bin/console lint:yaml cp-content/translations cp-core/config --parse-tags
+          php cp-core/bin/console lint:twig cp-core/templates cp-content
+
+      - name: Tests
+        if: matrix.suite != 'lint'
+        run: php cp-includes/vendor/bin/phpunit -c cp-core/phpunit.dist.xml --testsuite ${{ matrix.suite }}

@@ -170,7 +170,8 @@ Thumbs.db
 ###< phpunit/phpunit ###
 
 # Bakim tarafi: depoda yeri yok, diskte kalir.
-/.github/
+/.github/*
+!/.github/workflows/
 /.githooks/
 /docs/
 /tools/

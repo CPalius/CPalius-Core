@@ -14,6 +14,7 @@ use App\Core\Portal\HomepageModeCatalog;
 use App\Core\Portal\HomepageSimpleContent;
 use App\Core\Portal\PortalLayoutService;
 use App\Core\Settings\SettingsRegistry;
+use App\Core\Theme\ThemeRegistry;
 use App\Entity\Setting;
 use App\Repository\SettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -57,10 +58,11 @@ final class HomepageSettingsController extends AbstractController
         private readonly HomepageEditorState $editorState,
         private readonly HomepageHtmlGuard $guard,
         private readonly ExtensionCatalogue $extensions,
+        private readonly ThemeRegistry $themes,
     ) {
     }
 
-    #[Route('/admin/homepage', name: 'admin_homepage_settings', methods: ['GET'])]
+    #[Route('/admin/homepage',name: 'admin_homepage_settings', methods: ['GET'])]
     #[CpAdminMenu(label: 'studio.homepage.header', icon: 'heroicons:home-modern', panel: 'aacp', priority: 70, capability: 'system.settings.manage', parent: 'aacp_themes')]
     #[IsGranted('system.settings.manage')]
     public function index(Request $request): Response
@@ -89,6 +91,7 @@ final class HomepageSettingsController extends AbstractController
 
         return $this->render('admin/homepage.html.twig', [
             // HEX_* so no value can close the <script type="application/json"> block it is printed in.
+            'outdated_theme' => $this->outdatedTheme(),
             'state_json' => json_encode($state, \JSON_HEX_TAG | \JSON_HEX_AMP | \JSON_HEX_APOS | \JSON_HEX_QUOT | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR),
             'csrf_token' => $this->csrfTokenManager->getToken(self::CSRF_ID)->getValue(),
             'draft_url' => $this->generateUrl('admin_homepage_draft'),
@@ -164,6 +167,18 @@ final class HomepageSettingsController extends AbstractController
         $this->settingsRegistry->clearCache();
 
         return new JsonResponse(['ok' => true, 'message' => $this->translator->trans('studio.hp.published')]);
+    }
+
+    /**
+     * The active theme's name when its hero never asks this editor for text: themes update through the store,
+     * so a new core can sit beside an old theme and every edit would silently show nothing.
+     */
+    private function outdatedTheme(): ?string
+    {
+        $name = $this->themes->activeDirName();
+        $hero = $this->themes->themesDir().'/'.$name.'/Resources/views/partials/portal/hero.html.twig';
+
+        return is_file($hero) && !str_contains((string) file_get_contents($hero), 'hp_has(') ? $name : null;
     }
 
     /** URL of an installed extension's screenshot, or null when it ships none. */

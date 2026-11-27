@@ -186,6 +186,8 @@
         .hp-hide { display: none !important; }
     </style>
 
+    {% if outdated_theme %}<div class="hp-note hp-note--bad" role="alert">{{ 'studio.hp.theme_outdated'|trans({theme: outdated_theme}) }}</div>{% endif %}
+
     <div class="hp" id="hp-app">
         <noscript><div class="hp-note hp-note--bad">JavaScript is required for this screen.</div></noscript>
 

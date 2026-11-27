@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Security\Reauth;
 
+use App\Core\Routing\PanelPaths;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -80,7 +81,7 @@ final class RecentAuthSubscriber implements EventSubscriberInterface
 
         $confirm = RecentAuth::CONFIRM_PATH.'?next='.rawurlencode($this->returnPath($request));
         $response = $this->wantsJson($request)
-            ? new JsonResponse(['error' => 'reauth_required', 'confirm' => $confirm], Response::HTTP_FORBIDDEN)
+            ? new JsonResponse(['error' => 'reauth_required', 'confirm' => PanelPaths::toPublic($confirm, $request->getBaseUrl())], Response::HTTP_FORBIDDEN)
             : new RedirectResponse($confirm);
 
         $event->setController(static fn (): Response => $response);
