@@ -35,7 +35,7 @@ final class AacpTaxonomyControllerTest extends IntegrationTestCase
         /** @var VocabularyRepository $vocabularies */
         $vocabularies = $this->container()->get(VocabularyRepository::class);
 
-        $controller->newVocabulary($this->post($tokens['vocabulary'], [
+        $response = $controller->newVocabulary($this->post($tokens['vocabulary'], [
             'machine_name' => 'genres',
             'label' => 'Genres',
             'description' => 'Music genres',
@@ -43,7 +43,13 @@ final class AacpTaxonomyControllerTest extends IntegrationTestCase
             'weight' => '5',
         ]));
 
-        $vocabulary = $vocabularies->findOneByMachineName('genres');
+        fwrite(\STDERR, "\nDIAG status=".$response->getStatusCode()
+            ." location=".$response->headers->get('Location')
+            ." flashes=".json_encode($this->container()->get(\Symfony\Component\HttpFoundation\RequestStack::class)->getCurrentRequest()?->getSession()->getFlashBag()->peekAll())
+            ." rows=".json_encode($this->em()->getConnection()->fetchAllAssociative('SELECT * FROM cp_vocabularies'))
+            ." html=".substr(trim(preg_replace('~\s+~', ' ', strip_tags((string) $response->getContent()))), 0, 400)."\n");
+
+$vocabulary = $vocabularies->findOneByMachineName('genres');
         self::assertInstanceOf(Vocabulary::class, $vocabulary);
         self::assertSame('Genres', $vocabulary->getLabel());
         self::assertTrue($vocabulary->isHierarchical());
