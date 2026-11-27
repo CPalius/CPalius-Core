@@ -49,6 +49,27 @@ jobs:
       - name: Dependencies
         run: composer install --no-interaction --no-progress --no-scripts
 
+      - name: Front-end assets
+        if: matrix.suite != 'lint'
+        run: |
+          php cp-core/bin/console importmap:install --no-interaction
+          php cp-core/bin/console tailwind:build --no-interaction
+
+      # The published core carries only the bundled modules. A test of a module that is not in this
+      # checkout cannot run here; it is removed from the run and named in the log.
+      - name: Leave out tests of absent modules
+        if: matrix.suite != 'lint'
+        run: |
+          for file in $(grep -rlE 'Modules\\[A-Za-z]+\\' cp-core/tests --include='*Test.php'); do
+            for module in $(grep -ohE 'Modules\\[A-Za-z]+\\' "$file" | cut -d'\' -f2 | sort -u); do
+              if [ ! -d "cp-content/modules/$module" ]; then
+                echo "::notice file=$file::left out, module $module is not in this repository"
+                rm "$file"
+                break
+              fi
+            done
+          done
+
       - name: Lint
         if: matrix.suite == 'lint'
         run: |
