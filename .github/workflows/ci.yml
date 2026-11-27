@@ -52,6 +52,9 @@ jobs:
       - name: Front-end assets
         if: matrix.suite != 'lint'
         run: |
+          # The CKEditor build is not in git (releases add it); templates only need the files to exist.
+          mkdir -p cp-core/assets/vendor/ckeditor5-custom
+          (cd cp-core/assets/vendor/ckeditor5-custom && touch ckeditor5.js ckeditor5.css tr.js)
           php cp-core/bin/console importmap:install --no-interaction
           php cp-core/bin/console tailwind:build --no-interaction
 
