@@ -4,3 +4,7 @@ doctrine_migrations:
         # as migrations classes should NOT be autoloaded
         'DoctrineMigrations': '%kernel.project_dir%/cp-core/migrations'
     enable_profiler: false
+    # MySQL/MariaDB commit implicitly on DDL, so a wrapping transaction protects
+    # nothing. New migrations are generated with isTransactional() = false;
+    # existing ones are covered by App\Core\Update\EventListener\MigrationTransactionReset.
+    transactional: false

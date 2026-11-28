@@ -2,6 +2,10 @@
 
 One line per release, generated from the release feed. Full notes: https://com.net.tr/CPalius/releases/<version>.md
 
+## 2.2.73 - 2026-11-28
+
+Fixes fresh installs stopping at the last step with "SAVEPOINT DOCTRINE_n does not exist" on MySQL and MariaDB; official Docker image.
+
 ## 2.2.72 - 2026-11-27
 
 Security updates for Symfony and Twig; choose your own Studio, AACP and sign-in addresses in .env; AACP sign-in, update check and vocabulary lookup fixes.
