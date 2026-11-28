@@ -1,4 +1,4 @@
-# CPalius CMF
+# CPalius
 
 **The Enterprise Application Core** built on PHP 8.4+ and Symfony 7.4 LTS.
 
