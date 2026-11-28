@@ -1,6 +1,6 @@
 # CPalius CMF
 
-**Next-generation Content Management Framework** built on PHP 8.4+ and Symfony 7.4 LTS.
+**The Enterprise Application Core** built on PHP 8.4+ and Symfony 7.4 LTS.
 
 CPalius sits between heavy CMS platforms and bare frameworks. You get authentication, access control, file management, localization, an admin panel, and a modular extension system — without rebuilding them for every project, and without inheriting a decade of CMS technical debt.
 
